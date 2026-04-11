@@ -9,10 +9,13 @@ const Navbar = () => {
 
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-      <nav className="container mx-auto flex items-center justify-between py-4 px-4 lg:px-8">
-        {/* Logo */}
-        <Link to="/" className="flex-shrink-0">
-          <img src={logo} alt="The Lil Edit" className="h-12 w-auto" />
+      <nav className="container mx-auto flex items-center justify-between py-3 px-4 lg:px-8">
+        {/* Logo and Branding */}
+        <Link to="/" className="flex-shrink-0 flex items-center gap-4">
+          <img src={logo} alt="The Lil Edit" className="h-16 w-auto" />
+          <div className="text-4xl text-foreground" style={{ fontFamily: "'Pinyon Script', cursive" }}>
+            The Lil Edit
+          </div>
         </Link>
 
         {/* Desktop Nav */}

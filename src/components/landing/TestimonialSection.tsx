@@ -16,7 +16,7 @@ const TestimonialSection = () => (
       {testimonials.map((t, i) => (
         <div
           key={i}
-          className="bg-card rounded-2xl p-8 border border-border hover:shadow-lg transition-shadow duration-300"
+          className="bg-card/90 backdrop-blur-[1px] rounded-2xl p-8 border border-border/70 shadow-sm shadow-primary/[0.04] hover:shadow-md hover:border-border transition-all duration-300"
         >
           <div className="flex gap-1 mb-4">
             {Array.from({ length: t.rating }).map((_, j) => (

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 
 const CtaBanner = () => (
-  <section className="bg-primary/5 border-y border-primary/10">
+  <section className="bg-strip-soft border-y border-border/70">
     <div className="container mx-auto px-4 lg:px-8 py-16 text-center">
       <Sparkles className="h-8 w-8 text-primary mx-auto mb-4" />
       <h2 className="font-display text-3xl md:text-4xl text-foreground mb-3">
@@ -19,7 +19,7 @@ const CtaBanner = () => (
           </Button>
         </Link>
         <Link to="/login">
-          <Button size="lg" variant="outline" className="font-body rounded-full px-8 border-primary/30 text-primary hover:bg-primary/5">
+          <Button size="lg" variant="outline" className="font-body rounded-full px-8 border-border/80 text-primary hover:bg-secondary/60">
             Log In
           </Button>
         </Link>
