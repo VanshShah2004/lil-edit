@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 30 33% 97%;
+    --foreground: 20 10% 15%;
+
+    --card: 30 30% 95%;
+    --card-foreground: 20 10% 15%;
+
+    --popover: 30 33% 97%;
+    --popover-foreground: 20 10% 15%;
+
+    --primary: 350 35% 68%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 140 20% 82%;
+    --secondary-foreground: 140 15% 25%;
+
+    --muted: 30 20% 92%;
+    --muted-foreground: 20 8% 50%;
+
+    --accent: 35 60% 90%;
+    --accent-foreground: 35 40% 25%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 30 20% 88%;
+    --input: 30 20% 88%;
+    --ring: 350 35% 68%;
+
+    --radius: 0.75rem;
+
+    --blush: 350 35% 68%;
+    --cream: 35 60% 94%;
+    --sage: 140 20% 75%;
+    --latte: 25 30% 80%;
+    --warm-white: 30 33% 97%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@layer utilities {
+  .text-gradient-blush {
+    background: linear-gradient(135deg, hsl(350 35% 68%), hsl(350 50% 75%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
