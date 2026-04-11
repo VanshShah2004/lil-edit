@@ -13,7 +13,7 @@ const HeroSection = () => (
             New Collection 2026
           </span>
           <h1 className="font-display text-4xl md:text-5xl lg:text-6xl leading-[1.1] text-foreground">
-            Simply cute.
+            Simply cute,
             <br />
             <span className="text-gradient-blush italic">Always adorable.</span>
           </h1>
