@@ -1,8 +1,8 @@
 import { Truck, ShieldCheck, Leaf, Gift } from "lucide-react";
 
 const features = [
-  { icon: Truck, label: "Free Shipping", desc: "On orders over ₹999" },
-  { icon: ShieldCheck, label: "Safe & Secure", desc: "100% secure checkout" },
+  { icon: Truck, label: "World-Wide Delivery", desc: "Spreading culture world-wide" },
+  { icon: ShieldCheck, label: "Comfort & Cool", desc: "100% comfort" },
   { icon: Leaf, label: "Eco-Friendly", desc: "Sustainable materials" },
   { icon: Gift, label: "Gift Wrapping", desc: "Beautiful packaging" },
 ];

@@ -6,6 +6,8 @@ import logo from "@/assets/logo.png";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isLoginHovered, setIsLoginHovered] = useState(false);
+  const [isSignupHovered, setIsSignupHovered] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
@@ -34,13 +36,27 @@ const Navbar = () => {
           <Link to="/cart" className="hidden md:flex text-foreground/60 hover:text-primary transition-colors">
             <ShoppingBag className="h-5 w-5" />
           </Link>
-          <Link to="/login">
-            <Button variant="ghost" size="sm" className="hidden md:inline-flex text-sm font-body">
+          <Link to="/login"
+            onMouseEnter={() => setIsLoginHovered(true)}
+            onMouseLeave={() => setIsLoginHovered(false)}
+          >
+            <Button size="sm" className={`hidden md:inline-flex text-sm font-body transition-all duration-300 border-2 ${
+              isSignupHovered
+                ? "bg-primary/10 text-primary border-primary"
+                : "bg-transparent text-primary border-primary hover:bg-primary hover:text-primary-foreground"
+            }`}>
               Log in
             </Button>
           </Link>
-          <Link to="/signup">
-            <Button size="sm" className="hidden md:inline-flex text-sm font-body bg-primary text-primary-foreground hover:bg-primary/90">
+          <Link to="/signup"
+            onMouseEnter={() => setIsSignupHovered(true)}
+            onMouseLeave={() => setIsSignupHovered(false)}
+          >
+            <Button size="sm" className={`hidden md:inline-flex text-sm font-body transition-all duration-300 border-2 ${
+              isLoginHovered
+                ? "bg-primary/10 text-primary border-primary"
+                : "bg-primary text-primary-foreground border-transparent hover:bg-primary/90"
+            }`}>
               Sign up
             </Button>
           </Link>
@@ -61,12 +77,29 @@ const Navbar = () => {
             <Link to="/shop" className="text-foreground/80 py-2 font-body" onClick={() => setMobileOpen(false)}>Shop</Link>
             <Link to="/collections" className="text-foreground/80 py-2 font-body" onClick={() => setMobileOpen(false)}>Collections</Link>
             <Link to="/about" className="text-foreground/80 py-2 font-body" onClick={() => setMobileOpen(false)}>About</Link>
-            <div className="flex gap-3 pt-4 border-t border-border">
-              <Link to="/login" className="flex-1" onClick={() => setMobileOpen(false)}>
-                <Button variant="outline" className="w-full font-body">Log in</Button>
+            <div className="flex gap-3 pt-4 border-t border-border"
+              onMouseEnter={() => setIsLoginHovered(false)}
+              onMouseLeave={() => setIsSignupHovered(false)}
+            >
+              <Link to="/login" className="flex-1" onClick={() => setMobileOpen(false)}
+                onMouseEnter={() => setIsLoginHovered(true)}
+                onMouseLeave={() => setIsLoginHovered(false)}
+              >
+                <Button className={`w-full font-body transition-all duration-300 border-2 ${
+                  isSignupHovered
+                    ? "bg-primary/10 text-primary border-primary"
+                    : "bg-transparent text-primary border-primary hover:bg-primary hover:text-primary-foreground"
+                }`}>Log in</Button>
               </Link>
-              <Link to="/signup" className="flex-1" onClick={() => setMobileOpen(false)}>
-                <Button className="w-full font-body bg-primary text-primary-foreground">Sign up</Button>
+              <Link to="/signup" className="flex-1" onClick={() => setMobileOpen(false)}
+                onMouseEnter={() => setIsSignupHovered(true)}
+                onMouseLeave={() => setIsSignupHovered(false)}
+              >
+                <Button className={`w-full font-body transition-all duration-300 border-2 ${
+                  isLoginHovered
+                    ? "bg-primary/10 text-primary border-primary"
+                    : "bg-primary text-primary-foreground border-transparent hover:bg-primary/90"
+                }`}>Sign up</Button>
               </Link>
             </div>
           </div>

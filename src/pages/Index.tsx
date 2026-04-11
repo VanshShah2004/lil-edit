@@ -3,7 +3,6 @@ import Footer from "@/components/layout/Footer";
 import HeroSection from "@/components/landing/HeroSection";
 import CategoriesSection from "@/components/landing/CategoriesSection";
 import FeaturesBar from "@/components/landing/FeaturesBar";
-import TestimonialSection from "@/components/landing/TestimonialSection";
 import CtaBanner from "@/components/landing/CtaBanner";
 
 const Index = () => (
@@ -13,7 +12,6 @@ const Index = () => (
       <HeroSection />
       <FeaturesBar />
       <CategoriesSection />
-      <TestimonialSection />
       <CtaBanner />
     </main>
     <Footer />
