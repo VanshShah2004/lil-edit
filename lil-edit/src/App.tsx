@@ -7,7 +7,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
-
+import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
 const queryClient = new QueryClient();
 
 const App = () => (

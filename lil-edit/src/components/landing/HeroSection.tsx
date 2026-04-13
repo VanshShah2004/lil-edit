@@ -70,7 +70,7 @@ const HeroSection = () => {
             </div>
             {/* Floating badge */}
             <div className="absolute -bottom-4 -left-4 bg-cream/95 backdrop-blur-sm rounded-2xl p-4 shadow-xl shadow-primary/[0.20] border-2 border-primary/45 animate-fade-in" style={{ animationDelay: "0.6s" }}>
-              <p className="font-display text-sm text-foreground">✨ 100% Organic Cotton</p>
+              <p className="font-display text-sm text-foreground">✨ 100% Original Fashion</p>
             </div>
           </div>
         </div>
