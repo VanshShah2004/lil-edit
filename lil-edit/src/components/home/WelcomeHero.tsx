@@ -3,7 +3,14 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const WelcomeHero = () => {
   const { user } = useAuth();
-  const firstName = user?.user_metadata?.first_name || user?.email?.split("@")[0] || "Guest";
+  const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
+  const firstName =
+    (typeof metadata.first_name === "string" && metadata.first_name.trim()) ||
+    (typeof metadata.given_name === "string" && metadata.given_name.trim()) ||
+    (typeof metadata.full_name === "string" && metadata.full_name.trim().split(/\s+/)[0]) ||
+    (typeof metadata.name === "string" && metadata.name.trim().split(/\s+/)[0]) ||
+    user?.email?.split("@")[0] ||
+    "Guest";
   const name = firstName.charAt(0).toUpperCase() + firstName.slice(1);
 
   return (

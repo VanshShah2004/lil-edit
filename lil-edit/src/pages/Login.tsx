@@ -11,7 +11,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { signIn, user } = useAuth();
+  const { signIn, signInWithGoogle, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,6 +42,18 @@ const Login = () => {
     }
   };
 
+  const handleGoogle = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+      // Redirect happens automatically; session will populate after callback.
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed. Please try again.");
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -58,6 +70,27 @@ const Login = () => {
               <p className="text-sm text-red-700 font-body">{error}</p>
             </div>
           )}
+
+          <div className="space-y-4">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={loading}
+              onClick={handleGoogle}
+              className="w-full rounded-xl py-3 text-sm"
+            >
+              <span className="mr-2" aria-hidden>
+                🟦🟥🟨🟩
+              </span>
+              Continue with Google
+            </Button>
+
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground font-body">or</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+          </div>
 
           <form className="space-y-4" onSubmit={handleLogin}>
             <div>
@@ -81,6 +114,14 @@ const Login = () => {
                 disabled={loading}
                 className="w-full px-4 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
               />
+            </div>
+            <div className="flex justify-end">
+              <Link
+                to="/forgot-password"
+                className="text-sm font-body text-primary hover:underline"
+              >
+                Forgot password?
+              </Link>
             </div>
             <Button 
               type="submit" 

@@ -22,8 +22,15 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   sendSignupOtp: (email: string) => Promise<void>;
+  sendPasswordResetOtp: (email: string) => Promise<void>;
   verifySignupOtpAndCompleteProfile: (payload: CompleteSignupPayload) => Promise<void>;
+  verifyPasswordResetOtpAndUpdatePassword: (payload: {
+    email: string;
+    otp: string;
+    newPassword: string;
+  }) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -114,6 +121,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (error) throw error;
   };
 
+  const signInWithGoogle = async () => {
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+    if (error) throw error;
+  };
+
+  const sendPasswordResetOtp = async (email: string) => {
+    const normalized = email.trim();
+    if (!normalized) throw new Error("Email is required");
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: normalized,
+      options: {
+        shouldCreateUser: false,
+      },
+    });
+
+    if (error) throw error;
+  };
+
   const verifySignupOtpAndCompleteProfile = async ({
     email,
     otp,
@@ -145,6 +175,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const verifyPasswordResetOtpAndUpdatePassword = async ({
+    email,
+    otp,
+    newPassword,
+  }: {
+    email: string;
+    otp: string;
+    newPassword: string;
+  }) => {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token: otp,
+      type: "email",
+    });
+
+    if (error) throw error;
+    if (!data.session) {
+      throw new Error("OTP verified but session not created. Please try again.");
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) throw updateError;
+  };
+
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -159,7 +216,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, sendSignupOtp, verifySignupOtpAndCompleteProfile, signOut }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        signIn,
+        signInWithGoogle,
+        sendSignupOtp,
+        sendPasswordResetOtp,
+        verifySignupOtpAndCompleteProfile,
+        verifyPasswordResetOtpAndUpdatePassword,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

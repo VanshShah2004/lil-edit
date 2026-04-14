@@ -9,8 +9,15 @@ const UserNavbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const firstName = user?.user_metadata?.first_name || user?.email?.split("@")[0] || "U";
-  const userInitial = firstName.charAt(0).toUpperCase();
+  const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
+  const firstNameCandidate =
+    (typeof metadata.first_name === "string" && metadata.first_name.trim()) ||
+    (typeof metadata.given_name === "string" && metadata.given_name.trim()) ||
+    (typeof metadata.full_name === "string" && metadata.full_name.trim().split(/\s+/)[0]) ||
+    (typeof metadata.name === "string" && metadata.name.trim().split(/\s+/)[0]) ||
+    user?.email?.split("@")[0] ||
+    "U";
+  const userInitial = firstNameCandidate.charAt(0).toUpperCase();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
