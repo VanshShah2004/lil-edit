@@ -1,16 +1,36 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import authRouter from './routes/auth'
-dotenv.config();
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import authRouter from "./routes/auth.js";
 
-const app=express();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, ".env") });
+
+const app = express();
 app.use(express.json());
-app.use(cors());
-const PORT = process.env.PORT || 5000;
 
-app.use('/api/auth',authRouter);
+const origin =
+  process.env.CORS_ORIGIN?.split(",").map((o) => o.trim()).filter(Boolean) ?? [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+  ];
 
-app.get('/vansh',(req,res)=>{res.send('API running')});
+app.use(
+  cors({
+    origin,
+    credentials: true,
+  })
+);
 
-app.listen(PORT,()=>console.log(`Server running on PORT ${PORT}`));
+app.use("/api/auth", authRouter);
+
+app.get("/", (_req, res) => {
+  res.json({ ok: true, message: "new-ecomm backend" });
+});
+
+const PORT = Number(process.env.PORT) || 5000;
+app.listen(PORT, () => {
+  console.log(`API listening on http://localhost:${PORT}`);
+});

@@ -32,6 +32,6 @@
     "skipLibCheck": true,
     "moduleDetection": "force"
   },
-  "include": ["**/*.ts", "routes/auth.js"],
+  "include": ["**/*.ts"],
   "exclude": ["node_modules"]
 }
