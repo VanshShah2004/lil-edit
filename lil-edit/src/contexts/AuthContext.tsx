@@ -114,11 +114,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } else if (alreadyRegistered === true) {
       throw new Error("This email is already registered. Please log in instead.");
     }
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email: normalized,
-    });
-    if (error) throw error;
   };
 
   const signInWithGoogle = async () => {
