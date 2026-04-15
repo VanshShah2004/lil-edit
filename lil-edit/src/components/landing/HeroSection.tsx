@@ -21,34 +21,33 @@ const HeroSection = () => {
               <br />
               <span className="text-gradient-blush italic">Always adorable.</span>
             </h1>
+            <br />
             <p className="text-muted-foreground font-body text-base max-w-md leading-relaxed">
               Thoughtfully curated baby essentials designed for comfort, crafted with love, and styled for the tiniest trendsetters.
             </p>
             <div className="flex gap-4 pt-2">
               <Link to="/shop">
-                <Button 
-                  size="lg" 
-                  className={`font-body rounded-full px-8 gap-2 transition-all duration-300 border-2 ${
-                    isExploreHovered 
-                      ? "bg-primary/10 text-primary border-primary" 
-                      : "bg-primary text-primary-foreground border-transparent hover:bg-primary/90"
-                  }`}
+                <Button
+                  size="lg"
+                  className={`font-body rounded-full px-8 gap-2 transition-all duration-300 border-2 ${isExploreHovered
+                    ? "bg-primary/10 text-primary border-primary"
+                    : "bg-primary text-primary-foreground border-transparent hover:bg-primary/90"
+                    }`}
                 >
                   Shop Now <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <Link 
+              <Link
                 to="/collections"
                 onMouseEnter={() => setIsExploreHovered(true)}
                 onMouseLeave={() => setIsExploreHovered(false)}
               >
-                <Button 
-                  size="lg" 
-                  className={`font-body rounded-full px-8 transition-all duration-300 border-2 ${
-                    isExploreHovered 
-                      ? "bg-primary text-primary-foreground border-primary" 
-                      : "border-primary text-primary bg-primary/10 backdrop-blur-[2px] hover:text-primary-foreground hover:bg-primary"
-                  }`}
+                <Button
+                  size="lg"
+                  className={`font-body rounded-full px-8 transition-all duration-300 border-2 ${isExploreHovered
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-primary text-primary bg-primary/10 backdrop-blur-[2px] hover:text-primary-foreground hover:bg-primary"
+                    }`}
                 >
                   Explore
                 </Button>

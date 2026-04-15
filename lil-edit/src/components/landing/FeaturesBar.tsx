@@ -2,7 +2,7 @@ import { Truck, ShieldCheck, Leaf, Gift } from "lucide-react";
 
 const features = [
   { icon: Truck, label: "World-Wide Delivery", desc: "Spreading culture world-wide" },
-  { icon: ShieldCheck, label: "Comfort & Cool", desc: "100% comfort" },
+  { icon: ShieldCheck, label: "Comfort & Cool", desc: "100% comfort guaranteed" },
   { icon: Leaf, label: "Eco-Friendly", desc: "Sustainable materials" },
   { icon: Gift, label: "Gift Wrapping", desc: "Beautiful packaging" },
 ];

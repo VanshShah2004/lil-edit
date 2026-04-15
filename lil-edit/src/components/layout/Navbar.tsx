@@ -15,7 +15,7 @@ const Navbar = () => {
         {/* Logo and Branding */}
         <Link to="/" className="flex-shrink-0 flex items-center gap-4">
           <img src={logo} alt="The Lil Edit" className="h-16 w-auto" />
-          <div className="text-4xl text-foreground" style={{ fontFamily: "'Pinyon Script', cursive" }}>
+          <div className="text-4xl text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
             The Lil Edit
           </div>
         </Link>
@@ -40,11 +40,10 @@ const Navbar = () => {
             onMouseEnter={() => setIsLoginHovered(true)}
             onMouseLeave={() => setIsLoginHovered(false)}
           >
-            <Button size="sm" className={`hidden md:inline-flex text-sm font-body transition-all duration-300 border-2 ${
-              isSignupHovered
-                ? "bg-primary/10 text-primary border-primary"
-                : "bg-transparent text-primary border-primary hover:bg-primary hover:text-primary-foreground"
-            }`}>
+            <Button size="sm" className={`hidden md:inline-flex text-sm font-body transition-all duration-300 border-2 ${isSignupHovered
+              ? "bg-primary/10 text-primary border-primary"
+              : "bg-transparent text-primary border-primary hover:bg-primary hover:text-primary-foreground"
+              }`}>
               Log in
             </Button>
           </Link>
@@ -52,11 +51,10 @@ const Navbar = () => {
             onMouseEnter={() => setIsSignupHovered(true)}
             onMouseLeave={() => setIsSignupHovered(false)}
           >
-            <Button size="sm" className={`hidden md:inline-flex text-sm font-body transition-all duration-300 border-2 ${
-              isLoginHovered
-                ? "bg-primary/10 text-primary border-primary"
-                : "bg-primary text-primary-foreground border-transparent hover:bg-primary/90"
-            }`}>
+            <Button size="sm" className={`hidden md:inline-flex text-sm font-body transition-all duration-300 border-2 ${isLoginHovered
+              ? "bg-primary/10 text-primary border-primary"
+              : "bg-primary text-primary-foreground border-transparent hover:bg-primary/90"
+              }`}>
               Sign up
             </Button>
           </Link>
@@ -85,21 +83,19 @@ const Navbar = () => {
                 onMouseEnter={() => setIsLoginHovered(true)}
                 onMouseLeave={() => setIsLoginHovered(false)}
               >
-                <Button className={`w-full font-body transition-all duration-300 border-2 ${
-                  isSignupHovered
-                    ? "bg-primary/10 text-primary border-primary"
-                    : "bg-transparent text-primary border-primary hover:bg-primary hover:text-primary-foreground"
-                }`}>Log in</Button>
+                <Button className={`w-full font-body transition-all duration-300 border-2 ${isSignupHovered
+                  ? "bg-primary/10 text-primary border-primary"
+                  : "bg-transparent text-primary border-primary hover:bg-primary hover:text-primary-foreground"
+                  }`}>Log in</Button>
               </Link>
               <Link to="/signup" className="flex-1" onClick={() => setMobileOpen(false)}
                 onMouseEnter={() => setIsSignupHovered(true)}
                 onMouseLeave={() => setIsSignupHovered(false)}
               >
-                <Button className={`w-full font-body transition-all duration-300 border-2 ${
-                  isLoginHovered
-                    ? "bg-primary/10 text-primary border-primary"
-                    : "bg-primary text-primary-foreground border-transparent hover:bg-primary/90"
-                }`}>Sign up</Button>
+                <Button className={`w-full font-body transition-all duration-300 border-2 ${isLoginHovered
+                  ? "bg-primary/10 text-primary border-primary"
+                  : "bg-primary text-primary-foreground border-transparent hover:bg-primary/90"
+                  }`}>Sign up</Button>
               </Link>
             </div>
           </div>

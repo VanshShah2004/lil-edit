@@ -19,7 +19,7 @@ const CategoriesSection = () => (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
       {categories.map((cat, i) => (
         <div
-          key={cat.name}
+          key={i}
           className="group animate-fade-in-up bg-card/40 backdrop-blur-sm rounded-3xl border border-border/50 overflow-hidden shadow-lg shadow-primary/[0.15] ring-2 ring-primary/35"
           style={{ animationDelay: `${i * 0.15}s` }}
         >
