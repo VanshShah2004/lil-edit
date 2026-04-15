@@ -94,26 +94,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    const { data: alreadyRegistered, error: rpcError } = await supabase.rpc("is_email_registered", {
-      p_email: normalized,
-    });
-
-    if (rpcError) {
-      const msg = rpcError.message ?? "";
-      const missingFn =
-        msg.includes("does not exist") ||
-        msg.includes("Could not find the function") ||
-        (rpcError as { code?: string }).code === "PGRST202";
-      if (missingFn) {
-        console.warn(
-          "[auth] is_email_registered RPC missing — run supabase/sql/is_email_registered.sql in SQL Editor; duplicate email check skipped."
-        );
-      } else {
-        throw rpcError;
-      }
-    } else if (alreadyRegistered === true) {
-      throw new Error("This email is already registered. Please log in instead.");
-    }
+    
   };
 
   const signInWithGoogle = async () => {
