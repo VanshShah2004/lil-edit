@@ -62,8 +62,4 @@ router.post("/signup/send-otp", async (req, res) => {
   }
 });
 
-router.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "new-ecomm-api" });
-});
-
 export default router;
