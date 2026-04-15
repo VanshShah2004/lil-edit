@@ -8,6 +8,7 @@ dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 const url = process.env.VITE_SUPABASE_URL;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+const serviceRoleKey=process.env.VITE_SUPABASE_SERVICE_KEY ||null;
 
 /** Auth + OTP use the public anon key when set (least privilege). If you only configure the service role on the server, that key is used here too — never expose it to the browser. */
 const keyForAuth = anonKey;
@@ -27,6 +28,7 @@ export const supabaseAnon: SupabaseClient = createClient(url, keyForAuth, {
 });
 
 /** Service role — duplicate checks and future admin-only routes. Never expose to frontend. */
+
 export const supabaseAdmin: SupabaseClient | null = serviceRoleKey
   ? createClient(url, serviceRoleKey, {
     auth: {
