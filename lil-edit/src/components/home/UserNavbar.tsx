@@ -32,9 +32,9 @@ const UserNavbar = () => {
       }`}
     >
       <div className="container mx-auto flex items-center justify-between h-20 px-4 lg:px-8">
-        <Link to="/home" className="flex-shrink-0 flex items-center gap-3">
-          <img src={logo} alt="The Lil Edit" className="h-12 w-auto" />
-          <div className="text-3xl text-foreground leading-none" style={{ fontFamily: "'Pinyon Script', cursive" }}>
+        <Link to="/dashboard" className="flex-shrink-0 flex items-center gap-3">
+          <img src={logo} alt="The Lil Edit" className="h-16 w-auto" />
+          <div className="text-4xl text-foreground leading-none" style={{ fontFamily: "'Pinyon Script', cursive" }}>
             The Lil Edit
           </div>
         </Link>

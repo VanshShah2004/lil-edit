@@ -20,7 +20,7 @@ const ForgotPassword = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) navigate("/home", { replace: true });
+    if (user) navigate("/dashboard", { replace: true });
   }, [user, navigate]);
 
   const handleSendOtp = async (e: React.FormEvent) => {

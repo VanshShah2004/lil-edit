@@ -25,7 +25,7 @@ const Signup = () => {
 
   useEffect(() => {
     if (user) {
-      navigate("/home", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   }, [user, navigate]);
 
@@ -79,7 +79,7 @@ const Signup = () => {
         last_name: lastName,
       });
 
-      navigate("/home", { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "OTP verification failed. Please try again.");
     } finally {
@@ -144,88 +144,110 @@ const Signup = () => {
             </div>
           )}
 
-          {step === "details" && (
-            <div className="space-y-4 mb-4">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={loading}
-                onClick={handleGoogle}
-                className="w-full rounded-xl py-3 text-sm"
-              >
-                <span className="mr-2" aria-hidden>
-                  🟦🟥🟨🟩
-                </span>
-                Continue with Google
-              </Button>
+          {step === "details" ? (
+            <div className="space-y-5">
+              <form className="space-y-4" onSubmit={handleSendOtp}>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-body text-sm text-foreground mb-1.5">First Name</label>
+                    <input
+                      type="text"
+                      placeholder="Jane"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      disabled={loading}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-body text-sm text-foreground mb-1.5">Last Name</label>
+                    <input
+                      type="text"
+                      placeholder="Doe"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      disabled={loading}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
+                    />
+                  </div>
+                </div>
 
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-border" />
-                <span className="text-xs text-muted-foreground font-body">or</span>
-                <div className="h-px flex-1 bg-border" />
+                <div>
+                  <label className="block font-body text-sm text-foreground mb-1.5">Email</label>
+                  <input
+                    type="email"
+                    placeholder="hello@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={loading}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-body text-sm text-foreground mb-1.5">Password</label>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full font-body bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl py-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? "Sending OTP..." : "Send OTP"}
+                </Button>
+              </form>
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs text-muted-foreground font-body">or</span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loading}
+                  onClick={handleGoogle}
+                  className="w-full rounded-xl py-3 text-sm border border-border"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 48 48"
+                    className="mr-2"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fill="#EA4335"
+                      d="M24 9.5c3.54 0 6.66 1.22 9.14 3.22l6.77-6.77C35.79 2.27 30.2 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.9 6.14C12.28 13.52 17.67 9.5 24 9.5z"
+                    />
+                    <path
+                      fill="#4285F4"
+                      d="M46.1 24.5c0-1.57-.14-3.08-.4-4.5H24v8.51h12.4c-.54 2.9-2.19 5.36-4.67 7.02l7.18 5.57c4.2-3.87 6.59-9.57 6.59-16.6z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M10.46 28.64A14.5 14.5 0 0 1 9.5 24c0-1.62.28-3.19.96-4.64l-7.9-6.14A23.94 23.94 0 0 0 0 24c0 3.86.92 7.5 2.56 10.78l7.9-6.14z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M24 48c6.2 0 11.79-2.05 15.73-5.57l-7.18-5.57c-2 1.34-4.57 2.13-8.55 2.13-6.33 0-11.72-4.02-13.54-9.86l-7.9 6.14C6.51 42.62 14.62 48 24 48z"
+                    />
+                    <path fill="none" d="M0 0h48v48H0z" />
+                  </svg>
+                  Continue with Google
+                </Button>
               </div>
             </div>
-          )}
-
-          {step === "details" ? (
-            <form className="space-y-4" onSubmit={handleSendOtp}>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-body text-sm text-foreground mb-1.5">First Name</label>
-                  <input
-                    type="text"
-                    placeholder="Jane"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    disabled={loading}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
-                  />
-                </div>
-                <div>
-                  <label className="block font-body text-sm text-foreground mb-1.5">Last Name</label>
-                  <input
-                    type="text"
-                    placeholder="Doe"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    disabled={loading}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-body text-sm text-foreground mb-1.5">Email</label>
-                <input
-                  type="email"
-                  placeholder="hello@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={loading}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
-                />
-              </div>
-
-              <div>
-                <label className="block font-body text-sm text-foreground mb-1.5">Password</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
-                />
-              </div>
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full font-body bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl py-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? "Sending OTP..." : "Send OTP"}
-              </Button>
-            </form>
           ) : (
             <form className="space-y-4" onSubmit={handleVerifyOtp}>
               <div>

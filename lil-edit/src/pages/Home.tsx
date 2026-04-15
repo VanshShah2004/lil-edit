@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import Footer from "@/components/layout/Footer";
 import FeaturedCategories from "@/components/home/FeaturedCategories";
-import OffersBanner from "@/components/home/OffersBanner";
 import RecommendedForYou from "@/components/home/RecommendedForYou";
 import TrendingSection from "@/components/home/TrendingSection";
 import UserNavbar from "@/components/home/UserNavbar";
@@ -18,7 +17,6 @@ const Home = () => {
         <TrendingSection />
         <FeaturedCategories />
         <RecommendedForYou />
-        <OffersBanner />
       </main>
       <Footer />
     </div>

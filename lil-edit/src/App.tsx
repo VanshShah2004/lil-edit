@@ -11,6 +11,7 @@ import Home from "./pages/Home";
 import ForgotPassword from "./pages/ForgotPassword";
 import AuthCallback from "./pages/AuthCallback";
 import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
+import { Navigate } from "react-router-dom";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -21,7 +22,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/home" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
