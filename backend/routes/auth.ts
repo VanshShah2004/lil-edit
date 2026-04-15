@@ -1,5 +1,5 @@
 import express from "express";
-import { supabaseAdmin, supabaseAnon } from "../lib/supabase";
+import { supabaseAnon } from "../lib/supabase";
 
 const router = express.Router();
 
@@ -25,7 +25,7 @@ router.post("/signup/send-otp", async (req, res) => {
       return;
     }
 
-    const clientForRpc = supabaseAdmin ?? supabaseAnon;
+    const clientForRpc = supabaseAnon;
     const { data: alreadyRegistered, error: rpcError } = await clientForRpc.rpc(
       "is_email_registered",
       { p_email: email }
