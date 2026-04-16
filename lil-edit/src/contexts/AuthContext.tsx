@@ -139,9 +139,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       throw new Error("Email is required");
     }
 
-    // Best‑effort duplicate email check using the same RPC the backend uses.
+    // Best-effort duplicate email check using profiles as the source of truth.
     try {
-      const { data: alreadyRegistered, error: rpcError } = await supabase.rpc("is_email_registered", {
+      const { data: alreadyRegistered, error: rpcError } = await supabase.rpc("is_profile_registered", {
         p_email: normalized,
       });
 
@@ -155,8 +155,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           code === "42883";
 
         if (looksMissing) {
-          console.warn(
-            "[auth] is_email_registered RPC missing — run lil-edit/supabase/sql/is_email_registered.sql; duplicate check skipped."
+          throw new Error(
+            "Duplicate email check is not configured. Run lil-edit/supabase/sql/create_profiles.sql first."
           );
         } else {
           throw new Error("Could not verify email availability. Please try again.");

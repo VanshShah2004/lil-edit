@@ -1,5 +1,5 @@
 import express from "express";
-import { supabaseAdmin, supabaseAnon } from "../lib/supabase";
+import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
 
 const router = express.Router();
 
@@ -14,7 +14,7 @@ function isMissingRpcError(message: string | undefined, code?: string) {
 }
 
 /**
- * Signup step 1: server checks email not already registered (via DB RPC),
+ * Signup step 1: server checks email not already registered in profiles,
  * then triggers Supabase email OTP. Client still calls verifyOtp + updateUser.
  */
 router.post("/signup/send-otp", async (req, res) => {
@@ -25,27 +25,50 @@ router.post("/signup/send-otp", async (req, res) => {
       return;
     }
 
-    const clientForRpc = supabaseAnon;
-    const { data: alreadyRegistered, error: rpcError } = await clientForRpc.rpc(
-      "is_email_registered",
-      { p_email: email }
-    );
+    if (supabaseAdmin) {
+      const { data, error } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .ilike("email", email)
+        .maybeSingle();
 
-    if (rpcError) {
-      if (isMissingRpcError(rpcError.message, (rpcError as { code?: string }).code)) {
-        console.warn(
-          "[auth] is_email_registered RPC missing — run lil-edit/supabase/sql/is_email_registered.sql; duplicate check skipped."
-        );
-      } else {
+      if (error) {
+        console.error(error);
+        res.status(500).json({ error: "Could not verify email availability" });
+        return;
+      }
+
+      if (data) {
+        res.status(409).json({
+          error: "This email is already registered. Please log in instead.",
+        });
+        return;
+      }
+    } else {
+      const { data: alreadyRegistered, error: rpcError } = await supabaseAnon.rpc(
+        "is_profile_registered",
+        { p_email: email }
+      );
+
+      if (rpcError) {
+        if (isMissingRpcError(rpcError.message, (rpcError as { code?: string }).code)) {
+          console.error(
+            "[auth] is_profile_registered RPC missing — run lil-edit/supabase/sql/create_profiles.sql."
+          );
+          res.status(500).json({ error: "Could not verify email availability" });
+          return;
+        }
         console.error(rpcError);
         res.status(500).json({ error: "Could not verify email availability" });
         return;
       }
-    } else if (alreadyRegistered === true) {
-      res.status(409).json({
-        error: "This email is already registered. Please log in instead.",
-      });
-      return;
+
+      if (alreadyRegistered === true) {
+        res.status(409).json({
+          error: "This email is already registered. Please log in instead.",
+        });
+        return;
+      }
     }
 
     const { error: otpError } = await supabaseAnon.auth.signInWithOtp({ email });
