@@ -1,5 +1,5 @@
 import express from "express";
-import { supabaseAnon } from "../lib/supabase";
+import { supabaseAdmin, supabaseAnon } from "../lib/supabase";
 
 const router = express.Router();
 
@@ -56,6 +56,57 @@ router.post("/signup/send-otp", async (req, res) => {
     }
 
     res.status(200).json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * Login guard: require a profile row before attempting password auth.
+ */
+router.post("/login/check-profile", async (req, res) => {
+  try {
+    const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ error: "Valid email is required" });
+      return;
+    }
+
+    if (supabaseAdmin) {
+      const { data, error } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .ilike("email", email)
+        .maybeSingle();
+
+      if (error) {
+        console.error(error);
+        res.status(500).json({ error: "Could not verify registration status" });
+        return;
+      }
+
+      res.status(200).json({ exists: Boolean(data) });
+      return;
+    }
+
+    const { data, error } = await supabaseAnon.rpc("is_profile_registered", {
+      p_email: email,
+    });
+
+    if (error) {
+      if (isMissingRpcError(error.message, (error as { code?: string }).code)) {
+        console.warn(
+          "[auth] is_profile_registered RPC missing — run the profiles SQL setup to enable pre-login profile checks."
+        );
+      } else {
+        console.error(error);
+        res.status(500).json({ error: "Could not verify registration status" });
+        return;
+      }
+    }
+
+    res.status(200).json({ exists: data === true });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "Internal server error" });

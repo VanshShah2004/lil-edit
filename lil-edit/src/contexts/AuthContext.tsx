@@ -52,6 +52,16 @@ function getApiBaseUrl(): string {
   return "";
 }
 
+function isMissingRpcError(message: string | undefined, code?: string) {
+  if (!message) return false;
+  return (
+    message.includes("does not exist") ||
+    message.includes("Could not find the function") ||
+    code === "PGRST202" ||
+    code === "42883"
+  );
+}
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -124,8 +134,102 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       return;
     }
+    // Fallback path: call Supabase directly from the browser (no backend API).
+    if (!normalized) {
+      throw new Error("Email is required");
+    }
 
-    
+    // Best‑effort duplicate email check using the same RPC the backend uses.
+    try {
+      const { data: alreadyRegistered, error: rpcError } = await supabase.rpc("is_email_registered", {
+        p_email: normalized,
+      });
+
+      if (rpcError) {
+        const msg = rpcError.message ?? "";
+        const code = (rpcError as { code?: string }).code;
+        const looksMissing =
+          msg.includes("does not exist") ||
+          msg.includes("Could not find the function") ||
+          code === "PGRST202" ||
+          code === "42883";
+
+        if (looksMissing) {
+          console.warn(
+            "[auth] is_email_registered RPC missing — run lil-edit/supabase/sql/is_email_registered.sql; duplicate check skipped."
+          );
+        } else {
+          throw new Error("Could not verify email availability. Please try again.");
+        }
+      } else if (alreadyRegistered === true) {
+        throw new Error("This email is already registered. Please log in instead.");
+      }
+    } catch (e) {
+      if (e instanceof Error) {
+        // Re-throw meaningful duplicate or availability errors
+        throw e;
+      }
+      throw new Error("Could not verify email availability. Please try again.");
+    }
+
+    const { error: otpError } = await supabase.auth.signInWithOtp({ email: normalized });
+    if (otpError) {
+      throw new Error(otpError.message || "Could not send OTP. Please try again.");
+    }
+  };
+
+  const ensureProfileExistsForLogin = async (email: string) => {
+    const normalized = email.trim();
+    if (!normalized) {
+      throw new Error("Email is required");
+    }
+
+    const apiBase = getApiBaseUrl();
+    if (apiBase) {
+      try {
+        const res = await fetch(`${apiBase}/api/auth/login/check-profile`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: normalized }),
+        });
+        const body = (await res.json().catch(() => ({}))) as { error?: string; exists?: boolean };
+        if (!res.ok) {
+          throw new Error(
+            typeof body.error === "string"
+              ? body.error
+              : `Could not verify registration status (${res.status})`
+          );
+        }
+        if (body.exists !== true) {
+          throw new Error("User not registered. Please sign up first.");
+        }
+        return;
+      } catch (e) {
+        if (e instanceof TypeError) {
+          throw new Error(
+            "Cannot reach the API. Start the backend in a separate terminal: npm run dev:api from the repo root (or npm run dev in backend/)."
+          );
+        }
+        throw e;
+      }
+    }
+
+    const { data, error } = await supabase.rpc("is_profile_registered", {
+      p_email: normalized,
+    });
+
+    if (error) {
+      if (isMissingRpcError(error.message, (error as { code?: string }).code)) {
+        throw new Error(
+          "Pre-login profile check is not configured. Run the updated profiles SQL setup first."
+        );
+      }
+      throw new Error("Could not verify registration status. Please try again.");
+    }
+
+    if (data !== true) {
+      throw new Error("User not registered. Please sign up first.");
+    }
   };
 
   const signInWithGoogle = async () => {
@@ -210,11 +314,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    await ensureProfileExistsForLogin(email);
+
+    const { error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    if (error) throw error;
+
+    if (authError) throw authError;
   };
 
   const signOut = async () => {
