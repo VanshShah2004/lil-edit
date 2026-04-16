@@ -244,6 +244,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const sendPasswordResetOtp = async (email: string) => {
     const normalized = email.trim();
     if (!normalized) throw new Error("Email is required");
+    await ensureProfileExistsForLogin(normalized);
 
     const { error } = await supabase.auth.signInWithOtp({
       email: normalized,

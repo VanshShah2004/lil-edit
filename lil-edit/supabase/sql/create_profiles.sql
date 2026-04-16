@@ -28,16 +28,27 @@ CREATE POLICY "Users can update own profile" ON public.profiles
 CREATE OR REPLACE FUNCTION public.handle_new_user_profile()
 RETURNS TRIGGER AS $$
 DECLARE
-  is_google boolean := COALESCE(NEW.raw_app_meta_data->>'provider', '') = 'google';
-  is_email boolean := COALESCE(NEW.raw_app_meta_data->>'provider', '') = 'email';
-
-  -- Email signup completes ONLY after password + metadata is set
-  is_completed_email boolean := is_email
-    AND NEW.encrypted_password IS NOT NULL
-    AND NEW.raw_user_meta_data->>'first_name' IS NOT NULL;
+  provider_text text;
+  providers_text text;
+  is_google boolean := false;
+  is_email boolean := false;
+  is_initial_password_set boolean := false;
+  is_completed_email boolean := false;
 
   user_role text;
 BEGIN
+  provider_text := lower(COALESCE(NEW.raw_app_meta_data->>'provider', ''));
+  providers_text := lower(COALESCE(NEW.raw_app_meta_data->>'providers', ''));
+  is_google := provider_text = 'google' OR providers_text LIKE '%google%';
+  is_email := provider_text = 'email' OR providers_text LIKE '%email%';
+
+  -- For email auth, we consider signup complete when BOTH password and metadata are present
+  IF is_email THEN
+    is_completed_email :=
+      COALESCE(NULLIF(NEW.encrypted_password, ''), '') <> ''
+      AND NULLIF(trim(COALESCE(NEW.raw_user_meta_data->>'first_name', '')), '') IS NOT NULL;
+  END IF;
+
   -- Assign role (clean + scalable)
   IF NEW.email = ANY (ARRAY[
     'shahvanshm23.4.2004@gmail.com',
@@ -50,6 +61,15 @@ BEGIN
 
   -- Create/update profile ONLY when signup is complete
   IF is_google OR is_completed_email THEN
+    -- Prevent redundant writes on every sign-in by only executing if relevant data changed
+    -- or if the profile somehow doesn't exist yet
+    IF TG_OP = 'INSERT' 
+       OR NEW.email IS DISTINCT FROM OLD.email
+       OR NEW.raw_user_meta_data IS DISTINCT FROM OLD.raw_user_meta_data
+       OR NEW.encrypted_password IS DISTINCT FROM OLD.encrypted_password
+       OR NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = NEW.id)
+    THEN
+
     INSERT INTO public.profiles (
       id,
       email,
@@ -83,6 +103,16 @@ BEGIN
       password_hash = COALESCE(EXCLUDED.password_hash, public.profiles.password_hash),
       updated_at = NOW();
       -- 🔒 role is NOT updated intentionally
+    END IF;
+  ELSIF TG_OP = 'UPDATE' THEN
+    -- For existing users, update password_hash if they do a password reset
+    IF NEW.encrypted_password IS DISTINCT FROM OLD.encrypted_password THEN
+      UPDATE public.profiles
+      SET 
+        password_hash = NEW.encrypted_password,
+        updated_at = NOW()
+      WHERE id = NEW.id;
+    END IF;
   END IF;
 
   RETURN NEW;
