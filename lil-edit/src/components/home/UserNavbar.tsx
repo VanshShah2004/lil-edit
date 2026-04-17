@@ -137,7 +137,7 @@ const UserNavbar = () => {
               onFocus={() => setActiveMegaTab(item)}
               onClick={() => setActiveMegaTab((prev) => (prev === item ? null : item))}
               className={`text-sm lg:text-base font-bold tracking-wide transition-colors ${
-                activeMegaTab === item ? "text-primary" : "text-foreground hover:text-primary"
+                activeMegaTab === item ? "text-teal-600" : "text-foreground hover:text-teal-600"
               }`}
             >
               {item}
@@ -178,9 +178,9 @@ const UserNavbar = () => {
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               type="button"
               aria-label="Open profile menu"
-              className="h-10 w-10 rounded-full border-2 border-primary bg-gradient-to-br from-[#FCFAFF] via-[#F6F1FF] to-[#F0E8FF] text-[#4B2B7F] shadow-[0_4px_14px_rgba(111,74,166,0.18)] flex items-center justify-center transition-all duration-200 hover:from-[#F7F1FF] hover:via-[#EFE5FF] hover:to-[#E8DBFF] hover:border-primary hover:shadow-[0_8px_18px_rgba(111,74,166,0.28)] hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-1"
+              className="h-11 w-11 rounded-full border-2 border-teal-600 bg-gradient-to-br from-[#F8FFFE] via-[#F1FEFB] to-[#E9FCF8] text-[#0F766E] shadow-[0_4px_14px_rgba(13,148,136,0.14)] p-[2px] flex items-center justify-center transition-all duration-200 hover:from-[#F2FFFD] hover:via-[#E9FCF8] hover:to-[#DEFAF4] hover:border-teal-600 hover:shadow-[0_8px_18px_rgba(13,148,136,0.22)] hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/45 focus-visible:ring-offset-1"
             >
-              <div className="text-[1.2rem] font-black font-display leading-none text-primary">
+              <div className="px-0.5 py-[1px] text-[1.2rem] font-black font-display leading-none text-teal-600">
                 {userInitial}
               </div>
             </button>
@@ -251,7 +251,7 @@ const UserNavbar = () => {
                   <ul className="space-y-1.5">
                     {section.links.map((link) => (
                       <li key={link}>
-                        <Link to="/products" className="text-base text-muted-foreground hover:text-primary transition-colors">
+                        <Link to="/products" className="text-base text-muted-foreground hover:text-teal-600 active:text-teal-700 transition-colors">
                           {link}
                         </Link>
                       </li>
