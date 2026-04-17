@@ -76,9 +76,9 @@ const UserNavbar = () => {
           </div>
         </Link>
 
-        <nav className="hidden md:flex flex-1 items-center justify-center gap-8 px-6">
-          {["NEW ARRIVALS", "BEST SELLERS","ETHNIC WEAR", "ACCESSORIES"].map((item) => (
-            <Link key={item} to="#" className="text-xs lg:text-sm font-semibold tracking-wide text-foreground/80 hover:text-primary transition-colors">
+        <nav className="hidden md:flex flex-1 items-center justify-center gap-10 lg:gap-12 px-6">
+          {["NEW ARRIVALS","GIRLS","BOYS","TRENDING","BY OCCASSION"].map((item) => (
+            <Link key={item} to="#" className="text-sm lg:text-base font-bold tracking-wide text-foreground hover:text-primary transition-colors">
               {item}
             </Link>
           ))}
