@@ -53,7 +53,7 @@ const UserNavbar = () => {
       <div className="container mx-auto flex items-center justify-between h-20 px-4 lg:px-8">
         <Link to="/dashboard" className="flex-shrink-0 flex items-center gap-3">
           <img src={logo} alt="The Lil Edit" className="h-16 w-auto" />
-          <div className="text-4xl text-foreground leading-none" style={{ fontFamily: "'Pinyon Script', cursive" }}>
+          <div className="text-4xl text-foreground leading-none" style={{ fontFamily: "'Playfair Display', serif" }}>
             The Lil Edit
           </div>
         </Link>
@@ -84,9 +84,9 @@ const UserNavbar = () => {
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               type="button"
               aria-label="Open profile menu"
-              className="h-11 w-11 rounded-full border border-primary/25 bg-gradient-to-b from-primary/10 to-primary/5 text-primary shadow-sm flex items-center justify-center transition-all hover:from-primary/15 hover:to-primary/10 hover:shadow-md hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="h-11 w-11 rounded-full border-2 border-primary bg-gradient-to-br from-[#FCFAFF] via-[#F6F1FF] to-[#F0E8FF] text-[#4B2B7F] shadow-[0_4px_14px_rgba(111,74,166,0.18)] flex items-center justify-center transition-all duration-200 hover:from-[#F7F1FF] hover:via-[#EFE5FF] hover:to-[#E8DBFF] hover:border-primary hover:shadow-[0_8px_18px_rgba(111,74,166,0.28)] hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-1"
             >
-              <div className="h-9 w-9 rounded-full bg-background border border-primary/25 flex items-center justify-center text-base font-semibold font-display leading-none">
+              <div className="text-[1.4rem] font-black font-display leading-none text-primary">
                 {userInitial}
               </div>
             </button>
