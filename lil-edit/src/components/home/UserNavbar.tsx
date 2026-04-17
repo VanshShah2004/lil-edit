@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  ChevronDown,
   LayoutDashboard,
   LogOut,
   Package,
@@ -83,14 +82,13 @@ const UserNavbar = () => {
           <div className="relative">
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="h-9 pl-1.5 pr-2 rounded-full border border-border bg-background flex items-center gap-2 hover:bg-secondary transition-colors"
+              type="button"
+              aria-label="Open profile menu"
+              className="h-11 w-11 rounded-full border border-primary/25 bg-gradient-to-b from-primary/10 to-primary/5 text-primary shadow-sm flex items-center justify-center transition-all hover:from-primary/15 hover:to-primary/10 hover:shadow-md hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
-              <div className="flex items-center justify-center">
-                <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center text-primary border border-primary/30 font-semibold font-display">
-                  {userInitial}
-                </div>
+              <div className="h-9 w-9 rounded-full bg-background border border-primary/25 flex items-center justify-center text-base font-semibold font-display leading-none">
+                {userInitial}
               </div>
-              <ChevronDown className="w-4 h-4 text-muted-foreground self-center" />
             </button>
 
             {isProfileOpen && (
