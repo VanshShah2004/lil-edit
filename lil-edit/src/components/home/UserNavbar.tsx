@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -16,6 +16,7 @@ import logo from "@/assets/logo.png";
 const UserNavbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
@@ -42,6 +43,23 @@ const UserNavbar = () => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
+      if (!profileMenuRef.current) return;
+      if (!profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
   }, []);
 
   return (
@@ -78,7 +96,7 @@ const UserNavbar = () => {
             <ShoppingCart className="w-5 h-5" />
           </button>
 
-          <div className="relative">
+          <div ref={profileMenuRef} className="relative">
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               type="button"

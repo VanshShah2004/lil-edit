@@ -24,6 +24,10 @@ interface Profile {
   first_name: string;
   last_name: string;
   role: "admin" | "customer";
+  phone_number: string | null;
+  is_phone_number_verified: boolean | null;
+  dob: string | null;
+  gender: "male" | "female" | "other" | null;
 }
 
 interface AuthContextType {
@@ -74,7 +78,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .eq("id", userId)
       .single();
     if (!error && data) {
-      setProfile(data as Profile);
+      setProfile({
+        id: data.id,
+        email: data.email,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        role: data.role,
+        phone_number: data.phone_number,
+        is_phone_number_verified: data.is_phone_number_verified,
+        dob: data.dob,
+        gender: data.gender,
+      } as Profile);
     }
   };
 
