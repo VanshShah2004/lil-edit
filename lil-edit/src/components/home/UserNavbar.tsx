@@ -16,7 +16,9 @@ import logo from "@/assets/logo.png";
 const UserNavbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [activeMegaTab, setActiveMegaTab] = useState<string | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  const profileCloseTimeoutRef = useRef<number | null>(null);
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
@@ -38,11 +40,61 @@ const UserNavbar = () => {
     { to: "#", label: "Admin Settings", icon: Settings, adminOnly: true },
   ];
   const visibleMenuItems = dashboardMenuItems.filter((item) => !item.adminOnly || isAdmin);
+  const megaMenuItems = [
+    "NEW ARRIVALS",
+    "GIRLS",
+    "BOYS",
+    "NOW TRENDING",
+    "BY OCCASSION",
+  ];
+  const megaMenuContent: Record<
+    string,
+    { title: string; links: string[] }[]
+  > = {
+    "NEW ARRIVALS": [
+      { title: "JUST IN", links: ["All", "Daily New", "Ready To Ship", "Bestsellers", "Latest Sets"] },
+      { title: "TRENDING", links: ["Ethnic Wear", "Western Wear", "Fusion Looks", "Party Wear", "Lookbook"] },
+      { title: "SHOP BY AGE", links: ["0-2 Years", "2-4 Years", "4-6 Years", "6-8 Years", "8+ Years"] },
+      { title: "MORE", links: ["Accessories", "Shoes", "Bags", "Hair Essentials", "Stationery"] },
+    ],
+    GIRLS: [
+      { title: "ETHNIC WEAR", links: ["All", "Lehengas", "Kurtis", "Shararas", "Sarees", "Sets"] },
+      { title: "TRENDING", links: ["New Arrivals", "Ready To Ship", "Wedding", "Reels", "Lookbook"] },
+      { title: "DRESSES & SETS", links: ["All", "Dresses", "Gowns", "Jumpsuits", "Co-ords", "Party Looks"] },
+      { title: "MORE", links: ["Hair Accessories", "Sleepwear", "Shoes", "Bags", "Jewellery", "Other Apparel"] },
+    ],
+    BOYS: [
+      { title: "ETHNIC WEAR", links: ["All", "Kurta Pajama", "Nehru Jackets", "Sherwanis", "Pathani Sets"] },
+      { title: "CASUAL", links: ["T-Shirts", "Shirts", "Jeans", "Trousers", "Co-ord Sets"] },
+      { title: "OCCASION", links: ["Wedding", "Festive", "Birthday", "Party", "Photoshoot"] },
+      { title: "MORE", links: ["Footwear", "Accessories", "Innerwear", "Sleepwear", "Bags"] },
+    ],
+    "NOW TRENDING": [
+      { title: "HOT RIGHT NOW", links: ["Instagram Reels", "Celebrity Picks", "Top Rated", "Festive Edits", "Wedding Edit"] },
+      { title: "SEASONAL", links: ["Summer Picks", "Monsoon Ready", "Winter Layers", "Spring Colors"] },
+      { title: "SHOP BY LOOK", links: ["Traditional", "Modern Ethnic", "Streetwear", "Elegant", "Minimal"] },
+      { title: "INSPIRATION", links: ["Lookbook", "Style Guide", "Mix & Match", "Gift Ideas"] },
+    ],
+    "BY OCCASSION": [
+      { title: "EVENTS", links: ["Birthday", "Wedding", "Festive", "School Events", "Family Function"] },
+      { title: "STYLE TYPE", links: ["Traditional", "Contemporary", "Comfort Wear", "Party Wear", "Premium Edit"] },
+      { title: "SHOP FAST", links: ["Ready To Ship", "Under 1999", "Matching Siblings", "Quick Picks"] },
+      { title: "DISCOVER", links: ["Top Collections", "Gift Sets", "Accessories", "New In"] },
+    ],
+  };
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (profileCloseTimeoutRef.current) {
+        window.clearTimeout(profileCloseTimeoutRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -68,48 +120,82 @@ const UserNavbar = () => {
         isScrolled ? "bg-background/95 backdrop-blur-lg shadow-sm" : "bg-background/90 backdrop-blur-md"
       }`}
     >
-      <div className="container mx-auto flex items-center justify-between h-20 px-4 lg:px-8">
+      <div className="container mx-auto flex items-center justify-between h-[4.5rem] px-4 lg:px-8">
         <Link to="/dashboard" className="flex-shrink-0 flex items-center gap-3">
-          <img src={logo} alt="The Lil Edit" className="h-16 w-auto" />
-          <div className="text-4xl text-foreground leading-none" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <img src={logo} alt="The Lil Edit" className="h-14 w-auto" />
+          <div className="text-2xl text-foreground leading-none" style={{ fontFamily: "'Playfair Display', serif" }}>
             The Lil Edit
           </div>
         </Link>
 
         <nav className="hidden md:flex flex-1 items-center justify-center gap-10 lg:gap-12 px-6">
-          {["NEW ARRIVALS","GIRLS","BOYS","TRENDING","BY OCCASSION"].map((item) => (
-            <Link key={item} to="#" className="text-sm lg:text-base font-bold tracking-wide text-foreground hover:text-primary transition-colors">
+          {megaMenuItems.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onMouseEnter={() => setActiveMegaTab(item)}
+              onFocus={() => setActiveMegaTab(item)}
+              onClick={() => setActiveMegaTab((prev) => (prev === item ? null : item))}
+              className={`text-sm lg:text-base font-bold tracking-wide transition-colors ${
+                activeMegaTab === item ? "text-primary" : "text-foreground hover:text-primary"
+              }`}
+            >
               {item}
-            </Link>
+            </button>
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
-            className="h-9 w-9 rounded-full border border-border bg-background text-foreground hover:bg-secondary transition-colors flex items-center justify-center"
+            className="h-8 w-8 rounded-full border border-border bg-background text-foreground hover:bg-secondary transition-colors flex items-center justify-center"
             aria-label="Search"
           >
             <Search className="w-4 h-4" />
           </button>
-          <button className="h-9 w-9 rounded-full border border-border bg-background text-foreground hover:bg-secondary transition-colors relative flex items-center justify-center">
+          <button className="h-8 w-8 rounded-full border border-border bg-background text-foreground hover:bg-secondary transition-colors relative flex items-center justify-center">
             <ShoppingCart className="w-5 h-5" />
           </button>
 
-          <div ref={profileMenuRef} className="relative">
+          <div
+            ref={profileMenuRef}
+            className="relative"
+            onMouseEnter={() => {
+              if (profileCloseTimeoutRef.current) {
+                window.clearTimeout(profileCloseTimeoutRef.current);
+                profileCloseTimeoutRef.current = null;
+              }
+              setIsProfileOpen(true);
+            }}
+            onMouseLeave={() => {
+              profileCloseTimeoutRef.current = window.setTimeout(() => {
+                setIsProfileOpen(false);
+                profileCloseTimeoutRef.current = null;
+              }, 180);
+            }}
+          >
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               type="button"
               aria-label="Open profile menu"
-              className="h-11 w-11 rounded-full border-2 border-primary bg-gradient-to-br from-[#FCFAFF] via-[#F6F1FF] to-[#F0E8FF] text-[#4B2B7F] shadow-[0_4px_14px_rgba(111,74,166,0.18)] flex items-center justify-center transition-all duration-200 hover:from-[#F7F1FF] hover:via-[#EFE5FF] hover:to-[#E8DBFF] hover:border-primary hover:shadow-[0_8px_18px_rgba(111,74,166,0.28)] hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-1"
+              className="h-10 w-10 rounded-full border-2 border-primary bg-gradient-to-br from-[#FCFAFF] via-[#F6F1FF] to-[#F0E8FF] text-[#4B2B7F] shadow-[0_4px_14px_rgba(111,74,166,0.18)] flex items-center justify-center transition-all duration-200 hover:from-[#F7F1FF] hover:via-[#EFE5FF] hover:to-[#E8DBFF] hover:border-primary hover:shadow-[0_8px_18px_rgba(111,74,166,0.28)] hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-1"
             >
-              <div className="text-[1.4rem] font-black font-display leading-none text-primary">
+              <div className="text-[1.2rem] font-black font-display leading-none text-primary">
                 {userInitial}
               </div>
             </button>
 
             {isProfileOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-background rounded-xl shadow-lg border border-border py-2 animate-in fade-in slide-in-from-top-2">
+              <div
+                className="absolute right-0 mt-2 w-56 bg-background rounded-xl shadow-lg border border-border py-2 animate-in fade-in slide-in-from-top-2"
+                onMouseEnter={() => {
+                  if (profileCloseTimeoutRef.current) {
+                    window.clearTimeout(profileCloseTimeoutRef.current);
+                    profileCloseTimeoutRef.current = null;
+                  }
+                  setIsProfileOpen(true);
+                }}
+              >
                 {isAdmin && (
                   <>
                     <div className="px-4 py-2 text-xs text-muted-foreground">
@@ -152,6 +238,31 @@ const UserNavbar = () => {
           </div>
         </div>
       </div>
+      {activeMegaTab && (
+        <div
+          className="hidden md:block absolute left-0 right-0 top-full border-t border-border/70 border-b border-border/70 bg-background shadow-md"
+          onMouseLeave={() => setActiveMegaTab(null)}
+        >
+          <div className="container mx-auto px-8 py-8">
+            <div className="grid grid-cols-4 gap-8">
+              {(megaMenuContent[activeMegaTab] ?? []).map((section) => (
+                <div key={section.title} className="space-y-2">
+                  <h3 className="text-sm font-semibold tracking-[0.12em] text-foreground">{section.title}</h3>
+                  <ul className="space-y-1.5">
+                    {section.links.map((link) => (
+                      <li key={link}>
+                        <Link to="/products" className="text-base text-muted-foreground hover:text-primary transition-colors">
+                          {link}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
     </header>
   );

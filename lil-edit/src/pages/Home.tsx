@@ -11,9 +11,9 @@ const Home = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-secondary/20 to-background font-body selection:bg-primary/20">
+    <div className="min-h-screen flex flex-col font-body selection:bg-primary/20">
       <UserNavbar />
-      <main className="flex-1 pt-24 md:pt-28">
+      <main className="flex-1 pt-20 md:pt-24 bg-[#F6EEFF]">
         <TrendingSection />
         <FeaturedCategories />
         <RecommendedForYou />
