@@ -44,7 +44,7 @@ const UserNavbar = () => {
     "NEW ARRIVALS",
     "GIRLS",
     "BOYS",
-    "NOW TRENDING",
+    "TRENDING",
     "BY OCCASSION",
   ];
   const megaMenuContent: Record<
@@ -57,19 +57,19 @@ const UserNavbar = () => {
       { title: "SHOP BY AGE", links: ["0-2 Years", "2-4 Years", "4-6 Years", "6-8 Years", "8+ Years"] },
       { title: "MORE", links: ["Accessories", "Shoes", "Bags", "Hair Essentials", "Stationery"] },
     ],
-    GIRLS: [
+    "GIRLS": [
       { title: "ETHNIC WEAR", links: ["All", "Lehengas", "Kurtis", "Shararas", "Sarees", "Sets"] },
       { title: "TRENDING", links: ["New Arrivals", "Ready To Ship", "Wedding", "Reels", "Lookbook"] },
       { title: "DRESSES & SETS", links: ["All", "Dresses", "Gowns", "Jumpsuits", "Co-ords", "Party Looks"] },
       { title: "MORE", links: ["Hair Accessories", "Sleepwear", "Shoes", "Bags", "Jewellery", "Other Apparel"] },
     ],
-    BOYS: [
+    "BOYS": [
       { title: "ETHNIC WEAR", links: ["All", "Kurta Pajama", "Nehru Jackets", "Sherwanis", "Pathani Sets"] },
       { title: "CASUAL", links: ["T-Shirts", "Shirts", "Jeans", "Trousers", "Co-ord Sets"] },
       { title: "OCCASION", links: ["Wedding", "Festive", "Birthday", "Party", "Photoshoot"] },
       { title: "MORE", links: ["Footwear", "Accessories", "Innerwear", "Sleepwear", "Bags"] },
     ],
-    "NOW TRENDING": [
+    "TRENDING": [
       { title: "HOT RIGHT NOW", links: ["Instagram Reels", "Celebrity Picks", "Top Rated", "Festive Edits", "Wedding Edit"] },
       { title: "SEASONAL", links: ["Summer Picks", "Monsoon Ready", "Winter Layers", "Spring Colors"] },
       { title: "SHOP BY LOOK", links: ["Traditional", "Modern Ethnic", "Streetwear", "Elegant", "Minimal"] },
@@ -237,6 +237,52 @@ const UserNavbar = () => {
             )}
           </div>
         </div>
+      </div>
+      <div className="md:hidden border-t border-border/60 bg-background">
+        <div className="px-3 py-2">
+          <div className="flex items-center justify-center whitespace-nowrap">
+            {megaMenuItems.map((item, index) => (
+              <div key={`mobile-${item}`} className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setActiveMegaTab((prev) => (prev === item ? null : item))}
+                  className={`whitespace-nowrap px-1 text-[10px] font-bold tracking-[0.04em] transition-colors ${
+                    activeMegaTab === item ? "text-teal-600" : "text-foreground hover:text-teal-600"
+                  }`}
+                >
+                  {item}
+                </button>
+                {index < megaMenuItems.length - 1 && (
+                  <span className="px-1 text-foreground/75 font-extrabold select-none">|</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        {activeMegaTab && (
+          <div className="border-t border-border/60 px-4 py-4 bg-background">
+            <div className="grid grid-cols-2 gap-4">
+              {(megaMenuContent[activeMegaTab] ?? []).map((section) => (
+                <div key={`mobile-section-${section.title}`} className="space-y-1.5">
+                  <h3 className="text-[11px] font-semibold tracking-[0.1em] text-foreground">{section.title}</h3>
+                  <ul className="space-y-1">
+                    {section.links.map((link) => (
+                      <li key={`mobile-link-${section.title}-${link}`}>
+                        <Link
+                          to="/products"
+                          onClick={() => setActiveMegaTab(null)}
+                          className="text-sm text-muted-foreground hover:text-teal-600 active:text-teal-700 transition-colors"
+                        >
+                          {link}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       {activeMegaTab && (
         <div

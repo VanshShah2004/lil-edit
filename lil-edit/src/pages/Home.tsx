@@ -13,7 +13,7 @@ const Home = () => {
   return (
     <div className="min-h-screen flex flex-col font-body selection:bg-primary/20">
       <UserNavbar />
-      <main className="flex-1 pt-20 md:pt-24 bg-[#F6EEFF]">
+      <main className="flex-1 pt-32 md:pt-24 bg-[#F6EEFF]">
         <TrendingSection />
         <FeaturedCategories />
         <RecommendedForYou />
