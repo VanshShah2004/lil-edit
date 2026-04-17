@@ -76,7 +76,6 @@ const UserNavbar = () => {
           </button>
           <button className="h-9 w-9 rounded-full border border-border bg-background text-foreground hover:bg-secondary transition-colors relative flex items-center justify-center">
             <ShoppingCart className="w-5 h-5" />
-            <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] w-4 h-4 rounded-full flex items-center justify-center">1</span>
           </button>
 
           <div className="relative">
