@@ -276,7 +276,7 @@ const UserNavbar = () => {
 
         {activeMegaTab && (
           <div 
-            className="absolute left-0 right-0 top-full border-t border-border/70 border-b border-border/70 bg-background shadow-md max-h-[75vh] overflow-y-auto"
+            className="absolute left-0 right-0 top-full border-b border-border/70 bg-background shadow-md max-h-[75vh] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200"
           >
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
