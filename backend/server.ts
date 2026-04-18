@@ -13,7 +13,7 @@ app.use(express.json());
 
 const origin =
   process.env.CORS_ORIGIN?.split(",").map((o) => o.trim()).filter(Boolean) ?? [
-    "http://localhost:5173",
+    "http://localhost:5174",
   ];
 
 const PORT = Number(process.env.PORT) || 5000;
