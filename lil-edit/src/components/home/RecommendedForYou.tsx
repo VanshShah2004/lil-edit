@@ -10,20 +10,20 @@ const RecommendedForYou = () => {
   ];
 
   return (
-    <section className="py-12 md:py-14 px-4">
-      <div className="container mx-auto">
-        <div className="flex justify-between items-end mb-8">
+    <section className="py-12 md:py-14 px-0">
+      <div className="container">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 mb-8">
           <div>
             <p className="text-xs font-semibold tracking-[0.18em] uppercase text-primary/80 mb-2">Curated For You</p>
             <h2 className="font-display text-3xl md:text-4xl font-semibold text-foreground mb-2">Recommended For You</h2>
             <p className="text-muted-foreground font-body">Based on your recent purchases</p>
           </div>
-          <button className="text-primary hover:text-primary/80 font-medium text-sm flex items-center gap-1">
+          <button className="text-primary hover:text-primary/80 font-medium text-sm flex items-center gap-1 self-start sm:self-auto">
             View All <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="flex overflow-x-auto gap-4 md:gap-6 pb-6 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+        <div className="flex overflow-x-auto gap-4 md:gap-6 pb-6 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 sm:-mx-8 sm:px-8 lg:-mx-16 lg:px-16" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
           {products.map((product) => (
             <div key={product.name} className="min-w-[260px] max-w-[260px] snap-start group">
               <div className="relative rounded-2xl overflow-hidden bg-card border border-border mb-3 aspect-[4/5]">

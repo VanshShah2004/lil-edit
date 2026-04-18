@@ -11,12 +11,12 @@ const categories = [
 ];
 
 const CategoriesSection = () => (
-  <section className="container mx-auto px-4 lg:px-8 py-20">
-    <div className="text-center mb-12">
+  <section className="container mx-auto px-4 lg:px-8 py-12 md:py-20">
+    <div className="text-center mb-8 md:mb-12">
       <h2 className="font-display text-3xl md:text-4xl text-foreground mb-3">Shop by Category</h2>
       <p className="text-muted-foreground font-body">Find the perfect picks for your little one</p>
     </div>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-8">
       {categories.map((cat, i) => (
         <div
           key={i}
@@ -31,7 +31,7 @@ const CategoriesSection = () => (
               loading="lazy"
               width={640}
               height={500}
-              className="w-full h-[280px] object-cover transition-transform duration-500 group-hover:scale-105"
+              className="w-full h-[240px] sm:h-[260px] md:h-[280px] object-cover transition-transform duration-500 group-hover:scale-105"
             />
             <div className="absolute top-4 right-4 bg-white/80 backdrop-blur-sm rounded-full p-2 shadow-md hover:bg-white transition-colors">
               <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -41,11 +41,11 @@ const CategoriesSection = () => (
           </div>
 
           {/* Content Container */}
-          <div className="p-6">
+          <div className="p-5 md:p-6">
             <h3 className="font-display text-xl text-foreground mb-2">{cat.name}</h3>
             <p className="font-body text-sm text-muted-foreground mb-4">{cat.description}</p>
             <Link to={cat.link}>
-              <Button className="w-full font-body bg-primary text-primary-foreground border-2 border-primary hover:bg-primary/90 hover:border-primary rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100 h-10">
+              <Button className="w-full font-body bg-primary text-primary-foreground border-2 border-primary hover:bg-primary/90 hover:border-primary rounded-full transition-all duration-300 opacity-100 md:opacity-0 md:group-hover:opacity-100 h-10">
                 View Collection
               </Button>
             </Link>

@@ -9,8 +9,8 @@ const TrendingSection = () => {
   ];
 
   return (
-    <section className="py-12 md:py-14 px-4">
-      <div className="container mx-auto">
+    <section className="py-12 md:py-14 px-0">
+      <div className="container">
         <div className="flex items-end justify-between mb-8">
           <div>
             <p className="text-xs font-semibold tracking-[0.18em] uppercase text-primary/80 mb-2">Latest Picks</p>

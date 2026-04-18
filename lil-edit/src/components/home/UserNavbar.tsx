@@ -120,32 +120,17 @@ const UserNavbar = () => {
         isScrolled ? "bg-background/95 backdrop-blur-lg shadow-sm" : "bg-background/90 backdrop-blur-md"
       }`}
     >
-      <div className="container mx-auto flex items-center justify-between h-[4.5rem] px-4 lg:px-8">
-        <Link to="/dashboard" className="flex-shrink-0 flex items-center gap-3">
-          <img src={logo} alt="The Lil Edit" className="h-14 w-auto" />
-          <div className="text-2xl text-foreground leading-none" style={{ fontFamily: "'Playfair Display', serif" }}>
+      <div className="container mx-auto flex items-center justify-between h-[4.25rem] md:h-[4.5rem] px-3 sm:px-4 lg:px-8">
+        <Link to="/dashboard" className="flex-shrink flex items-center gap-2 sm:gap-3 min-w-0">
+          <img src={logo} alt="The Lil Edit" className="h-9 sm:h-11 md:h-14 w-auto shrink-0" />
+          <div className="text-lg sm:text-xl md:text-2xl text-foreground leading-none truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
             The Lil Edit
           </div>
         </Link>
 
-        <nav className="hidden md:flex flex-1 items-center justify-center gap-10 lg:gap-12 px-6">
-          {megaMenuItems.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onMouseEnter={() => setActiveMegaTab(item)}
-              onFocus={() => setActiveMegaTab(item)}
-              onClick={() => setActiveMegaTab((prev) => (prev === item ? null : item))}
-              className={`text-sm lg:text-base font-bold tracking-wide transition-colors ${
-                activeMegaTab === item ? "text-teal-600" : "text-foreground hover:text-teal-600"
-              }`}
-            >
-              {item}
-            </button>
-          ))}
-        </nav>
+        <div className="flex-1" />
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-2.5 shrink-0">
           <button
             type="button"
             className="h-8 w-8 rounded-full border border-border bg-background text-foreground hover:bg-secondary transition-colors flex items-center justify-center"
@@ -178,9 +163,9 @@ const UserNavbar = () => {
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               type="button"
               aria-label="Open profile menu"
-              className="h-11 w-11 rounded-full border-2 border-teal-600 bg-gradient-to-br from-[#F8FFFE] via-[#F1FEFB] to-[#E9FCF8] text-[#0F766E] shadow-[0_4px_14px_rgba(13,148,136,0.14)] p-[2px] flex items-center justify-center transition-all duration-200 hover:from-[#F2FFFD] hover:via-[#E9FCF8] hover:to-[#DEFAF4] hover:border-teal-600 hover:shadow-[0_8px_18px_rgba(13,148,136,0.22)] hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/45 focus-visible:ring-offset-1"
+              className="h-10 w-10 sm:h-11 sm:w-11 rounded-full border-2 border-teal-600 bg-gradient-to-br from-[#F8FFFE] via-[#F1FEFB] to-[#E9FCF8] text-[#0F766E] shadow-[0_4px_14px_rgba(13,148,136,0.14)] p-[2px] flex items-center justify-center transition-all duration-200 hover:from-[#F2FFFD] hover:via-[#E9FCF8] hover:to-[#DEFAF4] hover:border-teal-600 hover:shadow-[0_8px_18px_rgba(13,148,136,0.22)] hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/45 focus-visible:ring-offset-1"
             >
-              <div className="px-0.5 py-[1px] text-[1.2rem] font-black font-display leading-none text-teal-600">
+              <div className="px-0.5 py-[1px] text-[1.05rem] sm:text-[1.2rem] font-black font-display leading-none text-teal-600">
                 {userInitial}
               </div>
             </button>
@@ -238,77 +223,59 @@ const UserNavbar = () => {
           </div>
         </div>
       </div>
-      <div className="md:hidden border-t border-border/60 bg-background">
-        <div className="px-3 py-2">
-          <div className="flex items-center justify-center whitespace-nowrap">
+      <div className="border-t border-border/60 bg-background w-full">
+        <div className="container mx-auto px-1 sm:px-4 lg:px-8 py-2 md:py-3">
+          <div className="flex items-center justify-center whitespace-nowrap overflow-hidden">
             {megaMenuItems.map((item, index) => (
-              <div key={`mobile-${item}`} className="flex items-center">
+              <div key={`unified-${item}`} className="flex items-center">
                 <button
                   type="button"
+                  onMouseEnter={() => window.innerWidth >= 768 && setActiveMegaTab(item)}
                   onClick={() => setActiveMegaTab((prev) => (prev === item ? null : item))}
-                  className={`whitespace-nowrap px-1 text-[10px] font-bold tracking-[0.04em] transition-colors ${
+                  className={`px-1 sm:px-2 md:px-4 text-[9px] min-[360px]:text-[10px] sm:text-xs md:text-sm lg:text-base font-bold tracking-tighter min-[360px]:tracking-tight sm:tracking-wide transition-colors ${
                     activeMegaTab === item ? "text-teal-600" : "text-foreground hover:text-teal-600"
                   }`}
                 >
                   {item}
                 </button>
                 {index < megaMenuItems.length - 1 && (
-                  <span className="px-1 text-foreground/75 font-extrabold select-none">|</span>
+                  <span className="px-0.5 sm:px-2 md:px-4 text-foreground/30 font-light select-none text-[10px] sm:text-xs md:text-sm lg:text-base">|</span>
                 )}
               </div>
             ))}
           </div>
         </div>
+
         {activeMegaTab && (
-          <div className="border-t border-border/60 px-4 py-4 bg-background">
-            <div className="grid grid-cols-2 gap-4">
-              {(megaMenuContent[activeMegaTab] ?? []).map((section) => (
-                <div key={`mobile-section-${section.title}`} className="space-y-1.5">
-                  <h3 className="text-[11px] font-semibold tracking-[0.1em] text-foreground">{section.title}</h3>
-                  <ul className="space-y-1">
-                    {section.links.map((link) => (
-                      <li key={`mobile-link-${section.title}-${link}`}>
-                        <Link
-                          to="/products"
-                          onClick={() => setActiveMegaTab(null)}
-                          className="text-sm text-muted-foreground hover:text-teal-600 active:text-teal-700 transition-colors"
-                        >
-                          {link}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+          <div 
+            className="absolute left-0 right-0 top-full border-t border-border/70 border-b border-border/70 bg-background shadow-md max-h-[75vh] overflow-y-auto"
+            onMouseLeave={() => window.innerWidth >= 768 && setActiveMegaTab(null)}
+          >
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+                {(megaMenuContent[activeMegaTab] ?? []).map((section) => (
+                  <div key={`section-${section.title}`} className="space-y-2.5">
+                    <h3 className="text-[11px] md:text-xs lg:text-sm font-semibold tracking-[0.1em] lg:tracking-[0.12em] text-foreground">{section.title}</h3>
+                    <ul className="space-y-1.5 md:space-y-2">
+                      {section.links.map((link) => (
+                        <li key={`link-${section.title}-${link}`}>
+                          <Link 
+                            to="/products" 
+                            onClick={() => setActiveMegaTab(null)}
+                            className="text-sm lg:text-base text-muted-foreground hover:text-teal-600 active:text-teal-700 transition-colors"
+                          >
+                            {link}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
       </div>
-      {activeMegaTab && (
-        <div
-          className="hidden md:block absolute left-0 right-0 top-full border-t border-border/70 border-b border-border/70 bg-background shadow-md"
-          onMouseLeave={() => setActiveMegaTab(null)}
-        >
-          <div className="container mx-auto px-8 py-8">
-            <div className="grid grid-cols-4 gap-8">
-              {(megaMenuContent[activeMegaTab] ?? []).map((section) => (
-                <div key={section.title} className="space-y-2">
-                  <h3 className="text-sm font-semibold tracking-[0.12em] text-foreground">{section.title}</h3>
-                  <ul className="space-y-1.5">
-                    {section.links.map((link) => (
-                      <li key={link}>
-                        <Link to="/products" className="text-base text-muted-foreground hover:text-teal-600 active:text-teal-700 transition-colors">
-                          {link}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
     </header>
   );

@@ -7,8 +7,8 @@ const FeaturedCategories = () => {
   ];
 
   return (
-    <section className="py-12 md:py-14 px-4">
-      <div className="container mx-auto">
+    <section className="py-12 md:py-14 px-0">
+      <div className="container">
         <div className="mb-8">
           <p className="text-xs font-semibold tracking-[0.18em] uppercase text-primary/80 mb-2">Shop By Category</p>
           <h2 className="font-display text-3xl md:text-4xl font-semibold text-foreground">Featured Categories</h2>

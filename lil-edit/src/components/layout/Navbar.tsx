@@ -11,11 +11,11 @@ const Navbar = () => {
 
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-      <nav className="container mx-auto flex items-center justify-between py-3 px-4 lg:px-8">
+      <nav className="container mx-auto flex items-center justify-between py-2.5 md:py-3 px-3 sm:px-4 lg:px-8">
         {/* Logo and Branding */}
-        <Link to="/" className="flex-shrink-0 flex items-center gap-4">
-          <img src={logo} alt="The Lil Edit" className="h-16 w-auto" />
-          <div className="text-4xl text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+        <Link to="/" className="flex-shrink flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
+          <img src={logo} alt="The Lil Edit" className="h-9 sm:h-12 md:h-16 w-auto shrink-0" />
+          <div className="text-lg sm:text-2xl md:text-4xl text-foreground leading-none truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
             The Lil Edit
           </div>
         </Link>
@@ -29,7 +29,7 @@ const Navbar = () => {
         </ul>
 
         {/* Right Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <Link to="/wishlist" className="hidden md:flex text-foreground/60 hover:text-primary transition-colors">
             <Heart className="h-5 w-5" />
           </Link>
@@ -60,7 +60,7 @@ const Navbar = () => {
           </Link>
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden text-foreground/70"
+            className="md:hidden text-foreground/70 p-1"
           >
             {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
