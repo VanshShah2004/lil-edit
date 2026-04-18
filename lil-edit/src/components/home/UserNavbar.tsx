@@ -19,6 +19,7 @@ const UserNavbar = () => {
   const [activeMegaTab, setActiveMegaTab] = useState<string | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const profileCloseTimeoutRef = useRef<number | null>(null);
+  const megaMenuRef = useRef<HTMLDivElement | null>(null);
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
@@ -114,6 +115,23 @@ const UserNavbar = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
+      if (!megaMenuRef.current) return;
+      if (!megaMenuRef.current.contains(event.target as Node)) {
+        setActiveMegaTab(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
+  }, []);
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 border-b border-border/70 transition-all duration-300 ${
@@ -146,17 +164,21 @@ const UserNavbar = () => {
             ref={profileMenuRef}
             className="relative"
             onMouseEnter={() => {
-              if (profileCloseTimeoutRef.current) {
-                window.clearTimeout(profileCloseTimeoutRef.current);
-                profileCloseTimeoutRef.current = null;
+              if (window.innerWidth >= 768) {
+                if (profileCloseTimeoutRef.current) {
+                  window.clearTimeout(profileCloseTimeoutRef.current);
+                  profileCloseTimeoutRef.current = null;
+                }
+                setIsProfileOpen(true);
               }
-              setIsProfileOpen(true);
             }}
             onMouseLeave={() => {
-              profileCloseTimeoutRef.current = window.setTimeout(() => {
-                setIsProfileOpen(false);
-                profileCloseTimeoutRef.current = null;
-              }, 180);
+              if (window.innerWidth >= 768) {
+                profileCloseTimeoutRef.current = window.setTimeout(() => {
+                  setIsProfileOpen(false);
+                  profileCloseTimeoutRef.current = null;
+                }, 180);
+              }
             }}
           >
             <button
@@ -174,11 +196,13 @@ const UserNavbar = () => {
               <div
                 className="absolute right-0 mt-2 w-56 bg-background rounded-xl shadow-lg border border-border py-2 animate-in fade-in slide-in-from-top-2"
                 onMouseEnter={() => {
-                  if (profileCloseTimeoutRef.current) {
-                    window.clearTimeout(profileCloseTimeoutRef.current);
-                    profileCloseTimeoutRef.current = null;
+                  if (window.innerWidth >= 768) {
+                    if (profileCloseTimeoutRef.current) {
+                      window.clearTimeout(profileCloseTimeoutRef.current);
+                      profileCloseTimeoutRef.current = null;
+                    }
+                    setIsProfileOpen(true);
                   }
-                  setIsProfileOpen(true);
                 }}
               >
                 {isAdmin && (
@@ -223,7 +247,11 @@ const UserNavbar = () => {
           </div>
         </div>
       </div>
-      <div className="border-t border-border/60 bg-background w-full">
+      <div 
+        ref={megaMenuRef}
+        className="border-t border-border/60 bg-background w-full"
+        onMouseLeave={() => window.innerWidth >= 768 && setActiveMegaTab(null)}
+      >
         <div className="container mx-auto px-1 sm:px-4 lg:px-8 py-2 md:py-3">
           <div className="flex items-center justify-center whitespace-nowrap overflow-hidden">
             {megaMenuItems.map((item, index) => (
@@ -249,10 +277,9 @@ const UserNavbar = () => {
         {activeMegaTab && (
           <div 
             className="absolute left-0 right-0 top-full border-t border-border/70 border-b border-border/70 bg-background shadow-md max-h-[75vh] overflow-y-auto"
-            onMouseLeave={() => window.innerWidth >= 768 && setActiveMegaTab(null)}
           >
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
                 {(megaMenuContent[activeMegaTab] ?? []).map((section) => (
                   <div key={`section-${section.title}`} className="space-y-2.5">
                     <h3 className="text-[11px] md:text-xs lg:text-sm font-semibold tracking-[0.1em] lg:tracking-[0.12em] text-foreground">{section.title}</h3>
