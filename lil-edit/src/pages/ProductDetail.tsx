@@ -52,10 +52,13 @@ const product = {
   price: 4999,
   originalPrice: 6500,
   images: [
-    product_images["product-12345"]["lil-edit-product-1234-1.png"],
-    product_images["product-12345"]["lil-edit-product-1234-2.png"],
-    product_images["product-12345"]["lil-edit-product-1234-3.png"],
-    product_images["product-12345"]["lil-edit-product-1234-4.png"],
+    product_images["product-0001"]["lil-edit-product-0001-1-1.png"],
+    product_images["product-0001"]["lil-edit-product-0001-1-2.png"],
+    product_images["product-0001"]["lil-edit-product-0001-1-3.png"],
+    product_images["product-0001"]["lil-edit-product-0001-1-4.png"],
+    product_images["product-0001"]["lil-edit-product-0001-1-5.png"],
+    product_images["product-0001"]["lil-edit-product-0001-1-6.png"],
+    product_images["product-0001"]["lil-edit-product-0001-1-7.png"],
   ],
   sizes: ["6-12 Months", "1-2 Years", "2-3 Years", "3-4 Years"],
   colors: [
@@ -148,12 +151,12 @@ export default function ProductDetail() {
             </div>
 
             {/* Thumbnails */}
-            <div className="order-3 lg:order-1 w-full lg:w-auto flex justify-center lg:justify-start lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto lg:max-h-[600px]">
+            <div className="order-3 lg:order-1 w-full lg:w-auto flex justify-start lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto lg:max-h-[600px] no-scrollbar">
               {product.images.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => handleThumbnailClick(idx)}
-                  className={`w-20 h-28 lg:w-24 lg:h-32 rounded-xl overflow-hidden shrink-0 ${activeImage === idx
+                  className={`w-24 h-32 lg:w-28 lg:h-36 rounded-xl overflow-hidden shrink-0 ${activeImage === idx
                     ? "border-4 border-[#0F766E]"
                     : "border border-gray-200"
                     }`}
