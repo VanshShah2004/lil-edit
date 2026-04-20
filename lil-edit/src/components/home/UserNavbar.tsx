@@ -65,16 +65,16 @@ const UserNavbar = () => {
       { title: "MORE", links: ["Hair Accessories", "Sleepwear", "Shoes", "Bags", "Jewellery", "Other Apparel"] },
     ],
     "BOYS": [
-      { title: "ETHNIC WEAR", links: ["All", "Kurta Pajama", "Nehru Jackets", "Sherwanis", "Pathani Sets"] },
-      { title: "CASUAL", links: ["T-Shirts", "Shirts", "Jeans", "Trousers", "Co-ord Sets"] },
-      { title: "OCCASION", links: ["Wedding", "Festive", "Birthday", "Party", "Photoshoot"] },
-      { title: "MORE", links: ["Footwear", "Accessories", "Innerwear", "Sleepwear", "Bags"] },
+      { title: "◈ CLASSIC ETHNIC", links: ["All", "Kurta Pajama", "Kurta Dhoti", "Pathani", "Angarakha "] },
+      { title: "✧ ROYAL VIBES", links: ["Sherwani", "Indo-Western", "Bandhgala Sets", "Nawabi Sets"] },
+      { title: "⟡ COOL & TRENDY", links: ["Co-ord Sets", "Printed Shirts", "Smart Casuals", "Mini Mahrajas"] },
+      { title: "❖ THE LIL GENTLEMEN", links: ["Shirts & Suspenders", "Blazers", "Waistcoat Sets", "Tuxedos"] },
     ],
     "TRENDING": [
       { title: "HOT RIGHT NOW", links: ["Instagram Reels", "Celebrity Picks", "Top Rated", "Festive Edits", "Wedding Edit"] },
       { title: "SEASONAL", links: ["Summer Picks", "Monsoon Ready", "Winter Layers", "Spring Colors"] },
       { title: "SHOP BY LOOK", links: ["Traditional", "Modern Ethnic", "Streetwear", "Elegant", "Minimal"] },
-      { title: "INSPIRATION", links: ["Lookbook", "Style Guide", "Mix & Match", "Gift Ideas"] },
+      { title: "THEME-BASED", links: ["Super-hero Edit", "Safari Style", "Space Explorer"] },
     ],
     "BY OCCASSION": [
       { title: "EVENTS", links: ["Birthday", "Wedding", "Festive", "School Events", "Family Function"] },
@@ -134,9 +134,8 @@ const UserNavbar = () => {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 border-b border-border/70 transition-all duration-300 ${
-        isScrolled ? "bg-background/95 backdrop-blur-lg shadow-sm" : "bg-background/90 backdrop-blur-md"
-      }`}
+      className={`fixed top-0 left-0 right-0 z-50 border-b border-border/70 transition-all duration-300 ${isScrolled ? "bg-background/95 backdrop-blur-lg shadow-sm" : "bg-background/90 backdrop-blur-md"
+        }`}
     >
       <div className="container mx-auto flex items-center justify-between h-[4.25rem] md:h-[4.5rem] px-3 sm:px-4 lg:px-8">
         <Link to="/dashboard" className="flex-shrink flex items-center gap-2 sm:gap-3 min-w-0">
@@ -247,7 +246,7 @@ const UserNavbar = () => {
           </div>
         </div>
       </div>
-      <div 
+      <div
         ref={megaMenuRef}
         className="border-t border-border/60 bg-background w-full"
         onMouseLeave={() => window.innerWidth >= 768 && setActiveMegaTab(null)}
@@ -260,9 +259,8 @@ const UserNavbar = () => {
                   type="button"
                   onMouseEnter={() => window.innerWidth >= 768 && setActiveMegaTab(item)}
                   onClick={() => setActiveMegaTab((prev) => (prev === item ? null : item))}
-                  className={`px-1 sm:px-2 md:px-4 text-[9px] min-[360px]:text-[10px] sm:text-xs md:text-sm lg:text-base font-bold tracking-tighter min-[360px]:tracking-tight sm:tracking-wide transition-colors ${
-                    activeMegaTab === item ? "text-teal-600" : "text-foreground hover:text-teal-600"
-                  }`}
+                  className={`px-1 sm:px-2 md:px-4 text-[9px] min-[360px]:text-[10px] sm:text-xs md:text-sm lg:text-base font-bold tracking-tighter min-[360px]:tracking-tight sm:tracking-wide transition-colors ${activeMegaTab === item ? "text-teal-600" : "text-foreground hover:text-teal-600"
+                    }`}
                 >
                   {item}
                 </button>
@@ -275,22 +273,25 @@ const UserNavbar = () => {
         </div>
 
         {activeMegaTab && (
-          <div 
+          <div
             className="absolute left-0 right-0 top-full border-b border-border/70 bg-background shadow-md max-h-[75vh] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200"
           >
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
                 {(megaMenuContent[activeMegaTab] ?? []).map((section) => (
                   <div key={`section-${section.title}`} className="space-y-2.5">
-                    <h3 className="text-[11px] md:text-xs lg:text-sm font-semibold tracking-[0.1em] lg:tracking-[0.12em] text-foreground">{section.title}</h3>
+                    <h3 className="text-xs md:text-sm lg:text-base font-semibold tracking-[0.1em] lg:tracking-[0.12em] text-[#9a65ad]">{section.title}</h3>
                     <ul className="space-y-1.5 md:space-y-2">
                       {section.links.map((link) => (
                         <li key={`link-${section.title}-${link}`}>
-                          <Link 
-                            to="/products" 
+                          <Link
+                            to="/products"
                             onClick={() => setActiveMegaTab(null)}
-                            className="text-sm lg:text-base text-muted-foreground hover:text-teal-600 active:text-teal-700 transition-colors"
+                            className="group flex items-center gap-1.5 text-sm lg:text-base text-gray-800 hover:text-teal-600 active:text-teal-700 transition-colors"
                           >
+                            <svg className="w-2 h-2 text-gray-400 group-hover:text-teal-600 transition-colors fill-current mt-px" viewBox="0 0 24 24">
+                              <path d="M5 3l14 9-14 9V3z" />
+                            </svg>
                             {link}
                           </Link>
                         </li>
