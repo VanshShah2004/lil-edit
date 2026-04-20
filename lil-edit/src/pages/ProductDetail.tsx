@@ -12,6 +12,12 @@ import {
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import product_images from "@/assets/products";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi
+} from "@/components/ui/carousel";
 
 const LAVENDER = "#C4B5D9";
 const TEAL = "#0F766E";
@@ -54,17 +60,34 @@ const product = {
   sizes: ["6-12 Months", "1-2 Years", "2-3 Years", "3-4 Years"],
   colors: [
     { name: "White", hex: "#FFFFFF" },
-    {name: "Black", hex: "#00000F"},
-    
+    { name: "Black", hex: "#00000F" },
+
   ],
 };
 
 export default function ProductDetail() {
   const [activeImage, setActiveImage] = useState(0);
+  const [api, setApi] = useState<CarouselApi>();
   const [selectedSize, setSelectedSize] = useState(product.sizes[0]);
   const [selectedColor, setSelectedColor] = useState(product.colors[0].name);
   const [quantity, setQuantity] = useState(1);
   const [qtyBesideColors, setQtyBesideColors] = useState(true);
+
+  useLayoutEffect(() => {
+    if (!api) return;
+    const onSelect = () => {
+      setActiveImage(api.selectedScrollSnap());
+    };
+    api.on("select", onSelect);
+    return () => {
+      api.off("select", onSelect);
+    };
+  }, [api]);
+
+  const handleThumbnailClick = (idx: number) => {
+    setActiveImage(idx);
+    api?.scrollTo(idx);
+  };
 
   const colorQtyWrapRef = useRef<HTMLDivElement | null>(null);
   const colorsRowRef = useRef<HTMLDivElement | null>(null);
@@ -129,12 +152,11 @@ export default function ProductDetail() {
               {product.images.map((img, idx) => (
                 <button
                   key={idx}
-                  onClick={() => setActiveImage(idx)}
-                  className={`w-20 h-28 lg:w-24 lg:h-32 rounded-xl overflow-hidden shrink-0 ${
-                    activeImage === idx
-                      ? "border-4 border-[#0F766E]"
-                      : "border border-gray-200"
-                  }`}
+                  onClick={() => handleThumbnailClick(idx)}
+                  className={`w-20 h-28 lg:w-24 lg:h-32 rounded-xl overflow-hidden shrink-0 ${activeImage === idx
+                    ? "border-4 border-[#0F766E]"
+                    : "border border-gray-200"
+                    }`}
                 >
                   <img
                     src={img}
@@ -148,13 +170,26 @@ export default function ProductDetail() {
 
             {/* Main Image */}
             <div className="order-2 lg:order-2 flex-1 flex justify-center items-start">
-              <div className="w-full max-w-[420px] aspect-[4/5] bg-white rounded-2xl overflow-hidden shadow-md">
-                <img
-                  src={product.images[activeImage]}
-                  alt={product.title}
-                  className="w-full h-full object-cover hover:scale-105 transition duration-500"
-                />
-              </div>
+              <Carousel
+                setApi={setApi}
+                opts={{ loop: true }}
+                className="w-full max-w-[420px] bg-white rounded-2xl overflow-hidden shadow-md cursor-grab active:cursor-grabbing"
+              >
+                <CarouselContent className="ml-0">
+                  {product.images.map((img, idx) => (
+                    <CarouselItem key={idx} className="pl-0 basis-full">
+                      <div className="w-full aspect-[4/5] overflow-hidden">
+                        <img
+                          src={img}
+                          alt={`${product.title} ${idx + 1}`}
+                          className="w-full h-full object-cover select-none hover:scale-105 transition duration-500"
+                          draggable={false}
+                        />
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+              </Carousel>
             </div>
           </div>
 
@@ -199,11 +234,10 @@ export default function ProductDetail() {
                       <div key={color.name} className="flex flex-col items-center">
                         <button
                           onClick={() => setSelectedColor(color.name)}
-                          className={`w-11 h-11 rounded-full border-2 ${
-                            selectedColor === color.name
-                              ? "border-[#115E59]"
-                              : "border-gray-200"
-                          }`}
+                          className={`w-11 h-11 rounded-full border-2 ${selectedColor === color.name
+                            ? "border-[#115E59]"
+                            : "border-gray-200"
+                            }`}
                           style={{ backgroundColor: color.hex }}
                         />
                         <span className="mt-1 text-xs text-slate-700">
@@ -282,11 +316,10 @@ export default function ProductDetail() {
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold ${
-                      selectedSize === size
-                        ? "bg-[#C4B5D9] text-black"
-                        : "bg-gray-100 text-slate-900"
-                    }`}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold ${selectedSize === size
+                      ? "bg-[#C4B5D9] text-black"
+                      : "bg-gray-100 text-slate-900"
+                      }`}
                   >
                     {size}
                   </button>
