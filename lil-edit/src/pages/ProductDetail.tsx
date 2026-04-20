@@ -66,9 +66,46 @@ const product = {
   colors: [
     { name: "White", hex: "#FFFFFF" },
     { name: "Black", hex: "#000000" },
-
   ],
 };
+
+const recommendedProducts = [
+  {
+    id: "rec-1",
+    title: "Lilac Embroidered Georgette Lehenga Set",
+    price: 3500,
+    originalPrice: 4200,
+    image: product_images["product-0001"]["lil-edit-product-0001-1-2.png"]
+  },
+  {
+    id: "rec-2",
+    title: "Mint Green Ruffle Trim Party Dress",
+    price: 2999,
+    originalPrice: 3599,
+    image: product_images["product-0001"]["lil-edit-product-0001-1-3.png"]
+  },
+  {
+    id: "rec-3",
+    title: "Ivory Organza Peplum Kurta with Dhoti Pants",
+    price: 4500,
+    originalPrice: 5100,
+    image: product_images["product-0001"]["lil-edit-product-0001-1-4.png"]
+  },
+  {
+    id: "rec-4",
+    title: "Blush Pink Net Indo-Western Gown",
+    price: 5200,
+    originalPrice: 6000,
+    image: product_images["product-0001"]["lil-edit-product-0001-1-5.png"]
+  },
+  {
+    id: "rec-5",
+    title: "Mustard Yellow Silk Blend Sharara Suit",
+    price: 3800,
+    originalPrice: 4500,
+    image: product_images["product-0001"]["lil-edit-product-0001-1-6.png"]
+  }
+];
 
 export default function ProductDetail() {
   const [activeImage, setActiveImage] = useState(0);
@@ -454,6 +491,64 @@ export default function ProductDetail() {
           </div>
         </div>
       </main>
+
+      {/* YOU MAY ALSO LIKE SECTION */}
+      <section className="page-container w-full mt-10 sm:mt-16 pb-12 sm:pb-16 border-t border-gray-100 pt-10 sm:pt-16">
+        <div className="flex items-end justify-between mb-6 sm:mb-8">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">
+              You May Also Like
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">Similar styles you’ll love</p>
+          </div>
+          <button className="hidden sm:block text-sm font-semibold hover:underline" style={{ color: TEAL }}>
+            View All
+          </button>
+        </div>
+
+        {/* Mobile: Horizontal scroll | Desktop: Grid */}
+        <div className="flex sm:grid overflow-x-auto sm:overflow-visible flex-nowrap sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 no-scrollbar snap-x snap-mandatory px-1 sm:px-0">
+          {recommendedProducts.map((item) => (
+            <Link
+              to={`/product/${item.id}`}
+              key={item.id}
+              className="w-[150px] sm:w-auto shrink-0 snap-start group flex flex-col"
+            >
+              {/* Image Container */}
+              <div className="relative w-full aspect-[4/5] rounded-xl overflow-hidden bg-gray-50 mb-3 shadow-sm group-hover:shadow-md transition-shadow">
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  loading="lazy"
+                />
+                {/* Wishlist Button */}
+                <button
+                  className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/70 backdrop-blur-md hover:bg-white text-slate-700 transition"
+                  onClick={(e) => { e.preventDefault(); }}
+                >
+                  <Heart size={14} />
+                </button>
+              </div>
+
+              {/* Details */}
+              <div className="flex flex-col flex-1 px-0.5">
+                <h3 className="text-sm font-medium text-slate-800 line-clamp-2 mb-1.5 leading-snug">
+                  {item.title}
+                </h3>
+                <div className="mt-auto flex items-center gap-2">
+                  <span className="font-bold" style={{ color: TEAL }}>
+                    ₹{item.price}
+                  </span>
+                  <span className="text-xs line-through text-gray-400">
+                    ₹{item.originalPrice}
+                  </span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {/* FULL SCREEN VIEWER */}
       {isViewerOpen && (
