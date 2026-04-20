@@ -13,7 +13,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import product_images from "@/assets/products";
 
-const LAVENDER = "#A47DAB";
+const LAVENDER = "#C4B5D9";
 const TEAL = "#0F766E";
 const TEAL_DARK = "#115E59";
 const SWATCH_SIZE_PX = 44; // w-11 (matches qty pill height)
@@ -97,8 +97,10 @@ export default function ProductDetail() {
                 <button
                   key={idx}
                   onClick={() => setActiveImage(idx)}
-                  className={`w-20 h-28 lg:w-24 lg:h-32 rounded-xl overflow-hidden border shrink-0 ${
-                    activeImage === idx ? "border-[#0F766E]" : "border-gray-200"
+                  className={`w-20 h-28 lg:w-24 lg:h-32 rounded-xl overflow-hidden shrink-0 ${
+                    activeImage === idx
+                      ? "border-4 border-[#0F766E]"
+                      : "border border-gray-200"
                   }`}
                 >
                   <img
@@ -235,7 +237,7 @@ export default function ProductDetail() {
                     onClick={() => setSelectedSize(size)}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold ${
                       selectedSize === size
-                        ? "bg-[#E9D5FF] text-black"
+                        ? "bg-[#C4B5D9] text-black"
                         : "bg-gray-100 text-slate-900"
                     }`}
                   >
