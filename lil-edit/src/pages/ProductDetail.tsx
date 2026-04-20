@@ -84,6 +84,7 @@ export default function ProductDetail() {
   const colorQtyWrapRef = useRef<HTMLDivElement | null>(null);
   const colorsRowRef = useRef<HTMLDivElement | null>(null);
   const qtyBlockRef = useRef<HTMLDivElement | null>(null);
+  const normalThumbnailStripRef = useRef<HTMLDivElement>(null);
   const thumbnailStripRef = useRef<HTMLDivElement>(null);
   const canOpenViewer = true;
 
@@ -153,7 +154,20 @@ export default function ProductDetail() {
         thumbnailStripRef.current.scrollTo({ left: scrollLeft, behavior: "smooth" });
       }
     }
-  }, [activeImage, isViewerOpen]);
+
+    if (normalThumbnailStripRef.current) {
+      const activeEl = normalThumbnailStripRef.current.children[activeImage] as HTMLElement;
+      if (activeEl) {
+        if (isDesktopViewer) {
+          const scrollTop = activeEl.offsetTop - normalThumbnailStripRef.current.clientHeight / 2 + activeEl.clientHeight / 2;
+          normalThumbnailStripRef.current.scrollTo({ top: scrollTop, behavior: "smooth" });
+        } else {
+          const scrollLeft = activeEl.offsetLeft - normalThumbnailStripRef.current.clientWidth / 2 + activeEl.clientWidth / 2;
+          normalThumbnailStripRef.current.scrollTo({ left: scrollLeft, behavior: "smooth" });
+        }
+      }
+    }
+  }, [activeImage, isViewerOpen, isDesktopViewer]);
 
   const handleThumbnailClick = (idx: number) => {
     setActiveImage(idx);
@@ -220,13 +234,16 @@ export default function ProductDetail() {
 
             {/* Thumbnails */}
             <div className="order-3 lg:order-1 w-full lg:w-28 shrink-0 relative">
-              <div className="flex justify-start lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto w-full h-full lg:absolute lg:inset-0 no-scrollbar pb-1 lg:pb-0">
+              <div
+                ref={normalThumbnailStripRef}
+                className="flex justify-start lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto w-full h-full lg:absolute lg:inset-0 no-scrollbar pb-1 lg:pb-0 snap-x snap-mandatory lg:snap-y scroll-smooth"
+              >
                 {product.images.map((img, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleThumbnailClick(idx)}
-                    className={`w-24 h-32 lg:w-28 lg:h-36 rounded-xl overflow-hidden shrink-0 snap-center lg:snap-align-none ${activeImage === idx
-                      ? "border-4 border-[#0F766E]"
+                    className={`w-20 md:w-24 lg:w-28 aspect-[4/5] rounded-xl overflow-hidden shrink-0 snap-center lg:snap-align-none transition-all ${activeImage === idx
+                      ? "border-[3px] border-[#0F766E] shadow-sm"
                       : "border border-gray-200"
                       }`}
                   >
@@ -518,7 +535,7 @@ export default function ProductDetail() {
                     viewerApi?.scrollTo(idx);
                     api?.scrollTo(idx);
                   }}
-                  className={`relative shrink-0 h-[64px] sm:h-[74px] w-[50px] sm:w-[60px] rounded-lg overflow-hidden transition-all duration-200 snap-start bg-black/50 ${activeImage === idx ? 'border-2 border-[#0F766E]' : 'border border-gray-300'
+                  className={`relative shrink-0 w-[50px] sm:w-[60px] aspect-[4/5] rounded-lg overflow-hidden transition-all duration-200 snap-start bg-black/50 ${activeImage === idx ? 'border-2 border-[#0F766E]' : 'border border-gray-300'
                     }`}
                   style={{ opacity: activeImage === idx ? 1 : 0.6 }}
                 >
