@@ -13,7 +13,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import product_images from "@/assets/products";
 
-const LAVENDER = "#E9D5FF";
+const LAVENDER = "#A47DAB";
 const TEAL = "#0F766E";
 const TEAL_DARK = "#115E59";
 const SWATCH_SIZE_PX = 44; // w-11 (matches qty pill height)
@@ -233,11 +233,11 @@ export default function ProductDetail() {
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold ${selectedSize === size
-                      ? "bg-[#E9D5FF]"
-                      : "bg-gray-100"
-                      }`}
-                    style={selectedSize === size ? { color: TEAL_DARK } : undefined}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold ${
+                      selectedSize === size
+                        ? "bg-[#E9D5FF] text-black"
+                        : "bg-gray-100 text-slate-900"
+                    }`}
                   >
                     {size}
                   </button>
@@ -248,16 +248,17 @@ export default function ProductDetail() {
             {/* Quantity moved next to Color */}
 
             {/* CTA */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-8">
+            <div
+              className="flex flex-col sm:flex-row gap-3 mb-8"
+              style={{ ["--lavender" as any]: LAVENDER, ["--teal" as any]: TEAL }}
+            >
               <button
-                className="flex-1 border-2 py-3 rounded-full font-bold"
-                style={{ borderColor: LAVENDER, color: "#000000", backgroundColor: "#FFFFFF" }}
+                className="flex-1 bg-[var(--lavender)] text-black py-3 rounded-full font-bold transition-colors hover:brightness-[0.98]"
               >
                 ADD TO CART
               </button>
               <button
-                className="flex-1 py-3 rounded-full font-bold text-slate-900"
-                style={{ backgroundColor: LAVENDER }}
+                className="flex-1 bg-[var(--teal)] text-white py-3 rounded-full font-bold transition-colors hover:brightness-95"
               >
                 BUY NOW
               </button>
@@ -280,7 +281,7 @@ export default function ProductDetail() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t p-3 safe-bottom flex gap-2">
         <button
           className="flex-1 border py-3 rounded-full font-bold"
-          style={{ borderColor: LAVENDER, color: "#000000", backgroundColor: "#FFFFFF" }}
+          style={{ borderColor: "#000000", color: "#000000", backgroundColor: "#FFFFFF" }}
         >
           ADD
         </button>
