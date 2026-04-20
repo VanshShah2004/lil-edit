@@ -151,24 +151,26 @@ export default function ProductDetail() {
             </div>
 
             {/* Thumbnails */}
-            <div className="order-3 lg:order-1 w-full lg:w-auto flex justify-start lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto lg:max-h-[600px] no-scrollbar">
-              {product.images.map((img, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleThumbnailClick(idx)}
-                  className={`w-24 h-32 lg:w-28 lg:h-36 rounded-xl overflow-hidden shrink-0 ${activeImage === idx
-                    ? "border-4 border-[#0F766E]"
-                    : "border border-gray-200"
-                    }`}
-                >
-                  <img
-                    src={img}
-                    alt={`${product.title} thumbnail ${idx + 1}`}
-                    loading="lazy"
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
+            <div className="order-3 lg:order-1 w-full lg:w-28 shrink-0 relative">
+              <div className="flex justify-start lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto w-full h-full lg:absolute lg:inset-0 no-scrollbar">
+                {product.images.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleThumbnailClick(idx)}
+                    className={`w-24 h-32 lg:w-28 lg:h-36 rounded-xl overflow-hidden shrink-0 ${activeImage === idx
+                      ? "border-4 border-[#0F766E]"
+                      : "border border-gray-200"
+                      }`}
+                  >
+                    <img
+                      src={img}
+                      alt={`${product.title} thumbnail ${idx + 1}`}
+                      loading="lazy"
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Main Image */}
