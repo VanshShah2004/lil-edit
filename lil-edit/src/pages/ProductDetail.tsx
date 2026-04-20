@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ChevronRight,
@@ -7,7 +7,9 @@ import {
   Star,
   Share2,
   Minus,
-  Plus
+  Plus,
+  X,
+  ChevronLeft
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -71,30 +73,83 @@ const product = {
 export default function ProductDetail() {
   const [activeImage, setActiveImage] = useState(0);
   const [api, setApi] = useState<CarouselApi>();
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerApi, setViewerApi] = useState<CarouselApi>();
   const [selectedSize, setSelectedSize] = useState(product.sizes[0]);
   const [selectedColor, setSelectedColor] = useState(product.colors[0].name);
   const [quantity, setQuantity] = useState(1);
   const [qtyBesideColors, setQtyBesideColors] = useState(true);
 
+  const colorQtyWrapRef = useRef<HTMLDivElement | null>(null);
+  const colorsRowRef = useRef<HTMLDivElement | null>(null);
+  const qtyBlockRef = useRef<HTMLDivElement | null>(null);
+  const thumbnailStripRef = useRef<HTMLDivElement>(null);
+
   useLayoutEffect(() => {
     if (!api) return;
     const onSelect = () => {
-      setActiveImage(api.selectedScrollSnap());
+      const idx = api.selectedScrollSnap();
+      setActiveImage(idx);
+      if (viewerApi) viewerApi.scrollTo(idx);
     };
     api.on("select", onSelect);
     return () => {
       api.off("select", onSelect);
     };
-  }, [api]);
+  }, [api, viewerApi]);
+
+  useLayoutEffect(() => {
+    if (!viewerApi) return;
+    const onSelect = () => {
+      const idx = viewerApi.selectedScrollSnap();
+      setActiveImage(idx);
+      if (api) api.scrollTo(idx);
+    };
+    viewerApi.on("select", onSelect);
+    return () => {
+      viewerApi.off("select", onSelect);
+    };
+  }, [viewerApi, api]);
+
+  useEffect(() => {
+    if (!isViewerOpen) return;
+
+    // Sync initial state when opened
+    if (viewerApi) {
+      viewerApi.scrollTo(activeImage, true);
+    }
+
+    const originalStyle = window.getComputedStyle(document.body).overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsViewerOpen(false);
+      else if (e.key === "ArrowLeft") viewerApi?.scrollPrev();
+      else if (e.key === "ArrowRight") viewerApi?.scrollNext();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalStyle;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isViewerOpen, viewerApi, activeImage]);
+
+  useEffect(() => {
+    if (isViewerOpen && thumbnailStripRef.current) {
+      const activeEl = thumbnailStripRef.current.children[activeImage] as HTMLElement;
+      if (activeEl) {
+        const scrollLeft = activeEl.offsetLeft - thumbnailStripRef.current.clientWidth / 2 + activeEl.clientWidth / 2;
+        thumbnailStripRef.current.scrollTo({ left: scrollLeft, behavior: "smooth" });
+      }
+    }
+  }, [activeImage, isViewerOpen]);
 
   const handleThumbnailClick = (idx: number) => {
     setActiveImage(idx);
     api?.scrollTo(idx);
+    viewerApi?.scrollTo(idx);
   };
-
-  const colorQtyWrapRef = useRef<HTMLDivElement | null>(null);
-  const colorsRowRef = useRef<HTMLDivElement | null>(null);
-  const qtyBlockRef = useRef<HTMLDivElement | null>(null);
 
   useLayoutEffect(() => {
     const el = colorQtyWrapRef.current;
@@ -152,7 +207,7 @@ export default function ProductDetail() {
 
             {/* Thumbnails */}
             <div className="order-3 lg:order-1 w-full lg:w-28 shrink-0 relative">
-              <div className="flex justify-start lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto w-full h-full lg:absolute lg:inset-0 no-scrollbar">
+              <div className="flex justify-center lg:justify-start lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto w-full h-full lg:absolute lg:inset-0 no-scrollbar">
                 {product.images.map((img, idx) => (
                   <button
                     key={idx}
@@ -187,8 +242,9 @@ export default function ProductDetail() {
                         <img
                           src={img}
                           alt={`${product.title} ${idx + 1}`}
-                          className="w-full h-full object-cover select-none hover:scale-105 transition duration-500"
+                          className="w-full h-full object-cover select-none hover:scale-105 transition duration-500 cursor-zoom-in"
                           draggable={false}
+                          onClick={() => setIsViewerOpen(true)}
                         />
                       </div>
                     </CarouselItem>
@@ -365,6 +421,96 @@ export default function ProductDetail() {
           </div>
         </div>
       </main>
+
+      {/* FULL SCREEN VIEWER */}
+      {isViewerOpen && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm animate-in fade-in duration-300 flex flex-col"
+          onClick={() => setIsViewerOpen(false)}
+        >
+          {/* Header */}
+          <div
+            className="flex justify-between items-center p-4 sm:p-6 text-white shrink-0 absolute top-0 w-full z-10 pointer-events-none"
+          >
+            <div className="w-10"></div>
+            <div className="text-sm sm:text-base font-semibold tracking-widest bg-black/40 px-3 py-1 rounded-full backdrop-blur-md">
+              {activeImage + 1} / {product.images.length}
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); setIsViewerOpen(false); }}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition pointer-events-auto"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          {/* Main Content (Carousel) */}
+          <div
+            className="flex-1 relative flex items-center justify-center min-h-0 w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Carousel setApi={setViewerApi} opts={{ loop: true, startIndex: activeImage }} className="w-full h-full flex items-center text-white">
+              <CarouselContent className="h-full ml-0 items-center">
+                {product.images.map((img, idx) => (
+                  <CarouselItem key={idx} className="pl-0 basis-full flex items-center justify-center h-full relative">
+                    <img
+                      src={img}
+                      alt={`Preview ${idx + 1}`}
+                      className="max-w-full max-h-[85vh] w-auto h-auto object-contain select-none cursor-zoom-out hover:scale-[1.01] transition-transform duration-500"
+                      draggable={false}
+                      onClick={() => setIsViewerOpen(false)}
+                    />
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+
+            {/* Desktop Left / Right Controls */}
+            <button
+              className="hidden md:flex absolute left-4 w-12 h-12 bg-white/10 hover:bg-white/20 items-center justify-center rounded-full text-white backdrop-blur transition-all"
+              onClick={(e) => { e.stopPropagation(); viewerApi?.scrollPrev(); }}
+            >
+              <ChevronLeft size={28} />
+            </button>
+            <button
+              className="hidden md:flex absolute right-4 w-12 h-12 bg-white/10 hover:bg-white/20 items-center justify-center rounded-full text-white backdrop-blur transition-all"
+              onClick={(e) => { e.stopPropagation(); viewerApi?.scrollNext(); }}
+            >
+              <ChevronRight size={28} />
+            </button>
+          </div>
+
+          {/* Thumbnail Strip */}
+          <div
+            className="shrink-0 p-4 pb-6 sm:pb-8 flex justify-center w-full bg-gradient-to-t from-black/50 to-transparent"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              ref={thumbnailStripRef}
+              className="flex gap-2 sm:gap-3 overflow-x-auto no-scrollbar scroll-smooth w-full max-w-3xl px-4 items-center"
+            >
+              {product.images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveImage(idx);
+                    viewerApi?.scrollTo(idx);
+                    api?.scrollTo(idx);
+                  }}
+                  className={`relative shrink-0 h-16 w-16 sm:h-20 sm:w-20 rounded-lg overflow-hidden transition-all duration-300 bg-black/50`}
+                  style={{
+                    border: activeImage === idx ? '3px solid #0F766E' : '3px solid #D1D5DB',
+                    opacity: activeImage === idx ? 1 : 0.6
+                  }}
+                >
+                  <img src={img} alt="" className="w-full h-full object-cover pointer-events-none hover:opacity-100 transition-opacity" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
 
