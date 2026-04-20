@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ChevronRight,
@@ -16,13 +16,33 @@ import product_images from "@/assets/products";
 const LAVENDER = "#C4B5D9";
 const TEAL = "#0F766E";
 const TEAL_DARK = "#115E59";
-const SWATCH_SIZE_PX = 44; // w-11 (matches qty pill height)
 const SWATCH_GAP_PX = 12; // gap-3
 const BETWEEN_BLOCKS_GAP_PX = SWATCH_GAP_PX * 4; // 4x swatch gap
 
 // MOCK DATA
 const product = {
   title: "Stunning Criss-Cross Back Knot Top And Crushed Sheen Lehenga",
+  sku: "LIL-12345",
+  category: "Kids Ethnic Wear",
+  descriptionPoints: [
+    "Top Closure: Tie-up knot at the back",
+    "Bottom Closure: Side hook-and-zip",
+    "Lining: Cotton lining",
+    "Note: Embroidery placement may vary from the website image",
+    "Note: The curve of the lehenga hem may vary as it is machine-wired",
+    "Gender: Girls",
+    "Material: Organza",
+    "Colour: Lavender",
+    "Waistband: Drawstring",
+    "Sleeve Length: Sleeveless",
+    "Image Taken Of: 2 - 3 Years",
+    "Washing Care: Dry Clean",
+    "Made in India",
+  ],
+  fabric: "Silk blend with soft inner lining",
+  fit: "Regular fit",
+  occasion: "Festive, Wedding, Party",
+  care: "Dry clean recommended",
   price: 4999,
   originalPrice: 6500,
   images: [
@@ -35,6 +55,7 @@ const product = {
   colors: [
     { name: "White", hex: "#FFFFFF" },
     {name: "Black", hex: "#00000F"},
+    
   ],
 };
 
@@ -46,24 +67,21 @@ export default function ProductDetail() {
   const [qtyBesideColors, setQtyBesideColors] = useState(true);
 
   const colorQtyWrapRef = useRef<HTMLDivElement | null>(null);
+  const colorsRowRef = useRef<HTMLDivElement | null>(null);
   const qtyBlockRef = useRef<HTMLDivElement | null>(null);
-
-  const colorsOneLineWidthPx = useMemo(() => {
-    const n = product.colors.length;
-    if (n <= 0) return 0;
-    return n * SWATCH_SIZE_PX + Math.max(0, n - 1) * SWATCH_GAP_PX;
-  }, []);
 
   useLayoutEffect(() => {
     const el = colorQtyWrapRef.current;
+    const colorsEl = colorsRowRef.current;
     const qtyEl = qtyBlockRef.current;
-    if (!el || !qtyEl) return;
+    if (!el || !colorsEl || !qtyEl) return;
 
     const compute = () => {
       const wrapWidth = el.clientWidth;
+      const colorsWidth = colorsEl.offsetWidth;
       const qtyWidth = qtyEl.offsetWidth;
       const fits =
-        colorsOneLineWidthPx + BETWEEN_BLOCKS_GAP_PX + qtyWidth <= wrapWidth;
+        colorsWidth + BETWEEN_BLOCKS_GAP_PX + qtyWidth <= wrapWidth;
       setQtyBesideColors(fits);
     };
 
@@ -71,12 +89,13 @@ export default function ProductDetail() {
 
     const ro = new ResizeObserver(() => compute());
     ro.observe(el);
+    ro.observe(colorsEl);
     ro.observe(qtyEl);
     return () => ro.disconnect();
-  }, [colorsOneLineWidthPx]);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       <Navbar />
 
       {/* Breadcrumb */}
@@ -89,10 +108,24 @@ export default function ProductDetail() {
         <div className="flex flex-col lg:flex-row gap-10 lg:gap-16">
 
           {/* LEFT - IMAGES (60%) */}
-          <div className="w-full lg:w-[60%] flex flex-col lg:flex-row gap-5">
+          <div className="w-full lg:w-[55%] flex flex-col lg:flex-row gap-5">
+            {/* Mobile-only title and price above image */}
+            <div className="sm:hidden order-1">
+              <h1 className="text-xl font-semibold text-slate-900 leading-snug">
+                {product.title}
+              </h1>
+              <div className="flex items-center gap-3 mt-2">
+                <span className="text-lg font-bold" style={{ color: TEAL }}>
+                  ₹{product.price}
+                </span>
+                <span className="line-through text-gray-500">
+                  ₹{product.originalPrice}
+                </span>
+              </div>
+            </div>
 
             {/* Thumbnails */}
-            <div className="flex lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto lg:max-h-[600px]">
+            <div className="order-3 lg:order-1 w-full lg:w-auto flex justify-center lg:justify-start lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto lg:max-h-[600px]">
               {product.images.map((img, idx) => (
                 <button
                   key={idx}
@@ -114,8 +147,8 @@ export default function ProductDetail() {
             </div>
 
             {/* Main Image */}
-            <div className="flex-1 flex justify-center items-center">
-              <div className="w-full max-w-[520px] aspect-[4/5] bg-white rounded-2xl overflow-hidden shadow-md">
+            <div className="order-2 lg:order-2 flex-1 flex justify-center items-start">
+              <div className="w-full max-w-[420px] aspect-[4/5] bg-white rounded-2xl overflow-hidden shadow-md">
                 <img
                   src={product.images[activeImage]}
                   alt={product.title}
@@ -126,16 +159,16 @@ export default function ProductDetail() {
           </div>
 
           {/* RIGHT - DETAILS (40%) */}
-          <div className="w-full lg:w-[40%]">
+          <div className="w-full lg:w-[45%]">
 
             {/* Title */}
-            <h1 className="text-xl sm:text-2xl lg:text-4xl font-semibold text-slate-900 leading-snug mb-4 sm:mb-6">
+            <h1 className="hidden sm:block text-xl sm:text-2xl lg:text-4xl font-semibold text-slate-900 leading-snug mb-4 sm:mb-6">
               {product.title}
             </h1>
 
             {/* Price */}
-            <div className="flex items-center gap-3 mb-6">
-              <span className="text-3xl font-bold" style={{ color: TEAL }}>
+            <div className="hidden sm:flex items-center gap-3 mb-6">
+              <span className="text-lg sm:text-2xl font-bold" style={{ color: TEAL }}>
                 ₹{product.price}
               </span>
               <span className="line-through text-gray-400">
@@ -143,26 +176,40 @@ export default function ProductDetail() {
               </span>
             </div>
 
+            {/* Icons */}
+            <div className="flex gap-4 mb-6" style={{ color: "#000000" }}>
+              <Heart />
+              <Share2 />
+              <ShoppingBag />
+              <Star />
+            </div>
+
             <div className="mb-6" ref={colorQtyWrapRef}>
-              <div className="flex items-start gap-[48px]">
+              <div className="flex items-start" style={{ columnGap: BETWEEN_BLOCKS_GAP_PX }}>
                 {/* Color */}
                 <div className="inline-flex flex-col">
                   <p className="text-sm font-medium mb-2">Color</p>
                   <div
-                    className={qtyBesideColors ? "flex gap-3" : "flex flex-wrap gap-3"}
-                    style={qtyBesideColors ? { width: colorsOneLineWidthPx } : undefined}
+                    ref={colorsRowRef}
+                    className={
+                      qtyBesideColors ? "inline-flex gap-3" : "flex flex-wrap gap-3"
+                    }
                   >
                     {product.colors.map((color) => (
-                      <button
-                        key={color.name}
-                        onClick={() => setSelectedColor(color.name)}
-                        className={`w-11 h-11 rounded-full border-2 ${
-                          selectedColor === color.name
-                            ? "border-[#115E59]"
-                            : "border-gray-200"
-                        }`}
-                        style={{ backgroundColor: color.hex }}
-                      />
+                      <div key={color.name} className="flex flex-col items-center">
+                        <button
+                          onClick={() => setSelectedColor(color.name)}
+                          className={`w-11 h-11 rounded-full border-2 ${
+                            selectedColor === color.name
+                              ? "border-[#115E59]"
+                              : "border-gray-200"
+                          }`}
+                          style={{ backgroundColor: color.hex }}
+                        />
+                        <span className="mt-1 text-xs text-slate-700">
+                          {color.name}
+                        </span>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -182,7 +229,7 @@ export default function ProductDetail() {
                       >
                         <Minus size={18} />
                       </button>
-                      <span className="px-4 font-semibold tabular-nums leading-none">
+                      <span className="px-4 font-bold tabular-nums leading-none">
                         {quantity}
                       </span>
                       <button
@@ -247,8 +294,6 @@ export default function ProductDetail() {
               </div>
             </div>
 
-            {/* Quantity moved next to Color */}
-
             {/* CTA */}
             <div
               className="flex flex-col sm:flex-row gap-3 mb-8"
@@ -266,13 +311,19 @@ export default function ProductDetail() {
               </button>
             </div>
 
-            {/* Icons */}
-            <div className="flex gap-4" style={{ color: TEAL_DARK }}>
-              <Heart />
-              <Share2 />
-              <ShoppingBag />
-              <Star />
-            </div>
+            {/* Product Details */}
+            <section className="mb-8">
+              <h2 className="text-lg font-semibold text-slate-900 mb-4">
+                Product Details
+              </h2>
+              <ul className="list-disc pl-5 space-y-2 text-sm text-slate-800">
+                {product.descriptionPoints.map((point) => (
+                  <li key={point} className="leading-relaxed">
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </section>
           </div>
         </div>
       </main>
@@ -282,14 +333,14 @@ export default function ProductDetail() {
       {/* MOBILE STICKY BAR */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t p-3 safe-bottom flex gap-2">
         <button
-          className="flex-1 border py-3 rounded-full font-bold"
-          style={{ borderColor: "#000000", color: "#000000", backgroundColor: "#FFFFFF" }}
+          className="flex-1 py-3 rounded-full font-bold text-black"
+          style={{ backgroundColor: LAVENDER }}
         >
-          ADD
+          ADD TO CART
         </button>
         <button
-          className="flex-1 py-3 rounded-full font-bold text-slate-900"
-          style={{ backgroundColor: LAVENDER }}
+          className="flex-1 py-3 rounded-full font-bold text-white"
+          style={{ backgroundColor: TEAL }}
         >
           BUY NOW
         </button>
