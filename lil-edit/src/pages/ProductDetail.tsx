@@ -65,7 +65,7 @@ const product = {
   sizes: ["6-12 Months", "1-2 Years", "2-3 Years", "3-4 Years"],
   colors: [
     { name: "White", hex: "#FFFFFF" },
-    { name: "Black", hex: "#00000F" },
+    { name: "Black", hex: "#000000" },
 
   ],
 };
@@ -74,6 +74,7 @@ export default function ProductDetail() {
   const [activeImage, setActiveImage] = useState(0);
   const [api, setApi] = useState<CarouselApi>();
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [isDesktopViewer, setIsDesktopViewer] = useState(false);
   const [viewerApi, setViewerApi] = useState<CarouselApi>();
   const [selectedSize, setSelectedSize] = useState(product.sizes[0]);
   const [selectedColor, setSelectedColor] = useState(product.colors[0].name);
@@ -84,6 +85,7 @@ export default function ProductDetail() {
   const colorsRowRef = useRef<HTMLDivElement | null>(null);
   const qtyBlockRef = useRef<HTMLDivElement | null>(null);
   const thumbnailStripRef = useRef<HTMLDivElement>(null);
+  const canOpenViewer = true;
 
   useLayoutEffect(() => {
     if (!api) return;
@@ -110,6 +112,14 @@ export default function ProductDetail() {
       viewerApi.off("select", onSelect);
     };
   }, [viewerApi, api]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 640px)");
+    const update = () => setIsDesktopViewer(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     if (!isViewerOpen) return;
@@ -150,6 +160,9 @@ export default function ProductDetail() {
     api?.scrollTo(idx);
     viewerApi?.scrollTo(idx);
   };
+
+  const decreaseQuantity = () => setQuantity((prev) => Math.max(1, prev - 1));
+  const increaseQuantity = () => setQuantity((prev) => prev + 1);
 
   useLayoutEffect(() => {
     const el = colorQtyWrapRef.current;
@@ -207,12 +220,12 @@ export default function ProductDetail() {
 
             {/* Thumbnails */}
             <div className="order-3 lg:order-1 w-full lg:w-28 shrink-0 relative">
-              <div className="flex justify-center lg:justify-start lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto w-full h-full lg:absolute lg:inset-0 no-scrollbar">
+              <div className="flex justify-start lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto w-full h-full lg:absolute lg:inset-0 no-scrollbar pb-1 lg:pb-0">
                 {product.images.map((img, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleThumbnailClick(idx)}
-                    className={`w-24 h-32 lg:w-28 lg:h-36 rounded-xl overflow-hidden shrink-0 ${activeImage === idx
+                    className={`w-24 h-32 lg:w-28 lg:h-36 rounded-xl overflow-hidden shrink-0 snap-center lg:snap-align-none ${activeImage === idx
                       ? "border-4 border-[#0F766E]"
                       : "border border-gray-200"
                       }`}
@@ -229,7 +242,7 @@ export default function ProductDetail() {
             </div>
 
             {/* Main Image */}
-            <div className="order-2 lg:order-2 flex-1 flex justify-center items-start">
+            <div className="order-2 lg:order-2 flex-1 flex justify-start lg:justify-center items-start">
               <Carousel
                 setApi={setApi}
                 opts={{ loop: true }}
@@ -244,7 +257,9 @@ export default function ProductDetail() {
                           alt={`${product.title} ${idx + 1}`}
                           className="w-full h-full object-cover select-none hover:scale-105 transition duration-500 cursor-zoom-in"
                           draggable={false}
-                          onClick={() => setIsViewerOpen(true)}
+                          onClick={() => {
+                            if (canOpenViewer) setIsViewerOpen(true);
+                          }}
                         />
                       </div>
                     </CarouselItem>
@@ -274,10 +289,10 @@ export default function ProductDetail() {
 
             {/* Icons */}
             <div className="flex gap-4 mb-6" style={{ color: "#000000" }}>
-              <Heart />
-              <Share2 />
-              <ShoppingBag />
-              <Star />
+              <Heart aria-label="Add to wishlist" />
+              <Share2 aria-label="Share product" />
+              <ShoppingBag aria-label="Add to bag" />
+              <Star aria-label="Rate product" />
             </div>
 
             <div className="mb-6" ref={colorQtyWrapRef}>
@@ -318,7 +333,7 @@ export default function ProductDetail() {
                       style={{ borderColor: TEAL_DARK }}
                     >
                       <button
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        onClick={decreaseQuantity}
                         className="h-11 w-11 flex items-center justify-center"
                         style={{ color: TEAL_DARK }}
                       >
@@ -328,7 +343,7 @@ export default function ProductDetail() {
                         {quantity}
                       </span>
                       <button
-                        onClick={() => setQuantity(quantity + 1)}
+                        onClick={increaseQuantity}
                         className="h-11 w-11 flex items-center justify-center"
                         style={{ color: TEAL_DARK }}
                       >
@@ -348,7 +363,7 @@ export default function ProductDetail() {
                     style={{ borderColor: TEAL_DARK }}
                   >
                     <button
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      onClick={decreaseQuantity}
                       className="h-11 w-11 flex items-center justify-center"
                       style={{ color: TEAL_DARK }}
                     >
@@ -358,7 +373,7 @@ export default function ProductDetail() {
                       {quantity}
                     </span>
                     <button
-                      onClick={() => setQuantity(quantity + 1)}
+                      onClick={increaseQuantity}
                       className="h-11 w-11 flex items-center justify-center"
                       style={{ color: TEAL_DARK }}
                     >
@@ -391,15 +406,16 @@ export default function ProductDetail() {
             {/* CTA */}
             <div
               className="flex flex-col sm:flex-row gap-3 mb-8"
-              style={{ ["--lavender" as any]: LAVENDER, ["--teal" as any]: TEAL }}
             >
               <button
-                className="flex-1 bg-[var(--lavender)] text-black py-3 rounded-full font-bold transition-colors hover:brightness-[0.98]"
+                className="flex-1 text-black py-3 rounded-full font-bold transition-colors hover:brightness-[0.98]"
+                style={{ backgroundColor: LAVENDER }}
               >
                 ADD TO CART
               </button>
               <button
-                className="flex-1 bg-[var(--teal)] text-white py-3 rounded-full font-bold transition-colors hover:brightness-95"
+                className="flex-1 text-white py-3 rounded-full font-bold transition-colors hover:brightness-95"
+                style={{ backgroundColor: TEAL }}
               >
                 BUY NOW
               </button>
@@ -425,15 +441,17 @@ export default function ProductDetail() {
       {/* FULL SCREEN VIEWER */}
       {isViewerOpen && (
         <div
-          className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm animate-in fade-in duration-300 flex flex-col"
+          className="fixed inset-0 z-[100] h-[100dvh] flex flex-col bg-black/95 overflow-hidden"
+          style={{
+            paddingTop: 'env(safe-area-inset-top)',
+            paddingBottom: 'env(safe-area-inset-bottom)'
+          }}
           onClick={() => setIsViewerOpen(false)}
         >
-          {/* Header */}
-          <div
-            className="flex justify-between items-center p-4 sm:p-6 text-white shrink-0 absolute top-0 w-full z-10 pointer-events-none"
-          >
+          {/* TOP BAR */}
+          <div className="w-full max-w-7xl mx-auto h-auto flex items-center justify-between px-4 md:px-8 py-4 shrink-0 text-white z-10 pointer-events-none">
             <div className="w-10"></div>
-            <div className="text-sm sm:text-base font-semibold tracking-widest bg-black/40 px-3 py-1 rounded-full backdrop-blur-md">
+            <div className="text-sm md:text-base font-semibold tracking-widest bg-black/40 px-4 py-1.5 rounded-full backdrop-blur-md">
               {activeImage + 1} / {product.images.length}
             </div>
             <button
@@ -444,19 +462,23 @@ export default function ProductDetail() {
             </button>
           </div>
 
-          {/* Main Content (Carousel) */}
+          {/* MAIN IMAGE AREA */}
           <div
-            className="flex-1 relative flex items-center justify-center min-h-0 w-full"
+            className="flex-1 min-h-0 flex items-center justify-center relative w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <Carousel setApi={setViewerApi} opts={{ loop: true, startIndex: activeImage }} className="w-full h-full flex items-center text-white">
+            <Carousel
+              setApi={setViewerApi}
+              opts={{ loop: true, startIndex: activeImage }}
+              className="absolute inset-0 w-full h-full [&>div.overflow-hidden]:h-full"
+            >
               <CarouselContent className="h-full ml-0 items-center">
                 {product.images.map((img, idx) => (
-                  <CarouselItem key={idx} className="pl-0 basis-full flex items-center justify-center h-full relative">
+                  <CarouselItem key={idx} className="pl-0 basis-full h-full flex items-center justify-center">
                     <img
                       src={img}
                       alt={`Preview ${idx + 1}`}
-                      className="max-w-full max-h-[85vh] w-auto h-auto object-contain select-none cursor-zoom-out hover:scale-[1.01] transition-transform duration-500"
+                      className="max-h-full max-w-full object-contain select-none cursor-zoom-out hover:scale-[1.01] transition-transform duration-500 px-2 sm:px-4"
                       draggable={false}
                       onClick={() => setIsViewerOpen(false)}
                     />
@@ -467,27 +489,25 @@ export default function ProductDetail() {
 
             {/* Desktop Left / Right Controls */}
             <button
-              className="hidden md:flex absolute left-4 w-12 h-12 bg-white/10 hover:bg-white/20 items-center justify-center rounded-full text-white backdrop-blur transition-all"
+              className="hidden md:flex absolute left-4 md:left-8 xl:left-12 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 items-center justify-center rounded-full text-white backdrop-blur transition-all disabled:opacity-50 z-10"
               onClick={(e) => { e.stopPropagation(); viewerApi?.scrollPrev(); }}
             >
               <ChevronLeft size={28} />
             </button>
             <button
-              className="hidden md:flex absolute right-4 w-12 h-12 bg-white/10 hover:bg-white/20 items-center justify-center rounded-full text-white backdrop-blur transition-all"
+              className="hidden md:flex absolute right-4 md:right-8 xl:right-12 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 items-center justify-center rounded-full text-white backdrop-blur transition-all disabled:opacity-50 z-10"
               onClick={(e) => { e.stopPropagation(); viewerApi?.scrollNext(); }}
             >
               <ChevronRight size={28} />
             </button>
           </div>
 
-          {/* Thumbnail Strip */}
-          <div
-            className="shrink-0 p-4 pb-6 sm:pb-8 flex justify-center w-full bg-gradient-to-t from-black/50 to-transparent"
-            onClick={(e) => e.stopPropagation()}
-          >
+          {/* THUMBNAIL STRIP */}
+          <div className="w-full max-w-7xl mx-auto pb-3 md:pb-6 shrink-0 pointer-events-none">
             <div
+              className="h-[80px] sm:h-[90px] mx-auto flex items-center md:justify-center gap-3 overflow-x-auto px-4 md:px-8 pointer-events-auto no-scrollbar scroll-smooth snap-x snap-mandatory"
               ref={thumbnailStripRef}
-              className="flex gap-2 sm:gap-3 overflow-x-auto no-scrollbar scroll-smooth w-full max-w-3xl px-4 items-center"
+              onClick={(e) => e.stopPropagation()}
             >
               {product.images.map((img, idx) => (
                 <button
@@ -498,13 +518,15 @@ export default function ProductDetail() {
                     viewerApi?.scrollTo(idx);
                     api?.scrollTo(idx);
                   }}
-                  className={`relative shrink-0 h-16 w-16 sm:h-20 sm:w-20 rounded-lg overflow-hidden transition-all duration-300 bg-black/50`}
-                  style={{
-                    border: activeImage === idx ? '3px solid #0F766E' : '3px solid #D1D5DB',
-                    opacity: activeImage === idx ? 1 : 0.6
-                  }}
+                  className={`relative shrink-0 h-[64px] sm:h-[74px] w-[50px] sm:w-[60px] rounded-lg overflow-hidden transition-all duration-200 snap-start bg-black/50 ${activeImage === idx ? 'border-2 border-[#0F766E]' : 'border border-gray-300'
+                    }`}
+                  style={{ opacity: activeImage === idx ? 1 : 0.6 }}
                 >
-                  <img src={img} alt="" className="w-full h-full object-cover pointer-events-none hover:opacity-100 transition-opacity" />
+                  <img
+                    src={img}
+                    alt={`Thumbnail ${idx + 1}`}
+                    className="w-full h-full object-cover pointer-events-none hover:opacity-100 transition-opacity"
+                  />
                 </button>
               ))}
             </div>
