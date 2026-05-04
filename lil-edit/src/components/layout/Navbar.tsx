@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Heart, ShoppingBag, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.png";
+import MegaMenu from "@/components/MegaMenu";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -101,6 +102,8 @@ const Navbar = () => {
           </div>
         </div>
       )}
+
+      <MegaMenu />
     </header>
   );
 };
