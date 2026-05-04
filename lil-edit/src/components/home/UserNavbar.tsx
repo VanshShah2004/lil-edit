@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   LogOut,
@@ -21,6 +21,8 @@ const UserNavbar = () => {
   const profileCloseTimeoutRef = useRef<number | null>(null);
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isProductPage = location.pathname.startsWith("/product");
   const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
   const firstNameCandidate =
     (typeof metadata.first_name === "string" && metadata.first_name.trim()) ||
@@ -80,7 +82,7 @@ const UserNavbar = () => {
       className={`fixed top-0 left-0 right-0 z-50 border-b border-border/70 transition-all duration-300 ${isScrolled ? "bg-background/95 backdrop-blur-lg shadow-sm" : "bg-background/90 backdrop-blur-md"
         }`}
     >
-      <div className="container mx-auto flex items-center justify-between h-[5rem] md:h-[4.25rem] lg:h-[4.5rem] px-3 sm:px-4 lg:px-8">
+      <div className="container mx-auto flex items-center justify-between h-[5rem] md:h-[3.5rem] lg:h-[4rem] px-3 sm:px-4 lg:px-8">
         <Link to="/dashboard" className="flex-shrink flex items-center gap-2 sm:gap-3 min-w-0">
           <img src={logo} alt="The Lil Edit" className="h-10 sm:h-12 md:h-10 lg:h-11 w-auto shrink-0" />
           <div className="text-xl sm:text-xl md:text-[20px] lg:text-[22px] text-foreground leading-none truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
@@ -189,7 +191,7 @@ const UserNavbar = () => {
           </div>
         </div>
       </div>
-      <MegaMenu />
+      {!isProductPage && <MegaMenu />}
 
     </header>
   );

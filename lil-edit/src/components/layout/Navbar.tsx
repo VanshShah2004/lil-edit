@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Heart, ShoppingBag, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.png";
@@ -9,14 +9,16 @@ const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isLoginHovered, setIsLoginHovered] = useState(false);
   const [isSignupHovered, setIsSignupHovered] = useState(false);
+  const location = useLocation();
+  const isProductPage = location.pathname.startsWith("/product");
 
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-      <nav className="container mx-auto flex items-center justify-between py-2.5 md:py-3 px-3 sm:px-4 lg:px-8">
+      <nav className="container mx-auto flex items-center justify-between py-2.5 md:py-1.5 lg:py-2 px-3 sm:px-4 lg:px-8">
         {/* Logo and Branding */}
         <Link to="/" className="flex-shrink flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
-          <img src={logo} alt="The Lil Edit" className="h-9 sm:h-12 md:h-16 w-auto shrink-0" />
-          <div className="text-lg sm:text-2xl md:text-4xl text-foreground leading-none truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <img src={logo} alt="The Lil Edit" className="h-9 sm:h-12 md:h-10 lg:h-11 w-auto shrink-0" />
+          <div className="text-lg sm:text-2xl md:text-[20px] lg:text-[22px] text-foreground leading-none truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
             The Lil Edit
           </div>
         </Link>
@@ -103,7 +105,7 @@ const Navbar = () => {
         </div>
       )}
 
-      <MegaMenu />
+      {!isProductPage && <MegaMenu />}
     </header>
   );
 };
