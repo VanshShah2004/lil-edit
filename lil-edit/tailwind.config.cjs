@@ -95,6 +95,14 @@ module.exports = {
           from: { opacity: "0", transform: "translateY(10px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "slide-in-right": {
+          from: { transform: "translateX(100%)" },
+          to: { transform: "translateX(0)" },
+        },
+        "slide-up-fade": {
+          from: { opacity: "0", transform: "translateY(5%)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -102,6 +110,8 @@ module.exports = {
         "caret-blink": "caret-blink 1.25s ease-out infinite",
         "fade-in": "fade-in 0.3s ease-out",
         "fade-in-up": "fade-in-up 0.6s ease-out forwards",
+        "slide-in-right": "slide-in-right 0.3s ease-in-out",
+        "slide-up-fade": "slide-up-fade 0.3s ease-in-out",
       },
     },
   },

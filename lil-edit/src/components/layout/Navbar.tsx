@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Heart, ShoppingBag, Menu, X } from "lucide-react";
+import { Heart, ShoppingBag, Menu, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.png";
 import MegaMenu from "@/components/MegaMenu";
+import SearchPanel from "@/components/search/SearchPanel";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isLoginHovered, setIsLoginHovered] = useState(false);
   const [isSignupHovered, setIsSignupHovered] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const location = useLocation();
   const isProductPage = location.pathname.startsWith("/product");
 
@@ -33,6 +35,13 @@ const Navbar = () => {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <button 
+            type="button" 
+            onClick={() => setIsSearchOpen(true)}
+            className="hidden md:flex text-foreground/60 hover:text-primary transition-colors cursor-pointer bg-transparent border-none p-0"
+          >
+            <Search className="h-5 w-5" />
+          </button>
           <Link to="/wishlist" className="hidden md:flex text-foreground/60 hover:text-primary transition-colors">
             <Heart className="h-5 w-5" />
           </Link>
@@ -61,6 +70,13 @@ const Navbar = () => {
               Sign up
             </Button>
           </Link>
+          <button
+            type="button"
+            onClick={() => setIsSearchOpen(true)}
+            className="md:hidden text-foreground/70 p-1 mr-1"
+          >
+            <Search className="h-5 w-5" />
+          </button>
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="md:hidden text-foreground/70 p-1"
@@ -106,6 +122,7 @@ const Navbar = () => {
       )}
 
       {!isProductPage && <MegaMenu />}
+      <SearchPanel isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </header>
   );
 };

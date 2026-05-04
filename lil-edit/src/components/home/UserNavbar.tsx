@@ -13,10 +13,12 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import logo from "@/assets/logo.png";
 import MegaMenu from "@/components/MegaMenu";
+import SearchPanel from "@/components/search/SearchPanel";
 
 const UserNavbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const profileCloseTimeoutRef = useRef<number | null>(null);
   const { user, profile, signOut } = useAuth();
@@ -95,6 +97,7 @@ const UserNavbar = () => {
         <div className="flex items-center gap-2 sm:gap-2 md:gap-2.5 shrink-0">
           <button
             type="button"
+            onClick={() => setIsSearchOpen(true)}
             className="h-10 w-10 sm:h-10 sm:w-10 rounded-full border border-border bg-background text-foreground hover:bg-secondary transition-colors flex items-center justify-center"
             aria-label="Search"
           >
@@ -193,6 +196,7 @@ const UserNavbar = () => {
       </div>
       {!isProductPage && <MegaMenu />}
 
+      <SearchPanel isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </header>
   );
 };
