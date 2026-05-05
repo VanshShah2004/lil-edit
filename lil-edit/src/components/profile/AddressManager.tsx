@@ -173,15 +173,15 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
 
   return (
     <div className="bg-[#F8F6FC] rounded-2xl shadow-[0_4px_20px_-4px_rgba(147,136,170,0.15)] border border-[#EDEBF5] overflow-hidden">
-      <div className="px-6 py-5 border-b border-[#EDEBF5] bg-[#F1EEF8] flex justify-between items-center">
-        <h3 className="text-lg font-body font-medium text-foreground">Saved Addresses</h3>
+      <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-[#EDEBF5] bg-[#F1EEF8] flex justify-between items-center">
+        <h3 className="text-base sm:text-lg font-body font-medium text-foreground">Saved Addresses</h3>
         {!isFormOpen && (
           <button
             onClick={() => openForm()}
             className="inline-flex items-center text-sm font-medium text-teal-700 hover:text-teal-800 transition-colors"
           >
             <Plus className="w-4 h-4 mr-1" />
-            Add New Address
+            Add Address
           </button>
         )}
       </div>
@@ -320,7 +320,7 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
           </form>
         ) : addresses.length === 0 ? (
           <div className="text-center py-10 bg-white rounded-xl border border-[#EDEBF5] border-dashed">
-            <Navigation className="w-10 h-10 text-teal-200 mx-auto mb-3" />
+            <MapPin className="w-10 h-10 text-teal-200 mx-auto mb-3" />
             <h4 className="text-foreground font-medium mb-1">No addresses found</h4>
             <p className="text-muted-foreground text-sm mb-4">Add your delivery address to checkout faster.</p>
             <button
