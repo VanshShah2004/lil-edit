@@ -5,8 +5,7 @@ import { toast } from "sonner";
 import { Loader2, Save } from "lucide-react";
 import Footer from "@/components/layout/Footer";
 import UserNavbar from "@/components/home/UserNavbar";
-import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+// Mocking OTP
 
 export default function Profile() {
   const { user, profile } = useAuth();
@@ -19,7 +18,7 @@ export default function Profile() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [otp, setOtp] = useState("");
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [mockOtpSent, setMockOtpSent] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [otpError, setOtpError] = useState("");
@@ -69,7 +68,7 @@ export default function Profile() {
     const value = e.target.value.replace(/\D/g, "").slice(0, 10);
     setPhoneNumber(value);
     setIsPhoneVerified(false);
-    setConfirmationResult(null);
+    setMockOtpSent(false);
     setOtp("");
     setOtpError("");
   };
@@ -77,7 +76,7 @@ export default function Profile() {
   const handleCountryCodeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setCountryCode(e.target.value);
     setIsPhoneVerified(false);
-    setConfirmationResult(null);
+    setMockOtpSent(false);
     setOtp("");
     setOtpError("");
   };
@@ -90,47 +89,38 @@ export default function Profile() {
 
     try {
       setIsSendingOtp(true);
-      const fullPhone = `${countryCode}${phoneNumber}`;
-
-      if (!(window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'invisible',
-        });
-      }
-
-      const appVerifier = (window as any).recaptchaVerifier;
-      const result = await signInWithPhoneNumber(auth, fullPhone, appVerifier);
-      setConfirmationResult(result);
-      toast.success("OTP sent successfully");
+      
+      // Simulate network request
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      
+      setMockOtpSent(true);
+      setOtp(""); // Clear any existing OTP
+      toast.success("Mock OTP sent! (Use 123456 to verify)");
     } catch (error: any) {
-      console.error("Error sending OTP:", error);
-      toast.error(error.message || "Failed to send OTP");
-      if ((window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier.clear();
-        (window as any).recaptchaVerifier = null;
-      }
+      toast.error("Failed to send OTP");
     } finally {
       setIsSendingOtp(false);
     }
   };
 
   const handleVerifyOtp = async () => {
-    if (!otp || !confirmationResult) return;
+    if (!otp || !mockOtpSent) return;
 
     try {
       setIsVerifyingOtp(true);
       setOtpError("");
-      await confirmationResult.confirm(otp);
+      
+      // Simulate network verification
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Immediately sign out of Firebase so no session is kept on the frontend
-      await auth.signOut();
-
-      setIsPhoneVerified(true);
-      setConfirmationResult(null);
-      toast.success("Phone verified ✅");
-    } catch (error) {
-      setOtpError("OTP does not match ❌");
-      toast.error("Invalid OTP");
+      if (otp === "123456") {
+        setIsPhoneVerified(true);
+        setMockOtpSent(false);
+        toast.success("Phone verified ✅");
+      } else {
+        setOtpError("OTP does not match ❌");
+        toast.error("Invalid OTP");
+      }
     } finally {
       setIsVerifyingOtp(false);
     }
@@ -285,8 +275,8 @@ export default function Profile() {
               <div className="px-6 py-5 border-b border-[#EDEBF5] bg-[#F1EEF8]">
                 <h3 className="text-lg font-body font-medium text-foreground">Account Information</h3>
               </div>
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
+              <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                <div className="md:col-span-2">
                   <label className="block font-body text-sm text-foreground mb-1.5">Email Address</label>
                   <input
                     type="email"
@@ -295,76 +285,80 @@ export default function Profile() {
                     className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/30 font-body text-sm focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed"
                   />
                 </div>
-                <div>
+                <div className="md:col-span-2">
                   <label className="block font-body text-sm text-foreground mb-1.5">Phone Number</label>
-                  <div className="flex gap-2 mb-2">
-                    <select
-                      value={countryCode}
-                      onChange={handleCountryCodeChange}
-                      className="w-[100px] px-3 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
-                    >
-                      <option value="+91">+91 (IN)</option>
-                      <option value="+1">+1 (US)</option>
-                      <option value="+44">+44 (UK)</option>
-                      <option value="+61">+61 (AU)</option>
-                    </select>
-                    <input
-                      type="text"
-                      value={phoneNumber}
-                      onChange={handlePhoneChange}
-                      placeholder="10-digit number"
-                      maxLength={10}
-                      className="flex-1 px-4 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
-                    />
+                  <div className="flex flex-col sm:flex-row gap-2 mb-2">
+                    <div className="flex gap-2 flex-1">
+                      <select
+                        value={countryCode}
+                        onChange={handleCountryCodeChange}
+                        className="w-[90px] sm:w-[100px] shrink-0 px-3 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
+                      >
+                        <option value="+91">+91 (IN)</option>
+                        <option value="+1">+1 (US)</option>
+                        <option value="+44">+44 (UK)</option>
+                        <option value="+61">+61 (AU)</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={phoneNumber}
+                        onChange={handlePhoneChange}
+                        placeholder="10-digit number"
+                        maxLength={10}
+                        className="flex-1 min-w-0 px-4 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
+                      />
+                    </div>
+                    
+                    {/* Verify Button inlined with input */}
+                    {phoneNumber.length === 10 && `${countryCode}${phoneNumber}` !== (profile?.phone_number || "") && !mockOtpSent && !isPhoneVerified && (
+                      <button
+                        type="button"
+                        onClick={handleSendOtp}
+                        disabled={isSendingOtp}
+                        className="w-full sm:w-[100px] shrink-0 px-3 py-3 bg-teal-700 text-white font-body text-sm font-medium rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm flex items-center justify-center whitespace-nowrap"
+                      >
+                        {isSendingOtp ? "Sending..." : "Verify"}
+                      </button>
+                    )}
                   </div>
 
                   {/* Verification UI */}
                   {phoneNumber.length === 10 && `${countryCode}${phoneNumber}` !== (profile?.phone_number || "") && (
-                    <div className="mt-2 space-y-2">
-                      {!confirmationResult && !isPhoneVerified && (
-                        <button
-                          type="button"
-                          onClick={handleSendOtp}
-                          disabled={isSendingOtp}
-                          className="text-sm px-4 py-2 bg-teal-50 text-teal-700 font-medium rounded-lg hover:bg-teal-100 transition-colors disabled:opacity-50"
-                        >
-                          {isSendingOtp ? "Sending..." : "Verify"}
-                        </button>
-                      )}
-
-                      {confirmationResult && !isPhoneVerified && (
-                        <div className="flex items-center gap-2">
+                    <>
+                      {mockOtpSent && !isPhoneVerified && (
+                        <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
                           <input
                             type="text"
                             value={otp}
                             onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                             placeholder="Enter 6-digit OTP"
-                            className="w-32 px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            className="w-full sm:w-44 px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                           />
-                          <button
-                            type="button"
-                            onClick={handleVerifyOtp}
-                            disabled={isVerifyingOtp || otp.length < 6}
-                            className="text-sm px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
-                          >
-                            {isVerifyingOtp ? "Verifying..." : "Confirm"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleSendOtp}
-                            disabled={isSendingOtp}
-                            className="text-sm px-3 py-2 text-teal-700 hover:bg-teal-50 rounded-lg transition-colors"
-                          >
-                            Resend OTP
-                          </button>
+                          <div className="flex flex-1 sm:flex-none gap-2">
+                            <button
+                              type="button"
+                              onClick={handleVerifyOtp}
+                              disabled={isVerifyingOtp || otp.length < 6}
+                              className="flex-1 sm:flex-none text-sm px-4 py-2 bg-teal-700 text-white font-medium rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-50 whitespace-nowrap text-center"
+                            >
+                              {isVerifyingOtp ? "Verifying..." : "Confirm"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSendOtp}
+                              disabled={isSendingOtp}
+                              className="flex-1 sm:flex-none text-sm px-3 py-2 text-teal-700 hover:bg-teal-50 rounded-lg transition-colors whitespace-nowrap text-center"
+                            >
+                              Resend OTP
+                            </button>
+                          </div>
                         </div>
                       )}
 
                       {otpError && <p className="text-sm text-destructive mt-1">{otpError}</p>}
                       {isPhoneVerified && <p className="text-sm text-green-600 font-medium mt-1">Phone verified ✅</p>}
-                    </div>
+                    </>
                   )}
-                  <div id="recaptcha-container"></div>
                 </div>
               </div>
             </div>
@@ -374,7 +368,7 @@ export default function Profile() {
               <div className="px-6 py-5 border-b border-[#EDEBF5] bg-[#F1EEF8]">
                 <h3 className="text-lg font-body font-medium text-foreground">Personal Information</h3>
               </div>
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className="block font-body text-sm text-foreground mb-1.5">
                     First Name <span className="text-destructive">*</span>
@@ -432,7 +426,7 @@ export default function Profile() {
               <div className="px-6 py-5 border-b border-[#EDEBF5] bg-[#F1EEF8]">
                 <h3 className="text-lg font-body font-medium text-foreground">Delivery Address</h3>
               </div>
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div className="md:col-span-2">
                   <label className="block font-body text-sm text-foreground mb-1.5">Address Line 1</label>
                   <input
@@ -512,7 +506,7 @@ export default function Profile() {
               <button
                 type="submit"
                 disabled={isSaving || (`${countryCode}${phoneNumber}` !== (profile?.phone_number || "") && phoneNumber.length > 0 && !isPhoneVerified)}
-                className="inline-flex items-center justify-center px-10 py-3.5 bg-teal-600 text-white font-body text-sm rounded-xl hover:bg-teal-700 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-600 disabled:opacity-60 disabled:cursor-not-allowed shadow-md w-full sm:w-auto"
+                className="inline-flex items-center justify-center px-10 py-3.5 bg-teal-700 text-white font-body text-sm rounded-xl hover:bg-teal-800 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700 disabled:opacity-60 disabled:cursor-not-allowed shadow-md w-full sm:w-auto"
               >
                 {isSaving ? (
                   <>
