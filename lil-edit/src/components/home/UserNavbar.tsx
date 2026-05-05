@@ -24,7 +24,7 @@ const UserNavbar = () => {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const isProductPage = location.pathname.startsWith("/product");
+  const hideMegaMenu = location.pathname.startsWith("/product") || location.pathname.startsWith("/profile");
   const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
   const firstNameCandidate =
     (typeof metadata.first_name === "string" && metadata.first_name.trim()) ||
@@ -37,7 +37,7 @@ const UserNavbar = () => {
   const role = profile?.role ?? "customer";
   const isAdmin = role === "admin";
   const dashboardMenuItems = [
-    { to: "#", label: "Profile", icon: User, adminOnly: false },
+    { to: "/profile", label: "Profile", icon: User, adminOnly: false },
     { to: "#", label: "Orders", icon: Package, adminOnly: false },
     // Keep this role-aware list so admin-only options can be expanded easily.
     { to: "#", label: "Admin Panel", icon: LayoutDashboard, adminOnly: true },
@@ -194,7 +194,7 @@ const UserNavbar = () => {
           </div>
         </div>
       </div>
-      {!isProductPage && <MegaMenu />}
+      {!hideMegaMenu && <MegaMenu />}
 
       <SearchPanel isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </header>
