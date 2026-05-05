@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Sparkles } from "lucide-react";
 import Footer from "@/components/layout/Footer";
 import UserNavbar from "@/components/home/UserNavbar";
 // Mocking OTP
@@ -89,10 +89,10 @@ export default function Profile() {
 
     try {
       setIsSendingOtp(true);
-      
+
       // Simulate network request
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       setMockOtpSent(true);
       setOtp(""); // Clear any existing OTP
       toast.success("Mock OTP sent! (Use 123456 to verify)");
@@ -109,7 +109,7 @@ export default function Profile() {
     try {
       setIsVerifyingOtp(true);
       setOtpError("");
-      
+
       // Simulate network verification
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -188,6 +188,29 @@ export default function Profile() {
       return;
     }
 
+    const isAnyAddressFilled =
+      address.line1.trim() !== "" ||
+      address.line2.trim() !== "" ||
+      address.landmark.trim() !== "" ||
+      address.pincode.trim() !== "" ||
+      address.city.trim() !== "" ||
+      address.state.trim() !== "" ||
+      address.country.trim() !== "";
+
+    if (isAnyAddressFilled) {
+      if (
+        !address.line1.trim() ||
+        !address.line2.trim() ||
+        !address.pincode.trim() ||
+        !address.city.trim() ||
+        !address.state.trim() ||
+        !address.country.trim()
+      ) {
+        toast.error("Please fill all compulsory address details (Landmark is optional)");
+        return;
+      }
+    }
+
     if (address.pincode && address.pincode.length !== 6) {
       toast.error("Pincode must be exactly 6 digits");
       return;
@@ -262,7 +285,9 @@ export default function Profile() {
       <main className="flex-grow pt-[7rem] md:pt-[6rem] pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
           <div className="mb-10 text-center">
-            <h1 className="text-3xl md:text-4xl font-display text-teal-700 mb-3 font-semibold">My Profile</h1>
+            <h1 className="flex items-center justify-center gap-2 text-3xl md:text-4xl font-display text-teal-700 mb-3 font-semibold">
+              My Profile <Sparkles className="w-6 h-6 md:w-7 md:h-7 text-teal-700" fill="currentColor" />
+            </h1>
             <p className="text-muted-foreground font-body text-sm max-w-md mx-auto">
               Manage your personal details and delivery preferences
             </p>
@@ -308,16 +333,26 @@ export default function Profile() {
                         className="flex-1 min-w-0 px-4 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
                       />
                     </div>
-                    
+
                     {/* Verify Button inlined with input */}
-                    {phoneNumber.length === 10 && `${countryCode}${phoneNumber}` !== (profile?.phone_number || "") && !mockOtpSent && !isPhoneVerified && (
+                    {!mockOtpSent && !isPhoneVerified && (
                       <button
                         type="button"
                         onClick={handleSendOtp}
-                        disabled={isSendingOtp}
-                        className="w-full sm:w-[100px] shrink-0 px-3 py-3 bg-teal-700 text-white font-body text-sm font-medium rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm flex items-center justify-center whitespace-nowrap"
+                        disabled={isSendingOtp || phoneNumber.length !== 10 || `${countryCode}${phoneNumber}` === (profile?.phone_number || "")}
+                        className={`w-full sm:w-[100px] shrink-0 px-3 py-3 font-body text-sm font-medium rounded-xl transition-all shadow-sm flex items-center justify-center whitespace-nowrap ${phoneNumber.length === 10 && `${countryCode}${phoneNumber}` !== (profile?.phone_number || "")
+                            ? "bg-teal-700 text-white hover:bg-teal-800 active:scale-[0.98]"
+                            : "bg-gray-200 text-gray-400 cursor-not-allowed opacity-60 shadow-none"
+                          }`}
                       >
-                        {isSendingOtp ? "Sending..." : "Verify"}
+                        {isSendingOtp ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                            Wait
+                          </>
+                        ) : (
+                          "Verify"
+                        )}
                       </button>
                     )}
                   </div>
@@ -339,17 +374,31 @@ export default function Profile() {
                               type="button"
                               onClick={handleVerifyOtp}
                               disabled={isVerifyingOtp || otp.length < 6}
-                              className="flex-1 sm:flex-none text-sm px-4 py-2 bg-teal-700 text-white font-medium rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-50 whitespace-nowrap text-center"
+                              className="flex-1 sm:flex-none flex items-center justify-center text-sm px-4 py-2 bg-teal-700 text-white font-medium rounded-lg hover:bg-teal-800 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap text-center"
                             >
-                              {isVerifyingOtp ? "Verifying..." : "Confirm"}
+                              {isVerifyingOtp ? (
+                                <>
+                                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                  Checking
+                                </>
+                              ) : (
+                                "Confirm"
+                              )}
                             </button>
                             <button
                               type="button"
                               onClick={handleSendOtp}
                               disabled={isSendingOtp}
-                              className="flex-1 sm:flex-none text-sm px-3 py-2 text-teal-700 hover:bg-teal-50 rounded-lg transition-colors whitespace-nowrap text-center"
+                              className="flex-1 sm:flex-none flex items-center justify-center text-sm px-3 py-2 text-teal-700 hover:bg-teal-50 active:scale-[0.98] rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap text-center"
                             >
-                              Resend OTP
+                              {isSendingOtp ? (
+                                <>
+                                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                  Sending
+                                </>
+                              ) : (
+                                "Resend OTP"
+                              )}
                             </button>
                           </div>
                         </div>
@@ -434,7 +483,7 @@ export default function Profile() {
                     value={address.line1}
                     onChange={(e) => setAddress({ ...address, line1: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
-                    placeholder="Street address, P.O. box, company name, c/o"
+                    placeholder="Apartment, unit, building, floor, etc."
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -444,11 +493,11 @@ export default function Profile() {
                     value={address.line2}
                     onChange={(e) => setAddress({ ...address, line2: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
-                    placeholder="Apartment, suite, unit, building, floor, etc."
+                    placeholder="Street address"
                   />
                 </div>
                 <div>
-                  <label className="block font-body text-sm text-foreground mb-1.5">Landmark</label>
+                  <label className="block font-body text-sm text-foreground mb-1.5">Landmark(Optional)</label>
                   <input
                     type="text"
                     value={address.landmark}
@@ -506,7 +555,7 @@ export default function Profile() {
               <button
                 type="submit"
                 disabled={isSaving || (`${countryCode}${phoneNumber}` !== (profile?.phone_number || "") && phoneNumber.length > 0 && !isPhoneVerified)}
-                className="inline-flex items-center justify-center px-10 py-3.5 bg-teal-700 text-white font-body text-sm rounded-xl hover:bg-teal-800 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700 disabled:opacity-60 disabled:cursor-not-allowed shadow-md w-full sm:w-auto"
+                className="inline-flex items-center justify-center px-10 py-3.5 bg-teal-700 text-white font-body text-sm rounded-xl hover:bg-teal-800 active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700 disabled:opacity-60 disabled:cursor-not-allowed shadow-md w-full sm:w-auto"
               >
                 {isSaving ? (
                   <>
