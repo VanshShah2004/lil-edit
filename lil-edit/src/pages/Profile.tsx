@@ -5,12 +5,24 @@ import { toast } from "sonner";
 import { Loader2, Save } from "lucide-react";
 import Footer from "@/components/layout/Footer";
 import UserNavbar from "@/components/home/UserNavbar";
+import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 export default function Profile() {
   const { user, profile } = useAuth();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Phone Auth State
+  const [countryCode, setCountryCode] = useState("+91");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [otpError, setOtpError] = useState("");
 
   // Personal Info State
   const [personalInfo, setPersonalInfo] = useState({
@@ -39,9 +51,90 @@ export default function Profile() {
         dob: profile.dob || "",
         gender: profile.gender || "",
       });
+
+      if (profile.phone_number) {
+        const match = profile.phone_number.match(/^(\+\d{1,4})(\d{10})$/);
+        if (match) {
+          setCountryCode(match[1]);
+          setPhoneNumber(match[2]);
+        } else {
+          setPhoneNumber(profile.phone_number);
+        }
+      }
       fetchAddress();
     }
   }, [user, profile]);
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+    setPhoneNumber(value);
+    setIsPhoneVerified(false);
+    setConfirmationResult(null);
+    setOtp("");
+    setOtpError("");
+  };
+
+  const handleCountryCodeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setCountryCode(e.target.value);
+    setIsPhoneVerified(false);
+    setConfirmationResult(null);
+    setOtp("");
+    setOtpError("");
+  };
+
+  const handleSendOtp = async () => {
+    if (phoneNumber.length !== 10) {
+      toast.error("Phone number must be 10 digits");
+      return;
+    }
+
+    try {
+      setIsSendingOtp(true);
+      const fullPhone = `${countryCode}${phoneNumber}`;
+
+      if (!(window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+        });
+      }
+
+      const appVerifier = (window as any).recaptchaVerifier;
+      const result = await signInWithPhoneNumber(auth, fullPhone, appVerifier);
+      setConfirmationResult(result);
+      toast.success("OTP sent successfully");
+    } catch (error: any) {
+      console.error("Error sending OTP:", error);
+      toast.error(error.message || "Failed to send OTP");
+      if ((window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier.clear();
+        (window as any).recaptchaVerifier = null;
+      }
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp || !confirmationResult) return;
+
+    try {
+      setIsVerifyingOtp(true);
+      setOtpError("");
+      await confirmationResult.confirm(otp);
+
+      // Immediately sign out of Firebase so no session is kept on the frontend
+      await auth.signOut();
+
+      setIsPhoneVerified(true);
+      setConfirmationResult(null);
+      toast.success("Phone verified ✅");
+    } catch (error) {
+      setOtpError("OTP does not match ❌");
+      toast.error("Invalid OTP");
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
 
   const fetchAddress = async () => {
     if (!user) return;
@@ -110,18 +203,33 @@ export default function Profile() {
       return;
     }
 
+    const fullPhone = `${countryCode}${phoneNumber}`;
+    const initialPhone = profile?.phone_number || "";
+    const isPhoneChanged = fullPhone !== initialPhone && phoneNumber.length > 0;
+
+    if (isPhoneChanged && !isPhoneVerified) {
+      toast.error("Please verify your phone number before saving");
+      return;
+    }
+
     setIsSaving(true);
 
     try {
       // 1. Update Profile
+      const updateData: any = {
+        first_name: personalInfo.first_name,
+        last_name: personalInfo.last_name,
+        dob: personalInfo.dob || null,
+        gender: personalInfo.gender || null,
+      };
+
+      if (isPhoneChanged && isPhoneVerified) {
+        updateData.phone_number = fullPhone;
+      }
+
       const { error: profileError } = await supabase
         .from("profiles")
-        .update({
-          first_name: personalInfo.first_name,
-          last_name: personalInfo.last_name,
-          dob: personalInfo.dob || null,
-          gender: personalInfo.gender || null,
-        })
+        .update(updateData)
         .eq("id", user.id);
 
       if (profileError) throw profileError;
@@ -189,12 +297,74 @@ export default function Profile() {
                 </div>
                 <div>
                   <label className="block font-body text-sm text-foreground mb-1.5">Phone Number</label>
-                  <input
-                    type="text"
-                    disabled
-                    value={profile?.phone_number || "Not provided"}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/30 font-body text-sm focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed"
-                  />
+                  <div className="flex gap-2 mb-2">
+                    <select
+                      value={countryCode}
+                      onChange={handleCountryCodeChange}
+                      className="w-[100px] px-3 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
+                    >
+                      <option value="+91">+91 (IN)</option>
+                      <option value="+1">+1 (US)</option>
+                      <option value="+44">+44 (UK)</option>
+                      <option value="+61">+61 (AU)</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={phoneNumber}
+                      onChange={handlePhoneChange}
+                      placeholder="10-digit number"
+                      maxLength={10}
+                      className="flex-1 px-4 py-3 rounded-xl border border-border bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
+                    />
+                  </div>
+
+                  {/* Verification UI */}
+                  {phoneNumber.length === 10 && `${countryCode}${phoneNumber}` !== (profile?.phone_number || "") && (
+                    <div className="mt-2 space-y-2">
+                      {!confirmationResult && !isPhoneVerified && (
+                        <button
+                          type="button"
+                          onClick={handleSendOtp}
+                          disabled={isSendingOtp}
+                          className="text-sm px-4 py-2 bg-teal-50 text-teal-700 font-medium rounded-lg hover:bg-teal-100 transition-colors disabled:opacity-50"
+                        >
+                          {isSendingOtp ? "Sending..." : "Verify"}
+                        </button>
+                      )}
+
+                      {confirmationResult && !isPhoneVerified && (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                            placeholder="Enter 6-digit OTP"
+                            className="w-32 px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleVerifyOtp}
+                            disabled={isVerifyingOtp || otp.length < 6}
+                            className="text-sm px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
+                          >
+                            {isVerifyingOtp ? "Verifying..." : "Confirm"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSendOtp}
+                            disabled={isSendingOtp}
+                            className="text-sm px-3 py-2 text-teal-700 hover:bg-teal-50 rounded-lg transition-colors"
+                          >
+                            Resend OTP
+                          </button>
+                        </div>
+                      )}
+
+                      {otpError && <p className="text-sm text-destructive mt-1">{otpError}</p>}
+                      {isPhoneVerified && <p className="text-sm text-green-600 font-medium mt-1">Phone verified ✅</p>}
+                    </div>
+                  )}
+                  <div id="recaptcha-container"></div>
                 </div>
               </div>
             </div>
@@ -341,7 +511,7 @@ export default function Profile() {
             <div className="flex justify-end pt-4">
               <button
                 type="submit"
-                disabled={isSaving}
+                disabled={isSaving || (`${countryCode}${phoneNumber}` !== (profile?.phone_number || "") && phoneNumber.length > 0 && !isPhoneVerified)}
                 className="inline-flex items-center justify-center px-10 py-3.5 bg-teal-600 text-white font-body text-sm rounded-xl hover:bg-teal-700 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-600 disabled:opacity-60 disabled:cursor-not-allowed shadow-md w-full sm:w-auto"
               >
                 {isSaving ? (
