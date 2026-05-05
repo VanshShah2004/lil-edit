@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import SearchBar from "./SearchBar";
 import FrequentSearches from "./FrequentSearches";
 import CollageGrid from "./CollageGrid";
+import CategoriesList from "./CategoriesList";
 
 interface SearchPanelProps {
   isOpen: boolean;
@@ -65,6 +66,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
         <div className="flex-1 overflow-y-auto no-scrollbar pb-safe">
           <FrequentSearches onSelect={(term) => setSearchTerm(term)} />
           <CollageGrid />
+          <CategoriesList />
           
           {/* If there was real search results, we would render them here instead of FrequentSearches when searchTerm is not empty */}
         </div>
