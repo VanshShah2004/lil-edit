@@ -4,6 +4,7 @@ import FeaturedCategories from "@/components/home/FeaturedCategories";
 import RecommendedForYou from "@/components/home/RecommendedForYou";
 import TrendingSection from "@/components/home/TrendingSection";
 import UserNavbar from "@/components/home/UserNavbar";
+import HomeCollage from "@/components/home/HomeCollage";
 
 const Home = () => {
   useEffect(() => {
@@ -13,7 +14,8 @@ const Home = () => {
   return (
     <div className="min-h-screen flex flex-col font-body selection:bg-primary/20">
       <UserNavbar />
-      <main className="flex-1 pt-36 md:pt-36 bg-[#E8DDF7]">
+      <main className="flex-1 pt-[150px] md:pt-[130px] bg-[#E8DDF7]">
+        <HomeCollage />
         <TrendingSection />
         <FeaturedCategories />
         <RecommendedForYou />
