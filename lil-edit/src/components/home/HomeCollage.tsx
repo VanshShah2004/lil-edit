@@ -76,7 +76,7 @@ const HomeCollage = () => {
           />
         </div>
       </div>,
-      <div key="part-lec-2" className="w-full h-full px-2 sm:px-4">
+      <div key="part-lec-2" className="w-full h-full px-2 md:px-0">
         <div className="w-full h-full overflow-hidden rounded-xl md:rounded-none">
           <img
             src={secondImage}
@@ -85,7 +85,7 @@ const HomeCollage = () => {
           />
         </div>
       </div>,
-      <div key="part-lec-3" className="w-full h-full px-2 sm:px-4">
+      <div key="part-lec-3" className="w-full h-full px-2 md:px-0">
         <div className="w-full h-full overflow-hidden rounded-xl md:rounded-none">
           <img
             src={thirdImage}
@@ -128,7 +128,7 @@ const HomeCollage = () => {
         touchDeltaX.current = 0;
       }}
     >
-      <div className="mx-auto w-[92%] sm:w-[90%] lg:w-[84%] h-[620px] md:h-[680px] overflow-hidden">
+      <div className="relative -top-[25px] mx-auto w-[92%] sm:w-[90%] lg:w-[84%] h-[620px] md:h-[600px] lg:h-[560px] overflow-hidden">
         <div
           className="w-full h-full flex transition-transform duration-500 ease-out"
           style={{ transform: `translateX(-${activePart * 100}%)` }}
