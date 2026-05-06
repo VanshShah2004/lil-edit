@@ -93,7 +93,10 @@ const UserNavbar = () => {
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <button
               type="button"
-              onClick={() => setIsLeftMenuOpen(true)}
+              onClick={() => {
+                setIsLeftMenuOpen(true);
+                setIsSearchOpen(false);
+              }}
               className="p-1 -ml-1 text-foreground hover:bg-secondary rounded-md transition-colors"
               aria-label="Open menu"
             >
@@ -112,7 +115,10 @@ const UserNavbar = () => {
           <div className="flex items-center gap-2 sm:gap-2 md:gap-2.5 shrink-0">
             <button
               type="button"
-              onClick={() => setIsSearchOpen(true)}
+              onClick={() => {
+                setIsSearchOpen(true);
+                setIsLeftMenuOpen(false);
+              }}
               className="h-10 w-10 sm:h-10 sm:w-10 rounded-full border border-border bg-background text-foreground hover:bg-secondary transition-colors flex items-center justify-center"
               aria-label="Search"
             >
