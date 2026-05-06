@@ -9,6 +9,8 @@ import {
   Shield,
   ShoppingCart,
   User,
+  Menu,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import logo from "@/assets/logo.png";
@@ -19,6 +21,7 @@ const UserNavbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isLeftMenuOpen, setIsLeftMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const profileCloseTimeoutRef = useRef<number | null>(null);
   const { user, profile, signOut } = useAuth();
@@ -80,17 +83,28 @@ const UserNavbar = () => {
 
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 border-b border-border/70 transition-all duration-300 ${isScrolled ? "bg-background/95 backdrop-blur-lg shadow-sm" : "bg-background/90 backdrop-blur-md"
+    <>
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 border-b border-border/70 transition-all duration-300 ${isScrolled ? "bg-background/95 backdrop-blur-lg shadow-sm" : "bg-background/90 backdrop-blur-md"
         }`}
     >
       <div className="container mx-auto flex items-center justify-between h-[5rem] md:h-[3.5rem] lg:h-[4rem] px-3 sm:px-4 lg:px-8">
-        <Link to="/dashboard" className="flex-shrink flex items-center gap-2 sm:gap-3 min-w-0">
-          <img src={logo} alt="The Lil Edit" className="h-10 sm:h-12 md:h-10 lg:h-11 w-auto shrink-0" />
-          <div className="text-xl sm:text-xl md:text-[20px] lg:text-[22px] text-foreground leading-none truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
-            The Lil Edit
-          </div>
-        </Link>
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <button
+            type="button"
+            onClick={() => setIsLeftMenuOpen(true)}
+            className="p-1 -ml-1 text-foreground hover:bg-secondary rounded-md transition-colors"
+            aria-label="Open menu"
+          >
+            <Menu className="w-6 h-6 sm:w-7 sm:h-7" />
+          </button>
+          <Link to="/dashboard" className="flex-shrink flex items-center gap-2 sm:gap-3 min-w-0">
+            <img src={logo} alt="The Lil Edit" className="h-10 sm:h-12 md:h-10 lg:h-11 w-auto shrink-0" />
+            <div className="hidden min-[380px]:block text-xl sm:text-xl md:text-[20px] lg:text-[22px] text-foreground leading-none truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
+              The Lil Edit
+            </div>
+          </Link>
+        </div>
 
         <div className="flex-1" />
 
@@ -198,6 +212,51 @@ const UserNavbar = () => {
 
       <SearchPanel isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </header>
+
+      {/* Left Menu Overlay */}
+      {isLeftMenuOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/30 transition-opacity"
+          onClick={() => setIsLeftMenuOpen(false)}
+        />
+      )}
+
+      {/* Left Menu Panel */}
+      <div
+        className={`fixed top-0 left-0 bottom-0 z-50 w-72 bg-background border-r border-border transform transition-transform duration-300 ease-in-out flex flex-col ${
+          isLeftMenuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-border/50">
+          <div className="font-display text-lg font-bold">Menu</div>
+          <button
+            type="button"
+            onClick={() => setIsLeftMenuOpen(false)}
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <nav className="flex flex-col py-4 px-3 gap-2 overflow-y-auto">
+          <Link
+            to="/dashboard"
+            onClick={() => setIsLeftMenuOpen(false)}
+            className="flex items-center gap-3 px-3 py-3 rounded-lg text-foreground hover:bg-secondary transition-colors"
+          >
+            <LayoutDashboard className="w-5 h-5 text-muted-foreground" />
+            <span className="font-medium">Home</span>
+          </Link>
+          <Link
+            to="/profile"
+            onClick={() => setIsLeftMenuOpen(false)}
+            className="flex items-center gap-3 px-3 py-3 rounded-lg text-foreground hover:bg-secondary transition-colors"
+          >
+            <User className="w-5 h-5 text-muted-foreground" />
+            <span className="font-medium">Profile</span>
+          </Link>
+        </nav>
+      </div>
+    </>
   );
 };
 

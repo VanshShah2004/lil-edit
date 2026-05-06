@@ -43,7 +43,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex justify-end bg-black/40 animate-fade-in transition-opacity"
+      className="fixed bottom-0 left-0 right-0 top-[5rem] md:inset-0 md:top-0 z-[100] flex justify-end bg-black/40 animate-fade-in transition-opacity"
       onClick={handleBackdropClick}
       aria-modal="true"
       role="dialog"
@@ -54,7 +54,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
       */}
       <div
         ref={panelRef}
-        className="w-full h-[100dvh] md:w-[480px] lg:w-[540px] bg-background shadow-2xl flex flex-col md:animate-slide-in-right animate-slide-up-fade overflow-hidden border-l border-border/50"
+        className="w-full h-full md:w-[480px] lg:w-[540px] bg-background shadow-2xl flex flex-col md:animate-slide-in-right animate-slide-up-fade overflow-hidden border-l border-border/50"
       >
         <SearchBar
           value={searchTerm}
