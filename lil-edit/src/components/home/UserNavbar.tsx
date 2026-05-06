@@ -89,7 +89,7 @@ const UserNavbar = () => {
         className={`fixed top-0 left-0 right-0 z-50 border-b border-border/70 transition-all duration-300 ${isScrolled ? "bg-background/95 backdrop-blur-lg shadow-sm" : "bg-background/90 backdrop-blur-md"
           }`}
       >
-        <div className="container mx-auto flex items-center justify-between h-[5rem] md:h-[3.5rem] lg:h-[4rem] px-3 sm:px-4 lg:px-8">
+        <div className="container mx-auto flex items-center justify-between h-[5rem] md:h-[3.1rem] lg:h-[3.4rem] px-3 sm:px-4 lg:px-8">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <button
               type="button"
@@ -103,8 +103,8 @@ const UserNavbar = () => {
               <Menu className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
             <Link to="/dashboard" className="flex-shrink flex items-center gap-2 sm:gap-3 min-w-0">
-              <img src={logo} alt="The Lil Edit" className="h-10 sm:h-12 md:h-10 lg:h-11 w-auto shrink-0" />
-              <div className="hidden min-[380px]:block text-xl sm:text-xl md:text-[20px] lg:text-[22px] text-foreground leading-none truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <img src={logo} alt="The Lil Edit" className="h-10 sm:h-12 md:h-9 lg:h-9.5 w-auto shrink-0" />
+              <div className="hidden min-[380px]:block text-xl sm:text-xl md:text-[18px] lg:text-[20px] text-foreground leading-none truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
                 The Lil Edit
               </div>
             </Link>
@@ -112,19 +112,19 @@ const UserNavbar = () => {
 
           <div className="flex-1" />
 
-          <div className="flex items-center gap-2 sm:gap-2 md:gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2 md:gap-2 shrink-0">
             <button
               type="button"
               onClick={() => {
                 setIsSearchOpen(true);
                 setIsLeftMenuOpen(false);
               }}
-              className="h-10 w-10 sm:h-10 sm:w-10 rounded-full border border-border bg-background text-foreground hover:bg-secondary transition-colors flex items-center justify-center"
+              className="h-10 w-10 sm:h-10 sm:w-10 md:h-9 md:w-9 rounded-full border border-border bg-background text-foreground hover:bg-secondary transition-colors flex items-center justify-center"
               aria-label="Search"
             >
               <Search className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
-            <button className="h-10 w-10 sm:h-10 sm:w-10 rounded-full border border-border bg-background text-foreground hover:bg-secondary transition-colors relative flex items-center justify-center">
+            <button className="h-10 w-10 sm:h-10 sm:w-10 md:h-9 md:w-9 rounded-full border border-border bg-background text-foreground hover:bg-secondary transition-colors relative flex items-center justify-center">
               <ShoppingCart className="w-5 h-5" />
             </button>
 
@@ -153,7 +153,7 @@ const UserNavbar = () => {
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 type="button"
                 aria-label="Open profile menu"
-                className="h-11 w-11 sm:h-11 sm:w-11 rounded-full border-2 border-teal-600 bg-gradient-to-br from-[#F8FFFE] via-[#F1FEFB] to-[#E9FCF8] text-[#0F766E] shadow-[0_4px_14px_rgba(13,148,136,0.14)] p-[2px] flex items-center justify-center transition-all duration-200 hover:from-[#F2FFFD] hover:via-[#E9FCF8] hover:to-[#DEFAF4] hover:border-teal-600 hover:shadow-[0_8px_18px_rgba(13,148,136,0.22)] hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/45 focus-visible:ring-offset-1"
+                className="h-11 w-11 sm:h-11 sm:w-11 md:h-10 md:w-10 rounded-full border-2 border-teal-600 bg-gradient-to-br from-[#F8FFFE] via-[#F1FEFB] to-[#E9FCF8] text-[#0F766E] shadow-[0_4px_14px_rgba(13,148,136,0.14)] p-[2px] flex items-center justify-center transition-all duration-200 hover:from-[#F2FFFD] hover:via-[#E9FCF8] hover:to-[#DEFAF4] hover:border-teal-600 hover:shadow-[0_8px_18px_rgba(13,148,136,0.22)] hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/45 focus-visible:ring-offset-1"
               >
                 <div className="px-0.5 py-[1px] text-[1.15rem] sm:text-[1.2rem] font-black font-display leading-none text-teal-600">
                   {userInitial}

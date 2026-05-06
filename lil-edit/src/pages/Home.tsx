@@ -14,7 +14,7 @@ const Home = () => {
   return (
     <div className="min-h-screen flex flex-col font-body selection:bg-primary/20">
       <UserNavbar />
-      <main className="flex-1 pt-[150px] md:pt-[130px] bg-[#E8DDF7]">
+      <main className="flex-1 pt-[150px] md:pt-[112px] bg-[#E8DDF7]">
         <HomeCollage />
         <TrendingSection />
         <FeaturedCategories />
