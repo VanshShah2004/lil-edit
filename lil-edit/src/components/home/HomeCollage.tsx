@@ -128,7 +128,7 @@ const HomeCollage = () => {
         touchDeltaX.current = 0;
       }}
     >
-      <div className="relative -top-[25px] mx-auto w-[92%] sm:w-[90%] lg:w-[84%] h-[620px] md:h-[600px] lg:h-[560px] overflow-hidden">
+      <div className="relative -top-[15px] md:-top-[25px] mx-auto w-[92%] sm:w-[90%] lg:w-[84%] h-[620px] md:h-[600px] lg:h-[560px] overflow-hidden">
         <div
           className="w-full h-full flex transition-transform duration-500 ease-out"
           style={{ transform: `translateX(-${activePart * 100}%)` }}
