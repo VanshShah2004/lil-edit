@@ -9,11 +9,10 @@ const TrendingSection = () => {
   ];
 
   return (
-    <section className="py-12 md:py-14 px-0">
+    <section className="-mt-2 md:-mt-3 pt-0 pb-12 md:pt-1 md:pb-14 px-0">
       <div className="container">
-        <div className="flex items-end justify-between mb-8">
+        <div className="flex items-end justify-between mb-6 md:mb-8">
           <div>
-            <p className="text-xs font-semibold tracking-[0.18em] uppercase text-primary/80 mb-2">Latest Picks</p>
             <h2 className="font-display text-3xl md:text-4xl font-semibold text-foreground">Trending Now</h2>
           </div>
         </div>

@@ -32,7 +32,7 @@ const HomeCollage = () => {
     const thirdImage = isDesktop ? lecD003 : lec003;
     return [
       <div key="part-collage" className="w-full h-full grid grid-cols-7 md:grid-cols-5 grid-rows-2 gap-2 sm:gap-4 px-2 sm:px-4">
-        <div className="col-span-3 md:col-span-2 row-span-1 overflow-hidden rounded-xl md:rounded-none">
+        <div className="col-span-3 md:col-span-2 row-span-1 overflow-hidden rounded-none">
           <img
             src={img1}
             alt="Collage 1 Mobile"
@@ -44,7 +44,7 @@ const HomeCollage = () => {
             className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-700 ease-in-out hidden md:block"
           />
         </div>
-        <div className="col-span-4 md:col-span-3 row-span-1 overflow-hidden rounded-xl md:rounded-none">
+        <div className="col-span-4 md:col-span-3 row-span-1 overflow-hidden rounded-none">
           <img
             src={img2}
             alt="Collage 2 Mobile"
@@ -56,7 +56,7 @@ const HomeCollage = () => {
             className="w-full h-full object-cover object-[50%_35%] hover:scale-105 transition-transform duration-700 ease-in-out hidden md:block"
           />
         </div>
-        <div className="col-span-4 md:col-span-3 row-span-1 overflow-hidden rounded-xl md:rounded-none">
+        <div className="col-span-4 md:col-span-3 row-span-1 overflow-hidden rounded-none">
           <img
             src={img3}
             alt="Collage 3 Mobile"
@@ -68,7 +68,7 @@ const HomeCollage = () => {
             className="w-full h-full object-cover object-[50%_55%] hover:scale-105 transition-transform duration-700 ease-in-out hidden md:block"
           />
         </div>
-        <div className="col-span-3 md:col-span-2 row-span-1 overflow-hidden rounded-xl md:rounded-none">
+        <div className="col-span-3 md:col-span-2 row-span-1 overflow-hidden rounded-none">
           <img
             src={img4}
             alt="Collage 4"
@@ -77,7 +77,7 @@ const HomeCollage = () => {
         </div>
       </div>,
       <div key="part-lec-2" className="w-full h-full px-2 md:px-0">
-        <div className="w-full h-full overflow-hidden rounded-xl md:rounded-none">
+        <div className="w-full h-full overflow-hidden rounded-none">
           <img
             src={secondImage}
             alt={isDesktop ? "Lec D 002" : "Lec 002"}
@@ -86,7 +86,7 @@ const HomeCollage = () => {
         </div>
       </div>,
       <div key="part-lec-3" className="w-full h-full px-2 md:px-0">
-        <div className="w-full h-full overflow-hidden rounded-xl md:rounded-none">
+        <div className="w-full h-full overflow-hidden rounded-none">
           <img
             src={thirdImage}
             alt={isDesktop ? "Lec D 003" : "Lec 003"}
