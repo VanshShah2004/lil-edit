@@ -185,11 +185,11 @@ export default function Profile() {
       for (const id of deletedAddresses) {
         await supabase.from("addresses").delete().eq("id", id);
       }
-      
+
       for (const addr of addresses) {
         const { id, ...rest } = addr;
         const payload = { ...rest, user_id: user.id };
-        
+
         if (id.startsWith('temp-')) {
           await supabase.from("addresses").insert(payload);
         } else {
@@ -281,8 +281,8 @@ export default function Profile() {
                         onClick={handleSendOtp}
                         disabled={isSendingOtp || phoneNumber.length !== 10 || `${countryCode}${phoneNumber}` === (profile?.phone_number || "")}
                         className={`w-full sm:w-[100px] shrink-0 px-3 py-3 font-body text-sm font-medium rounded-xl transition-all shadow-sm flex items-center justify-center whitespace-nowrap ${phoneNumber.length === 10 && `${countryCode}${phoneNumber}` !== (profile?.phone_number || "")
-                            ? "bg-teal-700 text-white hover:bg-teal-800 active:scale-[0.98]"
-                            : "bg-gray-200 text-gray-400 cursor-not-allowed opacity-60 shadow-none"
+                          ? "bg-teal-700 text-white hover:bg-teal-800 active:scale-[0.98]"
+                          : "bg-gray-200 text-gray-400 cursor-not-allowed opacity-60 shadow-none"
                           }`}
                       >
                         {isSendingOtp ? (
@@ -415,10 +415,10 @@ export default function Profile() {
           </form>
 
           <div className="mt-8 mb-8">
-            <AddressManager 
-              addresses={addresses} 
-              setAddresses={setAddresses} 
-              setDeletedAddresses={setDeletedAddresses} 
+            <AddressManager
+              addresses={addresses}
+              setAddresses={setAddresses}
+              setDeletedAddresses={setDeletedAddresses}
             />
           </div>
 
