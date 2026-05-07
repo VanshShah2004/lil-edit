@@ -42,8 +42,10 @@ const RecommendedForYou = () => {
                   </button>
                 </div>
               </div>
-              <h3 className="font-display font-medium text-foreground">{product.name}</h3>
-              <p className="font-body text-primary">${product.price}</p>
+              <div className="flex justify-between items-start gap-2">
+                <h3 className="font-display font-medium text-foreground leading-tight">{product.name}</h3>
+                <p className="font-body font-semibold text-[#0F766E] shrink-0">₹{product.price}</p>
+              </div>
             </div>
           ))}
         </div>

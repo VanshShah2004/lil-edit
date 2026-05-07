@@ -733,18 +733,27 @@ export default function ProductDetail() {
                   >
                     <Heart size={14} />
                   </button>
+                  {/* Add to Cart Overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                    <button 
+                      className="w-full py-1.5 bg-white/90 backdrop-blur text-foreground rounded-lg font-medium text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm"
+                      onClick={(e) => { e.preventDefault(); }}
+                    >
+                      Add to Cart
+                    </button>
+                  </div>
                 </div>
 
                 {/* Details */}
-                <div className="flex flex-col flex-1 px-0.5">
-                  <h3 className="text-sm font-medium text-slate-800 line-clamp-2 mb-1.5 leading-snug">
+                <div className="flex justify-between items-start gap-2 px-0.5">
+                  <h3 className="text-sm font-medium text-slate-800 leading-snug">
                     {item.title}
                   </h3>
-                  <div className="mt-auto flex items-center gap-2">
-                    <span className="font-bold" style={{ color: TEAL }}>
+                  <div className="flex flex-col items-end shrink-0">
+                    <span className="text-sm font-bold" style={{ color: TEAL }}>
                       ₹{item.price}
                     </span>
-                    <span className="text-xs line-through text-gray-400">
+                    <span className="text-[10px] line-through text-gray-400">
                       ₹{item.originalPrice}
                     </span>
                   </div>
