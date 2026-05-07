@@ -1,11 +1,15 @@
 import { Heart } from "lucide-react";
+import le0 from "@/assets/searchbar-frequent_searches/le-0.png";
+import le1 from "@/assets/searchbar-frequent_searches/le-1.png";
+import le2 from "@/assets/searchbar-frequent_searches/le-2.png";
+import le3 from "@/assets/searchbar-frequent_searches/le-3.png";
 
 const TrendingSection = () => {
   const products = [
-    { name: "Floral Summer Dress", price: "42.00", img: "https://images.unsplash.com/photo-1622290319146-7b63df48a635?auto=format&fit=crop&q=80&w=500", badge: "Bestseller" },
-    { name: "Linen Overall Shorts", price: "36.00", img: "https://images.unsplash.com/photo-1544645239-0113c126511a?auto=format&fit=crop&q=80&w=500", badge: "Trending" },
-    { name: "Ribbed Knit Cardigan", price: "50.00", img: "https://images.unsplash.com/photo-1596870230751-ebdfce98ec42?auto=format&fit=crop&q=80&w=500" },
-    { name: "Classic Denim Jacket", price: "48.00", img: "https://images.unsplash.com/photo-1519238392176-7f41a868516d?auto=format&fit=crop&q=80&w=500", badge: "Trending" },
+    { name: "Floral Summer Dress", price: "42.00", img: le0, badge: "Bestseller" },
+    { name: "Linen Overall Shorts", price: "36.00", img: le1, badge: "Trending" },
+    { name: "Ribbed Knit Cardigan", price: "50.00", img: le2 },
+    { name: "Classic Denim Jacket", price: "48.00", img: le3, badge: "Trending" },
   ];
 
   return (
@@ -13,13 +17,13 @@ const TrendingSection = () => {
       <div className="container">
         <div className="flex items-end justify-between mb-6 md:mb-8">
           <div>
-            <h2 className="font-display text-3xl md:text-4xl font-semibold text-foreground">Trending Now</h2>
+            <h2 className="font-display text-2xl md:text-3xl font-semibold text-foreground">Trending Now</h2>
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
           {products.map((product) => (
-            <div key={product.name} className="group bg-card p-3 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all">
-              <div className="relative rounded-xl overflow-hidden aspect-[4/5] mb-3">
+            <div key={product.name} className="group bg-card p-3 md:p-2.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all">
+              <div className="relative rounded-xl overflow-hidden aspect-[4/5] md:aspect-[5/6] mb-3 md:mb-2.5">
                 {product.badge && (
                   <div className="absolute top-2 left-2 z-10 bg-primary/90 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md backdrop-blur shadow-sm">
                     {product.badge}

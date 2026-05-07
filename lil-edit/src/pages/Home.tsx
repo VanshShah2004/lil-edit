@@ -17,8 +17,8 @@ const Home = () => {
       <main className="flex-1 pt-[150px] md:pt-[112px] bg-[#E8DDF7]">
         <HomeCollage />
         <TrendingSection />
-        <FeaturedCategories />
         <RecommendedForYou />
+        <FeaturedCategories />
       </main>
       <Footer />
     </div>

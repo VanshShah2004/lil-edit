@@ -1,12 +1,17 @@
 import { ChevronRight, Heart } from "lucide-react";
+import le4 from "@/assets/searchbar-frequent_searches/le-4.png";
+import le5 from "@/assets/searchbar-frequent_searches/le-5.png";
+import le6 from "@/assets/searchbar-frequent_searches/le-6.png";
+import le2 from "@/assets/searchbar-frequent_searches/le-2.png";
+import le3 from "@/assets/searchbar-frequent_searches/le-3.png";
 
 const RecommendedForYou = () => {
   const products = [
-    { name: "Lilac Ruffle Dress", price: "45.00", img: "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&q=80&w=500" },
-    { name: "Knitted Bear Sweater", price: "55.00", img: "https://images.unsplash.com/photo-1621072970505-181822de31d7?auto=format&fit=crop&q=80&w=500" },
-    { name: "Pastel Romper Set", price: "38.50", img: "https://images.unsplash.com/photo-1560614382-332306fe1d16?auto=format&fit=crop&q=80&w=500" },
-    { name: "Cozy Cotton Beanie", price: "18.00", img: "https://images.unsplash.com/photo-1549419139-4d2be7ce24df?auto=format&fit=crop&q=80&w=500" },
-    { name: "Soft Sole Booties", price: "24.00", img: "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?auto=format&fit=crop&q=80&w=500" },
+    { name: "Lilac Ruffle Dress", price: "45.00", img: le4 },
+    { name: "Knitted Bear Sweater", price: "55.00", img: le5 },
+    { name: "Pastel Romper Set", price: "38.50", img: le6 },
+    { name: "Cozy Cotton Beanie", price: "18.00", img: le2 },
+    { name: "Soft Sole Booties", price: "24.00", img: le3 },
   ];
 
   return (
@@ -15,7 +20,7 @@ const RecommendedForYou = () => {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 mb-8">
           <div>
             <p className="text-xs font-semibold tracking-[0.18em] uppercase text-primary/80 mb-2">Curated For You</p>
-            <h2 className="font-display text-3xl md:text-4xl font-semibold text-foreground mb-2">Recommended For You</h2>
+            <h2 className="font-display text-2xl md:text-3xl font-semibold text-foreground mb-2">Recommended For You</h2>
             <p className="text-muted-foreground font-body">Based on your recent purchases</p>
           </div>
           <button className="text-primary hover:text-primary/80 font-medium text-sm flex items-center gap-1 self-start sm:self-auto">
