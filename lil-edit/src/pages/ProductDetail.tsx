@@ -280,193 +280,179 @@ export default function ProductDetail() {
     return () => ro.disconnect();
   }, []);
 
-  // FIXED STRUCTURE ONLY
-// Main fix: Properly closed RIGHT DETAILS column before "You May Also Like"
+  return (
+    <div className="min-h-screen bg-white flex flex-col">
+      <Navbar />
 
-return (
-  <div className="min-h-screen bg-white flex flex-col">
-    <Navbar />
+      {/* Breadcrumb */}
+      <div className="page-container py-3 sm:py-4 text-sm text-gray-500">
+        <Link to="/">Home</Link> <ChevronRight className="inline w-4 h-4 mx-1" />
+        <span className="text-gray-800">{product.title}</span>
+      </div>
 
-    {/* Breadcrumb */}
-    <div className="page-container py-3 sm:py-4 text-sm text-gray-500">
-      <Link to="/">Home</Link>
-      <ChevronRight className="inline w-4 h-4 mx-1" />
-      <span className="text-gray-800">{product.title}</span>
-    </div>
+      <main className="page-container w-full pb-[calc(env(safe-area-inset-bottom)+5.5rem)] sm:pb-[calc(env(safe-area-inset-bottom)+5.5rem)] lg:pb-16">
+        <div className="flex flex-col lg:flex-row gap-10 lg:gap-16">
 
-    <main className="page-container w-full pb-[calc(env(safe-area-inset-bottom)+5.5rem)] sm:pb-[calc(env(safe-area-inset-bottom)+5.5rem)] lg:pb-16">
+          {/* LEFT - IMAGES (60%) */}
+          <div className="w-full lg:w-[55%] flex flex-col lg:flex-row gap-5">
+            {/* Mobile-only title and price above image */}
+            <div className="sm:hidden order-1">
+              <h1 className="text-xl font-semibold text-slate-900 leading-snug">
+                {product.title}
+              </h1>
+              <div className="flex items-center gap-3 mt-2">
+                <span className="text-lg font-bold" style={{ color: TEAL }}>
+                  ₹{product.price}
+                </span>
+                <span className="line-through text-gray-500">
+                  ₹{product.originalPrice}
+                </span>
+              </div>
+            </div>
 
-      {/* MAIN TOP SECTION */}
-      <div className="flex flex-col lg:flex-row gap-10 lg:gap-16">
+            {/* Thumbnails */}
+            <div className="order-3 lg:order-1 w-full lg:w-28 shrink-0 relative">
+              <div
+                ref={normalThumbnailStripRef}
+                className="flex justify-start lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto w-full h-full lg:absolute lg:inset-0 no-scrollbar pb-1 lg:pb-0 snap-x snap-mandatory lg:snap-y scroll-smooth"
+              >
+                {product.images.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleThumbnailClick(idx)}
+                    className={`w-20 md:w-24 lg:w-28 aspect-[4/5] rounded-xl overflow-hidden shrink-0 snap-center lg:snap-align-none transition-all ${activeImage === idx
+                      ? "border-[3px] border-[#0F766E] shadow-sm"
+                      : "border border-gray-200"
+                      }`}
+                  >
+                    <img
+                      src={img}
+                      alt={`${product.title} thumbnail ${idx + 1}`}
+                      loading="lazy"
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        {/* LEFT - IMAGES */}
-        <div className="w-full lg:w-[55%] flex flex-col lg:flex-row gap-5">
+            {/* Main Image */}
+            <div className="order-2 lg:order-2 flex-1 flex justify-start lg:justify-center items-start">
+              <Carousel
+                setApi={setApi}
+                opts={{ loop: true }}
+                className="w-full max-w-[420px] bg-white rounded-2xl overflow-hidden shadow-md cursor-grab active:cursor-grabbing"
+              >
+                <CarouselContent className="ml-0">
+                  {product.images.map((img, idx) => (
+                    <CarouselItem key={idx} className="pl-0 basis-full">
+                      <div className="w-full aspect-[4/5] overflow-hidden">
+                        <img
+                          src={img}
+                          alt={`${product.title} ${idx + 1}`}
+                          className="w-full h-full object-cover select-none hover:scale-105 transition duration-500 cursor-zoom-in"
+                          draggable={false}
+                          onClick={() => {
+                            if (canOpenViewer) setIsViewerOpen(true);
+                          }}
+                        />
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+              </Carousel>
+            </div>
+          </div>
 
-          {/* Mobile title */}
-          <div className="sm:hidden order-1">
-            <h1 className="text-xl font-semibold text-slate-900 leading-snug">
+          {/* RIGHT - DETAILS (40%) */}
+          <div className="w-full lg:w-[45%]">
+
+            {/* Title */}
+            <h1 className="hidden sm:block text-xl sm:text-2xl lg:text-4xl font-semibold text-slate-900 leading-snug mb-4 sm:mb-6">
               {product.title}
             </h1>
 
-            <div className="flex items-center gap-3 mt-2">
-              <span
-                className="text-lg font-bold"
-                style={{ color: TEAL }}
-              >
+            {/* Price */}
+            <div className="hidden sm:flex items-center gap-3 mb-6">
+              <span className="text-lg sm:text-2xl font-bold" style={{ color: TEAL }}>
                 ₹{product.price}
               </span>
-
-              <span className="line-through text-gray-500">
+              <span className="line-through text-gray-400">
                 ₹{product.originalPrice}
               </span>
             </div>
-          </div>
 
-          {/* Thumbnails */}
-          <div className="order-3 lg:order-1 w-full lg:w-28 shrink-0 relative">
-            <div
-              ref={normalThumbnailStripRef}
-              className="flex justify-start lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto w-full h-full lg:absolute lg:inset-0 no-scrollbar pb-1 lg:pb-0 snap-x snap-mandatory lg:snap-y scroll-smooth"
-            >
-              {product.images.map((img, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleThumbnailClick(idx)}
-                  className={`w-20 md:w-24 lg:w-28 aspect-[4/5] rounded-xl overflow-hidden shrink-0 snap-center transition-all ${
-                    activeImage === idx
-                      ? "border-[3px] border-[#0F766E] shadow-sm"
-                      : "border border-gray-200"
-                  }`}
-                >
-                  <img
-                    src={img}
-                    alt={`${product.title} thumbnail ${idx + 1}`}
-                    loading="lazy"
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
+            {/* Icons */}
+            <div className="flex gap-4 mb-6" style={{ color: "#000000" }}>
+              <Heart aria-label="Add to wishlist" />
+              <Share2 aria-label="Share product" />
+              <ShoppingBag aria-label="Add to bag" />
+              <Star aria-label="Rate product" />
             </div>
-          </div>
 
-          {/* Main Image */}
-          <div className="order-2 lg:order-2 flex-1 flex justify-start lg:justify-center items-start">
-            <Carousel
-              setApi={setApi}
-              opts={{ loop: true }}
-              className="w-full max-w-[420px] bg-white rounded-2xl overflow-hidden shadow-md"
-            >
-              <CarouselContent className="ml-0">
-                {product.images.map((img, idx) => (
-                  <CarouselItem
-                    key={idx}
-                    className="pl-0 basis-full"
+            <div className="mb-6" ref={colorQtyWrapRef}>
+              <div className="flex items-start" style={{ columnGap: BETWEEN_BLOCKS_GAP_PX }}>
+                {/* Color */}
+                <div className="inline-flex flex-col">
+                  <p className="text-sm font-medium mb-2">Color</p>
+                  <div
+                    ref={colorsRowRef}
+                    className={
+                      qtyBesideColors ? "inline-flex gap-3" : "flex flex-wrap gap-3"
+                    }
                   >
-                    <div className="w-full aspect-[4/5] overflow-hidden">
-                      <img
-                        src={img}
-                        alt={`${product.title} ${idx + 1}`}
-                        className="w-full h-full object-cover hover:scale-105 transition duration-500"
-                        draggable={false}
-                        onClick={() => {
-                          if (canOpenViewer) setIsViewerOpen(true);
-                        }}
-                      />
-                    </div>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-            </Carousel>
-          </div>
-        </div>
-
-        {/* RIGHT - DETAILS */}
-        <div className="w-full lg:w-[45%]">
-
-          {/* Title */}
-          <h1 className="hidden sm:block text-xl sm:text-2xl lg:text-4xl font-semibold text-slate-900 leading-snug mb-4 sm:mb-6">
-            {product.title}
-          </h1>
-
-          {/* Price */}
-          <div className="hidden sm:flex items-center gap-3 mb-6">
-            <span
-              className="text-lg sm:text-2xl font-bold"
-              style={{ color: TEAL }}
-            >
-              ₹{product.price}
-            </span>
-
-            <span className="line-through text-gray-400">
-              ₹{product.originalPrice}
-            </span>
-          </div>
-
-          {/* Icons */}
-          <div
-            className="flex gap-4 mb-6"
-            style={{ color: "#000000" }}
-          >
-            <Heart />
-            <Share2 />
-            <ShoppingBag />
-            <Star />
-          </div>
-
-          {/* Colors */}
-          <div className="mb-6" ref={colorQtyWrapRef}>
-            <div
-              className="flex items-start"
-              style={{ columnGap: BETWEEN_BLOCKS_GAP_PX }}
-            >
-              <div className="inline-flex flex-col">
-                <p className="text-sm font-medium mb-2">Color</p>
-
-                <div
-                  ref={colorsRowRef}
-                  className={
-                    qtyBesideColors
-                      ? "inline-flex gap-3"
-                      : "flex flex-wrap gap-3"
-                  }
-                >
-                  {product.colors.map((color) => (
-                    <div
-                      key={color.name}
-                      className="flex flex-col items-center"
-                    >
-                      <button
-                        onClick={() =>
-                          setSelectedColor(color.name)
-                        }
-                        className={`w-11 h-11 rounded-full border-2 ${
-                          selectedColor === color.name
+                    {product.colors.map((color) => (
+                      <div key={color.name} className="flex flex-col items-center">
+                        <button
+                          onClick={() => setSelectedColor(color.name)}
+                          className={`w-11 h-11 rounded-full border-2 ${selectedColor === color.name
                             ? "border-[#115E59]"
                             : "border-gray-200"
-                        }`}
-                        style={{
-                          backgroundColor: color.hex,
-                        }}
-                      />
-
-                      <span className="mt-1 text-xs text-slate-700">
-                        {color.name}
-                      </span>
-                    </div>
-                  ))}
+                            }`}
+                          style={{ backgroundColor: color.hex }}
+                        />
+                        <span className="mt-1 text-xs text-slate-700">
+                          {color.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Quantity (beside colors only when colors fit on one line) */}
+                {qtyBesideColors && (
+                  <div className="shrink-0" ref={qtyBlockRef}>
+                    <p className="text-sm font-medium mb-2">Quantity</p>
+                    <div
+                      className="flex items-center border-2 rounded-full w-fit h-11"
+                      style={{ borderColor: TEAL_DARK }}
+                    >
+                      <button
+                        onClick={decreaseQuantity}
+                        className="h-11 w-11 flex items-center justify-center"
+                        style={{ color: TEAL_DARK }}
+                      >
+                        <Minus size={18} />
+                      </button>
+                      <span className="px-4 font-bold tabular-nums leading-none">
+                        {quantity}
+                      </span>
+                      <button
+                        onClick={increaseQuantity}
+                        className="h-11 w-11 flex items-center justify-center"
+                        style={{ color: TEAL_DARK }}
+                      >
+                        <Plus size={18} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Quantity */}
-              {qtyBesideColors && (
-                <div
-                  className="shrink-0"
-                  ref={qtyBlockRef}
-                >
-                  <p className="text-sm font-medium mb-2">
-                    Quantity
-                  </p>
-
+              {/* Quantity below all colors when colors wrap */}
+              {!qtyBesideColors && (
+                <div className="mt-6" ref={qtyBlockRef}>
+                  <p className="text-sm font-medium mb-2">Quantity</p>
                   <div
                     className="flex items-center border-2 rounded-full w-fit h-11"
                     style={{ borderColor: TEAL_DARK }}
@@ -474,17 +460,17 @@ return (
                     <button
                       onClick={decreaseQuantity}
                       className="h-11 w-11 flex items-center justify-center"
+                      style={{ color: TEAL_DARK }}
                     >
                       <Minus size={18} />
                     </button>
-
-                    <span className="px-4 font-bold">
+                    <span className="px-4 font-semibold tabular-nums leading-none">
                       {quantity}
                     </span>
-
                     <button
                       onClick={increaseQuantity}
                       className="h-11 w-11 flex items-center justify-center"
+                      style={{ color: TEAL_DARK }}
                     >
                       <Plus size={18} />
                     </button>
@@ -492,164 +478,194 @@ return (
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Sizes */}
-          <div className="mb-6">
-            <p className="text-sm font-medium mb-2">Size</p>
-
-            <div className="flex flex-wrap gap-2">
-              {product.sizes.map((size) => (
-                <button
-                  key={size}
-                  onClick={() => setSelectedSize(size)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold ${
-                    selectedSize === size
+            {/* Size */}
+            <div className="mb-6">
+              <p className="text-sm font-medium mb-2">Size</p>
+              <div className="flex flex-wrap gap-2">
+                {product.sizes.map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setSelectedSize(size)}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold ${selectedSize === size
                       ? "bg-[#C4B5D9] text-black"
                       : "bg-gray-100 text-slate-900"
-                  }`}
-                >
-                  {size}
-                </button>
-              ))}
+                      }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* CTA */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-8">
-            <button
-              className="flex-1 text-black py-3 rounded-full font-bold"
-              style={{ backgroundColor: LAVENDER }}
+            {/* CTA */}
+            <div
+              className="flex flex-col sm:flex-row gap-3 mb-8"
             >
-              ADD TO CART
-            </button>
+              <button
+                className="flex-1 text-black py-3 rounded-full font-bold transition-colors hover:brightness-[0.98]"
+                style={{ backgroundColor: LAVENDER }}
+              >
+                ADD TO CART
+              </button>
+              <button
+                className="flex-1 text-white py-3 rounded-full font-bold transition-colors hover:brightness-95"
+                style={{ backgroundColor: TEAL }}
+              >
+                BUY NOW
+              </button>
+            </div>
 
-            <button
-              className="flex-1 text-white py-3 rounded-full font-bold"
-              style={{ backgroundColor: TEAL }}
-            >
-              BUY NOW
-            </button>
-          </div>
+            {/* Product Details */}
+            <section className="mb-8">
+              <h2 className="text-lg font-semibold text-slate-900 mb-4">
+                Product Details
+              </h2>
+              <ul className="list-disc pl-5 space-y-2 text-sm text-slate-800">
+                {product.descriptionPoints.map((point) => (
+                  <li key={point} className="leading-relaxed">
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </section>
 
-          {/* Product Details */}
-          <section className="mb-8">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">
-              Product Details
-            </h2>
+            {/* Reviews & Ratings */}
+            <section className="mb-0 pt-8 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Reviews & Ratings
+                </h2>
 
-            <ul className="list-disc pl-5 space-y-2 text-sm text-slate-800">
-              {product.descriptionPoints.map((point) => (
-                <li
-                  key={point}
-                  className="leading-relaxed"
-                >
-                  {point}
-                </li>
-              ))}
-            </ul>
-          </section>
+              </div>
 
-          {/* Reviews */}
-          <section className="mb-2 pt-8 border-t border-gray-100">
-            <h2 className="text-lg font-semibold text-slate-900 mb-6">
-              Reviews & Ratings
-            </h2>
-
-            <div className="space-y-6">
-              {reviewsData.reviews.map((review) => (
-                <div
-                  key={review.id}
-                  className="border-b border-gray-100 pb-6"
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-semibold">
-                      {review.user}
-                    </span>
-
-                    <span className="text-xs text-gray-400">
-                      • {review.date}
-                    </span>
+              {/* Rating Summary */}
+              <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-10 mb-8 p-6 bg-gray-50 rounded-2xl">
+                {/* Average Score */}
+                <div className="flex flex-col items-center shrink-0">
+                  <div className="text-4xl font-bold text-slate-900 mb-1">
+                    {reviewsData.averageRating}
                   </div>
-
-                  <h4 className="font-medium text-sm mb-1">
-                    {review.title}
-                  </h4>
-
-                  <p className="text-sm text-gray-600">
-                    {review.comment}
+                  <div className="flex text-amber-400 mb-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        size={16}
+                        fill={i < Math.floor(reviewsData.averageRating) ? "currentColor" : "none"}
+                        className={i < Math.floor(reviewsData.averageRating) ? "text-amber-400" : "text-gray-300"}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Based on {reviewsData.totalReviews} reviews
                   </p>
                 </div>
-              ))}
-            </div>
-          </section>
 
+                {/* Rating Bars */}
+                <div className="w-full max-w-sm flex flex-col gap-2">
+                  {reviewsData.distribution.map((item) => (
+                    <div key={item.stars} className="flex items-center gap-3 text-sm text-gray-600">
+                      <div className="w-8 shrink-0 flex items-center gap-1">{item.stars} <Star size={12} className="inline" /></div>
+                      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${(item.count / reviewsData.totalReviews) * 100}%`,
+                            backgroundColor: TEAL
+                          }}
+                        />
+                      </div>
+                      <div className="w-8 text-right text-gray-400">{item.count}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Review List */}
+              <div className="space-y-4">
+                {reviewsData.reviews.map((review) => (
+                  <div key={review.id} className="border-b border-gray-100 pb-6 last:border-0 last:pb-0">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-slate-900">{review.user}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex text-amber-400">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                size={12}
+                                fill={i < review.rating ? "currentColor" : "none"}
+                                className={i < review.rating ? "text-amber-400" : "text-gray-300"}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs text-gray-400">• {review.date}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <h4 className="font-medium text-slate-800 text-sm mb-1">{review.title}</h4>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {review.comment}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <button className="w-full mt-4 py-3 border border-gray-200 rounded-full text-sm font-semibold text-slate-800 hover:bg-gray-50 transition-colors">
+                View All {reviewsData.totalReviews} Reviews
+              </button>
+            </section>
+          </div>
         </div>
-        {/* END RIGHT DETAILS */}
-
-      </div>
-      {/* END MAIN FLEX */}
-
-      {/* YOU MAY ALSO LIKE */}
-      <section className="w-full mt-0 pb-8 border-t border-gray-100 pt-6">
-
-        <div className="flex items-end justify-between mb-4 sm:mb-6">
+        {/* YOU MAY ALSO LIKE SECTION */}
+      <section className="page-container w-full mt-8  pb-12  border-t border-gray-100 pt-2">
+        <div className="flex items-end justify-between mb-6 sm:mb-8">
           <div>
             <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">
               You May Also Like
             </h2>
-
-            <p className="text-sm text-gray-500 mt-1">
-              Similar styles you’ll love
-            </p>
+            <p className="text-sm text-gray-500 mt-1">Similar styles you’ll love</p>
           </div>
-
-          <button
-            className="hidden sm:block text-sm font-semibold hover:underline"
-            style={{ color: TEAL }}
-          >
+          <button className="hidden sm:block text-sm font-semibold hover:underline" style={{ color: TEAL }}>
             View All
           </button>
         </div>
 
+        {/* Mobile: Horizontal scroll | Desktop: Grid */}
         <div className="flex sm:grid overflow-x-auto sm:overflow-visible flex-nowrap sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 no-scrollbar snap-x snap-mandatory px-1 sm:px-0">
-
           {recommendedProducts.map((item) => (
             <Link
               to={`/product/${item.id}`}
               key={item.id}
               className="w-[150px] sm:w-auto shrink-0 snap-start group flex flex-col"
             >
+              {/* Image Container */}
               <div className="relative w-full aspect-[4/5] rounded-xl overflow-hidden bg-gray-50 mb-3 shadow-sm group-hover:shadow-md transition-shadow">
-
                 <img
                   src={item.image}
                   alt={item.title}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  loading="lazy"
                 />
-
+                {/* Wishlist Button */}
                 <button
-                  className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/70"
-                  onClick={(e) => e.preventDefault()}
+                  className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/70 backdrop-blur-md hover:bg-white text-slate-700 transition"
+                  onClick={(e) => { e.preventDefault(); }}
                 >
                   <Heart size={14} />
                 </button>
               </div>
 
+              {/* Details */}
               <div className="flex flex-col flex-1 px-0.5">
-
                 <h3 className="text-sm font-medium text-slate-800 line-clamp-2 mb-1.5 leading-snug">
                   {item.title}
                 </h3>
-
                 <div className="mt-auto flex items-center gap-2">
-                  <span
-                    className="font-bold"
-                    style={{ color: TEAL }}
-                  >
+                  <span className="font-bold" style={{ color: TEAL }}>
                     ₹{item.price}
                   </span>
-
                   <span className="text-xs line-through text-gray-400">
                     ₹{item.originalPrice}
                   </span>
@@ -657,13 +673,125 @@ return (
               </div>
             </Link>
           ))}
-
         </div>
       </section>
 
-    </main>
+      </main>
 
-    <Footer />
-  </div>
-);
+      
+      {/* FULL SCREEN VIEWER */}
+      {isViewerOpen && (
+        <div
+          className="fixed inset-0 z-[100] h-[100dvh] flex flex-col bg-black/95 overflow-hidden"
+          style={{
+            paddingTop: 'env(safe-area-inset-top)',
+            paddingBottom: 'env(safe-area-inset-bottom)'
+          }}
+          onClick={() => setIsViewerOpen(false)}
+        >
+          {/* TOP BAR */}
+          <div className="w-full max-w-7xl mx-auto h-auto flex items-center justify-between px-4 md:px-8 py-4 shrink-0 text-white z-10 pointer-events-none">
+            <div className="w-10"></div>
+            <div className="text-sm md:text-base font-semibold tracking-widest bg-black/40 px-4 py-1.5 rounded-full backdrop-blur-md">
+              {activeImage + 1} / {product.images.length}
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); setIsViewerOpen(false); }}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition pointer-events-auto"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          {/* MAIN IMAGE AREA */}
+          <div
+            className="flex-1 min-h-0 flex items-center justify-center relative w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Carousel
+              setApi={setViewerApi}
+              opts={{ loop: true, startIndex: activeImage }}
+              className="absolute inset-0 w-full h-full [&>div.overflow-hidden]:h-full"
+            >
+              <CarouselContent className="h-full ml-0 items-center">
+                {product.images.map((img, idx) => (
+                  <CarouselItem key={idx} className="pl-0 basis-full h-full flex items-center justify-center">
+                    <img
+                      src={img}
+                      alt={`Preview ${idx + 1}`}
+                      className="max-h-full max-w-full object-contain select-none cursor-zoom-out hover:scale-[1.01] transition-transform duration-500 px-2 sm:px-4"
+                      draggable={false}
+                      onClick={() => setIsViewerOpen(false)}
+                    />
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+
+            {/* Desktop Left / Right Controls */}
+            <button
+              className="hidden md:flex absolute left-4 md:left-8 xl:left-12 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 items-center justify-center rounded-full text-white backdrop-blur transition-all disabled:opacity-50 z-10"
+              onClick={(e) => { e.stopPropagation(); viewerApi?.scrollPrev(); }}
+            >
+              <ChevronLeft size={28} />
+            </button>
+            <button
+              className="hidden md:flex absolute right-4 md:right-8 xl:right-12 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 items-center justify-center rounded-full text-white backdrop-blur transition-all disabled:opacity-50 z-10"
+              onClick={(e) => { e.stopPropagation(); viewerApi?.scrollNext(); }}
+            >
+              <ChevronRight size={28} />
+            </button>
+          </div>
+
+          {/* THUMBNAIL STRIP */}
+          <div className="w-full max-w-7xl mx-auto pb-3 md:pb-6 shrink-0 pointer-events-none">
+            <div
+              className="h-[80px] sm:h-[90px] mx-auto flex items-center md:justify-center gap-3 overflow-x-auto px-4 md:px-8 pointer-events-auto no-scrollbar scroll-smooth snap-x snap-mandatory"
+              ref={thumbnailStripRef}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {product.images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveImage(idx);
+                    viewerApi?.scrollTo(idx);
+                    api?.scrollTo(idx);
+                  }}
+                  className={`relative shrink-0 w-[50px] sm:w-[60px] aspect-[4/5] rounded-lg overflow-hidden transition-all duration-200 snap-start bg-black/50 ${activeImage === idx ? 'border-2 border-[#0F766E]' : 'border border-gray-300'
+                    }`}
+                  style={{ opacity: activeImage === idx ? 1 : 0.6 }}
+                >
+                  <img
+                    src={img}
+                    alt={`Thumbnail ${idx + 1}`}
+                    className="w-full h-full object-cover pointer-events-none hover:opacity-100 transition-opacity"
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Footer />
+
+      {/* MOBILE STICKY BAR */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t p-3 safe-bottom flex gap-2">
+        <button
+          className="flex-1 py-3 rounded-full font-bold text-black"
+          style={{ backgroundColor: LAVENDER }}
+        >
+          ADD TO CART
+        </button>
+        <button
+          className="flex-1 py-3 rounded-full font-bold text-white"
+          style={{ backgroundColor: TEAL }}
+        >
+          BUY NOW
+        </button>
+      </div>
+    </div>
+  );
 }
