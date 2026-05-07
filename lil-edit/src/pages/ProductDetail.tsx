@@ -292,11 +292,11 @@ export default function ProductDetail() {
         <span className="text-gray-800">{product.title}</span>
       </div>
 
-      <main className="page-container w-full pb-[calc(env(safe-area-inset-bottom)+2rem)] sm:pb-[calc(env(safe-area-inset-bottom)+2rem)] lg:pb-6">
-        <div className="flex flex-col lg:flex-row gap-10 lg:gap-16">
+      <main className="page-container w-full pb-[calc(env(safe-area-inset-bottom)+2rem)] sm:pb-[calc(env(safe-area-inset-bottom)+2rem)] md:pb-6">
+        <div className="flex flex-col md:flex-row gap-8 md:gap-12">
 
           {/* LEFT - IMAGES (60%) */}
-          <div className="w-full lg:w-[55%] flex flex-col lg:flex-row gap-5">
+          <div className="w-full md:w-[55%] flex flex-col md:flex-row gap-5">
             {/* Mobile-only title and price above image */}
             <div className="sm:hidden order-1">
               <h1 className="text-xl font-semibold text-slate-900 leading-snug">
@@ -313,16 +313,16 @@ export default function ProductDetail() {
             </div>
 
             {/* Thumbnails */}
-            <div className="order-3 lg:order-1 w-full lg:w-28 shrink-0 relative">
+            <div className="order-3 md:order-1 w-full md:w-24 shrink-0 relative">
               <div
                 ref={normalThumbnailStripRef}
-                className="flex justify-start lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto w-full h-full lg:absolute lg:inset-0 no-scrollbar pb-1 lg:pb-0 snap-x snap-mandatory lg:snap-y scroll-smooth"
+                className="flex justify-start md:flex-col gap-3 overflow-x-auto md:overflow-y-auto w-full h-full md:absolute md:inset-0 no-scrollbar pb-1 md:pb-0 snap-x snap-mandatory md:snap-y scroll-smooth"
               >
                 {product.images.map((img, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleThumbnailClick(idx)}
-                    className={`w-20 md:w-24 lg:w-28 aspect-[4/5] rounded-xl overflow-hidden shrink-0 snap-center lg:snap-align-none transition-all ${activeImage === idx
+                    className={`w-20 md:w-24 aspect-[4/5] rounded-xl overflow-hidden shrink-0 snap-center md:snap-align-none transition-all ${activeImage === idx
                       ? "border-[3px] border-[#0F766E] shadow-sm"
                       : "border border-gray-200"
                       }`}
@@ -339,7 +339,7 @@ export default function ProductDetail() {
             </div>
 
             {/* Main Image */}
-            <div className="order-2 lg:order-2 flex-1 flex justify-start lg:justify-center items-start">
+            <div className="order-2 md:order-2 flex-1 flex justify-start md:justify-center items-start">
               <Carousel
                 setApi={setApi}
                 opts={{ loop: true }}
@@ -367,10 +367,10 @@ export default function ProductDetail() {
           </div>
 
           {/* RIGHT - DETAILS (40%) */}
-          <div className="w-full lg:w-[45%]">
+          <div className="w-full md:w-[45%]">
 
             {/* Title */}
-            <h1 className="hidden sm:block text-xl sm:text-2xl lg:text-4xl font-semibold text-slate-900 leading-snug mb-4 sm:mb-6">
+            <h1 className="hidden sm:block text-xl sm:text-2xl md:text-3xl font-semibold text-slate-900 leading-snug mb-4 sm:mb-6">
               {product.title}
             </h1>
 
