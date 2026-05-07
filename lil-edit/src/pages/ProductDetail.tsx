@@ -697,66 +697,66 @@ export default function ProductDetail() {
           </div>
         </div>
         {/* YOU MAY ALSO LIKE SECTION */}
-      <section className="page-container w-full mt-14 pb-0 border-t border-gray-100 pt-6">
-        <div className="flex items-end justify-between mb-6 sm:mb-8">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">
-              You May Also Like
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">Similar styles you’ll love</p>
+        <section className="page-container w-full mt-14 pb-0 border-t border-gray-100 pt-6">
+          <div className="flex items-end justify-between mb-6 sm:mb-8">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">
+                You May Also Like
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">Similar styles you’ll love</p>
+            </div>
+            <button className="hidden sm:block text-sm font-semibold hover:underline" style={{ color: TEAL }}>
+              View All
+            </button>
           </div>
-          <button className="hidden sm:block text-sm font-semibold hover:underline" style={{ color: TEAL }}>
-            View All
-          </button>
-        </div>
 
-        {/* Mobile: Horizontal scroll | Desktop: Grid */}
-        <div className="flex sm:grid overflow-x-auto sm:overflow-visible flex-nowrap sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 no-scrollbar snap-x snap-mandatory px-1 sm:px-0">
-          {recommendedProducts.map((item) => (
-            <Link
-              to={`/product/${item.id}`}
-              key={item.id}
-              className="w-[150px] sm:w-auto shrink-0 snap-start group flex flex-col"
-            >
-              {/* Image Container */}
-              <div className="relative w-full aspect-[4/5] rounded-xl overflow-hidden bg-gray-50 mb-3 shadow-sm group-hover:shadow-md transition-shadow">
-                <img
-                  src={item.image}
-                  alt={item.title}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  loading="lazy"
-                />
-                {/* Wishlist Button */}
-                <button
-                  className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/70 backdrop-blur-md hover:bg-white text-slate-700 transition"
-                  onClick={(e) => { e.preventDefault(); }}
-                >
-                  <Heart size={14} />
-                </button>
-              </div>
-
-              {/* Details */}
-              <div className="flex flex-col flex-1 px-0.5">
-                <h3 className="text-sm font-medium text-slate-800 line-clamp-2 mb-1.5 leading-snug">
-                  {item.title}
-                </h3>
-                <div className="mt-auto flex items-center gap-2">
-                  <span className="font-bold" style={{ color: TEAL }}>
-                    ₹{item.price}
-                  </span>
-                  <span className="text-xs line-through text-gray-400">
-                    ₹{item.originalPrice}
-                  </span>
+          {/* Mobile: Horizontal scroll | Desktop: Grid */}
+          <div className="flex sm:grid overflow-x-auto sm:overflow-visible flex-nowrap sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 no-scrollbar snap-x snap-mandatory px-1 sm:px-0">
+            {recommendedProducts.map((item) => (
+              <Link
+                to={`/product/${item.id}`}
+                key={item.id}
+                className="w-[150px] sm:w-auto shrink-0 snap-start group flex flex-col"
+              >
+                {/* Image Container */}
+                <div className="relative w-full aspect-[4/5] rounded-xl overflow-hidden bg-gray-50 mb-3 shadow-sm group-hover:shadow-md transition-shadow">
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  {/* Wishlist Button */}
+                  <button
+                    className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/70 backdrop-blur-md hover:bg-white text-slate-700 transition"
+                    onClick={(e) => { e.preventDefault(); }}
+                  >
+                    <Heart size={14} />
+                  </button>
                 </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+
+                {/* Details */}
+                <div className="flex flex-col flex-1 px-0.5">
+                  <h3 className="text-sm font-medium text-slate-800 line-clamp-2 mb-1.5 leading-snug">
+                    {item.title}
+                  </h3>
+                  <div className="mt-auto flex items-center gap-2">
+                    <span className="font-bold" style={{ color: TEAL }}>
+                      ₹{item.price}
+                    </span>
+                    <span className="text-xs line-through text-gray-400">
+                      ₹{item.originalPrice}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
 
       </main>
 
-      
+
       {/* FULL SCREEN VIEWER */}
       {isViewerOpen && (
         <div
