@@ -1,4 +1,4 @@
-import { Heart, Sparkles } from "lucide-react";
+import { Heart, Sparkles, ArrowRight } from "lucide-react";
 import le0 from "@/assets/searchbar-frequent_searches/le-0.png";
 import le1 from "@/assets/searchbar-frequent_searches/le-1.png";
 import le2 from "@/assets/searchbar-frequent_searches/le-2.png";
@@ -23,29 +23,34 @@ const TrendingSection = () => {
     { name: "Boho Maxi Skirt", price: "4600", img: feat2, badge: "Trending" },
     { name: "Ruffled Blouse Set", price: "5200", img: feat3, badge: "New" },
   ];
-
   return (
-    <section className="-mt-2 md:-mt-3 pt-0 pb-12 md:pt-1 md:pb-14 px-0">
+    <section className="-mt-6 md:-mt-8 pt-0 pb-12 md:pt-1 md:pb-14 px-0">
       <div className="container">
-        <div className="flex items-end justify-between mb-6 md:mb-8">
-          <div>
+        <div className="mb-3 md:mb-4">
+          <p className="text-base font-black tracking-[0.2em] uppercase text-[#0F766E] mb-0.5 pt-12">
+            Elevated Styles for Tiny Hearts
+          </p>
+          <div className="flex items-center justify-between">
             <h2 className="font-display text-2xl md:text-3xl font-black text-foreground flex items-center gap-3">
-              ❖  Trending Now
+              Trending Now
             </h2>
+            <button className="flex items-center justify-center w-10 h-10 rounded-full bg-secondary text-foreground hover:bg-[#0F766E] hover:text-white transition-all duration-300 shrink-0">
+              <ArrowRight className="w-6 h-6" />
+            </button>
           </div>
         </div>
-        {/* Horizontal scroll: 2 visible on mobile, 5 on desktop */}
+
+        {/* Mobile: 2x2 Grid (4 items) | Desktop: Horizontal scroll (10 items) */}
         <div
-          className="flex gap-4 md:gap-5 overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-smooth pb-2"
+          className="grid grid-cols-2 gap-4 md:flex md:gap-5 md:overflow-x-auto md:no-scrollbar md:snap-x md:snap-mandatory md:scroll-smooth pb-2"
           style={{ scrollbarWidth: "none" }}
         >
-          {products.map((product) => (
+          {products.map((product, idx) => (
             <div
               key={product.name}
-              className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all shrink-0 snap-start w-[calc(50%-8px)] md:w-[calc(20%-16px)]"
+              className={`group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all shrink-0 md:snap-start w-full md:w-[calc(20%-16px)] ${idx >= 4 ? 'hidden md:block' : ''}`}
             >
               <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5">
-
                 <img src={product.img} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 <button className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-primary transition-all">
                   <Heart className="w-3.5 h-3.5" />
