@@ -5,6 +5,7 @@ import RecommendedForYou from "@/components/home/RecommendedForYou";
 import TrendingSection from "@/components/home/TrendingSection";
 import UserNavbar from "@/components/home/UserNavbar";
 import HomeCollage from "@/components/home/HomeCollage";
+import ShopTheLook from "@/components/home/ShopTheLook";
 
 const Home = () => {
   useEffect(() => {
@@ -19,6 +20,7 @@ const Home = () => {
         <FeaturedCategories />
         <TrendingSection />
         <RecommendedForYou />
+        <ShopTheLook />
       </main>
       <Footer />
     </div>

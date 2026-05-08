@@ -23,7 +23,7 @@ const RecommendedForYou = () => {
   ];
 
   return (
-    <section className="-mt-14 md:-mt-18 pt-0 pb-12 md:pt-1 md:pb-14 px-0">
+    <section className="-mt-14 md:-mt-18 pt-0 pb-6 md:pt-1 md:pb-8 px-0">
       <div className="container">
         <div className="mb-3 md:mb-4">
           <p className="text-base font-black tracking-[0.2em] uppercase text-[#0F766E] mb-0.5 pt-12">
