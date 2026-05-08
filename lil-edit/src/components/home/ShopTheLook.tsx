@@ -44,8 +44,8 @@ const ShopTheLook = () => {
             <h2 className="font-display text-2xl md:text-3xl font-black text-foreground">
               Shop the Look
             </h2>
-            <button className="flex items-center justify-center w-10 h-10 rounded-full bg-secondary text-foreground hover:bg-[#0F766E] hover:text-white transition-all duration-300 shrink-0">
-              <ArrowRight className="w-6 h-6" />
+            <button className="flex items-center justify-center w-10 h-10 rounded-full bg-white text-foreground hover:bg-[#0F766E] hover:text-white shadow-sm border-2 border-black transition-all duration-300 shrink-0">
+              <ArrowRight className="w-6 h-6" strokeWidth={2.5} />
             </button>
           </div>
         </div>
@@ -83,13 +83,13 @@ const ShopTheLook = () => {
                     <h3 className="text-white font-bold text-[10px] sm:text-sm leading-tight tracking-tight pr-1">
                       {look.title}
                     </h3>
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#0F766E] flex items-center justify-center text-white shadow-lg transform transition-transform duration-500 group-hover:rotate-[360deg] shrink-0">
-                      <ArrowRight className="w-3 h-3 sm:w-4 h-4" />
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white flex items-center justify-center text-black shadow-lg transform transition-transform duration-500 group-hover:rotate-[360deg] shrink-0">
+                      <ArrowRight className="w-3 h-3 sm:w-4 h-4" strokeWidth={3} />
                     </div>
                   </div>
 
                   <div className="h-0 opacity-0 overflow-hidden group-hover:h-10 group-hover:opacity-100 transition-all duration-500 ease-in-out mt-2">
-                    <button className="w-full h-full bg-white text-[#0F766E] rounded-xl text-xs font-black uppercase tracking-widest hover:bg-black hover:text-white transition-colors duration-300">
+                    <button className="w-full h-full bg-[#0F766E] text-white rounded-xl text-xs font-black uppercase tracking-widest transition-colors duration-300">
                       Explore Look
                     </button>
                   </div>

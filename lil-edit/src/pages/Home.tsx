@@ -6,6 +6,7 @@ import TrendingSection from "@/components/home/TrendingSection";
 import UserNavbar from "@/components/home/UserNavbar";
 import HomeCollage from "@/components/home/HomeCollage";
 import ShopTheLook from "@/components/home/ShopTheLook";
+import AboutLilEdit from "@/components/home/AboutLilEdit";
 
 const Home = () => {
   useEffect(() => {
@@ -21,6 +22,7 @@ const Home = () => {
         <TrendingSection />
         <RecommendedForYou />
         <ShopTheLook />
+        <AboutLilEdit />
       </main>
       <Footer />
     </div>
