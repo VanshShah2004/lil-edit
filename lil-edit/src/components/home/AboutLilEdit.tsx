@@ -12,7 +12,7 @@ const AboutLilEdit = () => {
       title: "Premium Quality"
     },
     {
-      icon: <Globe className="w-5 h-5 text-[#0F766E]" />,
+      icon: <Globe className="w-5 h-5 text-[#0B5B55]" />,
       title: "Global Style"
     }
   ];
@@ -42,7 +42,7 @@ const AboutLilEdit = () => {
             
             <h2 className="font-display text-2xl md:text-3xl lg:text-[2.75rem] font-black text-foreground mb-6 leading-tight">
               Where Culture Meets <br className="hidden sm:block" />
-              <span className="text-[#0F766E]">Cool</span>
+              <span className="text-[#0B5B55]">Cool</span>
             </h2>
             
             <p className="text-sm md:text-base text-foreground/70 leading-relaxed mb-8 max-w-xl font-medium">

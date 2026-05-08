@@ -23,9 +23,9 @@ import {
   type CarouselApi
 } from "@/components/ui/carousel";
 
-const LAVENDER = "#C4B5D9";
-const TEAL = "#0F766E";
-const TEAL_DARK = "#115E59";
+const LAVENDER = "#B19CD9";
+const TEAL = "#0B5B55";
+const TEAL_DARK = "#08423E";
 const SWATCH_GAP_PX = 12; // gap-3
 const BETWEEN_BLOCKS_GAP_PX = SWATCH_GAP_PX * 4; // 4x swatch gap
 

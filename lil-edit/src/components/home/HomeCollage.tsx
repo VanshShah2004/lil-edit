@@ -110,7 +110,7 @@ const HomeCollage = () => {
 
   return (
     <section
-      className="w-full mt-[10px] mb-8"
+      className="w-full mt-[10px] mb-8 relative"
       style={{ overflowX: "clip" }}
       onTouchStart={(e) => {
         touchStartX.current = e.touches[0]?.clientX ?? null;
@@ -129,7 +129,45 @@ const HomeCollage = () => {
         touchDeltaX.current = 0;
       }}
     >
-      <div className="relative -top-[15px] md:-top-[20px] mx-auto w-[98%] sm:w-[90%] lg:w-[84%] h-[620px] md:h-[600px] lg:h-[560px] overflow-hidden">
+      {/* Side Accents (White Rectangles with Design) - Tailored Desktop Profile */}
+      <div className="flex absolute left-[1vw] sm:left-[2vw] lg:left-[4.5vw] xl:left-[4vw] top-1/2 -translate-y-1/2 w-6 sm:w-14 lg:w-10 xl:w-12 h-[380px] sm:h-[450px] lg:h-[520px] bg-white shadow-xl z-20 pointer-events-none border border-white/50 rounded-lg sm:rounded-2xl overflow-hidden flex-col items-center py-4 sm:py-8">
+        {/* Top decorative line/dots */}
+        <div className="flex-1 flex flex-col items-center gap-1.5 w-full">
+          <div className="w-0.5 sm:w-1 flex-1 bg-[#0B5B55]/60 rounded-full" />
+          <div className="w-1.5 sm:w-2.5 h-1.5 sm:h-2.5 rounded-full bg-[#0B5B55]" />
+        </div>
+
+        <p className="my-4 sm:my-8 text-[10px] sm:text-[12px] xl:text-[14px] font-black tracking-[0.3em] sm:tracking-[0.4em] uppercase text-foreground rotate-180 [writing-mode:vertical-lr] whitespace-nowrap">
+          Curated With Love
+        </p>
+
+        {/* Bottom decorative line/dots */}
+        <div className="flex-1 flex flex-col items-center gap-1.5 w-full">
+          <div className="w-1.5 sm:w-2.5 h-1.5 sm:h-2.5 rounded-full bg-[#0B5B55]" />
+          <div className="w-0.5 sm:w-1 flex-1 bg-[#0B5B55]/60 rounded-full" />
+        </div>
+      </div>
+
+      <div className="flex absolute right-[1vw] sm:right-[2vw] lg:right-[4.5vw] xl:right-[4vw] top-1/2 -translate-y-1/2 w-6 sm:w-14 lg:w-10 xl:w-12 h-[380px] sm:h-[450px] lg:h-[520px] bg-white shadow-2xl z-20 pointer-events-none border border-white/50 rounded-lg sm:rounded-2xl overflow-hidden flex-col items-center py-4 sm:py-8">
+        {/* Top decorative line/dots */}
+        <div className="flex-1 flex flex-col items-center gap-1.5 w-full">
+          <div className="w-0.5 sm:w-1 flex-1 bg-[#0B5B55]/60 rounded-full" />
+          <div className="w-1.5 sm:w-2.5 h-1.5 sm:h-2.5 rounded-full bg-[#0B5B55]" />
+        </div>
+
+        <p className="my-4 sm:my-8 text-[10px] sm:text-[12px] xl:text-[14px] font-black tracking-[0.3em] sm:tracking-[0.4em] uppercase text-foreground [writing-mode:vertical-lr] whitespace-nowrap">
+          New Season 2026
+
+        </p>
+
+        {/* Bottom decorative line/dots */}
+        <div className="flex-1 flex flex-col items-center gap-1.5 w-full">
+          <div className="w-1.5 sm:w-2.5 h-1.5 sm:h-2.5 rounded-full bg-[#0B5B55]" />
+          <div className="w-0.5 sm:w-1 flex-1 bg-[#0B5B55]/60 rounded-full" />
+        </div>
+      </div>
+
+      <div className="relative -top-[15px] md:-top-[20px] mx-auto w-[94%] sm:w-[88%] lg:w-[80%] h-[620px] md:h-[600px] lg:h-[560px] overflow-hidden">
         <div
           className="w-full h-full flex transition-transform duration-500 ease-out"
           style={{ transform: `translateX(-${activePart * 100}%)` }}

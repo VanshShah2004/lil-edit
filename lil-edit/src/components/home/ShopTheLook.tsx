@@ -44,14 +44,14 @@ const ShopTheLook = () => {
       <div className="container px-4">
         {/* Header */}
         <div className="mb-6 md:mb-8">
-          <p className="text-base font-black tracking-[0.2em] uppercase text-[#0F766E] mb-0.5 pt-8 sm:pt-12">
+          <p className="text-base font-black tracking-[0.2em] uppercase text-[#0B5B55] mb-0.5 pt-8 sm:pt-12">
             One Click - Full Outfit
           </p>
           <div className="flex items-center justify-between">
             <h2 className="font-display text-2xl md:text-3xl font-black text-foreground">
               Shop the Look
             </h2>
-            <button className="flex items-center justify-center w-10 h-10 rounded-full bg-white text-foreground hover:bg-[#0F766E] hover:text-white shadow-sm border-2 border-black transition-all duration-300 shrink-0">
+            <button className="flex items-center justify-center w-10 h-10 rounded-full bg-white text-foreground hover:bg-[#0B5B55] hover:text-white shadow-sm border-2 border-black transition-all duration-300 shrink-0">
               <ArrowRight className="w-6 h-6" strokeWidth={2.5} />
             </button>
           </div>
@@ -98,13 +98,13 @@ const ShopTheLook = () => {
                       <h3 className="text-white font-black text-[11px] sm:text-base leading-tight tracking-tight pr-2 drop-shadow-sm">
                         {look.title}
                       </h3>
-                      <div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-[0.8rem_0.3rem_0.8rem_0.3rem] bg-white flex items-center justify-center text-black shadow-lg transform transition-all duration-700 shrink-0 ${isActive ? 'rotate-[360deg] bg-teal-600 text-white' : 'group-hover:rotate-[360deg]'}`}>
+                      <div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-[0.8rem_0.3rem_0.8rem_0.3rem] bg-white flex items-center justify-center text-black shadow-lg transform transition-all duration-700 shrink-0 ${isActive ? 'rotate-[360deg] bg-[#0B5B55] text-white' : 'group-hover:rotate-[360deg]'}`}>
                         <ArrowRight className="w-3.5 h-3.5 sm:w-5 sm:h-5" strokeWidth={3} />
                       </div>
                     </div>
 
                     <div className={`overflow-hidden transition-all duration-700 ease-in-out mt-3 ${isActive ? 'h-11 opacity-100' : 'h-0 opacity-0 group-hover:h-11 group-hover:opacity-100'}`}>
-                      <button className="w-full h-full bg-[#0F766E] hover:bg-[#0D635C] text-white rounded-[1rem_0.3rem_1rem_0.3rem] text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] shadow-lg transition-all duration-300">
+                      <button className="w-full h-full bg-[#0B5B55] hover:bg-[#094742] text-white rounded-[1rem_0.3rem_1rem_0.3rem] text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] shadow-lg transition-all duration-300">
                         Explore Look
                       </button>
                     </div>

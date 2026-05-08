@@ -15,26 +15,26 @@
     --popover: 275 32% 99%;
     --popover-foreground: 270 14% 24%;
 
-    /* Dusty pastel lavender — main brand */
-    --primary: 268 26% 74%;
-    --primary-foreground: 280 22% 18%;
+    /* Vibrant Lavender — bolder and more saturated */
+    --primary: 268 45% 65%;
+    --primary-foreground: 280 30% 15%;
 
-    /* Lighter lilac panels */
-    --secondary: 278 18% 93%;
-    --secondary-foreground: 272 14% 32%;
+    /* Richer lilac panels */
+    --secondary: 278 28% 90%;
+    --secondary-foreground: 272 18% 28%;
 
-    --muted: 272 14% 95.5%;
-    --muted-foreground: 270 9% 44%;
+    --muted: 272 18% 94%;
+    --muted-foreground: 270 12% 40%;
 
-    --accent: 275 22% 94%;
-    --accent-foreground: 272 16% 30%;
+    --accent: 275 35% 88%;
+    --accent-foreground: 272 20% 25%;
 
-    --destructive: 0 70% 62%;
+    --destructive: 0 85% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 272 12% 91%;
-    --input: 272 12% 91%;
-    --ring: 268 22% 70%;
+    --border: 272 18% 88%;
+    --input: 272 18% 88%;
+    --ring: 268 35% 65%;
 
     --radius: 0.75rem;
 
