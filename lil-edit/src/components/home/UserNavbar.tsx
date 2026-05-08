@@ -234,7 +234,7 @@ const UserNavbar = () => {
           }`}
       >
         <div className="flex items-center justify-between p-4 border-b border-border/50">
-          <div className="font-display text-2xl font-bold">Hey, {firstNameCandidate === "U" ? "User" : firstNameCandidate} !</div>
+          <div className="font-display text-2xl font-semibold">Hey, <span className="font-extrabold">{firstNameCandidate === "U" ? "User" : firstNameCandidate}</span>!</div>
           <button
             type="button"
             onClick={() => setIsLeftMenuOpen(false)}
