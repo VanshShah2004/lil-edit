@@ -24,11 +24,11 @@ const TrendingSection = () => {
     { name: "Ruffled Blouse Set", price: "5200", img: feat3, badge: "New" },
   ];
   return (
-    <section className="-mt-6 md:-mt-8 pt-0 pb-12 md:pt-1 md:pb-14 px-0">
+    <section className="pt-0 pb-12 md:pt-0 md:pb-14 px-0">
       <div className="container">
         <div className="mb-3 md:mb-4">
-          <p className="text-base font-black tracking-[0.2em] uppercase text-[#0F766E] mb-0.5 pt-12">
-            Elevated Styles for Tiny Hearts
+          <p className="text-base font-black tracking-[0.2em] uppercase text-[#0F766E] mb-0.5 pt-20">
+            Elevated Styles
           </p>
           <div className="flex items-center justify-between">
             <h2 className="font-display text-2xl md:text-3xl font-black text-foreground flex items-center gap-3">

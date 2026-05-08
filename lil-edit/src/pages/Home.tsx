@@ -16,9 +16,9 @@ const Home = () => {
       <UserNavbar />
       <main className="flex-1 pt-[150px] md:pt-[112px] bg-[#E8DDF7]">
         <HomeCollage />
+        <FeaturedCategories />
         <TrendingSection />
         <RecommendedForYou />
-        <FeaturedCategories />
       </main>
       <Footer />
     </div>
