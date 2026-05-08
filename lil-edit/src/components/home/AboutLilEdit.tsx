@@ -21,15 +21,15 @@ const AboutLilEdit = () => {
     <section className="py-12 md:py-16 lg:py-20 bg-[#E8DDF7]">
       <div className="container px-6 lg:px-16 mx-auto">
         <div className="flex flex-col md:flex-row items-center justify-center gap-10 md:gap-16 lg:gap-24">
-          
+
           {/* Logo Block (Always First in DOM for clean accessibility and mobile-top behavior) */}
           <div className="w-full md:w-[35%] lg:w-[30%] flex justify-center md:justify-end">
             <div className="relative group w-full max-w-[220px] sm:max-w-[260px] md:max-w-none">
               <div className="absolute inset-0 bg-white/20 blur-[60px] group-hover:bg-white/40 transition-colors duration-1000 rounded-full" />
-              <img 
-                src={logo} 
-                alt="The Lil Edit" 
-                className="relative w-full h-auto object-contain drop-shadow-xl transform transition-transform duration-700 group-hover:scale-105" 
+              <img
+                src={logo}
+                alt="The Lil Edit"
+                className="relative w-full h-auto object-contain drop-shadow-xl transform transition-transform duration-700 group-hover:scale-105"
               />
             </div>
           </div>
@@ -39,12 +39,12 @@ const AboutLilEdit = () => {
             <span className="text-xs md:text-sm font-black tracking-[0.6em] uppercase text-[#0F766E] mb-5 block">
               The Lil Edit Story
             </span>
-            
+
             <h2 className="font-display text-2xl md:text-3xl lg:text-[2.75rem] font-black text-foreground mb-6 leading-tight">
               Where Culture Meets <br className="hidden sm:block" />
-              <span className="text-[#0B5B55]">Cool</span>
+              <span className="text-[#0B5B55] inline-block mt-2">Cool</span>
             </h2>
-            
+
             <p className="text-sm md:text-base text-foreground/70 leading-relaxed mb-8 max-w-xl font-medium">
               At LilEdit, we believe style has no age. Our curated collections bring high-fashion aesthetics to the playground, blending premium fabrics with effortless silhouettes for the little ones who are born to stand out.
             </p>
