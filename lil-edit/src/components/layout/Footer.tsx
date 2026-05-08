@@ -3,8 +3,8 @@ import { Heart } from "lucide-react";
 
 const Footer = () => (
   <footer className="bg-card border-t border-border">
-    <div className="container mx-auto px-4 lg:px-8 py-16">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+    <div className="container mx-auto px-4 lg:px-8 py-12 md:py-16">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10">
         {/* Brand */}
         <div className="md:col-span-1">
           <h3 className="font-display text-2xl text-foreground mb-2">The Lil Edit</h3>
@@ -37,13 +37,13 @@ const Footer = () => (
         <div>
           <h4 className="font-display text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Stay in the loop</h4>
           <p className="text-sm font-body text-muted-foreground mb-4">Get the cutest updates straight to your inbox.</p>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="email"
               placeholder="your@email.com"
               className="flex-1 px-4 py-2 rounded-lg border border-border bg-background text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
-            <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors">
+            <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors sm:w-auto w-full">
               Join
             </button>
           </div>
