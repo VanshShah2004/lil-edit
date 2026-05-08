@@ -4,6 +4,9 @@ import FeaturedCategories from "@/components/home/FeaturedCategories";
 import RecommendedForYou from "@/components/home/RecommendedForYou";
 import TrendingSection from "@/components/home/TrendingSection";
 import UserNavbar from "@/components/home/UserNavbar";
+import HomeCollage from "@/components/home/HomeCollage";
+import ShopTheLook from "@/components/home/ShopTheLook";
+import AboutLilEdit from "@/components/home/AboutLilEdit";
 
 const Home = () => {
   useEffect(() => {
@@ -11,12 +14,15 @@ const Home = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-secondary/20 to-background font-body selection:bg-primary/20">
+    <div className="min-h-screen flex flex-col font-body selection:bg-primary/20">
       <UserNavbar />
-      <main className="flex-1 pt-24 md:pt-28">
-        <TrendingSection />
+      <main className="flex-1 pt-[150px] md:pt-[112px] bg-[#E8DDF7]">
+        <HomeCollage />
         <FeaturedCategories />
+        <TrendingSection />
         <RecommendedForYou />
+        <ShopTheLook />
+        <AboutLilEdit />
       </main>
       <Footer />
     </div>

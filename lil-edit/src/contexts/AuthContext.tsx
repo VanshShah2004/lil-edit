@@ -92,28 +92,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const loadProfileInBackground = (userId: string) => {
+    void fetchProfile(userId).catch((err) =>
+      console.error("Profile fetch failed:", err)
+    );
+  };
+
   useEffect(() => {
     const getSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      const currentUser = data.session?.user ?? null;
-      setUser(currentUser);
-      if (currentUser) {
-        await fetchProfile(currentUser.id);
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("Auth session error:", error.message);
+          return;
+        }
+        const currentUser = data.session?.user ?? null;
+        setUser(currentUser);
+        if (currentUser) {
+          // Never block auth resolution on profiles row (RLS/network can hang or be slow).
+          loadProfileInBackground(currentUser.id);
+        }
+      } catch (err) {
+        console.error("Session fetch failed:", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     getSession();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (currentUser) {
-        await fetchProfile(currentUser.id);
-      } else {
-        setProfile(null);
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      try {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        setLoading(false);
+        if (currentUser) {
+          loadProfileInBackground(currentUser.id);
+        } else {
+          setProfile(null);
+        }
+      } catch (err) {
+        console.error("Auth state change error:", err);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => {

@@ -15,26 +15,26 @@
     --popover: 275 32% 99%;
     --popover-foreground: 270 14% 24%;
 
-    /* Dusty pastel lavender — main brand */
-    --primary: 268 26% 74%;
-    --primary-foreground: 280 22% 18%;
+    /* Vibrant Lavender — bolder and more saturated */
+    --primary: 268 45% 65%;
+    --primary-foreground: 280 30% 15%;
 
-    /* Lighter lilac panels */
-    --secondary: 278 18% 93%;
-    --secondary-foreground: 272 14% 32%;
+    /* Richer lilac panels */
+    --secondary: 278 28% 90%;
+    --secondary-foreground: 272 18% 28%;
 
-    --muted: 272 14% 95.5%;
-    --muted-foreground: 270 9% 44%;
+    --muted: 272 18% 94%;
+    --muted-foreground: 270 12% 40%;
 
-    --accent: 275 22% 94%;
-    --accent-foreground: 272 16% 30%;
+    --accent: 275 35% 88%;
+    --accent-foreground: 272 20% 25%;
 
-    --destructive: 0 70% 62%;
+    --destructive: 0 85% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 272 12% 91%;
-    --input: 272 12% 91%;
-    --ring: 268 22% 70%;
+    --border: 272 18% 88%;
+    --input: 272 18% 88%;
+    --ring: 268 35% 65%;
 
     --radius: 0.75rem;
 
@@ -52,6 +52,7 @@
     --sidebar-accent-foreground: 272 14% 22%;
     --sidebar-border: 272 12% 92%;
     --sidebar-ring: 268 24% 68%;
+    --navbar-height: 64px;
   }
 }
 
@@ -60,13 +61,25 @@
     @apply border-border;
   }
 
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-x: hidden;
+  }
+
   body {
-    @apply text-foreground font-body antialiased;
+    @apply text-foreground font-body antialiased min-h-screen;
     background-color: hsl(var(--background));
     background-image:
       radial-gradient(ellipse 120% 90% at 12% -5%, hsl(275 38% 94% / 0.5), transparent 55%),
       radial-gradient(ellipse 100% 85% at 88% 8%, hsl(285 32% 95% / 0.45), transparent 50%),
       radial-gradient(ellipse 85% 55% at 48% 100%, hsl(265 34% 95% / 0.42), transparent 58%);
+  }
+
+  #root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -75,6 +88,18 @@
 }
 
 @layer utilities {
+  .page-container {
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .safe-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+  }
+
+  .with-mobile-sticky-bar {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 5.5rem);
+  }
+
   .text-gradient-blush {
     background: linear-gradient(
       118deg,
@@ -106,5 +131,13 @@
       hsl(var(--card)) 48%,
       hsl(var(--secondary)) 100%
     );
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;    /* Firefox */
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;            /* Chrome, Safari and Opera */
   }
 }

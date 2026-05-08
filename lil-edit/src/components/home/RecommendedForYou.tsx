@@ -1,44 +1,69 @@
-import { ChevronRight, Heart } from "lucide-react";
+import { ArrowRight, Heart } from "lucide-react";
+import le0 from "@/assets/searchbar-frequent_searches/le-0.png";
+import le1 from "@/assets/searchbar-frequent_searches/le-1.png";
+import le2 from "@/assets/searchbar-frequent_searches/le-2.png";
+import le3 from "@/assets/searchbar-frequent_searches/le-3.png";
+import le4 from "@/assets/searchbar-frequent_searches/le-4.png";
+import le5 from "@/assets/searchbar-frequent_searches/le-5.png";
+import le6 from "@/assets/searchbar-frequent_searches/le-6.png";
+import feat1 from "@/assets/featured-1.jpg";
 
 const RecommendedForYou = () => {
   const products = [
-    { name: "Lilac Ruffle Dress", price: "45.00", img: "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&q=80&w=500" },
-    { name: "Knitted Bear Sweater", price: "55.00", img: "https://images.unsplash.com/photo-1621072970505-181822de31d7?auto=format&fit=crop&q=80&w=500" },
-    { name: "Pastel Romper Set", price: "38.50", img: "https://images.unsplash.com/photo-1560614382-332306fe1d16?auto=format&fit=crop&q=80&w=500" },
-    { name: "Cozy Cotton Beanie", price: "18.00", img: "https://images.unsplash.com/photo-1549419139-4d2be7ce24df?auto=format&fit=crop&q=80&w=500" },
-    { name: "Soft Sole Booties", price: "24.00", img: "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?auto=format&fit=crop&q=80&w=500" },
+    { name: "Lilac Ruffle Dress", price: "4500", img: le4 },
+    { name: "Knitted Bear Sweater", price: "5500", img: le5 },
+    { name: "Pastel Romper Set", price: "3850", img: le6 },
+    { name: "Cozy Cotton Beanie", price: "1800", img: le2 },
+    { name: "Soft Sole Booties", price: "2400", img: le3 },
+    { name: "Halter Top Set", price: "4200", img: le0 },
+    { name: "Yellow Jumpsuit", price: "3600", img: le1 },
+    { name: "Embroidered Tunic", price: "4400", img: le5 },
+    { name: "Velvet Party Dress", price: "5500", img: le6 },
+    { name: "Striped Dungarees", price: "4000", img: feat1 },
   ];
 
   return (
-    <section className="py-12 md:py-14 px-4">
-      <div className="container mx-auto">
-        <div className="flex justify-between items-end mb-8">
-          <div>
-            <p className="text-xs font-semibold tracking-[0.18em] uppercase text-primary/80 mb-2">Curated For You</p>
-            <h2 className="font-display text-3xl md:text-4xl font-semibold text-foreground mb-2">Recommended For You</h2>
-            <p className="text-muted-foreground font-body">Based on your recent purchases</p>
+    <section className="-mt-14 md:-mt-18 pt-0 pb-6 md:pt-1 md:pb-8 px-0">
+      <div className="container">
+        <div className="mb-3 md:mb-4">
+          <p className="text-base font-black tracking-[0.2em] uppercase text-[#0F766E] mb-0.5 pt-12">
+            Curated For You
+          </p>
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-2xl md:text-3xl font-black text-foreground flex items-center gap-3">
+              Recommended For You
+            </h2>
+            <button className="flex items-center justify-center w-10 h-10 rounded-full bg-secondary text-foreground hover:bg-[#0F766E] hover:text-white transition-all duration-300 shrink-0">
+              <ArrowRight className="w-6 h-6" />
+            </button>
           </div>
-          <button className="text-primary hover:text-primary/80 font-medium text-sm flex items-center gap-1">
-            View All <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
 
-        <div className="flex overflow-x-auto gap-4 md:gap-6 pb-6 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-          {products.map((product) => (
-            <div key={product.name} className="min-w-[260px] max-w-[260px] snap-start group">
-              <div className="relative rounded-2xl overflow-hidden bg-card border border-border mb-3 aspect-[4/5]">
+        {/* Mobile: 2x2 Grid (4 items) | Desktop: Horizontal scroll */}
+        <div 
+          className="grid grid-cols-2 gap-4 md:flex md:gap-5 md:overflow-x-auto md:no-scrollbar md:snap-x md:snap-mandatory md:scroll-smooth pb-2" 
+          style={{ scrollbarWidth: "none" }}
+        >
+          {products.map((product, idx) => (
+            <div 
+              key={product.name} 
+              className={`group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all shrink-0 md:snap-start w-full md:w-[calc(20%-16px)] ${idx >= 4 ? 'hidden md:block' : ''}`}
+            >
+              <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5">
                 <img src={product.img} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                <button className="absolute top-3 right-3 w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-red-500 hover:bg-white transition-all shadow-sm">
-                  <Heart className="w-4 h-4" />
+                <button className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-primary transition-all">
+                  <Heart className="w-3.5 h-3.5" />
                 </button>
-                <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                  <button className="w-full py-2.5 bg-white/90 backdrop-blur text-foreground rounded-lg font-medium text-sm hover:bg-primary hover:text-white transition-colors shadow-sm">
+                <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                  <button className="w-full py-1.5 bg-white/90 backdrop-blur text-foreground rounded-lg font-medium text-[10px] md:text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm">
                     Add to Cart
                   </button>
                 </div>
               </div>
-              <h3 className="font-display font-medium text-foreground">{product.name}</h3>
-              <p className="font-body text-primary">${product.price}</p>
+              <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
+                <h3 className="font-display text-xs md:text-sm font-medium text-foreground leading-snug">{product.name}</h3>
+                <p className="font-body text-xs font-semibold text-[#0F766E] shrink-0">₹{product.price}</p>
+              </div>
             </div>
           ))}
         </div>
