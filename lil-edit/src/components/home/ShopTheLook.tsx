@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import le0 from "@/assets/searchbar-frequent_searches/le-0.png";
 import le1 from "@/assets/searchbar-frequent_searches/le-1.png";
@@ -32,6 +33,12 @@ const looks = [
 ];
 
 const ShopTheLook = () => {
+  const [activeId, setActiveId] = useState<number | null>(null);
+
+  const toggleLook = (id: number) => {
+    setActiveId(activeId === id ? null : id);
+  };
+
   return (
     <section className="pt-2 pb-8 md:pt-4 md:pb-12 bg-white">
       <div className="container px-4">
@@ -52,54 +59,63 @@ const ShopTheLook = () => {
 
         {/* Placards Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 lg:gap-10">
-          {looks.map((look) => (
-            <div
-              key={look.id}
-              className="group relative h-[260px] sm:h-[340px] md:h-[380px] cursor-pointer"
-            >
-              {/* Main Card Container with Organic Shapes */}
-              <div className="relative w-full h-full rounded-[2rem_0.5rem_2rem_0.5rem] sm:rounded-[3rem_1rem_3rem_1rem] overflow-hidden shadow-[0_10px_30px_-10px_rgba(0,0,0,0.2)] border border-white/20 transition-all duration-700 group-hover:shadow-[0_20px_50px_-12px_rgba(15,118,110,0.3)]">
+          {looks.map((look) => {
+            const isActive = activeId === look.id;
+            
+            return (
+              <div
+                key={look.id}
+                onClick={() => toggleLook(look.id)}
+                className="group relative h-[260px] sm:h-[340px] md:h-[380px] cursor-pointer"
+              >
+                {/* Main Card Container with Organic Shapes */}
+                <div className={`relative w-full h-full rounded-[2rem_0.5rem_2rem_0.5rem] sm:rounded-[3rem_1rem_3rem_1rem] overflow-hidden shadow-[0_10px_30px_-10px_rgba(0,0,0,0.2)] border border-white/20 transition-all duration-700 ${isActive ? 'shadow-[0_20px_50px_-12px_rgba(15,118,110,0.3)]' : 'group-hover:shadow-[0_20px_50px_-12px_rgba(15,118,110,0.3)]'}`}>
 
-                {/* Image with subtle zoom & pan */}
-                <img
-                  src={look.img}
-                  alt={look.title}
-                  className="w-full h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-110"
-                />
+                  {/* Image with subtle zoom & pan */}
+                  <img
+                    src={look.img}
+                    alt={look.title}
+                    className={`w-full h-full object-cover transition-transform duration-1000 ease-out ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}
+                  />
 
-                {/* Aesthetic Vignette Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 opacity-60 group-hover:opacity-80 transition-opacity duration-500" />
+                  {/* Aesthetic Vignette Overlay */}
+                  <div className={`absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 transition-opacity duration-500 ${isActive ? 'opacity-80' : 'opacity-60 group-hover:opacity-80'}`} />
 
-                {/* Vertical Side Label */}
-                <div className="absolute top-8 sm:top-10 -left-1 origin-top-left -rotate-90 scale-75 sm:scale-100">
-                  <span className="text-[10px] font-black tracking-[0.3em] uppercase text-white/40 group-hover:text-white/90 transition-colors duration-500 bg-black/20 backdrop-blur-md px-4 py-1 rounded-full border border-white/10">
-                    {look.label}
-                  </span>
-                </div>
+                  {/* Vertical Side Label */}
+                  <div className="absolute top-8 sm:top-10 -left-1 origin-top-left -rotate-90 scale-75 sm:scale-100">
+                    <span className={`text-[10px] font-black tracking-[0.3em] uppercase transition-colors duration-500 bg-black/20 backdrop-blur-md px-4 py-1 rounded-full border border-white/10 ${isActive ? 'text-white/90' : 'text-white/40 group-hover:text-white/90'}`}>
+                      {look.label}
+                    </span>
+                  </div>
 
-                {/* Floating Glass Info Card */}
-                <div className="absolute bottom-2 left-2 right-2 sm:bottom-3 sm:left-3 sm:right-3 p-2 sm:p-3 h-[50px] sm:h-[65px] group-hover:h-[90px] sm:group-hover:h-[110px] rounded-lg sm:rounded-xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl transition-all duration-500 flex flex-col justify-between group-hover:-translate-y-1 sm:group-hover:-translate-y-2">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-white font-bold text-[10px] sm:text-sm leading-tight tracking-tight pr-1">
-                      {look.title}
-                    </h3>
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white flex items-center justify-center text-black shadow-lg transform transition-transform duration-500 group-hover:rotate-[360deg] shrink-0">
-                      <ArrowRight className="w-3 h-3 sm:w-4 h-4" strokeWidth={3} />
+                  {/* Floating Glass Info Card */}
+                  <div className={`absolute bottom-2 left-2 right-2 sm:bottom-3 sm:left-3 sm:right-3 p-2 sm:p-3 transition-all duration-500 flex flex-col justify-between bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-lg sm:rounded-xl ${
+                    isActive 
+                      ? 'h-[90px] sm:h-[110px] -translate-y-1 sm:-translate-y-2' 
+                      : 'h-[50px] sm:h-[65px] group-hover:h-[90px] sm:group-hover:h-[110px] group-hover:-translate-y-1 sm:group-hover:-translate-y-2'
+                  }`}>
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-white font-bold text-[10px] sm:text-sm leading-tight tracking-tight pr-1">
+                        {look.title}
+                      </h3>
+                      <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white flex items-center justify-center text-black shadow-lg transform transition-transform duration-500 shrink-0 ${isActive ? 'rotate-[360deg]' : 'group-hover:rotate-[360deg]'}`}>
+                        <ArrowRight className="w-3 h-3 sm:w-4 h-4" strokeWidth={3} />
+                      </div>
+                    </div>
+
+                    <div className={`overflow-hidden transition-all duration-500 ease-in-out mt-2 ${isActive ? 'h-10 opacity-100' : 'h-0 opacity-0 group-hover:h-10 group-hover:opacity-100'}`}>
+                      <button className="w-full h-full bg-[#0F766E] text-white rounded-xl text-xs font-black uppercase tracking-widest transition-colors duration-300">
+                        Explore Look
+                      </button>
                     </div>
                   </div>
-
-                  <div className="h-0 opacity-0 overflow-hidden group-hover:h-10 group-hover:opacity-100 transition-all duration-500 ease-in-out mt-2">
-                    <button className="w-full h-full bg-[#0F766E] text-white rounded-xl text-xs font-black uppercase tracking-widest transition-colors duration-300">
-                      Explore Look
-                    </button>
-                  </div>
                 </div>
-              </div>
 
-              {/* Decorative background element that peeks out */}
-              <div className="absolute -z-10 inset-0 bg-[#0F766E]/5 rounded-[3rem_1rem_3rem_1rem] blur-2xl transform scale-90 group-hover:scale-110 transition-transform duration-700" />
-            </div>
-          ))}
+                {/* Decorative background element that peeks out */}
+                <div className={`absolute -z-10 inset-0 bg-[#0F766E]/5 rounded-[3rem_1rem_3rem_1rem] blur-2xl transform transition-transform duration-700 ${isActive ? 'scale-110' : 'scale-90 group-hover:scale-110'}`} />
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
