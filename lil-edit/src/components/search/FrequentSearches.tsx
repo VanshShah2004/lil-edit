@@ -23,7 +23,7 @@ export default function FrequentSearches({ onSelect }: FrequentSearchesProps) {
   return (
     <section className="py-6 px-4 sm:px-6 md:px-8 animate-fade-in">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold tracking-wider text-[#9a65ad] uppercase">
+        <h3 className="text-base font-bold tracking-wider text-[#9a65ad] uppercase">
           Popular Choices
         </h3>
       </div>
@@ -43,7 +43,7 @@ export default function FrequentSearches({ onSelect }: FrequentSearchesProps) {
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               />
             </div>
-            <span className="flex-1 text-xs sm:text-sm font-medium text-foreground/80 group-hover:text-teal-700 transition-colors">
+            <span className="flex-1 text-sm sm:text-base font-semibold text-foreground/80 group-hover:text-teal-700 transition-colors">
               {item.name}
             </span>
           </button>

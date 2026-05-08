@@ -88,23 +88,23 @@ const ShopTheLook = () => {
                     </span>
                   </div>
 
-                  {/* Floating Glass Info Card */}
-                  <div className={`absolute bottom-2 left-2 right-2 sm:bottom-3 sm:left-3 sm:right-3 p-2 sm:p-3 transition-all duration-500 flex flex-col justify-between bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-lg sm:rounded-xl ${
+                  {/* Floating Glass Info Card - Redesigned with Organic Shape */}
+                  <div className={`absolute bottom-4 left-4 right-4 p-3 sm:p-4 transition-all duration-700 flex flex-col justify-between bg-white/20 backdrop-blur-2xl border border-white/30 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.4)] rounded-[1.5rem_0.5rem_1.5rem_0.5rem] ${
                     isActive 
-                      ? 'h-[90px] sm:h-[110px] -translate-y-1 sm:-translate-y-2' 
-                      : 'h-[50px] sm:h-[65px] group-hover:h-[90px] sm:group-hover:h-[110px] group-hover:-translate-y-1 sm:group-hover:-translate-y-2'
+                      ? 'h-[105px] sm:h-[130px] -translate-y-2' 
+                      : 'h-[55px] sm:h-[70px] group-hover:h-[105px] sm:group-hover:h-[130px] group-hover:-translate-y-2'
                   }`}>
                     <div className="flex justify-between items-center">
-                      <h3 className="text-white font-bold text-[10px] sm:text-sm leading-tight tracking-tight pr-1">
+                      <h3 className="text-white font-black text-[11px] sm:text-base leading-tight tracking-tight pr-2 drop-shadow-sm">
                         {look.title}
                       </h3>
-                      <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white flex items-center justify-center text-black shadow-lg transform transition-transform duration-500 shrink-0 ${isActive ? 'rotate-[360deg]' : 'group-hover:rotate-[360deg]'}`}>
-                        <ArrowRight className="w-3 h-3 sm:w-4 h-4" strokeWidth={3} />
+                      <div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-[0.8rem_0.3rem_0.8rem_0.3rem] bg-white flex items-center justify-center text-black shadow-lg transform transition-all duration-700 shrink-0 ${isActive ? 'rotate-[360deg] bg-teal-600 text-white' : 'group-hover:rotate-[360deg]'}`}>
+                        <ArrowRight className="w-3.5 h-3.5 sm:w-5 sm:h-5" strokeWidth={3} />
                       </div>
                     </div>
 
-                    <div className={`overflow-hidden transition-all duration-500 ease-in-out mt-2 ${isActive ? 'h-10 opacity-100' : 'h-0 opacity-0 group-hover:h-10 group-hover:opacity-100'}`}>
-                      <button className="w-full h-full bg-[#0F766E] text-white rounded-xl text-xs font-black uppercase tracking-widest transition-colors duration-300">
+                    <div className={`overflow-hidden transition-all duration-700 ease-in-out mt-3 ${isActive ? 'h-11 opacity-100' : 'h-0 opacity-0 group-hover:h-11 group-hover:opacity-100'}`}>
+                      <button className="w-full h-full bg-[#0F766E] hover:bg-[#0D635C] text-white rounded-[1rem_0.3rem_1rem_0.3rem] text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] shadow-lg transition-all duration-300">
                         Explore Look
                       </button>
                     </div>
