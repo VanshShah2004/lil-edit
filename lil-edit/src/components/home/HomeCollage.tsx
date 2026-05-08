@@ -31,7 +31,7 @@ const HomeCollage = () => {
     const secondImage = isDesktop ? lecD002 : lec002;
     const thirdImage = isDesktop ? lecD003 : lec003;
     return [
-      <div key="part-collage" className="w-full h-full grid grid-cols-7 md:grid-cols-5 grid-rows-2 gap-2 sm:gap-4 px-2 sm:px-4">
+      <div key="part-collage" className="w-full h-full grid grid-cols-7 md:grid-cols-5 grid-rows-2 gap-2 md:gap-1.5 px-2 sm:px-4">
         <div className="col-span-3 md:col-span-2 row-span-1 overflow-hidden rounded-none">
           <img
             src={img1}
