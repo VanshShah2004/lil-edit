@@ -22,7 +22,7 @@ export default function SearchBar({ value, onChange, onClose, autoFocus = false 
   }, [autoFocus]);
 
   return (
-    <div className="sticky top-0 z-10 bg-background pt-4 pb-4 px-4 sm:px-6 md:px-8 border-b border-border/60">
+    <div className="sticky top-0 z-10 bg-background pt-4 pb-4 px-3 sm:px-4 md:px-8 border-b border-border/60">
       <div className="flex items-center gap-3">
         <div className="relative flex-1 group">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-teal-600 transition-colors">

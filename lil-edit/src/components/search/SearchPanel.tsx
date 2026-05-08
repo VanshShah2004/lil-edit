@@ -43,7 +43,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
 
   return createPortal(
     <div
-      className="fixed bottom-0 left-0 right-0 top-[5rem] md:inset-0 md:top-0 z-[100] flex justify-end bg-black/40 animate-fade-in transition-opacity"
+      className="fixed bottom-0 left-0 right-0 top-[var(--navbar-height,5rem)] md:inset-0 md:top-0 z-[100] flex justify-end bg-black/40 animate-fade-in transition-opacity"
       onClick={handleBackdropClick}
       aria-modal="true"
       role="dialog"

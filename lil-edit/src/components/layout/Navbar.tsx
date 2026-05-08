@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Heart, ShoppingBag, Menu, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,25 @@ const Navbar = () => {
   const [isLoginHovered, setIsLoginHovered] = useState(false);
   const [isSignupHovered, setIsSignupHovered] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
   const location = useLocation();
   const isProductPage = location.pathname.startsWith("/product");
 
+  useLayoutEffect(() => {
+    const updateHeight = () => {
+      if (headerRef.current) {
+        const height = headerRef.current.offsetHeight;
+        document.documentElement.style.setProperty("--navbar-height", `${height}px`);
+      }
+    };
+
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
+  }, [location.pathname, mobileOpen]); // Re-run when path or mobile menu state changes
+
   return (
-    <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+    <header ref={headerRef} className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <nav className="container mx-auto flex items-center justify-between py-2.5 md:py-1.5 lg:py-2 px-3 sm:px-4 lg:px-8">
         {/* Logo and Branding */}
         <Link to="/" className="flex-shrink flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
