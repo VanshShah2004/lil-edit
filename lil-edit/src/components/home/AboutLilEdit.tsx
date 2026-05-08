@@ -45,6 +45,7 @@ const AboutLilEdit = () => {
               <span className="text-[#0B5B55] inline-block mt-2">Cool</span>
             </h2>
 
+
             <p className="text-sm md:text-base text-foreground/70 leading-relaxed mb-8 max-w-xl font-medium">
               At LilEdit, we believe style has no age. Our curated collections bring high-fashion aesthetics to the playground, blending premium fabrics with effortless silhouettes for the little ones who are born to stand out.
             </p>
