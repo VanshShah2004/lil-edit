@@ -169,7 +169,7 @@ export default function Cart() {
           {cartItems.map((item) => (
             <Card
               key={item.id}
-              className="bg-white border-l-4 border-l-[#0F766E] border border-gray-200 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300"
+              className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300"
             >
               <CardContent className="p-2 sm:p-3 flex flex-row gap-2 sm:gap-2.5">
                 {/* IMAGE */}
