@@ -7,6 +7,7 @@ import {
   Plus,
   ArrowRight,
 } from "lucide-react";
+import { FaTrashAlt } from "react-icons/fa";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,30 @@ import img4 from "@/assets/searchbar-frequent_searches/le-4.png";
 import img5 from "@/assets/searchbar-frequent_searches/le-5.png";
 import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
 // Mock data – replace with API/cart context later
-const mockCartItems = [];
+const mockCartItems = [ {
+    id: "c1",
+    title: "Lilac Embroidered Georgette Lehenga Set",
+    price: 3500,
+    originalPrice: 4200,
+    image: img1,
+    size: "2-3 Years",
+    color: { name: "White", hex: "#FFFFFF" },
+    quantity: 1,
+    availability: "Only 2 left",
+    tags: ["Trending this week", "Most loved by parents"],
+  },
+  {
+    id: "c2",
+    title: "Mint Green Ruffle Trim Party Dress",
+    price: 2999,
+    originalPrice: 3599,
+    image: img2,
+    size: "1-2 Years",
+    color: { name: "Black", hex: "#000000" },
+    quantity: 2,
+    availability: "5 in stock",
+    tags: [],
+  },];
 
 const recommendedProducts = [
   {
@@ -166,7 +190,7 @@ export default function Cart() {
                 key={item.id}
                 className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[120px] sm:min-h-[140px] md:min-h-[160px]"
               >
-              <CardContent className="p-2.5 sm:p-3 md:p-4 flex flex-row gap-2.5 sm:gap-3 md:gap-4 h-full">
+              <CardContent className="p-2.5 sm:p-3 md:p-4 flex flex-row gap-2.5 sm:gap-3 md:gap-4 h-full relative">
                 {/* IMAGE */}
                 <div className="w-20 sm:w-24 md:w-32 flex-shrink-0 relative group">
                   <div className="aspect-[3/4] sm:aspect-[3/4] md:aspect-[4/5] overflow-hidden rounded-lg sm:rounded-lg bg-gray-100">
@@ -193,7 +217,7 @@ export default function Cart() {
                 {/* DETAILS */}
                 <div className="flex-1 flex flex-col min-w-0 justify-between py-0">
                   {/* Top Section - Title & Availability */}
-                  <div>
+                  <div className="pr-8 sm:pr-10 md:pr-12">
                     <h2 className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 leading-tight line-clamp-2">
                       {item.title}
                     </h2>
@@ -202,34 +226,37 @@ export default function Cart() {
                     </p>
                   </div>
 
-                  {/* Tags - Only show first tag on mobile */}
+                  {/* Tags */}
                   {item.tags.length > 0 && (
-                    <div className="flex gap-0.5">
-                      <Badge
-                        variant="secondary"
-                        className="bg-gradient-to-r from-[#F5F3FF] to-[#E0F2FE] text-gray-800 border-0 text-xs px-1.5 py-0.5 whitespace-nowrap"
-                      >
-                        {item.tags[0]}
-                      </Badge>
+                    <div className="flex flex-wrap gap-1.5 mt-1 sm:mt-1.5">
+                      {item.tags.map((tag, idx) => (
+                        <Badge
+                          key={idx}
+                          variant="secondary"
+                          className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-[10px] sm:text-[11px] px-2 py-0.5 whitespace-nowrap rounded-md font-medium shadow-sm"
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
                     </div>
                   )}
 
-                  {/* Middle Section - Color & Size - Inline */}
-                  <div className="flex items-center gap-1.5 sm:gap-2 mt-1">
-                    <button
-                      className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
-                      title="Color"
-                      style={{
-                        backgroundColor: item.color.hex,
-                      }}
-                    />
-                    <span className="text-xs md:text-sm font-medium px-2 md:px-2.5 py-0.5 bg-gray-100 rounded whitespace-nowrap">
-                      {item.size}
-                    </span>
-                  </div>
+                  {/* Bottom Section - Color, Size, Qty, Price */}
+                  <div className="flex flex-col mt-auto pt-1">
+                    {/* Color & Size */}
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <button
+                        className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
+                        title={item.color.name || "Color"}
+                        style={{
+                          backgroundColor: item.color.hex,
+                        }}
+                      />
+                      <span className="text-xs md:text-sm font-medium px-2 md:px-2.5 py-0.5 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
+                        Size: {item.size}
+                      </span>
+                    </div>
 
-                  {/* Bottom Row - Qty, Price, Actions */}
-                  <div className="space-y-0.5 mt-auto">
                     {/* Quantity & Price */}
                     <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                       <div className="flex items-center gap-0.5 sm:gap-1">
@@ -272,27 +299,17 @@ export default function Cart() {
                         </span>
                       </div>
                     </div>
-
-                    {/* ACTIONS */}
-                    <div className="flex gap-1 sm:gap-1.5">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full text-xs h-6 sm:h-7 md:h-8 px-2 sm:px-2.5 md:px-3 hover:border-[#0F766E] hover:text-[#0F766E]"
-                        onClick={() => removeItem(item.id)}
-                      >
-                        Remove
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="rounded-full text-xs h-6 sm:h-7 md:h-8 px-2 sm:px-2.5 md:px-3 hover:bg-[#E6FFFA] hover:text-[#0F766E]"
-                      >
-                        Save
-                      </Button>
-                    </div>
                   </div>
                 </div>
+
+                {/* DELETE BUTTON - TOP RIGHT */}
+                <button
+                  onClick={() => removeItem(item.id)}
+                  className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 text-gray-700 hover:text-red-600 transition-colors"
+                  title="Delete item"
+                >
+                  <FaTrashAlt size={18} />
+                </button>
               </CardContent>
             </Card>
             ))
