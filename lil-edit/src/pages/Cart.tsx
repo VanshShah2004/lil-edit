@@ -169,12 +169,12 @@ export default function Cart() {
           {cartItems.map((item) => (
             <Card
               key={item.id}
-              className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300"
+              className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[120px] sm:min-h-[140px] md:min-h-[160px]"
             >
-              <CardContent className="p-2 sm:p-3 flex flex-row gap-2 sm:gap-2.5">
+              <CardContent className="p-2.5 sm:p-3 md:p-4 flex flex-row gap-2.5 sm:gap-3 md:gap-4 h-full">
                 {/* IMAGE */}
-                <div className="w-24 sm:w-32 md:w-40 flex-shrink-0 relative group">
-                  <div className="aspect-[3/4] sm:aspect-[3/4] overflow-hidden rounded-lg sm:rounded-lg bg-gray-100">
+                <div className="w-20 sm:w-24 md:w-32 flex-shrink-0 relative group">
+                  <div className="aspect-[3/4] sm:aspect-[3/4] md:aspect-[4/5] overflow-hidden rounded-lg sm:rounded-lg bg-gray-100">
                     <img
                       src={item.image}
                       alt={item.title}
@@ -196,42 +196,39 @@ export default function Cart() {
                 </div>
 
                 {/* DETAILS */}
-                <div className="flex-1 flex flex-col min-w-0 justify-between">
-                  {/* Top Section - Title & Tags */}
+                <div className="flex-1 flex flex-col min-w-0 justify-between py-0">
+                  {/* Top Section - Title & Availability */}
                   <div>
-                    <h2 className="text-xs sm:text-sm font-semibold text-gray-900 leading-tight line-clamp-2">
+                    <h2 className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 leading-tight line-clamp-2">
                       {item.title}
                     </h2>
-                    <p className="text-xs text-[#0F766E] mt-0.5 font-medium">
+                    <p className="text-xs md:text-sm text-[#0F766E] mt-0.5 md:mt-1 font-medium line-clamp-1">
                       {item.availability}
                     </p>
-
-                    {/* Tags */}
-                    {item.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-0.5 mt-1">
-                        {item.tags.map((tag, idx) => (
-                          <Badge
-                            key={idx}
-                            variant="secondary"
-                            className="bg-gradient-to-r from-[#F5F3FF] to-[#E0F2FE] text-gray-800 border-0 text-xs px-1.5 py-0.5"
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
                   </div>
 
-                  {/* Middle Section - Color & Size */}
-                  <div className="flex items-center gap-1.5 mt-1 mb-1">
+                  {/* Tags - Only show first tag on mobile */}
+                  {item.tags.length > 0 && (
+                    <div className="flex gap-0.5">
+                      <Badge
+                        variant="secondary"
+                        className="bg-gradient-to-r from-[#F5F3FF] to-[#E0F2FE] text-gray-800 border-0 text-xs px-1.5 py-0.5 whitespace-nowrap"
+                      >
+                        {item.tags[0]}
+                      </Badge>
+                    </div>
+                  )}
+
+                  {/* Middle Section - Color & Size - Inline */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 mt-1">
                     <button
-                      className="w-5 h-5 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
+                      className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
                       title="Color"
                       style={{
                         backgroundColor: item.color.hex,
                       }}
                     />
-                    <span className="text-xs font-medium px-2 py-0.5 bg-gray-100 rounded">
+                    <span className="text-xs md:text-sm font-medium px-2 md:px-2.5 py-0.5 bg-gray-100 rounded whitespace-nowrap">
                       {item.size}
                     </span>
                   </div>
@@ -239,28 +236,30 @@ export default function Cart() {
                   {/* Bottom Row - Qty, Price, Actions */}
                   <div className="space-y-0.5 mt-auto">
                     {/* Quantity & Price */}
-                    <div className="flex items-center justify-between gap-1.5">
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs font-medium text-gray-600">Qty:</span>
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+                      <div className="flex items-center gap-0.5 sm:gap-1">
+                        <span className="text-xs font-medium text-gray-600 hidden sm:block">Qty:</span>
                         <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white">
                           <button
                             onClick={() =>
                               updateQuantity(item.id, -1)
                             }
-                            className="px-1.5 py-0.5 hover:bg-gray-100 transition"
+                            className="px-1 sm:px-1.5 md:px-2 py-0.5 md:py-1 hover:bg-gray-100 transition"
                           >
-                            <Minus size={10} />
+                            <Minus size={9} className="sm:hidden" />
+                            <Minus size={10} className="hidden sm:block" />
                           </button>
-                          <span className="px-1.5 text-xs font-semibold">
+                          <span className="px-1 sm:px-1.5 md:px-2.5 text-xs md:text-sm font-semibold">
                             {item.quantity}
                           </span>
                           <button
                             onClick={() =>
                               updateQuantity(item.id, 1)
                             }
-                            className="px-1.5 py-0.5 hover:bg-gray-100 transition"
+                            className="px-1 sm:px-1.5 md:px-2 py-0.5 md:py-1 hover:bg-gray-100 transition"
                           >
-                            <Plus size={10} />
+                            <Plus size={9} className="sm:hidden" />
+                            <Plus size={10} className="hidden sm:block" />
                           </button>
                         </div>
                       </div>
@@ -268,7 +267,7 @@ export default function Cart() {
                       {/* Price */}
                       <div className="flex flex-col items-end">
                         <span
-                          className="text-sm font-bold"
+                          className="text-sm sm:text-base md:text-lg font-bold"
                           style={{ color: "#0F766E" }}
                         >
                           ₹{item.price * item.quantity}
@@ -280,11 +279,11 @@ export default function Cart() {
                     </div>
 
                     {/* ACTIONS */}
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 sm:gap-1.5">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="rounded-full text-xs h-7 px-2 hover:border-[#0F766E] hover:text-[#0F766E]"
+                        className="rounded-full text-xs h-6 sm:h-7 md:h-8 px-2 sm:px-2.5 md:px-3 hover:border-[#0F766E] hover:text-[#0F766E]"
                         onClick={() => removeItem(item.id)}
                       >
                         Remove
@@ -292,7 +291,7 @@ export default function Cart() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="rounded-full text-xs h-7 px-2 hover:bg-[#E6FFFA] hover:text-[#0F766E]"
+                        className="rounded-full text-xs h-6 sm:h-7 md:h-8 px-2 sm:px-2.5 md:px-3 hover:bg-[#E6FFFA] hover:text-[#0F766E]"
                       >
                         Save
                       </Button>
@@ -326,7 +325,7 @@ export default function Cart() {
 
         {/* RIGHT SIDE */}
         <aside className="w-full lg:w-[34%] self-start lg:sticky lg:top-6">
-          <Card className="bg-white/95 backdrop-blur-sm border border-gray-200 shadow-lg rounded-2xl lg:rounded-3xl p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-5">
+          <Card className="bg-purple-200/70 backdrop-blur-sm border border-purple-300 shadow-lg rounded-2xl lg:rounded-3xl p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-5">
             <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">
               Order Summary
             </h3>
