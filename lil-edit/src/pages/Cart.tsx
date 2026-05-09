@@ -380,7 +380,7 @@ export default function Cart() {
                 placeholder="Enter coupon"
                 className="flex-1 h-10 sm:h-11 rounded-full text-sm"
               />
-              <Button className="bg-[#0F766E] hover:bg-[#0C5D53] text-white rounded-full px-4 sm:px-6 h-10 sm:h-11 text-sm sm:text-base">
+              <Button className="bg-white border border-gray-300 hover:bg-gray-50 text-[#0F766E] rounded-full px-4 sm:px-6 h-10 sm:h-11 text-sm sm:text-base font-medium">
                 Apply
               </Button>
             </div>
@@ -392,7 +392,7 @@ export default function Cart() {
             {/* Trust Indicators */}
             <div className="grid grid-cols-3 gap-2 pt-1 sm:pt-2">
               <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 text-center text-xs font-medium text-gray-700">
-                
+                Classy Styles
               </div>
               <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 text-center text-xs font-medium text-gray-700">
                 Safe Payments
