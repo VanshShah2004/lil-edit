@@ -385,7 +385,7 @@ export default function Cart() {
             {/* Trust Indicators */}
             <div className="grid grid-cols-3 gap-2 pt-1 sm:pt-2">
               <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 text-center text-xs font-medium text-gray-700">
-                Easy Returns
+                
               </div>
               <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 text-center text-xs font-medium text-gray-700">
                 Safe Payments
@@ -417,16 +417,16 @@ export default function Cart() {
 
         <Carousel
           opts={{
-            loop: true,
+            loop: false,
             align: "start",
           }}
           className="w-full"
         >
-          <CarouselContent className="-ml-3 sm:-ml-4">
+          <CarouselContent className="-ml-3 sm:-ml-4 flex-wrap sm:flex-nowrap">
             {recommendedProducts.map((p) => (
               <CarouselItem
                 key={p.id}
-                className="pl-3 sm:pl-4 basis-[50%] xs:basis-[55%] sm:basis-[40%] md:basis-[32%] lg:basis-[25%] xl:basis-[22%]"
+                className="pl-3 sm:pl-4 basis-1/2 sm:basis-[45%] md:basis-[32%] lg:basis-[25%] xl:basis-[22%]"
               >
                 <div className="group bg-white p-2 md:p-1.5 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg hover:-translate-y-0.5 transition-all h-full">
                   {/* IMAGE */}
