@@ -84,6 +84,13 @@ const recommendedProducts = [
     originalPrice: 6500,
     image: img6,
   },
+  {
+    id: "rec-5",
+    title: "Golden Silk Lehenga Collection",
+    price: 6200,
+    originalPrice: 7500,
+    image: img1,
+  },
 ];
 
 export default function Cart() {
@@ -426,7 +433,7 @@ export default function Cart() {
             {recommendedProducts.map((p) => (
               <CarouselItem
                 key={p.id}
-                className="pl-3 sm:pl-4 basis-1/2 sm:basis-[45%] md:basis-[32%] lg:basis-[25%] xl:basis-[22%]"
+                className="pl-3 sm:pl-4 basis-1/2 sm:basis-[45%] md:basis-[32%] lg:basis-[20%] xl:basis-[20%]"
               >
                 <div className="group bg-white p-2 md:p-1.5 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg hover:-translate-y-0.5 transition-all h-full">
                   {/* IMAGE */}
