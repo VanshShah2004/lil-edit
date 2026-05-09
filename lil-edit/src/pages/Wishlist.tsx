@@ -123,12 +123,27 @@ const recommendedProducts = [
 
 const WishlistPage = () => {
   const [items, setItems] = useState(wishlistItemsMock);
+  const [activeTab, setActiveTab] = useState("all");
 
   const removeItem = (id: string) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const totalValue = items.reduce(
+  const tabs = [
+    { id: "all",       label: "All",        count: items.length },
+    { id: "trending",  label: "Trending",   count: items.filter((i) => i.tags.some((t) => t.toLowerCase().includes("trend"))).length },
+    { id: "discounted",label: "Discounted", count: items.filter((i) => i.originalPrice > i.price).length },
+    { id: "instock",   label: "In Stock",   count: items.filter((i) => i.inStock).length },
+  ];
+
+  const filteredItems = items.filter((item) => {
+    if (activeTab === "trending")   return item.tags.some((t) => t.toLowerCase().includes("trend"));
+    if (activeTab === "discounted") return item.originalPrice > item.price;
+    if (activeTab === "instock")    return item.inStock;
+    return true;
+  });
+
+  const totalValue = filteredItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
@@ -166,33 +181,64 @@ const WishlistPage = () => {
             </div>
           </div>
 
+          {/* FILTER TABS (Browser / Google Tabs Style) */}
+          <div className="flex items-end gap-1 border-b border-gray-200 overflow-x-auto no-scrollbar pt-2">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-4 py-2 sm:px-5 sm:py-2.5 rounded-t-xl text-xs sm:text-sm font-medium transition-colors border border-b-0 relative top-[1px] whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? "bg-white text-primary border-gray-200 z-10"
+                    : "bg-gray-200/60 text-gray-500 border-transparent hover:bg-gray-200 hover:text-gray-700"
+                }`}
+              >
+                {tab.label}
+                <span
+                  className={`text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full font-semibold transition-colors ${
+                    activeTab === tab.id
+                      ? "bg-primary/10 text-primary"
+                      : "bg-white/60 text-gray-500"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+                {/* Active bottom cover to create the "connected" folder tab look */}
+                {activeTab === tab.id && (
+                  <div className="absolute -bottom-[2px] left-0 right-0 h-[3px] bg-white" />
+                )}
+              </button>
+            ))}
+          </div>
+
           {/* WISHLIST ITEMS */}
-          {items.length === 0 ? (
+          {filteredItems.length === 0 ? (
             <div className="w-full py-16 sm:py-20 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-lg sm:rounded-xl">
               <div className="text-center px-4">
                 <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
-                  Your wishlist is empty
+                  No items in this category
                 </p>
                 <p className="text-sm text-gray-500 mb-6">
-                  Start saving styles you love!
+                  Try a different filter or add more items!
                 </p>
-                <Link to="/dashboard">
-                  <Button className="bg-[#0F766E] hover:bg-[#0C5D53] text-white rounded-full px-6 sm:px-8 h-10 sm:h-11">
-                    Explore Collections
-                  </Button>
-                </Link>
+                <button
+                  onClick={() => setActiveTab("all")}
+                  className="text-sm font-medium text-primary underline underline-offset-2"
+                >
+                  View all saved items
+                </button>
               </div>
             </div>
           ) : (
-            items.map((item) => (
+            filteredItems.map((item) => (
               <Card
                 key={item.id}
-                className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[120px] sm:min-h-[140px] md:min-h-[160px]"
+                className="bg-white border border-gray-200 border-l-8 border-l-primary rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[200px] sm:min-h-[220px] md:min-h-[240px]"
               >
-                <CardContent className="p-2.5 sm:p-3 md:p-4 flex flex-row gap-2.5 sm:gap-3 md:gap-4 h-full relative">
+                <CardContent className="p-3 sm:p-4 md:p-5 flex flex-row gap-4 sm:gap-4 md:gap-5 h-full relative">
                   {/* IMAGE */}
-                  <div className="w-20 sm:w-24 md:w-32 flex-shrink-0 relative group">
-                    <div className="aspect-[3/4] sm:aspect-[3/4] md:aspect-[4/5] overflow-hidden rounded-lg sm:rounded-lg bg-gray-100">
+                  <div className="w-24 sm:w-28 md:w-36 flex-shrink-0 relative group">
+                    <div className="aspect-[3/4] overflow-hidden rounded-lg bg-gray-100">
                       <img
                         src={item.image}
                         alt={item.name}
@@ -205,19 +251,19 @@ const WishlistPage = () => {
                     </div>
 
                     {/* Heart overlay (mirrors Cart's wishlist button) */}
-                    <button className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-md shadow-sm hover:bg-white transition">
-                      <Heart size={14} className="text-[#0F766E]" fill="#0F766E" />
+                    <button className="absolute top-2 right-2 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-md shadow-sm hover:bg-white transition">
+                      <Heart size={16} className="text-primary" fill="hsl(268 45% 65%)" />
                     </button>
                   </div>
 
                   {/* DETAILS */}
-                  <div className="flex-1 flex flex-col min-w-0 justify-between py-0">
+                  <div className="flex-1 flex flex-col min-w-0 justify-between">
                     {/* Top Section - Title & Brand */}
                     <div className="pr-8 sm:pr-10 md:pr-12">
-                      <h2 className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 leading-tight line-clamp-2">
+                      <h2 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 leading-tight line-clamp-2">
                         {item.name}
                       </h2>
-                      <p className="text-xs md:text-sm text-[#0F766E] mt-0.5 md:mt-1 font-medium line-clamp-1">
+                      <p className="text-xs sm:text-sm md:text-base text-primary mt-1 md:mt-1.5 font-medium line-clamp-1">
                         {item.brand} •{" "}
                         {item.inStock ? "In Stock" : "Out of Stock"}
                       </p>
@@ -225,12 +271,12 @@ const WishlistPage = () => {
 
                     {/* Tags */}
                     {item.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-1 sm:mt-1.5">
+                      <div className="flex flex-wrap gap-2 mt-2 sm:mt-2.5">
                         {item.tags.map((tag, idx) => (
                           <Badge
                             key={idx}
                             variant="secondary"
-                            className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-[10px] sm:text-[11px] px-2 py-0.5 whitespace-nowrap rounded-md font-medium shadow-sm"
+                            className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-[10px] sm:text-xs px-2.5 py-1 whitespace-nowrap rounded-md font-medium shadow-sm"
                           >
                             {tag}
                           </Badge>
@@ -238,42 +284,50 @@ const WishlistPage = () => {
                       </div>
                     )}
 
-                    {/* Bottom Section - Color, Size, Action, Price — mirrors Cart exactly */}
-                    <div className="flex flex-col mt-auto pt-1">
-                      {/* Color & Size */}
-                      <div className="flex items-center gap-1.5 sm:gap-2">
+                    {/* Bottom Section */}
+                    <div className="flex flex-col gap-3 mt-auto pt-2">
+                      {/* Color & Size & Qty */}
+                      <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
                         <button
-                          className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
+                          className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
                           title={item.color.name}
                           style={{ backgroundColor: item.color.hex }}
                         />
-                        <span className="text-xs md:text-sm font-medium px-2 md:px-2.5 py-0.5 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
-                          Size: {item.size}
+                        <span className="text-xs sm:text-sm font-medium px-2.5 sm:px-3 py-1 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
+                          {item.size}
+                        </span>
+                        <span className="text-xs sm:text-sm font-medium px-2.5 sm:px-3 py-1 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
+                          Qty: {item.quantity}
                         </span>
                       </div>
 
-                      {/* Move to Cart & Price — same row as Cart's Qty & Price */}
-                      <div className="flex items-center justify-between gap-1.5 sm:gap-2 mt-1">
-                        <Button
-                          size="sm"
-                          disabled={!item.inStock}
-                          className="h-8 sm:h-9 px-3 sm:px-4 bg-[#0F766E] hover:bg-[#0C5D53] text-white rounded-full text-[10px] sm:text-xs font-bold gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Move to Cart</span>
-                          <span className="sm:hidden">Add</span>
-                        </Button>
+                      {/* Move to Cart & Buy Now & Price */}
+                      <div className="flex items-center justify-between gap-2 sm:gap-3 flex-wrap">
+                        <div className="flex gap-2 sm:gap-2.5 flex-1">
+                          <Button
+                            size="sm"
+                            disabled={!item.inStock}
+                            className="h-9 sm:h-10 flex-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center gap-1.5"
+                          >
+                            <ShoppingBag className="w-4 h-4" />
+                            <span>Cart it</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={!item.inStock}
+                            className="h-9 sm:h-10 flex-1 bg-teal-600 hover:bg-teal-700 text-white rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center"
+                          >
+                            <span>Buy Now</span>
+                          </Button>
+                        </div>
 
                         {/* Price */}
-                        <div className="flex flex-col items-end">
-                          <span
-                            className="text-sm sm:text-base md:text-lg font-bold"
-                            style={{ color: "#0F766E" }}
-                          >
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="text-base sm:text-lg md:text-xl font-bold text-primary">
                             ₹{item.price}
                           </span>
                           {item.originalPrice > item.price && (
-                            <span className="text-xs line-through text-gray-400">
+                            <span className="text-xs sm:text-sm line-through text-gray-400">
                               ₹{item.originalPrice}
                             </span>
                           )}
@@ -285,10 +339,10 @@ const WishlistPage = () => {
                   {/* DELETE BUTTON - TOP RIGHT */}
                   <button
                     onClick={() => removeItem(item.id)}
-                    className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 text-gray-700 hover:text-red-600 transition-colors"
+                    className="absolute top-3 right-3 sm:top-4 sm:right-4 md:top-5 md:right-5 text-gray-700 hover:text-red-600 transition-colors"
                     title="Remove from wishlist"
                   >
-                    <FaTrashAlt size={18} />
+                    <FaTrashAlt size={20} />
                   </button>
                 </CardContent>
               </Card>
@@ -299,7 +353,7 @@ const WishlistPage = () => {
 
         {/* RIGHT SIDE — Wishlist Summary sidebar (mirrors Cart's Order Summary) */}
         <aside className="w-full lg:w-[34%] self-start lg:sticky lg:top-6">
-          <Card className="bg-purple-200/70 backdrop-blur-sm border border-purple-300 shadow-lg rounded-2xl lg:rounded-3xl p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-5">
+          <Card className="bg-purple-200 backdrop-blur-sm border border-purple-300 shadow-lg rounded-2xl lg:rounded-3xl p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-5">
             <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">
               Wishlist Summary
             </h3>
