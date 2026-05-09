@@ -392,7 +392,7 @@ const WishlistPage = () => {
             </Button>
 
             {/* Continue Shopping */}
-            <Link to="/dashboard">
+            <Link to="/dashboard" className="block mt-4 sm:mt-6">
               <Button
                 variant="outline"
                 className="w-full border-gray-300 hover:bg-gray-50 text-gray-700 rounded-full py-3 sm:py-4 font-medium text-sm sm:text-base"
