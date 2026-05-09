@@ -28,32 +28,7 @@ import img4 from "@/assets/searchbar-frequent_searches/le-4.png";
 import img5 from "@/assets/searchbar-frequent_searches/le-5.png";
 import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
 // Mock data – replace with API/cart context later
-const mockCartItems = [
-  {
-    id: "c1",
-    title: "Lilac Embroidered Georgette Lehenga Set",
-    price: 3500,
-    originalPrice: 4200,
-    image: img1,
-    size: "2-3 Years",
-    color: { name: "White", hex: "#FFFFFF" },
-    quantity: 1,
-    availability: "Only 2 left",
-    tags: ["Trending this week", "Most loved by parents"],
-  },
-  {
-    id: "c2",
-    title: "Mint Green Ruffle Trim Party Dress",
-    price: 2999,
-    originalPrice: 3599,
-    image: img2,
-    size: "1-2 Years",
-    color: { name: "Black", hex: "#000000" },
-    quantity: 2,
-    availability: "5 in stock",
-    tags: [],
-  },
-];
+const mockCartItems = [];
 
 const recommendedProducts = [
   {
@@ -173,11 +148,24 @@ export default function Cart() {
           </div>
 
           {/* CART ITEMS */}
-          {cartItems.map((item) => (
-            <Card
-              key={item.id}
-              className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[120px] sm:min-h-[140px] md:min-h-[160px]"
-            >
+          {cartItems.length === 0 ? (
+            <div className="w-full py-16 sm:py-20 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-lg sm:rounded-xl">
+              <div className="text-center px-4">
+                <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Your cart is empty</p>
+                <p className="text-sm text-gray-500 mb-6">Add items to your cart to get started!</p>
+                <Link to="/dashboard">
+                  <Button className="bg-[#0F766E] hover:bg-[#0C5D53] text-white rounded-full px-6 sm:px-8 h-10 sm:h-11">
+                    Continue Shopping
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            cartItems.map((item) => (
+              <Card
+                key={item.id}
+                className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[120px] sm:min-h-[140px] md:min-h-[160px]"
+              >
               <CardContent className="p-2.5 sm:p-3 md:p-4 flex flex-row gap-2.5 sm:gap-3 md:gap-4 h-full">
                 {/* IMAGE */}
                 <div className="w-20 sm:w-24 md:w-32 flex-shrink-0 relative group">
@@ -307,7 +295,8 @@ export default function Cart() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            ))
+          )}
 
           {/* FREE SHIPPING */}
           {freeShippingRemaining > 0 && (
@@ -430,10 +419,12 @@ export default function Cart() {
           className="w-full"
         >
           <CarouselContent className="-ml-3 sm:-ml-4 flex-wrap sm:flex-nowrap">
-            {recommendedProducts.map((p) => (
+            {recommendedProducts.map((p, index) => (
               <CarouselItem
                 key={p.id}
-                className="pl-3 sm:pl-4 basis-1/2 sm:basis-[45%] md:basis-[32%] lg:basis-[20%] xl:basis-[20%]"
+                className={`pl-3 sm:pl-4 basis-1/2 sm:basis-[45%] md:basis-[32%] lg:basis-[20%] xl:basis-[20%] ${
+                  index === 4 ? 'hidden md:block' : ''
+                }`}
               >
                 <div className="group bg-white p-2 md:p-1.5 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg hover:-translate-y-0.5 transition-all h-full">
                   {/* IMAGE */}
