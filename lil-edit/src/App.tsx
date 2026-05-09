@@ -14,6 +14,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
 import ProductDetail from "./pages/ProductDetail";
 import Profile from "./pages/Profile";
 import Cart from "./pages/Cart";
+import Wishlist from "./pages/Wishlist";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/signup" element={<Signup />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
