@@ -450,22 +450,22 @@ export default function Collections() {
                 Featured Collections
               </h2>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6 auto-rows-[180px] sm:auto-rows-[200px] lg:auto-rows-[220px] grid-flow-row-dense">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6 auto-rows-[180px] sm:auto-rows-[200px] lg:auto-rows-[220px] grid-flow-row-dense">
                 {featuredCollections.map((collection, index) => {
                   let spanClass = "";
 
                   if (index === 0) {
-                    spanClass = "sm:col-span-2 sm:row-span-1 lg:col-span-2 lg:row-span-2";
+                    spanClass = "col-span-2 row-span-1 lg:col-span-2 lg:row-span-2";
                   } else if (index === 1) {
-                    spanClass = "sm:col-span-1 sm:row-span-1 lg:col-span-1 lg:row-span-2";
+                    spanClass = "col-span-1 row-span-1 lg:col-span-1 lg:row-span-2";
                   } else if (index === 2) {
-                    spanClass = "sm:col-span-1 sm:row-span-1 lg:col-span-1 lg:row-span-2";
+                    spanClass = "col-span-1 row-span-1 lg:col-span-1 lg:row-span-2";
                   } else if (index === 3) {
-                    spanClass = "sm:col-span-1 sm:row-span-1 lg:col-span-1 lg:row-span-1";
+                    spanClass = "col-span-1 row-span-1 lg:col-span-1 lg:row-span-1";
                   } else if (index === 4) {
-                    spanClass = "sm:col-span-1 sm:row-span-1 lg:col-span-1 lg:row-span-1";
+                    spanClass = "col-span-1 row-span-1 lg:col-span-1 lg:row-span-1";
                   } else if (index === 5) {
-                    spanClass = "sm:col-span-2 sm:row-span-1 lg:col-span-2 lg:row-span-1";
+                    spanClass = "col-span-2 row-span-1 lg:col-span-2 lg:row-span-1";
                   }
 
                   return (
