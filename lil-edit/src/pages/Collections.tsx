@@ -143,7 +143,6 @@ export default function Collections() {
   });
 
   const [sortBy, setSortBy] = useState("newest");
-  const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
   const toggleFilter = (category: keyof typeof selectedFilters, value: string) => {
@@ -170,8 +169,88 @@ export default function Collections() {
         </div>
       </div>
 
+      {/* MOBILE SORT & SEARCH BAR (Moved above Hero) */}
+      <div className="lg:hidden w-full px-4 sm:px-6 pb-6 pt-2">
+        <div className="flex flex-col gap-3">
+          <div className="flex gap-2">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="flex-1 px-3 py-2.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all duration-200 bg-white"
+            >
+              <option value="newest">Newest</option>
+              <option value="popular">Popular</option>
+              <option value="price-low">Price ↑</option>
+              <option value="price-high">Price ↓</option>
+            </select>
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-3 py-2.5 border-gray-300 text-xs font-medium bg-white"
+            >
+              {showFilters ? "Hide" : "Filter"}
+            </Button>
+          </div>
+        </div>
+
+        {/* MOBILE FILTER PANEL */}
+        {showFilters && (
+          <div className="w-full border border-gray-200 rounded-xl p-4 mt-3 space-y-5 bg-white shadow-sm">
+            {/* AGE */}
+            <div className="pb-4 border-b border-gray-200">
+              <h3 className="text-xs font-semibold text-gray-900 mb-2.5">Age</h3>
+              <div className="space-y-2">
+                {filterOptions.age.slice(0, 3).map((option) => (
+                  <label key={option.label} className="flex items-center gap-2 cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={selectedFilters.age.includes(option.label)}
+                      onChange={() => toggleFilter("age", option.label)}
+                      className="w-4 h-4 accent-gray-900 rounded"
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* OCCASION */}
+            <div className="pb-4 border-b border-gray-200">
+              <h3 className="text-xs font-semibold text-gray-900 mb-2.5">Occasion</h3>
+              <div className="space-y-2">
+                {filterOptions.occasion.slice(0, 3).map((option) => (
+                  <label key={option.label} className="flex items-center gap-2 cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={selectedFilters.occasion.includes(option.label)}
+                      onChange={() => toggleFilter("occasion", option.label)}
+                      className="w-4 h-4 accent-gray-900 rounded"
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* CLEAR */}
+            {Object.values(selectedFilters).some((arr) => arr.length > 0) && (
+              <Button
+                variant="outline"
+                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 text-xs py-2"
+                onClick={() => {
+                  setSelectedFilters({ age: [], occasion: [], color: [], price: [] });
+                  setShowFilters(false);
+                }}
+              >
+                Clear Filters
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* HERO SECTION */}
-      <section className="relative w-full bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 overflow-hidden py-16 sm:py-24 md:py-32">
+      <section className="relative w-full bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 overflow-hidden py-32 sm:py-32 md:py-40 min-h-[50vh] sm:min-h-[40vh] flex flex-col justify-center">
         <div className="absolute inset-0 opacity-20 sm:opacity-30">
           <div className="absolute top-4 sm:top-10 left-4 sm:left-10 w-32 sm:w-40 h-32 sm:h-40 bg-pink-300 rounded-full blur-3xl"></div>
           <div className="absolute bottom-4 sm:bottom-10 right-4 sm:right-10 w-40 sm:w-56 h-40 sm:h-56 bg-blue-300 rounded-full blur-3xl"></div>
@@ -202,109 +281,9 @@ export default function Collections() {
       {/* MAIN CONTENT */}
       <main className="w-full px-3 sm:px-6 py-6 sm:py-12 md:py-16">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6 lg:gap-8">
-          {/* MOBILE SORT & SEARCH BAR */}
-          <div className="lg:hidden flex flex-col gap-3">
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="Search collections..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 rounded-full border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all duration-200"
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500" />
-            </div>
-            <div className="flex gap-2">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="flex-1 px-3 py-2.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all duration-200"
-              >
-                <option value="newest">Newest</option>
-                <option value="popular">Popular</option>
-                <option value="price-low">Price ↑</option>
-                <option value="price-high">Price ↓</option>
-              </select>
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                className="px-3 py-2.5 border-gray-300 text-xs font-medium"
-              >
-                {showFilters ? "Hide" : "Filter"}
-              </Button>
-            </div>
-          </div>
-
-          {/* MOBILE FILTER PANEL */}
-          {showFilters && (
-            <div className="lg:hidden w-full border border-gray-200 rounded-xl p-4 sm:p-6 space-y-5 bg-gray-50/50">
-              {/* AGE */}
-              <div className="pb-4 border-b border-gray-200">
-                <h3 className="text-xs font-semibold text-gray-900 mb-2.5">Age</h3>
-                <div className="space-y-2">
-                  {filterOptions.age.slice(0, 3).map((option) => (
-                    <label key={option.label} className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input
-                        type="checkbox"
-                        checked={selectedFilters.age.includes(option.label)}
-                        onChange={() => toggleFilter("age", option.label)}
-                        className="w-4 h-4 accent-gray-900 rounded"
-                      />
-                      <span>{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* OCCASION */}
-              <div className="pb-4 border-b border-gray-200">
-                <h3 className="text-xs font-semibold text-gray-900 mb-2.5">Occasion</h3>
-                <div className="space-y-2">
-                  {filterOptions.occasion.slice(0, 3).map((option) => (
-                    <label key={option.label} className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input
-                        type="checkbox"
-                        checked={selectedFilters.occasion.includes(option.label)}
-                        onChange={() => toggleFilter("occasion", option.label)}
-                        className="w-4 h-4 accent-gray-900 rounded"
-                      />
-                      <span>{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* CLEAR */}
-              {Object.values(selectedFilters).some((arr) => arr.length > 0) && (
-                <Button
-                  variant="outline"
-                  className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 text-xs py-2"
-                  onClick={() => {
-                    setSelectedFilters({ age: [], occasion: [], color: [], price: [] });
-                    setShowFilters(false);
-                  }}
-                >
-                  Clear Filters
-                </Button>
-              )}
-            </div>
-          )}
-
           {/* SIDEBAR FILTERS - Hidden on mobile, visible on desktop */}
           <aside className="hidden lg:block w-full lg:w-64 flex-shrink-0">
             <div className="sticky top-20 space-y-5 sm:space-y-6">
-              {/* Search */}
-              <div className="relative">
-                <Input
-                  type="text"
-                  placeholder="Search collections..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 rounded-full border border-gray-300 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all duration-200"
-                />
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500" />
-              </div>
-
               {/* Sort */}
               <div>
                 <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2.5 sm:mb-3">Sort By</h3>
@@ -551,7 +530,7 @@ export default function Collections() {
 
             {/* SEASON HIGHLIGHT BANNER */}
             <section>
-              <div className="relative overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 py-12 sm:py-16 md:py-20 px-4 sm:px-8 md:px-12 flex items-center justify-center text-center">
+              <div className="relative overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 py-28 sm:py-20 md:py-24 px-4 sm:px-8 md:px-12 flex items-center justify-center text-center">
                 <div className="absolute inset-0 opacity-15 sm:opacity-20">
                   <div className="absolute top-0 left-0 w-64 sm:w-96 h-64 sm:h-96 bg-white rounded-full blur-3xl"></div>
                 </div>
