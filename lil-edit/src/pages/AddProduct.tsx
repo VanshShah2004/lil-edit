@@ -187,7 +187,7 @@ const AddProduct = () => {
         const parts = newColorInput.split("#");
         name = parts[0].trim();
         hex = `#${parts[1].trim()}`;
-        
+
         // If name is empty, try to find it from hex
         if (!name) {
           name = HEX_TO_NAME[hex.toUpperCase()] || "Custom Color";
@@ -196,7 +196,7 @@ const AddProduct = () => {
         // Just a name or just a hex without #
         const input = newColorInput.trim();
         const matchedHex = COLOR_MAP[input.charAt(0).toUpperCase() + input.slice(1).toLowerCase()];
-        
+
         if (matchedHex) {
           name = input;
           hex = matchedHex;
@@ -482,9 +482,9 @@ const AddProduct = () => {
                       />
                       <button
                         onClick={addDescriptionPoint}
-                        className="px-6 py-4 rounded-xl bg-primary text-white font-bold text-xs uppercase tracking-widest hover:brightness-95 transition-all"
+                        className="px-8 py-4 rounded-xl bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
                       >
-                        Add
+                        Add Details
                       </button>
                     </div>
 
@@ -686,7 +686,7 @@ const AddProduct = () => {
                       </div>
                       <button
                         onClick={addTag}
-                        className="px-8 py-4 rounded-xl bg-primary text-white font-bold text-xs uppercase tracking-widest hover:brightness-95 transition-all shadow-lg shadow-primary/10"
+                        className="px-8 py-4 rounded-xl bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
                       >
                         Add Tag
                       </button>
@@ -766,7 +766,7 @@ const AddProduct = () => {
                       </div>
                       <button
                         onClick={addColor}
-                        className="px-8 py-4 rounded-xl bg-primary text-white font-bold text-xs uppercase tracking-widest hover:brightness-95 transition-all shadow-lg shadow-primary/10"
+                        className="px-8 py-4 rounded-xl bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
                       >
                         Add Color
                       </button>
@@ -839,7 +839,7 @@ const AddProduct = () => {
                       </p>
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="px-8 py-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 text-sm font-bold uppercase tracking-widest shadow-lg shadow-primary/20"
+                        className="px-8 py-3 rounded-full bg-primary text-white hover:brightness-95 transition-all duration-300 text-sm font-bold uppercase tracking-widest shadow-lg shadow-primary/20"
                       >
                         Browse Gallery
                       </button>
@@ -985,7 +985,7 @@ const AddProduct = () => {
                       </div>
                       <button
                         onClick={createBadge}
-                        className="px-8 py-4 rounded-xl bg-secondary text-foreground font-bold text-xs uppercase tracking-widest hover:bg-border/20 transition-all border border-border/40"
+                        className="px-8 py-4 rounded-xl bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
                       >
                         Create Badge
                       </button>
@@ -1015,7 +1015,7 @@ const AddProduct = () => {
                     whileTap={{ scale: 0.98 }}
                     onClick={handlePublish}
                     disabled={isPublishing}
-                    className="flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-primary text-primary-foreground font-bold uppercase tracking-widest text-xs hover:bg-primary/90 transition-all duration-300 disabled:opacity-50 shadow-xl shadow-primary/20"
+                    className="flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-primary text-white font-bold uppercase tracking-widest text-xs hover:brightness-95 transition-all duration-300 shadow-xl shadow-primary/20 disabled:opacity-50"
                   >
                     {isPublishing ? (
                       <Loader className="w-4 h-4 animate-spin" />
