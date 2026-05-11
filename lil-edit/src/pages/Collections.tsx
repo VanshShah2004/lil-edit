@@ -444,282 +444,281 @@ export default function Collections() {
 
           {/* RIGHT CONTENT */}
           <div className="flex-1 w-full min-w-0 space-y-10 sm:space-y-12 md:space-y-16">
-          {/* FEATURED COLLECTIONS GRID */}
-          <section>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
-              Featured Collections
-            </h2>
+            {/* FEATURED COLLECTIONS GRID */}
+            <section>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
+                Featured Collections
+              </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-              {featuredCollections.map((collection) => {
-                let heightClass = "h-64 sm:h-72";
-                let spanClass = "";
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
+                {featuredCollections.map((collection) => {
+                  let heightClass = "h-64 sm:h-72";
+                  let spanClass = "";
 
-                if (collection.size === "large") {
-                  spanClass = "sm:col-span-2 sm:row-span-2";
-                  heightClass = "h-64 sm:h-80 lg:h-96";
-                } else if (collection.size === "medium") {
-                  spanClass = "sm:col-span-1 sm:row-span-2";
-                  heightClass = "h-64 sm:h-80 lg:h-96";
-                } else {
-                  spanClass = "sm:col-span-1";
-                  heightClass = "h-64 sm:h-72";
-                }
+                  if (collection.size === "large") {
+                    spanClass = "sm:col-span-2 sm:row-span-2";
+                    heightClass = "h-64 sm:h-80 lg:h-96";
+                  } else if (collection.size === "medium") {
+                    spanClass = "sm:col-span-1 sm:row-span-2";
+                    heightClass = "h-64 sm:h-80 lg:h-96";
+                  } else {
+                    spanClass = "sm:col-span-1";
+                    heightClass = "h-64 sm:h-72";
+                  }
 
-                return (
-                  <div
-                    key={collection.id}
-                    className={`${spanClass} group relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 cursor-pointer transition-all duration-500 ${heightClass}`}
-                  >
-                    {/* Image */}
-                    <img
-                      src={collection.image}
-                      alt={collection.name}
-                      loading="lazy"
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-all duration-300" />
-
-                    {/* Overlay Content */}
-                    <div className="absolute inset-0 flex flex-col justify-between p-3 sm:p-5 md:p-6">
-                      {/* Badge */}
-                      {collection.badge && (
-                        <div className="self-start">
-                          <Badge className="bg-white/90 text-gray-900 text-[9px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg">
-                            {collection.badge}
-                          </Badge>
-                        </div>
-                      )}
-
-                      {/* Bottom Content */}
-                      <div className="text-white space-y-2 sm:space-y-3">
-                        <div>
-                          <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold mb-0.5 sm:mb-1 line-clamp-2">
-                            {collection.name}
-                          </h3>
-                          <p className="text-xs sm:text-sm opacity-90 line-clamp-2">
-                            {collection.description}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-1 sm:pt-2">
-                          <span className="text-xs sm:text-sm opacity-75">
-                            {collection.productCount} Items
-                          </span>
-                          <button className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* TRENDING CAROUSEL */}
-          <section>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
-              Trending Right Now
-            </h2>
-
-            <div className="overflow-x-auto pb-4 -mx-3 sm:-mx-6 px-3 sm:px-6 scrollbar-hide">
-              <div className="flex gap-3 sm:gap-4 md:gap-6 w-max">
-                {trendingCollections.map((collection) => (
-                  <div
-                    key={collection.id}
-                    className="group relative flex-shrink-0 w-40 sm:w-48 md:w-56 cursor-pointer"
-                  >
-                    <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 h-56 sm:h-64 md:h-72">
+                  return (
+                    <div
+                      key={collection.id}
+                      className={`${spanClass} group relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 cursor-pointer transition-all duration-500 ${heightClass}`}
+                    >
+                      {/* Image */}
                       <img
                         src={collection.image}
                         alt={collection.name}
                         loading="lazy"
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
-                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-all duration-300" />
+                      <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-all duration-300" />
+
+                      {/* Overlay Content */}
+                      <div className="absolute inset-0 flex flex-col justify-between p-3 sm:p-5 md:p-6">
+                        {/* Badge */}
+                        {collection.badge && (
+                          <div className="self-start">
+                            <Badge className="bg-white/90 text-gray-900 text-[9px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg">
+                              {collection.badge}
+                            </Badge>
+                          </div>
+                        )}
+
+                        {/* Bottom Content */}
+                        <div className="text-white space-y-2 sm:space-y-3">
+                          <div>
+                            <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold mb-0.5 sm:mb-1 line-clamp-2">
+                              {collection.name}
+                            </h3>
+                            <p className="text-xs sm:text-sm opacity-90 line-clamp-2">
+                              {collection.description}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 sm:pt-2">
+                            <span className="text-xs sm:text-sm opacity-75">
+                              {collection.productCount} Items
+                            </span>
+                            <button className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* TRENDING CAROUSEL */}
+            <section>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
+                Trending Right Now
+              </h2>
+
+              <div className="overflow-x-auto pb-4 -mx-3 sm:-mx-6 px-3 sm:px-6 scrollbar-hide">
+                <div className="flex gap-3 sm:gap-4 md:gap-6 w-max">
+                  {trendingCollections.map((collection) => (
+                    <div
+                      key={collection.id}
+                      className="group relative flex-shrink-0 w-40 sm:w-48 md:w-56 cursor-pointer"
+                    >
+                      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 h-56 sm:h-64 md:h-72">
+                        <img
+                          src={collection.image}
+                          alt={collection.name}
+                          loading="lazy"
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-all duration-300" />
+                      </div>
+
+                      {/* Content */}
+                      <div className="absolute inset-0 flex flex-col justify-between p-3 sm:p-4 text-white">
+                        {collection.badge && (
+                          <Badge className="self-start bg-white/90 text-gray-900 text-[9px] sm:text-xs font-bold px-2 py-0.5 sm:py-1 rounded-md">
+                            {collection.badge}
+                          </Badge>
+                        )}
+                        <div>
+                          <h3 className="text-sm sm:text-base md:text-lg font-bold">{collection.name}</h3>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* SHOP BY OCCASION */}
+            <section>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
+                Shop by Occasion
+              </h2>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 md:gap-4 lg:gap-6">
+                {occasionCategories.map((occasion) => (
+                  <div
+                    key={occasion.id}
+                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl h-40 sm:h-48 md:h-64 cursor-pointer bg-gradient-to-br ${occasion.gradient} shadow-md hover:shadow-lg transition-all duration-300`}
+                  >
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-3 sm:p-4 z-10">
+                      <div className="text-4xl sm:text-5xl md:text-6xl mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300">
+                        {occasion.icon}
+                      </div>
+                      <h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 line-clamp-2">
+                        {occasion.name}
+                      </h3>
                     </div>
 
-                    {/* Content */}
-                    <div className="absolute inset-0 flex flex-col justify-between p-3 sm:p-4 text-white">
-                      {collection.badge && (
-                        <Badge className="self-start bg-white/90 text-gray-900 text-[9px] sm:text-xs font-bold px-2 py-0.5 sm:py-1 rounded-md">
-                          {collection.badge}
-                        </Badge>
-                      )}
-                      <div>
-                        <h3 className="text-sm sm:text-base md:text-lg font-bold">{collection.name}</h3>
+                    <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-all duration-300" />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* SHOP THE LOOK EDITORIAL */}
+            <section>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
+                Shop the Look
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
+                {/* Left - Large Image */}
+                <div className="relative overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl bg-gray-100 h-80 sm:h-96 md:h-[500px]">
+                  <img
+                    src={img2}
+                    alt="Editorial Look"
+                    loading="lazy"
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+
+                  <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8 text-white">
+                    <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-1 sm:mb-2">City Explorer</h3>
+                    <p className="text-xs sm:text-sm opacity-90 mb-3 sm:mb-4">Urban style meets comfort</p>
+                    <Button className="bg-white text-gray-900 hover:bg-gray-100 rounded-full font-semibold text-xs sm:text-sm py-2 sm:py-2.5 px-4 sm:px-6 transition-colors duration-200">
+                      Get the Look
+                      <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Right - Three smaller looks */}
+                <div className="space-y-4 sm:space-y-5 md:space-y-6">
+                  {[img3, img4, img5].map((img, index) => (
+                    <div
+                      key={index}
+                      className="group relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 h-40 sm:h-48 md:h-[155px] cursor-pointer"
+                    >
+                      <img
+                        src={img}
+                        alt={`Look ${index + 1}`}
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      />
+                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all duration-300 flex items-center justify-center">
+                        <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* SEASON HIGHLIGHT BANNER */}
+            <section>
+              <div className="relative overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 py-12 sm:py-16 md:py-20 px-4 sm:px-8 md:px-12 flex items-center justify-center text-center">
+                <div className="absolute inset-0 opacity-15 sm:opacity-20">
+                  <div className="absolute top-0 left-0 w-64 sm:w-96 h-64 sm:h-96 bg-white rounded-full blur-3xl"></div>
+                </div>
+
+                <div className="relative z-10 max-w-3xl">
+                  <span className="inline-block text-xs sm:text-sm font-bold text-gray-700 mb-2 sm:mb-3 md:mb-4 bg-white/70 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
+                    Limited Edition
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-4">
+                    Spring/Summer '26
+                  </h2>
+                  <p className="text-sm sm:text-base md:text-lg text-gray-800 mb-5 sm:mb-6 md:mb-8">
+                    Designed for comfort, crafted for style. Discover our latest collection.
+                  </p>
+                  <Button className="bg-gray-900 hover:bg-gray-800 text-white px-6 sm:px-8 h-10 sm:h-11 md:h-12 rounded-full font-semibold text-sm sm:text-base transition-colors duration-200">
+                    Shop Now
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            </section>
+
+            {/* INSPIRATION GALLERY */}
+            <section>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
+                Styled by Our Community
+              </h2>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
+                {galleryImages.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 cursor-pointer ${index === 0 || index === 5 ? "col-span-2 row-span-2" : ""
+                      }`}
+                  >
+                    <div className={`relative w-full ${index === 0 || index === 5 ? "h-80 sm:h-96" : "h-48 sm:h-56"}`}>
+                      <img
+                        src={item.image}
+                        alt={item.caption}
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-end justify-start p-3 sm:p-4">
+                        <p className="text-white text-xs sm:text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          {item.caption}
+                        </p>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          </section>
+            </section>
 
-          {/* SHOP BY OCCASION */}
-          <section>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
-              Shop by Occasion
-            </h2>
+            {/* NEWSLETTER CTA */}
+            <section>
+              <div className="relative overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl bg-gradient-to-br from-gray-900 to-gray-800 px-4 sm:px-8 md:px-12 lg:px-16 py-10 sm:py-14 md:py-16 text-center text-white">
+                <div className="absolute top-0 right-0 w-64 sm:w-96 h-64 sm:h-96 bg-purple-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                <div className="relative z-10">
+                  <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 sm:mb-3 md:mb-4">
+                    Stay in Style
+                  </h2>
+                  <p className="text-xs sm:text-sm md:text-base opacity-90 mb-5 sm:mb-6 md:mb-8 max-w-2xl mx-auto">
+                    Get exclusive access to new collections, special offers, and style tips delivered to your inbox.
+                  </p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 md:gap-4 lg:gap-6">
-              {occasionCategories.map((occasion) => (
-                <div
-                  key={occasion.id}
-                  className={`group relative overflow-hidden rounded-xl sm:rounded-2xl h-40 sm:h-48 md:h-64 cursor-pointer bg-gradient-to-br ${occasion.gradient} shadow-md hover:shadow-lg transition-all duration-300`}
-                >
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-3 sm:p-4 z-10">
-                    <div className="text-4xl sm:text-5xl md:text-6xl mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300">
-                      {occasion.icon}
-                    </div>
-                    <h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 line-clamp-2">
-                      {occasion.name}
-                    </h3>
-                  </div>
-
-                  <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-all duration-300" />
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* SHOP THE LOOK EDITORIAL */}
-          <section>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
-              Shop the Look
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
-              {/* Left - Large Image */}
-              <div className="relative overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl bg-gray-100 h-80 sm:h-96 md:h-[500px]">
-                <img
-                  src={img2}
-                  alt="Editorial Look"
-                  loading="lazy"
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-
-                <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8 text-white">
-                  <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-1 sm:mb-2">City Explorer</h3>
-                  <p className="text-xs sm:text-sm opacity-90 mb-3 sm:mb-4">Urban style meets comfort</p>
-                  <Button className="bg-white text-gray-900 hover:bg-gray-100 rounded-full font-semibold text-xs sm:text-sm py-2 sm:py-2.5 px-4 sm:px-6 transition-colors duration-200">
-                    Get the Look
-                    <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Right - Three smaller looks */}
-              <div className="space-y-4 sm:space-y-5 md:space-y-6">
-                {[img3, img4, img5].map((img, index) => (
-                  <div
-                    key={index}
-                    className="group relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 h-40 sm:h-48 md:h-[155px] cursor-pointer"
-                  >
-                    <img
-                      src={img}
-                      alt={`Look ${index + 1}`}
-                      loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 max-w-md mx-auto">
+                    <Input
+                      type="email"
+                      placeholder="Enter your email"
+                      className="px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg sm:rounded-full bg-white/20 border border-white/30 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white transition-all duration-200"
                     />
-                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all duration-300 flex items-center justify-center">
-                      <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    </div>
+                    <Button className="bg-white text-gray-900 hover:bg-gray-100 px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-full font-semibold text-xs sm:text-sm flex-shrink-0 transition-colors duration-200">
+                      Subscribe
+                    </Button>
                   </div>
-                ))}
-              </div>
-            </div>
-          </section>
 
-          {/* SEASON HIGHLIGHT BANNER */}
-          <section>
-            <div className="relative overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 py-12 sm:py-16 md:py-20 px-4 sm:px-8 md:px-12 flex items-center justify-center text-center">
-              <div className="absolute inset-0 opacity-15 sm:opacity-20">
-                <div className="absolute top-0 left-0 w-64 sm:w-96 h-64 sm:h-96 bg-white rounded-full blur-3xl"></div>
-              </div>
-
-              <div className="relative z-10 max-w-3xl">
-                <span className="inline-block text-xs sm:text-sm font-bold text-gray-700 mb-2 sm:mb-3 md:mb-4 bg-white/70 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
-                  Limited Edition
-                </span>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-4">
-                  Spring/Summer '26
-                </h2>
-                <p className="text-sm sm:text-base md:text-lg text-gray-800 mb-5 sm:mb-6 md:mb-8">
-                  Designed for comfort, crafted for style. Discover our latest collection.
-                </p>
-                <Button className="bg-gray-900 hover:bg-gray-800 text-white px-6 sm:px-8 h-10 sm:h-11 md:h-12 rounded-full font-semibold text-sm sm:text-base transition-colors duration-200">
-                  Shop Now
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-            </div>
-          </section>
-
-          {/* INSPIRATION GALLERY */}
-          <section>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
-              Styled by Our Community
-            </h2>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
-              {galleryImages.map((item, index) => (
-                <div
-                  key={item.id}
-                  className={`group relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 cursor-pointer ${
-                    index === 0 || index === 5 ? "col-span-2 row-span-2" : ""
-                  }`}
-                >
-                  <div className={`relative w-full ${index === 0 || index === 5 ? "h-80 sm:h-96" : "h-48 sm:h-56"}`}>
-                    <img
-                      src={item.image}
-                      alt={item.caption}
-                      loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-end justify-start p-3 sm:p-4">
-                      <p className="text-white text-xs sm:text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        {item.caption}
-                      </p>
-                    </div>
-                  </div>
+                  <p className="text-[10px] sm:text-xs opacity-75 mt-3 sm:mt-4">
+                    We respect your privacy. Unsubscribe anytime.
+                  </p>
                 </div>
-              ))}
-            </div>
-          </section>
-
-          {/* NEWSLETTER CTA */}
-          <section>
-            <div className="relative overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl bg-gradient-to-br from-gray-900 to-gray-800 px-4 sm:px-8 md:px-12 lg:px-16 py-10 sm:py-14 md:py-16 text-center text-white">
-              <div className="absolute top-0 right-0 w-64 sm:w-96 h-64 sm:h-96 bg-purple-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-              <div className="relative z-10">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 sm:mb-3 md:mb-4">
-                  Stay in Style
-                </h2>
-                <p className="text-xs sm:text-sm md:text-base opacity-90 mb-5 sm:mb-6 md:mb-8 max-w-2xl mx-auto">
-                  Get exclusive access to new collections, special offers, and style tips delivered to your inbox.
-                </p>
-
-                <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 max-w-md mx-auto">
-                  <Input
-                    type="email"
-                    placeholder="Enter your email"
-                    className="px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg sm:rounded-full bg-white/20 border border-white/30 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white transition-all duration-200"
-                  />
-                  <Button className="bg-white text-gray-900 hover:bg-gray-100 px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-full font-semibold text-xs sm:text-sm flex-shrink-0 transition-colors duration-200">
-                    Subscribe
-                  </Button>
-                </div>
-
-                <p className="text-[10px] sm:text-xs opacity-75 mt-3 sm:mt-4">
-                  We respect your privacy. Unsubscribe anytime.
-                </p>
               </div>
-            </div>
-          </section>
+            </section>
           </div>
         </div>
       </main>
