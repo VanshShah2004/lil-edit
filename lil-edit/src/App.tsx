@@ -17,6 +17,9 @@ import Cart from "./pages/Cart";
 import Wishlist from "./pages/Wishlist";
 import Collections from "./pages/Collections";
 
+import AddProduct from "./pages/AddProduct";
+import AdminRoute from "./components/AdminRoute";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -39,6 +42,7 @@ const App = () => (
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/collections" element={<Collections />} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/admin/add-product" element={<AdminRoute><AddProduct /></AdminRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
