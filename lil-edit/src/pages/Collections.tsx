@@ -18,7 +18,7 @@ const featuredCollections = [
   {
     id: "col-1",
     name: "Summer Escape",
-    description: "Breathable, vibrant styles for sunny adventures",
+    description: "Vibrant & Adventurous",
     image: img1,
     productCount: 48,
     badge: "New",
@@ -27,7 +27,7 @@ const featuredCollections = [
   {
     id: "col-2",
     name: "Tiny Trendsetters",
-    description: "Fashion-forward pieces for style-conscious kids",
+    description: "Chic & Playful",
     image: img2,
     productCount: 36,
     badge: "Trending",
@@ -36,7 +36,7 @@ const featuredCollections = [
   {
     id: "col-3",
     name: "Cozy Classics",
-    description: "Timeless comfort for everyday wear",
+    description: "Timeless Comfort",
     image: img3,
     productCount: 42,
     badge: null,
@@ -45,7 +45,7 @@ const featuredCollections = [
   {
     id: "col-4",
     name: "Playdate Essentials",
-    description: "Durable & playful styles for active kids",
+    description: "Edgy & Distinctive",
     image: img4,
     productCount: 35,
     badge: "Best Seller",
@@ -54,7 +54,7 @@ const featuredCollections = [
   {
     id: "col-5",
     name: "Party Picks",
-    description: "Elegant outfits for special celebrations",
+    description: "Elegant Celebrations",
     image: img5,
     productCount: 28,
     badge: null,
@@ -89,12 +89,14 @@ const occasionCategories = [
 ];
 
 const galleryImages = [
-  { id: "gal-1", image: img1, caption: "Sunset Vibes" },
-  { id: "gal-2", image: img2, caption: "City Style" },
-  { id: "gal-3", image: img3, caption: "Nature Explorer" },
-  { id: "gal-4", image: img4, caption: "Party Ready" },
-  { id: "gal-5", image: img5, caption: "Cozy Comfort" },
-  { id: "gal-6", image: img6, caption: "Trendsetter" },
+  { id: "gal-1", image: img1, caption: "Sunset Vibes", price: "3200" },
+  { id: "gal-2", image: img2, caption: "City Style", price: "4100" },
+  { id: "gal-3", image: img3, caption: "Nature Explorer Into the Space of the Universe", price: "2800" },
+  { id: "gal-4", image: img4, caption: "Party Ready", price: "5500" },
+  { id: "gal-5", image: img5, caption: "Cozy Comfort", price: "3600" },
+  { id: "gal-6", image: img6, caption: "Trendsetter", price: "4800" },
+  { id: "gal-7", image: img3, caption: "Summer Glow", price: "3900" },
+  { id: "gal-8", image: img1, caption: "Mini Chic", price: "2600" },
 ];
 
 const filterOptions = {
@@ -143,7 +145,6 @@ export default function Collections() {
   });
 
   const [sortBy, setSortBy] = useState("newest");
-  const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
   const toggleFilter = (category: keyof typeof selectedFilters, value: string) => {
@@ -170,8 +171,88 @@ export default function Collections() {
         </div>
       </div>
 
+      {/* MOBILE SORT & SEARCH BAR (Moved above Hero) */}
+      <div className="lg:hidden w-full px-4 sm:px-6 pb-6 pt-2">
+        <div className="flex flex-col gap-3">
+          <div className="flex gap-2">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="flex-1 px-3 py-2.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all duration-200 bg-white"
+            >
+              <option value="newest">Newest</option>
+              <option value="popular">Popular</option>
+              <option value="price-low">Price ↑</option>
+              <option value="price-high">Price ↓</option>
+            </select>
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-3 py-2.5 border-gray-300 text-xs font-medium bg-white"
+            >
+              {showFilters ? "Hide" : "Filter"}
+            </Button>
+          </div>
+        </div>
+
+        {/* MOBILE FILTER PANEL */}
+        {showFilters && (
+          <div className="w-full border border-gray-200 rounded-xl p-4 mt-3 space-y-5 bg-white shadow-sm">
+            {/* AGE */}
+            <div className="pb-4 border-b border-gray-200">
+              <h3 className="text-xs font-semibold text-gray-900 mb-2.5">Age</h3>
+              <div className="space-y-2">
+                {filterOptions.age.slice(0, 3).map((option) => (
+                  <label key={option.label} className="flex items-center gap-2 cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={selectedFilters.age.includes(option.label)}
+                      onChange={() => toggleFilter("age", option.label)}
+                      className="w-4 h-4 accent-gray-900 rounded"
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* OCCASION */}
+            <div className="pb-4 border-b border-gray-200">
+              <h3 className="text-xs font-semibold text-gray-900 mb-2.5">Occasion</h3>
+              <div className="space-y-2">
+                {filterOptions.occasion.slice(0, 3).map((option) => (
+                  <label key={option.label} className="flex items-center gap-2 cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={selectedFilters.occasion.includes(option.label)}
+                      onChange={() => toggleFilter("occasion", option.label)}
+                      className="w-4 h-4 accent-gray-900 rounded"
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* CLEAR */}
+            {Object.values(selectedFilters).some((arr) => arr.length > 0) && (
+              <Button
+                variant="outline"
+                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 text-xs py-2"
+                onClick={() => {
+                  setSelectedFilters({ age: [], occasion: [], color: [], price: [] });
+                  setShowFilters(false);
+                }}
+              >
+                Clear Filters
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* HERO SECTION */}
-      <section className="relative w-full bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 overflow-hidden py-16 sm:py-24 md:py-32">
+      <section className="relative w-full bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 overflow-hidden py-32 sm:py-32 md:py-40 min-h-[50vh] sm:min-h-[40vh] flex flex-col justify-center">
         <div className="absolute inset-0 opacity-20 sm:opacity-30">
           <div className="absolute top-4 sm:top-10 left-4 sm:left-10 w-32 sm:w-40 h-32 sm:h-40 bg-pink-300 rounded-full blur-3xl"></div>
           <div className="absolute bottom-4 sm:bottom-10 right-4 sm:right-10 w-40 sm:w-56 h-40 sm:h-56 bg-blue-300 rounded-full blur-3xl"></div>
@@ -192,8 +273,7 @@ export default function Collections() {
             <Button
               variant="outline"
               className="border-gray-900 text-gray-900 hover:bg-gray-100 px-6 sm:px-8 h-11 sm:h-12 rounded-full font-semibold transition-colors duration-200"
-            >
-              Explore Collections
+            >Explore
             </Button>
           </div>
         </div>
@@ -202,109 +282,9 @@ export default function Collections() {
       {/* MAIN CONTENT */}
       <main className="w-full px-3 sm:px-6 py-6 sm:py-12 md:py-16">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6 lg:gap-8">
-          {/* MOBILE SORT & SEARCH BAR */}
-          <div className="lg:hidden flex flex-col gap-3">
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="Search collections..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 rounded-full border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all duration-200"
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500" />
-            </div>
-            <div className="flex gap-2">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="flex-1 px-3 py-2.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all duration-200"
-              >
-                <option value="newest">Newest</option>
-                <option value="popular">Popular</option>
-                <option value="price-low">Price ↑</option>
-                <option value="price-high">Price ↓</option>
-              </select>
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                className="px-3 py-2.5 border-gray-300 text-xs font-medium"
-              >
-                {showFilters ? "Hide" : "Filter"}
-              </Button>
-            </div>
-          </div>
-
-          {/* MOBILE FILTER PANEL */}
-          {showFilters && (
-            <div className="lg:hidden w-full border border-gray-200 rounded-xl p-4 sm:p-6 space-y-5 bg-gray-50/50">
-              {/* AGE */}
-              <div className="pb-4 border-b border-gray-200">
-                <h3 className="text-xs font-semibold text-gray-900 mb-2.5">Age</h3>
-                <div className="space-y-2">
-                  {filterOptions.age.slice(0, 3).map((option) => (
-                    <label key={option.label} className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input
-                        type="checkbox"
-                        checked={selectedFilters.age.includes(option.label)}
-                        onChange={() => toggleFilter("age", option.label)}
-                        className="w-4 h-4 accent-gray-900 rounded"
-                      />
-                      <span>{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* OCCASION */}
-              <div className="pb-4 border-b border-gray-200">
-                <h3 className="text-xs font-semibold text-gray-900 mb-2.5">Occasion</h3>
-                <div className="space-y-2">
-                  {filterOptions.occasion.slice(0, 3).map((option) => (
-                    <label key={option.label} className="flex items-center gap-2 cursor-pointer text-xs">
-                      <input
-                        type="checkbox"
-                        checked={selectedFilters.occasion.includes(option.label)}
-                        onChange={() => toggleFilter("occasion", option.label)}
-                        className="w-4 h-4 accent-gray-900 rounded"
-                      />
-                      <span>{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* CLEAR */}
-              {Object.values(selectedFilters).some((arr) => arr.length > 0) && (
-                <Button
-                  variant="outline"
-                  className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 text-xs py-2"
-                  onClick={() => {
-                    setSelectedFilters({ age: [], occasion: [], color: [], price: [] });
-                    setShowFilters(false);
-                  }}
-                >
-                  Clear Filters
-                </Button>
-              )}
-            </div>
-          )}
-
           {/* SIDEBAR FILTERS - Hidden on mobile, visible on desktop */}
           <aside className="hidden lg:block w-full lg:w-64 flex-shrink-0">
             <div className="sticky top-20 space-y-5 sm:space-y-6">
-              {/* Search */}
-              <div className="relative">
-                <Input
-                  type="text"
-                  placeholder="Search collections..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 rounded-full border border-gray-300 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all duration-200"
-                />
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500" />
-              </div>
-
               {/* Sort */}
               <div>
                 <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2.5 sm:mb-3">Sort By</h3>
@@ -450,26 +430,28 @@ export default function Collections() {
                 Featured Collections
               </h2>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-                {featuredCollections.map((collection) => {
-                  let heightClass = "h-64 sm:h-72";
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4 auto-rows-[180px] sm:auto-rows-[200px] lg:auto-rows-[220px] grid-flow-row-dense">
+                {featuredCollections.map((collection, index) => {
                   let spanClass = "";
 
-                  if (collection.size === "large") {
-                    spanClass = "sm:col-span-2 sm:row-span-2";
-                    heightClass = "h-64 sm:h-80 lg:h-96";
-                  } else if (collection.size === "medium") {
-                    spanClass = "sm:col-span-1 sm:row-span-2";
-                    heightClass = "h-64 sm:h-80 lg:h-96";
-                  } else {
-                    spanClass = "sm:col-span-1";
-                    heightClass = "h-64 sm:h-72";
+                  if (index === 0) {
+                    spanClass = "col-span-2 row-span-1 lg:col-span-2 lg:row-span-2";
+                  } else if (index === 1) {
+                    spanClass = "col-span-1 row-span-1 lg:col-span-1 lg:row-span-2";
+                  } else if (index === 2) {
+                    spanClass = "col-span-1 row-span-1 lg:col-span-1 lg:row-span-2";
+                  } else if (index === 3) {
+                    spanClass = "col-span-1 row-span-1 lg:col-span-1 lg:row-span-1";
+                  } else if (index === 4) {
+                    spanClass = "col-span-1 row-span-1 lg:col-span-1 lg:row-span-1";
+                  } else if (index === 5) {
+                    spanClass = "col-span-2 row-span-1 lg:col-span-2 lg:row-span-1";
                   }
 
                   return (
                     <div
                       key={collection.id}
-                      className={`${spanClass} group relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 cursor-pointer transition-all duration-500 ${heightClass}`}
+                      className={`${spanClass} group relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 cursor-pointer transition-all duration-500 h-full min-h-[180px]`}
                     >
                       {/* Image */}
                       <img
@@ -485,7 +467,10 @@ export default function Collections() {
                         {/* Badge */}
                         {collection.badge && (
                           <div className="self-start">
-                            <Badge className="bg-white/90 text-gray-900 text-[9px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg">
+                            <Badge
+                              className="text-[9px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg text-white border-0"
+                              style={{ backgroundColor: "hsl(268, 45%, 65%)" }}
+                            >
                               {collection.badge}
                             </Badge>
                           </div>
@@ -502,10 +487,7 @@ export default function Collections() {
                             </p>
                           </div>
 
-                          <div className="flex items-center justify-between pt-1 sm:pt-2">
-                            <span className="text-xs sm:text-sm opacity-75">
-                              {collection.productCount} Items
-                            </span>
+                          <div className="flex items-center justify-end pt-1 sm:pt-2">
                             <button className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
                             </button>
@@ -518,63 +500,23 @@ export default function Collections() {
               </div>
             </section>
 
-            {/* TRENDING CAROUSEL */}
-            <section>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
-                Trending Right Now
-              </h2>
-
-              <div className="overflow-x-auto pb-4 -mx-3 sm:-mx-6 px-3 sm:px-6 scrollbar-hide">
-                <div className="flex gap-3 sm:gap-4 md:gap-6 w-max">
-                  {trendingCollections.map((collection) => (
-                    <div
-                      key={collection.id}
-                      className="group relative flex-shrink-0 w-40 sm:w-48 md:w-56 cursor-pointer"
-                    >
-                      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 h-56 sm:h-64 md:h-72">
-                        <img
-                          src={collection.image}
-                          alt={collection.name}
-                          loading="lazy"
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-all duration-300" />
-                      </div>
-
-                      {/* Content */}
-                      <div className="absolute inset-0 flex flex-col justify-between p-3 sm:p-4 text-white">
-                        {collection.badge && (
-                          <Badge className="self-start bg-white/90 text-gray-900 text-[9px] sm:text-xs font-bold px-2 py-0.5 sm:py-1 rounded-md">
-                            {collection.badge}
-                          </Badge>
-                        )}
-                        <div>
-                          <h3 className="text-sm sm:text-base md:text-lg font-bold">{collection.name}</h3>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-
             {/* SHOP BY OCCASION */}
             <section>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
                 Shop by Occasion
               </h2>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 md:gap-4 lg:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4">
                 {occasionCategories.map((occasion) => (
                   <div
                     key={occasion.id}
-                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl h-40 sm:h-48 md:h-64 cursor-pointer bg-gradient-to-br ${occasion.gradient} shadow-md hover:shadow-lg transition-all duration-300`}
+                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl h-40 sm:h-48 md:h-56 lg:h-48 cursor-pointer bg-gradient-to-br ${occasion.gradient} shadow-md hover:shadow-lg transition-all duration-300`}
                   >
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-3 sm:p-4 z-10">
-                      <div className="text-4xl sm:text-5xl md:text-6xl mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300">
+                      <div className="text-4xl sm:text-5xl md:text-5xl lg:text-4xl mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300">
                         {occasion.icon}
                       </div>
-                      <h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 line-clamp-2">
+                      <h3 className="text-sm sm:text-base md:text-base lg:text-sm font-bold text-gray-900 line-clamp-2">
                         {occasion.name}
                       </h3>
                     </div>
@@ -585,58 +527,11 @@ export default function Collections() {
               </div>
             </section>
 
-            {/* SHOP THE LOOK EDITORIAL */}
-            <section>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
-                Shop the Look
-              </h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
-                {/* Left - Large Image */}
-                <div className="relative overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl bg-gray-100 h-80 sm:h-96 md:h-[500px]">
-                  <img
-                    src={img2}
-                    alt="Editorial Look"
-                    loading="lazy"
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-
-                  <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8 text-white">
-                    <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-1 sm:mb-2">City Explorer</h3>
-                    <p className="text-xs sm:text-sm opacity-90 mb-3 sm:mb-4">Urban style meets comfort</p>
-                    <Button className="bg-white text-gray-900 hover:bg-gray-100 rounded-full font-semibold text-xs sm:text-sm py-2 sm:py-2.5 px-4 sm:px-6 transition-colors duration-200">
-                      Get the Look
-                      <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Right - Three smaller looks */}
-                <div className="space-y-4 sm:space-y-5 md:space-y-6">
-                  {[img3, img4, img5].map((img, index) => (
-                    <div
-                      key={index}
-                      className="group relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 h-40 sm:h-48 md:h-[155px] cursor-pointer"
-                    >
-                      <img
-                        src={img}
-                        alt={`Look ${index + 1}`}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                      />
-                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all duration-300 flex items-center justify-center">
-                        <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
 
             {/* SEASON HIGHLIGHT BANNER */}
             <section>
-              <div className="relative overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 py-12 sm:py-16 md:py-20 px-4 sm:px-8 md:px-12 flex items-center justify-center text-center">
+              <div className="relative overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 py-28 sm:py-20 md:py-24 px-4 sm:px-8 md:px-12 flex items-center justify-center text-center">
                 <div className="absolute inset-0 opacity-15 sm:opacity-20">
                   <div className="absolute top-0 left-0 w-64 sm:w-96 h-64 sm:h-96 bg-white rounded-full blur-3xl"></div>
                 </div>
@@ -659,31 +554,37 @@ export default function Collections() {
               </div>
             </section>
 
-            {/* INSPIRATION GALLERY */}
+            {/* STYLED BY OUR COMMUNITY */}
             <section>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
                 Styled by Our Community
               </h2>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
-                {galleryImages.map((item, index) => (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {galleryImages.map((item) => (
                   <div
                     key={item.id}
-                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 cursor-pointer ${index === 0 || index === 5 ? "col-span-2 row-span-2" : ""
-                      }`}
+                    className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all"
                   >
-                    <div className={`relative w-full ${index === 0 || index === 5 ? "h-80 sm:h-96" : "h-48 sm:h-56"}`}>
+                    <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5">
                       <img
                         src={item.image}
                         alt={item.caption}
                         loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-end justify-start p-3 sm:p-4">
-                        <p className="text-white text-xs sm:text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          {item.caption}
-                        </p>
+                      <button className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-primary transition-all">
+                        <Heart className="w-3.5 h-3.5" />
+                      </button>
+                      <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                        <button className="w-full py-1.5 bg-white/90 backdrop-blur text-foreground rounded-lg font-medium text-[10px] md:text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm">
+                          Add to Cart
+                        </button>
                       </div>
+                    </div>
+                    <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
+                      <h3 className="font-display text-xs md:text-sm font-medium text-foreground leading-snug">{item.caption}</h3>
+                      <p className="font-body text-xs font-semibold text-[#0F766E] shrink-0">₹{item.price}</p>
                     </div>
                   </div>
                 ))}
@@ -724,6 +625,6 @@ export default function Collections() {
       </main>
 
       <Footer />
-    </div>
+    </div >
   );
 }
