@@ -429,7 +429,7 @@ export default function Collections() {
                 Featured Collections
               </h2>
 
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6 auto-rows-[180px] sm:auto-rows-[200px] lg:auto-rows-[220px] grid-flow-row-dense">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4 auto-rows-[180px] sm:auto-rows-[200px] lg:auto-rows-[220px] grid-flow-row-dense">
                 {featuredCollections.map((collection, index) => {
                   let spanClass = "";
 
@@ -505,17 +505,17 @@ export default function Collections() {
                 Shop by Occasion
               </h2>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 md:gap-4 lg:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4">
                 {occasionCategories.map((occasion) => (
                   <div
                     key={occasion.id}
-                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl h-40 sm:h-48 md:h-64 cursor-pointer bg-gradient-to-br ${occasion.gradient} shadow-md hover:shadow-lg transition-all duration-300`}
+                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl h-40 sm:h-48 md:h-56 lg:h-48 cursor-pointer bg-gradient-to-br ${occasion.gradient} shadow-md hover:shadow-lg transition-all duration-300`}
                   >
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-3 sm:p-4 z-10">
-                      <div className="text-4xl sm:text-5xl md:text-6xl mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300">
+                      <div className="text-4xl sm:text-5xl md:text-5xl lg:text-4xl mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300">
                         {occasion.icon}
                       </div>
-                      <h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 line-clamp-2">
+                      <h3 className="text-sm sm:text-base md:text-base lg:text-sm font-bold text-gray-900 line-clamp-2">
                         {occasion.name}
                       </h3>
                     </div>
@@ -559,9 +559,11 @@ export default function Collections() {
                 Styled by Our Community
               </h2>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-6 auto-rows-[100px] sm:auto-rows-[130px] md:auto-rows-[160px] grid-flow-row-dense">
-                {galleryImages.map((item, index) => {
-                  const spanClass = index === 0 || index === 3 ? "col-span-2 row-span-2" : "col-span-1 row-span-1";
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4 auto-rows-[180px] sm:auto-rows-[220px] md:auto-rows-[280px] grid-flow-row-dense">
+                {galleryImages.slice(0, 4).map((item, index) => {
+                  let spanClass = "col-span-1 row-span-1";
+                  if (index === 0) spanClass = "col-span-2 row-span-2";
+                  else if (index === 1) spanClass = "col-span-2 row-span-1";
                   return (
                     <div
                       key={item.id}
