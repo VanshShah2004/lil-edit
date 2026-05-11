@@ -462,6 +462,7 @@ export default function Collections() {
                       />
                       <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-all duration-300" />
 
+
                       {/* Overlay Content */}
                       <div className="absolute inset-0 flex flex-col justify-between p-3 sm:p-5 md:p-6">
                         {/* Badge */}
