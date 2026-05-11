@@ -206,6 +206,7 @@ export default function Cart() {
                     />
                   </div>
 
+
                   {/* Wishlist */}
                   <button
                     className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-md shadow-sm hover:bg-white transition"
