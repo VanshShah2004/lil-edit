@@ -14,7 +14,9 @@ import {
   Send,
   Loader,
   Search,
-  Plus
+  Plus,
+  Flame,
+  Tag
 } from "lucide-react";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
@@ -48,7 +50,7 @@ interface FormData {
   price: string;
   originalPrice: string;
   stock: string;
-  tags: string;
+  tags: string[];
   fabric: string;
   fit: string;
   occasion: string;
@@ -59,7 +61,8 @@ interface FormData {
   featured: boolean;
   newArrival: boolean;
   bestseller: boolean;
-  publishImmediate: boolean;
+  trending: boolean;
+  customBadges: string[];
 }
 
 const COLOR_MAP: Record<string, string> = {
@@ -101,6 +104,9 @@ const AddProduct = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [newPoint, setNewPoint] = useState("");
   const [newColorInput, setNewColorInput] = useState("");
+  const [newTag, setNewTag] = useState("");
+  const [newBadgeName, setNewBadgeName] = useState("");
+  const [availableCustomBadges, setAvailableCustomBadges] = useState<string[]>([]);
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -111,7 +117,7 @@ const AddProduct = () => {
     price: "",
     originalPrice: "",
     stock: "",
-    tags: "",
+    tags: [],
     fabric: "",
     fit: "",
     occasion: "",
@@ -122,7 +128,8 @@ const AddProduct = () => {
     featured: false,
     newArrival: false,
     bestseller: false,
-    publishImmediate: false,
+    trending: false,
+    customBadges: [],
   });
 
   const [images, setImages] = useState<File[]>([]);
@@ -216,6 +223,39 @@ const AddProduct = () => {
     setFormData(prev => ({
       ...prev,
       selectedColors: prev.selectedColors.filter(c => c.name !== colorName)
+    }));
+  };
+
+  const addTag = () => {
+    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...prev.tags, newTag.trim()]
+      }));
+      setNewTag("");
+    }
+  };
+
+  const removeTag = (tag: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.filter(t => t !== tag)
+    }));
+  };
+
+  const createBadge = () => {
+    if (newBadgeName.trim() && !availableCustomBadges.includes(newBadgeName.trim())) {
+      setAvailableCustomBadges(prev => [...prev, newBadgeName.trim()]);
+      setNewBadgeName("");
+    }
+  };
+
+  const toggleCustomBadge = (badge: string) => {
+    setFormData(prev => ({
+      ...prev,
+      customBadges: prev.customBadges.includes(badge)
+        ? prev.customBadges.filter(b => b !== badge)
+        : [...prev.customBadges, badge]
     }));
   };
 
@@ -629,19 +669,54 @@ const AddProduct = () => {
                     <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Search & Discovery</h2>
                   </div>
 
-                  <motion.div whileHover={{ scale: 1.01 }} className="group">
-                    <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
-                      Search Metadata
-                    </label>
-                    <input
-                      type="text"
-                      name="tags"
-                      value={formData.tags}
-                      onChange={handleInputChange}
-                      placeholder="e.g. minimalist, neutral, organic (comma separated)"
-                      className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
-                    />
-                  </motion.div>
+                  <div className="space-y-6">
+                    <div className="flex gap-3">
+                      <div className="relative flex-1 group">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
+                          <Search size={18} />
+                        </div>
+                        <input
+                          type="text"
+                          value={newTag}
+                          onChange={(e) => setNewTag(e.target.value)}
+                          onKeyPress={(e) => e.key === "Enter" && addTag()}
+                          placeholder="Add discovery tags (e.g. Minimalist, Organic)..."
+                          className="w-full pl-12 pr-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-[15px]"
+                        />
+                      </div>
+                      <button
+                        onClick={addTag}
+                        className="px-8 py-4 rounded-xl bg-primary text-white font-bold text-xs uppercase tracking-widest hover:brightness-95 transition-all shadow-lg shadow-primary/10"
+                      >
+                        Add Tag
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 min-h-[48px] p-2 rounded-2xl border border-dashed border-border/20 bg-secondary/5">
+                      {formData.tags.length > 0 ? (
+                        formData.tags.map((tag) => (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            key={tag}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-border/50 rounded-full text-[11px] font-bold text-primary uppercase tracking-widest shadow-sm hover:shadow-md transition-all group"
+                          >
+                            {tag}
+                            <button
+                              onClick={() => removeTag(tag)}
+                              className="text-muted-foreground/40 hover:text-red-500 transition-colors"
+                            >
+                              <X size={12} />
+                            </button>
+                          </motion.div>
+                        ))
+                      ) : (
+                        <div className="w-full flex items-center justify-center py-2">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/30">No tags defined</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Sizes */}
@@ -819,44 +894,102 @@ const AddProduct = () => {
                     <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Status & Publishing</h2>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {[
-                      { key: "newArrival", label: "New Arrival", icon: Zap },
-                      { key: "featured", label: "Featured Product", icon: Star },
-                      { key: "bestseller", label: "Bestseller", icon: TrendingUp },
-                      { key: "publishImmediate", label: "Live Immediately", icon: Eye },
-                    ].map(({ key, label, icon: Icon }) => (
-                      <motion.button
-                        key={key}
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        onClick={() => handleToggle(key as keyof FormData)}
-                        className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${formData[key as keyof FormData]
-                          ? "border-primary bg-primary/[0.02] shadow-xl shadow-primary/5"
-                          : "border-border/50 bg-[#F9F8FA] hover:border-primary/20"
-                          }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData[key as keyof FormData] ? "bg-primary/10 text-primary" : "bg-white text-muted-foreground/40 shadow-sm"
-                            }`}>
-                            <Icon className="w-5 h-5" />
-                          </div>
-                          <span className="font-display font-medium text-foreground text-sm">{label}</span>
-                        </div>
-                        <div
-                          className={`w-12 h-6 rounded-full transition-all duration-300 p-1 ${formData[key as keyof FormData] ? "bg-primary" : "bg-muted-foreground/20"
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Core Badges */}
+                      {[
+                        { key: "newArrival", label: "New Arrival", icon: Zap },
+                        { key: "featured", label: "Featured Product", icon: Star },
+                        { key: "bestseller", label: "Bestseller", icon: TrendingUp },
+                        { key: "trending", label: "Trending", icon: Flame },
+                      ].map(({ key, label, icon: Icon }) => (
+                        <motion.button
+                          key={key}
+                          whileHover={{ scale: 1.01 }}
+                          whileTap={{ scale: 0.99 }}
+                          onClick={() => handleToggle(key as keyof FormData)}
+                          className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${formData[key as keyof FormData]
+                            ? "border-primary bg-primary/[0.02] shadow-xl shadow-primary/5"
+                            : "border-border/50 bg-[#F9F8FA] hover:border-primary/20"
                             }`}
                         >
-                          <motion.div
-                            animate={{
-                              x: formData[key as keyof FormData] ? 24 : 0,
-                            }}
-                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                            className="w-4 h-4 bg-white rounded-full shadow-sm"
-                          />
+                          <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData[key as keyof FormData] ? "bg-primary/10 text-primary" : "bg-white text-muted-foreground/40 shadow-sm"
+                              }`}>
+                              <Icon className="w-5 h-5" />
+                            </div>
+                            <span className="font-display font-medium text-foreground text-sm">{label}</span>
+                          </div>
+                          <div
+                            className={`w-12 h-6 rounded-full transition-all duration-300 p-1 ${formData[key as keyof FormData] ? "bg-primary" : "bg-muted-foreground/20"
+                              }`}
+                          >
+                            <motion.div
+                              animate={{ x: formData[key as keyof FormData] ? 24 : 0 }}
+                              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                              className="w-4 h-4 bg-white rounded-full shadow-sm"
+                            />
+                          </div>
+                        </motion.button>
+                      ))}
+
+                      {/* Custom Badges */}
+                      {availableCustomBadges.map((badge) => (
+                        <motion.button
+                          key={badge}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          whileHover={{ scale: 1.01 }}
+                          whileTap={{ scale: 0.99 }}
+                          onClick={() => toggleCustomBadge(badge)}
+                          className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${formData.customBadges.includes(badge)
+                            ? "border-primary bg-primary/[0.02] shadow-xl shadow-primary/5"
+                            : "border-border/50 bg-[#F9F8FA] hover:border-primary/20"
+                            }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData.customBadges.includes(badge) ? "bg-primary/10 text-primary" : "bg-white text-muted-foreground/40 shadow-sm"
+                              }`}>
+                              <Tag className="w-5 h-5" />
+                            </div>
+                            <span className="font-display font-medium text-foreground text-sm">{badge}</span>
+                          </div>
+                          <div
+                            className={`w-12 h-6 rounded-full transition-all duration-300 p-1 ${formData.customBadges.includes(badge) ? "bg-primary" : "bg-muted-foreground/20"
+                              }`}
+                          >
+                            <motion.div
+                              animate={{ x: formData.customBadges.includes(badge) ? 24 : 0 }}
+                              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                              className="w-4 h-4 bg-white rounded-full shadow-sm"
+                            />
+                          </div>
+                        </motion.button>
+                      ))}
+                    </div>
+
+                    {/* Create Badge Input */}
+                    <div className="flex gap-3 pt-2">
+                      <div className="relative flex-1 group">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
+                          <Plus size={18} />
                         </div>
-                      </motion.button>
-                    ))}
+                        <input
+                          type="text"
+                          value={newBadgeName}
+                          onChange={(e) => setNewBadgeName(e.target.value)}
+                          onKeyPress={(e) => e.key === "Enter" && createBadge()}
+                          placeholder="Create custom badge (e.g. Limited Edition, Sustainable)..."
+                          className="w-full pl-12 pr-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-[15px]"
+                        />
+                      </div>
+                      <button
+                        onClick={createBadge}
+                        className="px-8 py-4 rounded-xl bg-secondary text-foreground font-bold text-xs uppercase tracking-widest hover:bg-border/20 transition-all border border-border/40"
+                      >
+                        Create Badge
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -889,7 +1022,7 @@ const AddProduct = () => {
                     ) : (
                       <Send className="w-4 h-4" />
                     )}
-                    {isPublishing ? "Publishing..." : "Launch Listing"}
+                    {isPublishing ? "Launching..." : "Launch Product"}
                   </motion.button>
                 </div>
               </div>
