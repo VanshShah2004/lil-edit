@@ -687,7 +687,7 @@ const AddProduct = () => {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="lg:sticky lg:top-32 h-fit"
             >
-              <div className="bg-white rounded-[2rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] p-8 space-y-8">
+              <div className="bg-white rounded-[2rem] border border-border/60 shadow-[0_8px_40px_rgb(0,0,0,0.06)] p-8 space-y-8">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-muted-foreground">Live Preview</h2>
                   <div className="flex items-center gap-1.5">
