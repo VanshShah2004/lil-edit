@@ -221,7 +221,7 @@ const AddProduct = () => {
                 {/* Basic Info */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                    <div className="w-2 h-2 rounded-full bg-primary" />
                     <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Essential Details</h2>
                   </div>
 
@@ -279,7 +279,7 @@ const AddProduct = () => {
                 {/* Category & Gender */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                    <div className="w-2 h-2 rounded-full bg-primary" />
                     <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Classification</h2>
                   </div>
 
@@ -333,8 +333,8 @@ const AddProduct = () => {
                 {/* Pricing */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
-                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Value & Pricing</h2>
+                    <div className="w-2 h-2 rounded-full bg-primary" />
+                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Pricing</h2>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -392,7 +392,7 @@ const AddProduct = () => {
                 {/* Inventory */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                    <div className="w-2 h-2 rounded-full bg-primary" />
                     <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Inventory Control</h2>
                   </div>
 
@@ -431,7 +431,7 @@ const AddProduct = () => {
                 {/* Tags */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                    <div className="w-2 h-2 rounded-full bg-primary" />
                     <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Search & Discovery</h2>
                   </div>
 
@@ -453,7 +453,7 @@ const AddProduct = () => {
                 {/* Sizes */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                    <div className="w-2 h-2 rounded-full bg-primary" />
                     <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Available Sizes</h2>
                   </div>
 
@@ -478,7 +478,7 @@ const AddProduct = () => {
                 {/* Colors */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                    <div className="w-2 h-2 rounded-full bg-primary" />
                     <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Color Palette</h2>
                   </div>
 
@@ -522,7 +522,7 @@ const AddProduct = () => {
                 {/* Images */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                    <div className="w-2 h-2 rounded-full bg-primary" />
                     <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Visual Assets</h2>
                   </div>
 
@@ -600,7 +600,7 @@ const AddProduct = () => {
                 {/* Status & Publishing */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                    <div className="w-2 h-2 rounded-full bg-primary" />
                     <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Status & Publishing</h2>
                   </div>
 
