@@ -190,13 +190,13 @@ const AddProduct = () => {
   return (
     <div className="min-h-screen bg-[#FDFCFD] overflow-x-hidden w-full selection:bg-primary/20">
       <UserNavbar />
-      <div className="pt-[160px] md:pt-[128px] pb-24 px-4 sm:px-6 lg:px-8">
-        <div className="container mx-auto max-w-6xl">
+      <div className="pt-[160px] md:pt-[128px] pb-24 px-4 sm:px-8 lg:px-12 xl:px-20">
+        <div className="mx-auto max-w-none">
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
-            className="mb-12"
+            className="mb-6"
           >
             <div className="flex items-center gap-3 mb-2">
               <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
@@ -217,7 +217,7 @@ const AddProduct = () => {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="lg:col-span-2"
             >
-              <div className="bg-white rounded-[2rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.02)] p-10 space-y-12">
+              <div className="bg-white rounded-[2rem] border border-border/60 shadow-[0_8px_40px_rgb(0,0,0,0.06)] p-10 space-y-12">
                 {/* Basic Info */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
