@@ -13,67 +13,110 @@ import {
   Save,
   Send,
   Loader,
+  Search,
+  Plus
 } from "lucide-react";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 
-const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
-const COLORS = [
-  { name: "Black", hex: "#1a1a1a" },
-  { name: "White", hex: "#ffffff" },
-  { name: "Beige", hex: "#d4c5b9" },
-  { name: "Olive", hex: "#6b8e23" },
-  { name: "Navy", hex: "#001f3f" },
-  { name: "Grey", hex: "#808080" },
+const SIZES = [
+  "6-12 Months",
+  "1-2 Years",
+  "2-3 Years",
+  "3-4 Years",
+  "4-5 Years",
+  "5-6 Years",
+  "XS", "S", "M", "L", "XL"
 ];
 
 const CATEGORIES = [
-  "Oversized T-Shirts",
-  "Hoodies",
-  "Jackets",
-  "Cargo Pants",
-  "Sneakers",
+  "Kids Ethnic Wear",
+  "Party Wear",
+  "Casual Wear",
+  "Nightwear",
   "Accessories",
 ];
 
-const GENDERS = ["Men", "Women", "Unisex"];
+const GENDERS = ["Girls", "Boys", "Unisex"];
 
 interface FormData {
   name: string;
   brand: string;
-  description: string;
+  sku: string;
   category: string;
   gender: string;
   price: string;
-  discountPrice: string;
+  originalPrice: string;
   stock: string;
-  sku: string;
   tags: string;
+  fabric: string;
+  fit: string;
+  occasion: string;
+  care: string;
+  descriptionPoints: string[];
   selectedSizes: string[];
-  selectedColors: string[];
+  selectedColors: { name: string; hex: string }[];
   featured: boolean;
   newArrival: boolean;
   bestseller: boolean;
   publishImmediate: boolean;
 }
 
+const COLOR_MAP: Record<string, string> = {
+  "Lavender": "#E6E6FA",
+  "White": "#FFFFFF",
+  "Black": "#000000",
+  "Red": "#FF0000",
+  "Blue": "#0000FF",
+  "Green": "#008000",
+  "Brown": "#A52A2A",
+  "Pink": "#FFC0CB",
+  "Gold": "#FFD700",
+  "Silver": "#C0C0C0",
+  "Ivory": "#FFFFF0",
+  "Mint Green": "#98FF98",
+  "Navy Blue": "#000080",
+  "Beige": "#F5F5DC",
+  "Teal": "#008080",
+  "Mustard": "#FFDB58",
+  "Peach": "#FFDAB9",
+  "Maroon": "#800000",
+  "Olive": "#808000",
+  "Charcoal": "#36454F",
+  "Magenta": "#FF00FF",
+  "Cyan": "#00FFFF",
+  "Yellow": "#FFFF00",
+  "Orange": "#FFA500",
+  "Purple": "#800080",
+};
+
+const HEX_TO_NAME = Object.fromEntries(
+  Object.entries(COLOR_MAP).map(([name, hex]) => [hex.toUpperCase(), name])
+);
+
 const AddProduct = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [newPoint, setNewPoint] = useState("");
+  const [newColorInput, setNewColorInput] = useState("");
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
-    brand: "",
-    description: "",
+    brand: "The Lil Edit",
+    sku: "",
     category: "",
     gender: "",
     price: "",
-    discountPrice: "",
+    originalPrice: "",
     stock: "",
-    sku: "",
     tags: "",
+    fabric: "",
+    fit: "",
+    occasion: "",
+    care: "",
+    descriptionPoints: [],
     selectedSizes: [],
     selectedColors: [],
     featured: false,
@@ -101,6 +144,23 @@ const AddProduct = () => {
     }));
   };
 
+  const addDescriptionPoint = () => {
+    if (newPoint.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        descriptionPoints: [...prev.descriptionPoints, newPoint.trim()]
+      }));
+      setNewPoint("");
+    }
+  };
+
+  const removeDescriptionPoint = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      descriptionPoints: prev.descriptionPoints.filter((_, i) => i !== index)
+    }));
+  };
+
   const toggleSize = (size: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -110,12 +170,52 @@ const AddProduct = () => {
     }));
   };
 
-  const toggleColor = (colorName: string) => {
-    setFormData((prev) => ({
+  const addColor = () => {
+    if (newColorInput.trim()) {
+      let name = "";
+      let hex = "";
+
+      // Smart parsing
+      if (newColorInput.includes("#")) {
+        const parts = newColorInput.split("#");
+        name = parts[0].trim();
+        hex = `#${parts[1].trim()}`;
+        
+        // If name is empty, try to find it from hex
+        if (!name) {
+          name = HEX_TO_NAME[hex.toUpperCase()] || "Custom Color";
+        }
+      } else {
+        // Just a name or just a hex without #
+        const input = newColorInput.trim();
+        const matchedHex = COLOR_MAP[input.charAt(0).toUpperCase() + input.slice(1).toLowerCase()];
+        
+        if (matchedHex) {
+          name = input;
+          hex = matchedHex;
+        } else if (/^[0-9A-F]{6}$/i.test(input)) {
+          // It's a hex without #
+          hex = `#${input.toUpperCase()}`;
+          name = HEX_TO_NAME[hex] || "Custom Color";
+        } else {
+          // Just a custom name
+          name = input;
+          hex = input.toLowerCase(); // Browser fallback
+        }
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        selectedColors: [...prev.selectedColors, { name, hex }]
+      }));
+      setNewColorInput("");
+    }
+  };
+
+  const removeColor = (colorName: string) => {
+    setFormData(prev => ({
       ...prev,
-      selectedColors: prev.selectedColors.includes(colorName)
-        ? prev.selectedColors.filter((c) => c !== colorName)
-        : [...prev.selectedColors, colorName],
+      selectedColors: prev.selectedColors.filter(c => c.name !== colorName)
     }));
   };
 
@@ -159,10 +259,11 @@ const AddProduct = () => {
   };
 
   const calculateDiscount = () => {
-    if (!formData.price || !formData.discountPrice) return 0;
-    const original = parseFloat(formData.price);
-    const discounted = parseFloat(formData.discountPrice);
-    return Math.round(((original - discounted) / original) * 100);
+    if (!formData.price || !formData.originalPrice) return 0;
+    const selling = parseFloat(formData.price);
+    const original = parseFloat(formData.originalPrice);
+    if (original <= selling) return 0;
+    return Math.round(((original - selling) / original) * 100);
   };
 
   const handleSaveDraft = async () => {
@@ -235,7 +336,7 @@ const AddProduct = () => {
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
-                        placeholder="e.g. Classic Oversized Trench"
+                        placeholder="e.g. Criss-Cross Back Knot Top"
                         className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
                       />
                     </motion.div>
@@ -254,29 +355,124 @@ const AddProduct = () => {
                       />
                     </motion.div>
                   </div>
-
-                  <motion.div whileHover={{ scale: 1.005 }} className="group">
-                    <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
-                      Editorial Description
-                    </label>
-                    <div className="relative">
-                      <textarea
-                        name="description"
-                        value={formData.description}
-                        onChange={handleInputChange}
-                        placeholder="Narrate the product's story, craftsmanship, and silhouette..."
-                        rows={6}
-                        maxLength={500}
-                        className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 resize-none font-body text-[15px] leading-relaxed"
-                      />
-                      <div className="absolute bottom-4 right-4 text-[10px] font-bold tracking-widest text-muted-foreground/40">
-                        {formData.description.length} / 500
-                      </div>
-                    </div>
-                  </motion.div>
                 </div>
 
-                {/* Category & Gender */}
+                {/* Editorial Specifications */}
+                <div className="space-y-8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-2 h-2 rounded-full bg-primary" />
+                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Specifications</h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <motion.div whileHover={{ scale: 1.01 }} className="group">
+                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                        Fabric & Lining
+                      </label>
+                      <input
+                        type="text"
+                        name="fabric"
+                        value={formData.fabric}
+                        onChange={handleInputChange}
+                        placeholder="e.g. Organza with Cotton Lining"
+                        className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
+                      />
+                    </motion.div>
+
+                    <motion.div whileHover={{ scale: 1.01 }} className="group">
+                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                        Silhouette & Fit
+                      </label>
+                      <input
+                        type="text"
+                        name="fit"
+                        value={formData.fit}
+                        onChange={handleInputChange}
+                        placeholder="e.g. Regular Fit"
+                        className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
+                      />
+                    </motion.div>
+
+                    <motion.div whileHover={{ scale: 1.01 }} className="group">
+                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                        Occasion
+                      </label>
+                      <input
+                        type="text"
+                        name="occasion"
+                        value={formData.occasion}
+                        onChange={handleInputChange}
+                        placeholder="e.g. Festive, Wedding"
+                        className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
+                      />
+                    </motion.div>
+
+                    <motion.div whileHover={{ scale: 1.01 }} className="group">
+                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                        Care Instructions
+                      </label>
+                      <input
+                        type="text"
+                        name="care"
+                        value={formData.care}
+                        onChange={handleInputChange}
+                        placeholder="e.g. Dry Clean Only"
+                        className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
+                      />
+                    </motion.div>
+                  </div>
+                </div>
+
+                {/* Description Points */}
+                <div className="space-y-8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-2 h-2 rounded-full bg-primary" />
+                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Product Details</h2>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex gap-3">
+                      <input
+                        type="text"
+                        value={newPoint}
+                        onChange={(e) => setNewPoint(e.target.value)}
+                        onKeyPress={(e) => e.key === "Enter" && addDescriptionPoint()}
+                        placeholder="Add a product feature or note..."
+                        className="flex-1 px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-[15px]"
+                      />
+                      <button
+                        onClick={addDescriptionPoint}
+                        className="px-6 py-4 rounded-xl bg-primary text-white font-bold text-xs uppercase tracking-widest hover:brightness-95 transition-all"
+                      >
+                        Add
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {formData.descriptionPoints.map((point, idx) => (
+                        <motion.div
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          key={idx}
+                          className="flex items-center justify-between gap-4 p-4 bg-[#F9F8FA] border border-border/40 rounded-xl group hover:border-primary/20 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-md"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                            <span className="text-[13px] text-foreground font-body leading-relaxed">{point}</span>
+                          </div>
+                          <button
+                            onClick={() => removeDescriptionPoint(idx)}
+                            className="p-2 text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                          >
+                            <X size={16} />
+                          </button>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Classification */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full bg-primary" />
@@ -340,7 +536,24 @@ const AddProduct = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
                       <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
-                        Original Price
+                        Original Price (MRP)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50 font-body">₹</span>
+                        <input
+                          type="number"
+                          name="originalPrice"
+                          value={formData.originalPrice}
+                          onChange={handleInputChange}
+                          placeholder="0.00"
+                          className="w-full pl-8 pr-4 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
+                        />
+                      </div>
+                    </motion.div>
+
+                    <motion.div whileHover={{ scale: 1.01 }} className="group">
+                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                        Selling Price
                       </label>
                       <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50 font-body">₹</span>
@@ -350,25 +563,6 @@ const AddProduct = () => {
                           value={formData.price}
                           onChange={handleInputChange}
                           placeholder="0.00"
-                          step="0.01"
-                          className="w-full pl-8 pr-4 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
-                        />
-                      </div>
-                    </motion.div>
-
-                    <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
-                        Discounted Price
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50 font-body">₹</span>
-                        <input
-                          type="number"
-                          name="discountPrice"
-                          value={formData.discountPrice}
-                          onChange={handleInputChange}
-                          placeholder="0.00"
-                          step="0.01"
                           className="w-full pl-8 pr-4 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
                         />
                       </div>
@@ -381,8 +575,8 @@ const AddProduct = () => {
                         className="flex items-end pb-1"
                       >
                         <div className="px-4 py-3 bg-red-500/5 border border-red-500/10 rounded-xl w-full text-center">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-red-500/60 mb-0.5">Reduction</p>
-                          <p className="text-xl font-display font-medium text-red-500">{discountPercent}%</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-red-500/60 mb-0.5">Markdown</p>
+                          <p className="text-xl font-display font-medium text-red-500">{discountPercent}% OFF</p>
                         </div>
                       </motion.div>
                     )}
@@ -482,40 +676,61 @@ const AddProduct = () => {
                     <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Color Palette</h2>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                    {COLORS.map((color) => (
-                      <motion.button
-                        key={color.name}
-                        whileHover={{ scale: 1.02, y: -2 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => toggleColor(color.name)}
-                        className={`p-5 rounded-2xl border transition-all duration-300 text-left ${formData.selectedColors.includes(color.name)
-                          ? "border-primary bg-primary/[0.02] shadow-xl shadow-primary/5"
-                          : "border-border/50 bg-[#F9F8FA] hover:border-primary/20"
-                          }`}
+                  <div className="space-y-6">
+                    {/* Smart Add Color */}
+                    <div className="flex gap-3">
+                      <div className="relative flex-1 group">
+                        <input
+                          type="text"
+                          value={newColorInput}
+                          onChange={(e) => setNewColorInput(e.target.value)}
+                          onKeyPress={(e) => e.key === "Enter" && addColor()}
+                          placeholder="Type 'Lavender', '#E6E6FA', or 'Lavender #E6E6FA'..."
+                          className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-[15px]"
+                        />
+                      </div>
+                      <button
+                        onClick={addColor}
+                        className="px-8 py-4 rounded-xl bg-primary text-white font-bold text-xs uppercase tracking-widest hover:brightness-95 transition-all shadow-lg shadow-primary/10"
                       >
-                        <div className="flex items-center gap-4 mb-3">
-                          <div
-                            className="w-8 h-8 rounded-full border border-border/20 shadow-inner"
-                            style={{ backgroundColor: color.hex }}
-                          />
-                          <span className="text-sm font-medium text-foreground tracking-tight">{color.name}</span>
-                        </div>
-                        {formData.selectedColors.includes(color.name) ? (
+                        Add Color
+                      </button>
+                    </div>
+
+                    {/* Selected Colors List */}
+                    <div className="space-y-3">
+                      {formData.selectedColors.length > 0 ? (
+                        formData.selectedColors.map((color) => (
                           <motion.div
-                            initial={{ opacity: 0, x: -5 }}
+                            initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
-                            className="text-[10px] text-primary font-bold uppercase tracking-widest"
+                            key={color.name}
+                            className="flex items-center justify-between gap-4 p-4 bg-[#F9F8FA] border border-border/40 rounded-xl group hover:border-primary/20 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-md"
                           >
-                            Selected
+                            <div className="flex items-center gap-4">
+                              <div
+                                className="w-10 h-10 rounded-full border border-border/20 shadow-inner transform group-hover:scale-110 transition-transform"
+                                style={{ backgroundColor: color.hex }}
+                              />
+                              <div className="flex flex-col">
+                                <span className="text-[13px] font-bold text-foreground">{color.name}</span>
+                                <span className="text-[10px] text-muted-foreground/60 font-mono tracking-tighter uppercase">{color.hex}</span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => removeColor(color.name)}
+                              className="p-2 text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            >
+                              <X size={16} />
+                            </button>
                           </motion.div>
-                        ) : (
-                          <div className="text-[10px] text-muted-foreground/40 font-bold uppercase tracking-widest">
-                            Offered
-                          </div>
-                        )}
-                      </motion.button>
-                    ))}
+                        ))
+                      ) : (
+                        <div className="p-12 text-center border-2 border-dashed border-border/20 rounded-[2rem] bg-secondary/5">
+                          <p className="text-sm text-muted-foreground/60 font-light italic">No colors added for this listing yet.</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -523,7 +738,7 @@ const AddProduct = () => {
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full bg-primary" />
-                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Visual Assets</h2>
+                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Images</h2>
                   </div>
 
                   <motion.div
@@ -543,7 +758,7 @@ const AddProduct = () => {
                       <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-6">
                         <Upload className="w-6 h-6 text-primary" />
                       </div>
-                      <p className="text-foreground font-display font-medium text-lg mb-2">Upload Product Imagery</p>
+                      <p className="text-foreground font-display font-medium text-lg mb-2">Upload Images</p>
                       <p className="text-sm text-muted-foreground font-body font-light mb-8 max-w-xs mx-auto">
                         Drag & drop high-resolution JPG/PNG assets here or select from your gallery.
                       </p>
@@ -741,10 +956,10 @@ const AddProduct = () => {
                     {/* Price */}
                     <div className="flex items-baseline gap-3">
                       <span className="text-lg font-display font-medium text-foreground">
-                        ₹{formData.discountPrice || formData.price || "0.00"}
+                        ₹{formData.price || "0.00"}
                       </span>
-                      {formData.discountPrice && formData.price && formData.price !== formData.discountPrice && (
-                        <span className="text-sm line-through text-muted-foreground/40 font-body">₹{formData.price}</span>
+                      {formData.originalPrice && formData.price && formData.originalPrice !== formData.price && (
+                        <span className="text-sm line-through text-muted-foreground/40 font-body">₹{formData.originalPrice}</span>
                       )}
                     </div>
 
@@ -761,6 +976,31 @@ const AddProduct = () => {
                     </div>
                   </div>
                 </motion.div>
+
+                {/* Additional Specs in Preview */}
+                <div className="space-y-4 pt-4 border-t border-border/10">
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">Editorial Summary</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-xl bg-[#F9F8FA] border border-border/30">
+                      <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-1">Fabric</p>
+                      <p className="text-[10px] font-medium text-foreground truncate">{formData.fabric || "N/A"}</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-[#F9F8FA] border border-border/30">
+                      <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-1">Fit</p>
+                      <p className="text-[10px] font-medium text-foreground truncate">{formData.fit || "N/A"}</p>
+                    </div>
+                  </div>
+                  {formData.descriptionPoints.length > 0 && (
+                    <ul className="space-y-1.5">
+                      {formData.descriptionPoints.slice(0, 3).map((pt, i) => (
+                        <li key={i} className="text-[10px] text-muted-foreground flex items-start gap-2">
+                          <span className="w-1 h-1 rounded-full bg-primary shrink-0 mt-1" />
+                          <span className="line-clamp-1">{pt}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </motion.div>
           </div>
