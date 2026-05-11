@@ -18,7 +18,7 @@ const featuredCollections = [
   {
     id: "col-1",
     name: "Summer Escape",
-    description: "Breathable, vibrant styles for sunny adventures",
+    description: "Vibrant & Adventurous",
     image: img1,
     productCount: 48,
     badge: "New",
@@ -27,7 +27,7 @@ const featuredCollections = [
   {
     id: "col-2",
     name: "Tiny Trendsetters",
-    description: "Fashion-forward pieces for style-conscious kids",
+    description: "Chic & Playful",
     image: img2,
     productCount: 36,
     badge: "Trending",
@@ -36,7 +36,7 @@ const featuredCollections = [
   {
     id: "col-3",
     name: "Cozy Classics",
-    description: "Timeless comfort for everyday wear",
+    description: "Timeless Comfort",
     image: img3,
     productCount: 42,
     badge: null,
@@ -45,7 +45,7 @@ const featuredCollections = [
   {
     id: "col-4",
     name: "Playdate Essentials",
-    description: "Durable & playful styles for active kids",
+    description: "Edgy & Distinctive",
     image: img4,
     productCount: 35,
     badge: "Best Seller",
@@ -54,7 +54,7 @@ const featuredCollections = [
   {
     id: "col-5",
     name: "Party Picks",
-    description: "Elegant outfits for special celebrations",
+    description: "Elegant Celebrations",
     image: img5,
     productCount: 28,
     badge: null,
@@ -89,12 +89,14 @@ const occasionCategories = [
 ];
 
 const galleryImages = [
-  { id: "gal-1", image: img1, caption: "Sunset Vibes" },
-  { id: "gal-2", image: img2, caption: "City Style" },
-  { id: "gal-3", image: img3, caption: "Nature Explorer" },
-  { id: "gal-4", image: img4, caption: "Party Ready" },
-  { id: "gal-5", image: img5, caption: "Cozy Comfort" },
-  { id: "gal-6", image: img6, caption: "Trendsetter" },
+  { id: "gal-1", image: img1, caption: "Sunset Vibes", price: "3200" },
+  { id: "gal-2", image: img2, caption: "City Style", price: "4100" },
+  { id: "gal-3", image: img3, caption: "Nature Explorer Into the Space of the Universe", price: "2800" },
+  { id: "gal-4", image: img4, caption: "Party Ready", price: "5500" },
+  { id: "gal-5", image: img5, caption: "Cozy Comfort", price: "3600" },
+  { id: "gal-6", image: img6, caption: "Trendsetter", price: "4800" },
+  { id: "gal-7", image: img3, caption: "Summer Glow", price: "3900" },
+  { id: "gal-8", image: img1, caption: "Mini Chic", price: "2600" },
 ];
 
 const filterOptions = {
@@ -271,8 +273,7 @@ export default function Collections() {
             <Button
               variant="outline"
               className="border-gray-900 text-gray-900 hover:bg-gray-100 px-6 sm:px-8 h-11 sm:h-12 rounded-full font-semibold transition-colors duration-200"
-            >
-              Explore Collections
+            >Explore
             </Button>
           </div>
         </div>
@@ -466,7 +467,10 @@ export default function Collections() {
                         {/* Badge */}
                         {collection.badge && (
                           <div className="self-start">
-                            <Badge className="bg-white/90 text-gray-900 text-[9px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg">
+                            <Badge
+                              className="text-[9px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg text-white border-0"
+                              style={{ backgroundColor: "hsl(268, 45%, 65%)" }}
+                            >
                               {collection.badge}
                             </Badge>
                           </div>
@@ -483,10 +487,7 @@ export default function Collections() {
                             </p>
                           </div>
 
-                          <div className="flex items-center justify-between pt-1 sm:pt-2">
-                            <span className="text-xs sm:text-sm opacity-75">
-                              {collection.productCount} Items
-                            </span>
+                          <div className="flex items-center justify-end pt-1 sm:pt-2">
                             <button className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
                             </button>
@@ -553,38 +554,40 @@ export default function Collections() {
               </div>
             </section>
 
-            {/* INSPIRATION GALLERY */}
+            {/* STYLED BY OUR COMMUNITY */}
             <section>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
                 Styled by Our Community
               </h2>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4 auto-rows-[180px] sm:auto-rows-[220px] md:auto-rows-[280px] grid-flow-row-dense">
-                {galleryImages.slice(0, 4).map((item, index) => {
-                  let spanClass = "col-span-1 row-span-1";
-                  if (index === 0) spanClass = "col-span-2 row-span-2";
-                  else if (index === 1) spanClass = "col-span-2 row-span-1";
-                  return (
-                    <div
-                      key={item.id}
-                      className={`group relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 cursor-pointer h-full min-h-[100px] ${spanClass}`}
-                    >
-                      <div className="relative w-full h-full">
-                        <img
-                          src={item.image}
-                          alt={item.caption}
-                          loading="lazy"
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                        />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-end justify-start p-3 sm:p-4">
-                          <p className="text-white text-xs sm:text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            {item.caption}
-                          </p>
-                        </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {galleryImages.map((item) => (
+                  <div
+                    key={item.id}
+                    className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                  >
+                    <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5">
+                      <img
+                        src={item.image}
+                        alt={item.caption}
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <button className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-primary transition-all">
+                        <Heart className="w-3.5 h-3.5" />
+                      </button>
+                      <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                        <button className="w-full py-1.5 bg-white/90 backdrop-blur text-foreground rounded-lg font-medium text-[10px] md:text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm">
+                          Add to Cart
+                        </button>
                       </div>
                     </div>
-                  );
-                })}
+                    <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
+                      <h3 className="font-display text-xs md:text-sm font-medium text-foreground leading-snug">{item.caption}</h3>
+                      <p className="font-body text-xs font-semibold text-[#0F766E] shrink-0">₹{item.price}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </section>
 
