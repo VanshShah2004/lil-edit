@@ -526,8 +526,8 @@ const AddProduct = () => {
                           key={idx}
                           className="flex items-center justify-between gap-4 p-4 bg-[#F9F8FA] border border-border/40 rounded-xl group hover:border-primary/20 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-md"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          <div className="flex items-start gap-3">
+                            <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
                             <span className="text-[13px] text-foreground font-body leading-relaxed">{point}</span>
                           </div>
                           <button
@@ -1065,12 +1065,14 @@ const AddProduct = () => {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="lg:col-span-2 lg:sticky lg:top-32 h-fit"
             >
-              <div className="bg-white rounded-[2rem] border border-border/60 shadow-[0_8px_40px_rgb(0,0,0,0.06)] p-3 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-muted-foreground">Live Preview</h2>
-                  <div className="flex items-center gap-1.5">
+              <div className="bg-white rounded-[2rem] border border-border/60 shadow-[0_8px_40px_rgb(0,0,0,0.06)] px-4 py-3 space-y-4">
+                <div className="flex items-center justify-between pb-1 border-b border-border/20">
+                  <h2 className="text-sm font-bold uppercase tracking-[0.22em] text-slate-900">
+                    Live Preview
+                  </h2>
+                  <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-green-600">
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-green-600">Active</span>
+                    <span>Active</span>
                   </div>
                 </div>
 

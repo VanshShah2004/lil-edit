@@ -163,13 +163,7 @@ const ProductPreviewView = ({
           </div>
 
           <section>
-            <h2 className="text-base font-semibold text-slate-900 mb-3">Product Details</h2>
-            <ul className="list-disc pl-5 space-y-1.5 text-sm text-slate-700">
-              {product.descriptionPoints.map((point) => (
-                <li key={point}>{point}</li>
-              ))}
-            </ul>
-            <div className="grid grid-cols-2 gap-3 mt-4">
+            <div className="grid grid-cols-2 gap-3 mb-5">
               <div className="p-3 rounded-xl bg-[#F9F8FA] border border-border/30">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Fabric</p>
                 <p className="text-xs font-medium">{product.fabric}</p>
@@ -187,6 +181,13 @@ const ProductPreviewView = ({
                 <p className="text-xs font-medium">{product.care}</p>
               </div>
             </div>
+
+            <h2 className="text-base font-semibold text-slate-900 mb-3">Product Details</h2>
+            <ul className="list-disc pl-5 space-y-1.5 text-sm text-slate-700">
+              {product.descriptionPoints.map((point) => (
+                <li key={point}>{point}</li>
+              ))}
+            </ul>
           </section>
         </div>
       </div>
