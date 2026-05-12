@@ -1,12 +1,9 @@
-import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Upload,
   X,
   ChevronDown,
-  Eye,
-  EyeOff,
   Zap,
   TrendingUp,
   Star,
@@ -20,6 +17,8 @@ import {
 } from "lucide-react";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
+import ProductPreviewView from "@/components/ProductPreviewView";
+import type { Product } from "@/types/product";
 
 const SIZES = [
   "6-12 Months",
@@ -97,8 +96,32 @@ const HEX_TO_NAME = Object.fromEntries(
   Object.entries(COLOR_MAP).map(([name, hex]) => [hex.toUpperCase(), name])
 );
 
+const mapFormDataToProduct = (formData: FormData, imagePreviews: string[]): Product => ({
+  title: formData.name || "Untitled Product",
+  brand: formData.brand || "The Lil Edit",
+  sku: formData.sku || "SKU-DRAFT",
+  category: formData.category || "General",
+  gender: formData.gender || "Unisex",
+  price: Number(formData.price) || 0,
+  originalPrice: Number(formData.originalPrice) || 0,
+  stock: Number(formData.stock) || 0,
+  tags: formData.tags,
+  badges: formData.customBadges,
+  descriptionPoints: formData.descriptionPoints.length > 0 ? formData.descriptionPoints : ["No product details added yet."],
+  fabric: formData.fabric || "Not specified",
+  fit: formData.fit || "Not specified",
+  occasion: formData.occasion || "General wear",
+  care: formData.care || "Not specified",
+  images: imagePreviews,
+  sizes: formData.selectedSizes.length > 0 ? formData.selectedSizes : ["Free Size"],
+  colors: formData.selectedColors.length > 0 ? formData.selectedColors : [{ name: "Default", hex: "#E6E6FA" }],
+  featured: formData.featured,
+  newArrival: formData.newArrival,
+  bestseller: formData.bestseller,
+  trending: formData.trending,
+});
+
 const AddProduct = () => {
-  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -132,9 +155,10 @@ const AddProduct = () => {
     customBadges: [],
   });
 
-  const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [savedPreviewProduct, setSavedPreviewProduct] = useState<Product | null>(null);
+  const [previewActivated, setPreviewActivated] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -270,7 +294,6 @@ const AddProduct = () => {
 
   const processFiles = (files: FileList) => {
     const newFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
-    setImages((prev) => [...prev, ...newFiles]);
 
     newFiles.forEach((file) => {
       const reader = new FileReader();
@@ -294,7 +317,6 @@ const AddProduct = () => {
   };
 
   const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -309,6 +331,9 @@ const AddProduct = () => {
   const handleSaveDraft = async () => {
     setIsSaving(true);
     try {
+      const mappedProduct = mapFormDataToProduct(formData, imagePreviews);
+      setSavedPreviewProduct(mappedProduct);
+      setPreviewActivated(true);
       await new Promise((resolve) => setTimeout(resolve, 1000));
       console.log("Draft saved:", formData);
     } finally {
@@ -327,6 +352,11 @@ const AddProduct = () => {
   };
 
   const discountPercent = calculateDiscount();
+
+  useEffect(() => {
+    if (!previewActivated) return;
+    setSavedPreviewProduct(mapFormDataToProduct(formData, imagePreviews));
+  }, [previewActivated, formData, imagePreviews]);
 
   return (
     <div className="min-h-screen bg-[#FDFCFD] overflow-x-hidden w-full selection:bg-primary/20">
@@ -350,13 +380,13 @@ const AddProduct = () => {
             </h1>
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
             {/* Main Form */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="lg:col-span-2"
+              className="lg:col-span-3"
             >
               <div className="bg-white rounded-[2rem] border border-border/60 shadow-[0_8px_40px_rgb(0,0,0,0.06)] p-10 space-y-12">
                 {/* Basic Info */}
@@ -1033,7 +1063,7 @@ const AddProduct = () => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="lg:sticky lg:top-32 h-fit"
+              className="lg:col-span-2 lg:sticky lg:top-32 h-fit"
             >
               <div className="bg-white rounded-[2rem] border border-border/60 shadow-[0_8px_40px_rgb(0,0,0,0.06)] p-8 space-y-8">
                 <div className="flex items-center justify-between">
@@ -1044,96 +1074,21 @@ const AddProduct = () => {
                   </div>
                 </div>
 
-                {/* Product Card Preview */}
-                <motion.div
-                  layout
-                  className="rounded-[1.5rem] overflow-hidden border border-border/30 bg-[#F9F8FA] hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500"
-                >
-                  {/* Image Preview */}
-                  {imagePreviews.length > 0 ? (
-                    <div className="relative w-full aspect-[4/5] bg-secondary overflow-hidden group">
-                      <img
-                        src={imagePreviews[0]}
-                        alt="Product preview"
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                      {discountPercent > 0 && (
-                        <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg">
-                          -{discountPercent}%
-                        </div>
-                      )}
+                {savedPreviewProduct ? (
+                  <motion.div layout className="rounded-[1.5rem] overflow-hidden border border-border/30 bg-white">
+                    <div className="max-h-[calc(100vh-220px)] overflow-y-auto">
+                      <ProductPreviewView product={savedPreviewProduct} previewMode={true} forceMobileLayout={true} />
                     </div>
-                  ) : (
-                    <div className="w-full aspect-[4/5] bg-gradient-to-br from-[#F9F8FA] to-[#F1F0F5] flex items-center justify-center border-b border-border/20">
-                      <div className="text-center">
-                        <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-4">
-                          <Upload className="w-5 h-5 text-muted-foreground/30" />
-                        </div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">Visual pending</p>
-                      </div>
+                  </motion.div>
+                ) : (
+                  <div className="rounded-[1.5rem] border-2 border-dashed border-border/30 bg-[#F9F8FA] p-10 text-center">
+                    <div className="w-14 h-14 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-4">
+                      <Upload className="w-6 h-6 text-muted-foreground/40" />
                     </div>
-                  )}
-
-                  {/* Product Info */}
-                  <div className="p-6 space-y-4">
-                    <div className="space-y-1.5">
-                      {formData.brand && (
-                        <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">{formData.brand}</p>
-                      )}
-                      <h3 className="font-display font-medium text-xl text-foreground line-clamp-1">
-                        {formData.name || "Untitled Selection"}
-                      </h3>
-                    </div>
-
-                    {/* Price */}
-                    <div className="flex items-baseline gap-3">
-                      <span className="text-lg font-display font-medium text-foreground">
-                        ₹{formData.price || "0.00"}
-                      </span>
-                      {formData.originalPrice && formData.price && formData.originalPrice !== formData.price && (
-                        <span className="text-sm line-through text-muted-foreground/40 font-body">₹{formData.originalPrice}</span>
-                      )}
-                    </div>
-
-                    <div className="w-full h-px bg-border/20" />
-
-                    {/* Category & Stats */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                        {formData.category || "General"}
-                      </span>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                        Stock: {formData.stock || "0"}
-                      </span>
-                    </div>
+                    <p className="text-sm font-semibold text-foreground mb-1">Your Product Detail Preview Will Appear Here</p>
+                    <p className="text-xs text-muted-foreground">Click Save Draft to generate the full customer page preview.</p>
                   </div>
-                </motion.div>
-
-                {/* Additional Specs in Preview */}
-                <div className="space-y-4 pt-4 border-t border-border/10">
-                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">Editorial Summary</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-xl bg-[#F9F8FA] border border-border/30">
-                      <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-1">Fabric</p>
-                      <p className="text-[10px] font-medium text-foreground truncate">{formData.fabric || "N/A"}</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-[#F9F8FA] border border-border/30">
-                      <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-1">Fit</p>
-                      <p className="text-[10px] font-medium text-foreground truncate">{formData.fit || "N/A"}</p>
-                    </div>
-                  </div>
-                  {formData.descriptionPoints.length > 0 && (
-                    <ul className="space-y-1.5">
-                      {formData.descriptionPoints.slice(0, 3).map((pt, i) => (
-                        <li key={i} className="text-[10px] text-muted-foreground flex items-start gap-2">
-                          <span className="w-1 h-1 rounded-full bg-primary shrink-0 mt-1" />
-                          <span className="line-clamp-1">{pt}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                )}
               </div>
             </motion.div>
           </div>

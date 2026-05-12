@@ -16,6 +16,8 @@ import {
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import product_images from "@/assets/products";
+import ProductPreviewView from "@/components/ProductPreviewView";
+import type { Product } from "@/types/product";
 import {
   Carousel,
   CarouselContent,
@@ -30,10 +32,12 @@ const SWATCH_GAP_PX = 12; // gap-3
 const BETWEEN_BLOCKS_GAP_PX = SWATCH_GAP_PX * 4; // 4x swatch gap
 
 // MOCK DATA
-const product = {
+const product: Product & { reviewsData: any } = {
   title: "Stunning Criss-Cross Back Knot Top And Crushed Sheen Lehenga",
+  brand: "The Lil Edit",
   sku: "LIL-12345",
   category: "Kids Ethnic Wear",
+  gender: "Girls",
   descriptionPoints: [
     "Top Closure: Tie-up knot at the back",
     "Bottom Closure: Side hook-and-zip",
@@ -55,6 +59,9 @@ const product = {
   care: "Dry clean recommended",
   price: 4999,
   originalPrice: 6500,
+  stock: 35,
+  tags: ["Festive", "Girlswear", "Lehenga"],
+  badges: ["Premium Edit"],
   images: [
     product_images["product-0001"]["lil-edit-product-0001-1-1.png"],
     product_images["product-0001"]["lil-edit-product-0001-1-2.png"],
@@ -69,6 +76,10 @@ const product = {
     { name: "White", hex: "#FFFFFF" },
     { name: "Black", hex: "#000000" },
   ],
+  featured: true,
+  newArrival: false,
+  bestseller: true,
+  trending: true,
   reviewsData: {
     averageRating: 4.8,
     totalReviews: 124,
@@ -311,6 +322,7 @@ export default function ProductDetail() {
       </div>
 
       <main className="page-container w-full pb-[calc(env(safe-area-inset-bottom)+2rem)] sm:pb-[calc(env(safe-area-inset-bottom)+2rem)] md:pb-6">
+        {false ? (
         <div className="flex flex-col md:flex-row gap-8 md:gap-12">
 
           {/* LEFT - IMAGES (60%) */}
@@ -552,6 +564,9 @@ export default function ProductDetail() {
             </section>
           </div>
         </div>
+        ) : (
+          <ProductPreviewView product={product} />
+        )}
 
         {/* Reviews & Ratings - Full Width Section */}
         <section className="mt-16 sm:mt-24 pt-12 border-t border-gray-100">
