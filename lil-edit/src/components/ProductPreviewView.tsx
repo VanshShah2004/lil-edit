@@ -1,5 +1,11 @@
-import { useMemo, useState } from "react";
-import { Heart, Minus, Plus, Share2, ShoppingBag, Star } from "lucide-react";
+import { useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
+import { Heart, Minus, Plus, Share2, ShoppingBag, Star, X, ChevronRight, ChevronLeft } from "lucide-react";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi
+} from "@/components/ui/carousel";
 import type { Product } from "@/types/product";
 
 interface ProductPreviewViewProps {
@@ -16,6 +22,75 @@ const ProductPreviewView = ({
   forceMobileLayout = false,
 }: ProductPreviewViewProps) => {
   const [activeImage, setActiveImage] = useState(0);
+  const [api, setApi] = useState<CarouselApi>();
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerApi, setViewerApi] = useState<CarouselApi>();
+  const thumbnailStripRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!api) return;
+    const onSelect = () => {
+      const idx = api.selectedScrollSnap();
+      setActiveImage(idx);
+      if (viewerApi) viewerApi.scrollTo(idx);
+    };
+    api.on("select", onSelect);
+    return () => {
+      api.off("select", onSelect);
+    };
+  }, [api, viewerApi]);
+
+  useLayoutEffect(() => {
+    if (!viewerApi) return;
+    const onSelect = () => {
+      const idx = viewerApi.selectedScrollSnap();
+      setActiveImage(idx);
+      if (api) api.scrollTo(idx);
+    };
+    viewerApi.on("select", onSelect);
+    return () => {
+      viewerApi.off("select", onSelect);
+    };
+  }, [viewerApi, api]);
+
+  useEffect(() => {
+    if (!isViewerOpen) return;
+
+    if (viewerApi) {
+      viewerApi.scrollTo(activeImage, true);
+    }
+
+    const originalStyle = window.getComputedStyle(document.body).overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsViewerOpen(false);
+      else if (e.key === "ArrowLeft") viewerApi?.scrollPrev();
+      else if (e.key === "ArrowRight") viewerApi?.scrollNext();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalStyle;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isViewerOpen, viewerApi, activeImage]);
+
+  useEffect(() => {
+    if (isViewerOpen && thumbnailStripRef.current) {
+      const activeEl = thumbnailStripRef.current.children[activeImage] as HTMLElement;
+      if (activeEl) {
+        const scrollLeft = activeEl.offsetLeft - thumbnailStripRef.current.clientWidth / 2 + activeEl.clientWidth / 2;
+        thumbnailStripRef.current.scrollTo({ left: scrollLeft, behavior: "smooth" });
+      }
+    }
+  }, [activeImage, isViewerOpen]);
+
+  const handleThumbnailClick = (idx: number) => {
+    setActiveImage(idx);
+    api?.scrollTo(idx);
+    viewerApi?.scrollTo(idx);
+  };
   const [selectedSize, setSelectedSize] = useState(product.sizes[0] ?? "");
   const [selectedColor, setSelectedColor] = useState(product.colors[0]?.name ?? "");
   const [quantity, setQuantity] = useState(1);
@@ -52,7 +127,7 @@ const ProductPreviewView = ({
               {images.map((img, idx) => (
                 <button
                   key={`${img}-${idx}`}
-                  onClick={() => setActiveImage(idx)}
+                  onClick={() => handleThumbnailClick(idx)}
                   className={`w-16 ${compact || mobileOnly ? "" : "md:w-20"} aspect-[4/5] rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
                     activeImage === idx ? "border-[#0F766E]" : "border-gray-200"
                   }`}
@@ -65,13 +140,31 @@ const ProductPreviewView = ({
 
           <div className={`${compact || mobileOnly ? "order-1" : "order-1 md:order-2"} flex-1`}>
             <div className="relative w-full aspect-[4/5] rounded-2xl overflow-hidden border border-border/30">
-              <img
-                src={images[activeImage]}
-                alt={product.title}
-                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-              />
+              <Carousel
+                setApi={setApi}
+                opts={{ loop: true }}
+                className="w-full h-full cursor-grab active:cursor-grabbing"
+              >
+                <CarouselContent className="ml-0 h-full">
+                  {images.map((img, idx) => (
+                    <CarouselItem key={idx} className="pl-0 basis-full h-full">
+                      <div className="w-full h-full overflow-hidden">
+                        <img
+                          src={img}
+                          alt={`${product.title} ${idx + 1}`}
+                          className={`w-full h-full object-cover select-none transition-transform duration-500 hover:scale-105 ${!previewMode ? "cursor-zoom-in" : ""}`}
+                          draggable={false}
+                          onClick={() => {
+                            if (!previewMode) setIsViewerOpen(true);
+                          }}
+                        />
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+              </Carousel>
               {discountPercent > 0 && (
-                <div className="absolute top-3 right-3 bg-red-500 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                <div className="absolute top-3 right-3 bg-red-500 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider pointer-events-none z-10">
                   -{discountPercent}%
                 </div>
               )}
@@ -191,6 +284,102 @@ const ProductPreviewView = ({
           </section>
         </div>
       </div>
+
+      {/* FULL SCREEN VIEWER */}
+      {isViewerOpen && !previewMode && (
+        <div
+          className="fixed inset-0 z-[100] h-[100dvh] flex flex-col bg-black/95 overflow-hidden"
+          style={{
+            paddingTop: 'env(safe-area-inset-top)',
+            paddingBottom: 'env(safe-area-inset-bottom)'
+          }}
+          onClick={() => setIsViewerOpen(false)}
+        >
+          {/* TOP BAR */}
+          <div className="w-full max-w-7xl mx-auto h-auto flex items-center justify-between px-4 md:px-8 py-4 shrink-0 text-white z-10 pointer-events-none">
+            <div className="w-10"></div>
+            <div className="text-sm md:text-base font-semibold tracking-widest bg-black/40 px-4 py-1.5 rounded-full backdrop-blur-md">
+              {activeImage + 1} / {images.length}
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); setIsViewerOpen(false); }}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition pointer-events-auto"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          {/* MAIN IMAGE AREA */}
+          <div
+            className="flex-1 min-h-0 flex items-center justify-center relative w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Carousel
+              setApi={setViewerApi}
+              opts={{ loop: true, startIndex: activeImage }}
+              className="absolute inset-0 w-full h-full [&>div.overflow-hidden]:h-full"
+            >
+              <CarouselContent className="h-full ml-0 items-center">
+                {images.map((img, idx) => (
+                  <CarouselItem key={idx} className="pl-0 basis-full h-full flex items-center justify-center">
+                    <img
+                      src={img}
+                      alt={`Preview ${idx + 1}`}
+                      className="max-h-full max-w-full object-contain select-none cursor-zoom-out hover:scale-[1.01] transition-transform duration-500 px-2 sm:px-4"
+                      draggable={false}
+                      onClick={() => setIsViewerOpen(false)}
+                    />
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+
+            {/* Desktop Left / Right Controls */}
+            <button
+              className="hidden md:flex absolute left-4 md:left-8 xl:left-12 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 items-center justify-center rounded-full text-white backdrop-blur transition-all disabled:opacity-50 z-10"
+              onClick={(e) => { e.stopPropagation(); viewerApi?.scrollPrev(); }}
+            >
+              <ChevronLeft size={28} />
+            </button>
+            <button
+              className="hidden md:flex absolute right-4 md:right-8 xl:right-12 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 items-center justify-center rounded-full text-white backdrop-blur transition-all disabled:opacity-50 z-10"
+              onClick={(e) => { e.stopPropagation(); viewerApi?.scrollNext(); }}
+            >
+              <ChevronRight size={28} />
+            </button>
+          </div>
+
+          {/* THUMBNAIL STRIP */}
+          <div className="w-full max-w-7xl mx-auto pb-3 md:pb-6 shrink-0 pointer-events-none">
+            <div
+              className="h-[80px] sm:h-[90px] mx-auto flex items-center md:justify-center gap-3 overflow-x-auto px-4 md:px-8 pointer-events-auto no-scrollbar scroll-smooth snap-x snap-mandatory"
+              ref={thumbnailStripRef}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveImage(idx);
+                    viewerApi?.scrollTo(idx);
+                    api?.scrollTo(idx);
+                  }}
+                  className={`relative shrink-0 w-[50px] sm:w-[60px] aspect-[4/5] rounded-lg overflow-hidden transition-all duration-200 snap-start bg-black/50 ${activeImage === idx ? 'border-2 border-[#0F766E]' : 'border border-gray-300'
+                    }`}
+                  style={{ opacity: activeImage === idx ? 1 : 0.6 }}
+                >
+                  <img
+                    src={img}
+                    alt={`Thumbnail ${idx + 1}`}
+                    className="w-full h-full object-cover pointer-events-none hover:opacity-100 transition-opacity"
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
