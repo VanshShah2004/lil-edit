@@ -31,9 +31,9 @@ const App = () => (
       <BrowserRouter>
 
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-          <Route path="/home" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/dashboard" element={<Home />} />
+          <Route path="/home" element={<Navigate to="/" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

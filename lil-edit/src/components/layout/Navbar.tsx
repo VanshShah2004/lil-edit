@@ -29,7 +29,7 @@ const Navbar = () => {
   }, [location.pathname, mobileOpen]); // Re-run when path or mobile menu state changes
 
   return (
-    <header ref={headerRef} className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+    <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <nav className="container mx-auto flex items-center justify-between py-2.5 md:py-1.5 lg:py-2 px-3 sm:px-4 lg:px-8">
         {/* Logo and Branding */}
         <Link to="/" className="flex-shrink flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
