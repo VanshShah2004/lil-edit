@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import FeaturedCategories from "@/components/home/FeaturedCategories";
 import RecommendedForYou from "@/components/home/RecommendedForYou";
@@ -8,15 +9,23 @@ import HomeCollage from "@/components/home/HomeCollage";
 import ShopTheLook from "@/components/home/ShopTheLook";
 import AboutLilEdit from "@/components/home/AboutLilEdit";
 import HeroSection from "@/components/landing/HeroSection";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Home = () => {
+  const { user, loading } = useAuth();
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
+  // Show loading state
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen flex flex-col font-body selection:bg-primary/20">
-      <UserNavbar />
+      {user ? <UserNavbar /> : <Navbar />}
       <main className="flex-1 pt-[150px] md:pt-[112px] bg-[#E8DDF7]">
         <HomeCollage />
         <HeroSection hidePhoto={true} />
