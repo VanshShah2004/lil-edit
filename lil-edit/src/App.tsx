@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 import Home from "./pages/Home";
+import About from "./pages/About";
 import ForgotPassword from "./pages/ForgotPassword";
 import AuthCallback from "./pages/AuthCallback";
 import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
@@ -41,6 +42,7 @@ const App = () => (
           <Route path="/cart" element={<Cart />} />
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/collections" element={<Collections />} />
+          <Route path="/about" element={<About />} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/admin/add-product" element={<AdminRoute><AddProduct /></AdminRoute>} />
           <Route path="*" element={<NotFound />} />
