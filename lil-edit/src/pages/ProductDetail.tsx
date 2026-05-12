@@ -205,6 +205,7 @@ export default function ProductDetail() {
                     style={{ background: `linear-gradient(90deg, ${TEAL}, ${LAVENDER}, ${TEAL})` }}
                   />
 
+
                   <div className="flex flex-col items-center">
                     <div
                       className="text-6xl font-extrabold mb-3 tracking-tighter"
