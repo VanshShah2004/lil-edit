@@ -17,7 +17,7 @@ const HeroSection = ({ hidePhoto = false }: HeroSectionProps) => {
         <div className={`grid grid-cols-1 ${!hidePhoto ? "lg:grid-cols-2" : ""} gap-8 lg:gap-6 items-center`}>
           {/* Text */}
           <div className={`flex flex-col gap-2 animate-fade-in-up text-center ${!hidePhoto ? "lg:text-left" : "items-center"}`}>
-            <span className="text-[11px] sm:text-xs md:text-sm font-body uppercase tracking-[0.2em] md:tracking-[0.25em] font-medium bg-gradient-to-r from-purple-400 via-teal-700 to-purple-400 bg-clip-text text-transparent">
+            <span className="text-[11px] sm:text-xs md:text-sm font-body uppercase tracking-[0.2em] md:tracking-[0.25em] font-medium bg-gradient-to-r from-teal-700 to-primary bg-clip-text text-transparent">
               The Lil Edit Collection 2026
             </span>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl leading-[1.1] text-foreground">
