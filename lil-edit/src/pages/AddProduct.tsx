@@ -1065,7 +1065,7 @@ const AddProduct = () => {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="lg:col-span-2 lg:sticky lg:top-32 h-fit"
             >
-              <div className="bg-white rounded-[2rem] border border-border/60 shadow-[0_8px_40px_rgb(0,0,0,0.06)] p-8 space-y-8">
+              <div className="bg-white rounded-[2rem] border border-border/60 shadow-[0_8px_40px_rgb(0,0,0,0.06)] p-3 space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-muted-foreground">Live Preview</h2>
                   <div className="flex items-center gap-1.5">
@@ -1075,7 +1075,7 @@ const AddProduct = () => {
                 </div>
 
                 {savedPreviewProduct ? (
-                  <motion.div layout className="rounded-[1.5rem] overflow-hidden border border-border/30 bg-white">
+                  <motion.div layout className="rounded-[1.5rem] overflow-hidden border border-border/30 bg-white mx-[-6px]">
                     <div className="max-h-[calc(100vh-220px)] overflow-y-auto">
                       <ProductPreviewView product={savedPreviewProduct} previewMode={true} forceMobileLayout={true} />
                     </div>

@@ -37,10 +37,10 @@ const ProductPreviewView = ({
   const mobileOnly = forceMobileLayout;
 
   return (
-    <div className={`${compact ? "p-3" : "p-0"} bg-white`}>
+    <div className={`${compact ? "p-3" : "p-0"} ${mobileOnly ? "pt-3 px-3" : ""} bg-white`}>
       <div className={`flex ${compact || mobileOnly ? "flex-col gap-5" : "flex-col md:flex-row gap-8 md:gap-12"}`}>
-        <div className={`w-full ${mobileOnly ? "block" : "md:hidden"}`}>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary mb-2">{product.brand}</p>
+        <div className={`w-full ${mobileOnly ? "block pt-1" : "md:hidden"}`}>
+          <p className="text-[10px] leading-[1.35] font-bold uppercase tracking-[0.2em] text-primary mb-2">{product.brand}</p>
           <h1 className={`${compact ? "text-lg" : "text-2xl"} font-semibold text-slate-900 leading-snug mb-3`}>
             {product.title}
           </h1>
@@ -80,7 +80,7 @@ const ProductPreviewView = ({
         </div>
 
         <div className={`w-full ${compact || mobileOnly ? "" : "md:w-[45%]"}`}>
-          <p className={`${mobileOnly ? "hidden" : "hidden md:block"} text-[10px] font-bold uppercase tracking-[0.2em] text-primary mb-2`}>{product.brand}</p>
+          <p className={`${mobileOnly ? "hidden" : "hidden md:block"} text-[10px] leading-[1.35] font-bold uppercase tracking-[0.2em] text-primary mb-2`}>{product.brand}</p>
           <h1 className={`${mobileOnly ? "hidden" : "hidden md:block"} ${compact ? "text-lg" : "text-2xl"} font-semibold text-slate-900 leading-snug mb-3`}>
             {product.title}
           </h1>
