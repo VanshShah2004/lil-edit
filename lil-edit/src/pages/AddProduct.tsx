@@ -1030,12 +1030,12 @@ const AddProduct = () => {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleSaveDraft}
                     disabled={isSaving}
-                    className="flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full border border-border/60 text-foreground font-bold uppercase tracking-widest text-xs hover:bg-secondary transition-all duration-300 disabled:opacity-50"
+                    className="flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full border border-border/60 text-foreground font-bold uppercase tracking-widest text-xs hover:bg-[#0B5B55] hover:text-white hover:border-[#0B5B55] transition-all duration-300 disabled:opacity-50 group"
                   >
                     {isSaving ? (
-                      <Loader className="w-4 h-4 animate-spin text-primary" />
+                      <Loader className="w-4 h-4 animate-spin text-primary group-hover:text-white" />
                     ) : (
-                      <Save className="w-4 h-4 text-primary" />
+                      <Save className="w-4 h-4 text-primary group-hover:text-white" />
                     )}
                     {isSaving ? "Saving..." : "Save Draft"}
                   </motion.button>
@@ -1067,10 +1067,10 @@ const AddProduct = () => {
             >
               <div className="bg-white rounded-[2rem] border border-border/60 shadow-[0_8px_40px_rgb(0,0,0,0.06)] px-4 py-3 space-y-4">
                 <div className="flex items-center justify-between pb-1 border-b border-border/20">
-                  <h2 className="text-sm font-bold uppercase tracking-[0.22em] text-slate-900">
+                  <h2 className="text-lg font-bold uppercase tracking-[0.15em] text-slate-900">
                     Live Preview
                   </h2>
-                  <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-green-600">
+                  <div className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-[0.18em] text-green-600">
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                     <span>Active</span>
                   </div>
