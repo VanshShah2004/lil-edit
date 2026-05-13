@@ -15,6 +15,7 @@ const About = () => {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
+
   return (
     <div className="min-h-screen bg-background flex flex-col pt-[var(--navbar-height)]">
       {user ? <UserNavbar /> : <Navbar />}
