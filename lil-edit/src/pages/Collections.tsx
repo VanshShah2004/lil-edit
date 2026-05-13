@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import Navbar from "@/components/layout/Navbar";
+import UserNavbar from "@/components/home/UserNavbar";
+import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 
 import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
@@ -132,6 +134,7 @@ const filterOptions = {
 };
 
 export default function Collections() {
+  const { user, loading: authLoading } = useAuth();
   const [selectedFilters, setSelectedFilters] = useState<{
     age: string[];
     occasion: string[];
@@ -156,9 +159,13 @@ export default function Collections() {
     }));
   };
 
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-white text-gray-900 overflow-x-hidden w-full">
-      <Navbar />
+      {user ? <UserNavbar /> : <Navbar />}
 
       {/* BREADCRUMB */}
       <div className="w-full px-4 sm:px-6 py-3 sm:py-4">

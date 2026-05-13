@@ -15,7 +15,9 @@ import {
   Flame,
   Tag
 } from "lucide-react";
+import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
+import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 import ProductPreviewView from "@/components/ProductPreviewView";
 import type { Product } from "@/types/product";
@@ -122,6 +124,7 @@ const mapFormDataToProduct = (formData: FormData, imagePreviews: string[]): Prod
 });
 
 const AddProduct = () => {
+  const { user, loading: authLoading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -358,9 +361,13 @@ const AddProduct = () => {
     setSavedPreviewProduct(mapFormDataToProduct(formData, imagePreviews));
   }, [previewActivated, formData, imagePreviews]);
 
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-[#FDFCFD] overflow-x-hidden w-full selection:bg-primary/20">
-      <UserNavbar />
+      {user ? <UserNavbar /> : <Navbar />}
       <div className="pt-[160px] md:pt-[128px] pb-24 px-4 sm:px-8 lg:px-12 xl:px-20">
         <div className="mx-auto max-w-none">
           <motion.div

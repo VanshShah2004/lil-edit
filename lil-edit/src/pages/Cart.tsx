@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/carousel";
 
 import Navbar from "@/components/layout/Navbar";
+import UserNavbar from "@/components/home/UserNavbar";
+import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
 import img2 from "@/assets/searchbar-frequent_searches/le-2.png";
@@ -94,6 +96,7 @@ const recommendedProducts = [
 
 export default function Cart() {
   const [cartItems, setCartItems] = useState(mockCartItems);
+  const { user, loading: authLoading } = useAuth();
 
   const updateQuantity = (id: string, delta: number) => {
     setCartItems((prev) =>
@@ -123,12 +126,17 @@ export default function Cart() {
 
   const freeShippingRemaining = Math.max(0, 5000 - subtotal);
 
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-[#FAF9F7] flex flex-col text-gray-900 overflow-x-hidden">
-      <Navbar />
+      {user ? <UserNavbar /> : <Navbar />}
 
-      {/* Breadcrumb */}
-      <div className="page-container px-4 sm:px-6 py-4">
+      <main style={{ paddingTop: 'calc(var(--navbar-height) + 15px)' }} className="flex-1 flex flex-col w-full">
+        {/* Breadcrumb */}
+        <div className="page-container px-4 sm:px-6 py-4">
         <div className="flex flex-wrap items-center text-xs sm:text-sm text-gray-600 gap-y-2">
           <Link to="/" className="hover:underline">
             Home
@@ -484,6 +492,7 @@ export default function Cart() {
           </CarouselContent>
         </Carousel>
       </section>
+      </main>
 
       <Footer />
     </div>

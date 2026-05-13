@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/carousel";
 
 import Navbar from "@/components/layout/Navbar";
+import UserNavbar from "@/components/home/UserNavbar";
+import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 
 import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
@@ -124,6 +126,7 @@ const recommendedProducts = [
 const WishlistPage = () => {
   const [items, setItems] = useState(wishlistItemsMock);
   const [activeTab, setActiveTab] = useState("all");
+  const { user, loading: authLoading } = useAuth();
 
   const removeItem = (id: string) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
@@ -150,12 +153,17 @@ const WishlistPage = () => {
 
   const inStockCount = items.filter((i) => i.inStock).length;
 
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-[#FAF9F7] flex flex-col text-gray-900 overflow-x-hidden">
-      <Navbar />
+      {user ? <UserNavbar /> : <Navbar />}
 
-      {/* Breadcrumb */}
-      <div className="page-container px-4 sm:px-6 py-4">
+      <main style={{ paddingTop: 'calc(var(--navbar-height) + 15px)' }} className="flex-1 flex flex-col w-full">
+        {/* Breadcrumb */}
+        <div className="page-container px-4 sm:px-6 py-4">
         <div className="flex flex-wrap items-center text-xs sm:text-sm text-gray-600 gap-y-2">
           <Link to="/" className="hover:underline">
             Home
@@ -483,6 +491,7 @@ const WishlistPage = () => {
           </CarouselContent>
         </Carousel>
       </section>
+      </main>
 
       <Footer />
     </div>

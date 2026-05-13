@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -24,12 +24,13 @@ const UserNavbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isLeftMenuOpen, setIsLeftMenuOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const profileCloseTimeoutRef = useRef<number | null>(null);
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const hideMegaMenu = location.pathname.startsWith("/product") || location.pathname.startsWith("/profile");
+  const hideMegaMenu = false;
   const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
   const firstNameCandidate =
     (typeof metadata.first_name === "string" && metadata.first_name.trim()) ||
@@ -50,6 +51,19 @@ const UserNavbar = () => {
   ];
   const visibleMenuItems = dashboardMenuItems.filter((item) => !item.adminOnly || isAdmin);
 
+
+  useLayoutEffect(() => {
+    const updateHeight = () => {
+      if (headerRef.current) {
+        const height = headerRef.current.offsetHeight;
+        document.documentElement.style.setProperty("--navbar-height", `${height}px`);
+      }
+    };
+
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -87,8 +101,8 @@ const UserNavbar = () => {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-50 border-b border-border/70 transition-all duration-300 ${isScrolled ? "bg-background/95 backdrop-blur-lg shadow-sm" : "bg-background/90 backdrop-blur-md"
-          }`}
+        ref={headerRef}
+        className={`fixed top-0 left-0 right-0 z-50 border-b border-border transition-all duration-300 bg-background shadow-sm`}
       >
         <div className="container mx-auto flex items-center justify-between h-[5rem] md:h-[3.1rem] lg:h-[3.4rem] px-3 sm:px-4 lg:px-8">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">

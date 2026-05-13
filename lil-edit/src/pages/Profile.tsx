@@ -4,12 +4,13 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Loader2, Save, Sparkles } from "lucide-react";
 import Footer from "@/components/layout/Footer";
+import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import AddressManager from "@/components/profile/AddressManager";
 // Mocking OTP
 
 export default function Profile() {
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -210,7 +211,7 @@ export default function Profile() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -220,9 +221,9 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
-      <UserNavbar />
+      {user ? <UserNavbar /> : <Navbar />}
 
-      <main className="flex-grow pt-[7rem] md:pt-[6rem] pb-16 px-4 sm:px-6 lg:px-8">
+      <main className="flex-grow pt-[calc(var(--navbar-height)+15px)] pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
           <div className="mb-10 text-center">
             <h1 className="flex items-center justify-center gap-2 text-3xl md:text-4xl font-display text-teal-700 mb-3 font-semibold">

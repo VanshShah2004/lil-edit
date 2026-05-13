@@ -29,8 +29,8 @@ const Navbar = () => {
   }, [location.pathname, mobileOpen]); // Re-run when path or mobile menu state changes
 
   return (
-    <header ref={headerRef} className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-      <nav className="container mx-auto flex items-center justify-between py-2.5 md:py-1.5 lg:py-2 px-3 sm:px-4 lg:px-8">
+    <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border shadow-sm">
+      <nav className="container mx-auto flex items-center justify-between h-[5rem] md:h-[3.1rem] lg:h-[3.4rem] px-3 sm:px-4 lg:px-8">
         {/* Logo and Branding */}
         <Link to="/" className="flex-shrink flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
           <img src={logo} alt="The Lil Edit" className="h-9 sm:h-12 md:h-10 lg:h-11 w-auto shrink-0" />
@@ -135,7 +135,7 @@ const Navbar = () => {
         </div>
       )}
 
-      {!isProductPage && <MegaMenu />}
+      <MegaMenu />
       <SearchPanel isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </header>
   );
