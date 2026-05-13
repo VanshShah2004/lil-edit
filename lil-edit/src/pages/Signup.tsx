@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/layout/Navbar";
+import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import logo from "@/assets/logo.png";
 
@@ -19,8 +20,7 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-
-  const { sendSignupOtp, verifySignupOtpAndCompleteProfile, signInWithGoogle, user } = useAuth();
+  const { sendSignupOtp, verifySignupOtpAndCompleteProfile, signInWithGoogle, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,6 +28,11 @@ const Signup = () => {
       navigate("/dashboard", { replace: true });
     }
   }, [user, navigate]);
+
+  // Show loading state
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,7 +122,7 @@ const Signup = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      {user ? <UserNavbar /> : <Navbar />}
       <main className="flex-1 flex items-center justify-center py-16 px-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">

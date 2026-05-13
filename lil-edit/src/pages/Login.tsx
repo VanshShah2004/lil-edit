@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/layout/Navbar";
+import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import logo from "@/assets/logo.png";
 
@@ -11,7 +12,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { signIn, signInWithGoogle, user } = useAuth();
+  const { signIn, signInWithGoogle, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,6 +20,11 @@ const Login = () => {
       navigate("/dashboard", { replace: true });
     }
   }, [user, navigate]);
+
+  // Show loading state
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +62,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      {user ? <UserNavbar /> : <Navbar />}
       <main className="flex-1 flex items-center justify-center py-16 px-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">

@@ -1,9 +1,12 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
-
+import Navbar from "@/components/layout/Navbar";
+import UserNavbar from "@/components/home/UserNavbar";
+import { useAuth } from "@/contexts/AuthContext";
 const AuthCallback = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     let cancelled = false;
@@ -26,9 +29,16 @@ const AuthCallback = () => {
     };
   }, [navigate]);
 
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-sm text-muted-foreground">Signing you in…</div>
+    <div className="min-h-screen flex flex-col">
+      {user ? <UserNavbar /> : <Navbar />}
+      <main className="flex-1 flex items-center justify-center">
+        <div className="text-sm text-muted-foreground">Signing you in…</div>
+      </main>
     </div>
   );
 };

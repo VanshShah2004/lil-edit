@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import { ChevronRight, Heart, Star, BadgeCheck, ThumbsUp } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
+import UserNavbar from "@/components/home/UserNavbar";
+import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 import product_images from "@/assets/products";
 import ProductPreviewView from "@/components/ProductPreviewView";
@@ -161,9 +163,15 @@ const recommendedProducts = [
 ];
 
 export default function ProductDetail() {
+  const { user, loading: authLoading } = useAuth();
+
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <Navbar />
+      {user ? <UserNavbar /> : <Navbar />}
 
       {/* Breadcrumb */}
       <div className="page-container py-3 sm:py-4 text-sm text-gray-500">
