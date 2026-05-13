@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Heart, Minus, Plus, Share2, ShoppingBag, Star, X, ChevronRight, ChevronLeft } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Carousel,
   CarouselContent,
@@ -13,6 +14,7 @@ interface ProductPreviewViewProps {
   previewMode?: boolean;
   compact?: boolean;
   forceMobileLayout?: boolean;
+  initialColorName?: string;
 }
 
 const ProductPreviewView = ({
@@ -20,6 +22,7 @@ const ProductPreviewView = ({
   previewMode = false,
   compact = false,
   forceMobileLayout = false,
+  initialColorName,
 }: ProductPreviewViewProps) => {
   const [activeImage, setActiveImage] = useState(0);
   const [api, setApi] = useState<CarouselApi>();
@@ -92,8 +95,31 @@ const ProductPreviewView = ({
     viewerApi?.scrollTo(idx);
   };
   const [selectedSize, setSelectedSize] = useState(product.sizes[0] ?? "");
-  const [selectedColor, setSelectedColor] = useState(product.colors[0]?.name ?? "");
+  const [activeColor, setActiveColor] = useState(product.colors[0] || null);
+
+  useEffect(() => {
+    if (initialColorName) {
+      const color = product.colors.find(c => c.name === initialColorName);
+      if (color) setActiveColor(color);
+    }
+  }, [initialColorName, product.colors]);
   const [quantity, setQuantity] = useState(1);
+
+  // Gallery Logic: Color images first, then fallback to product images
+  const galleryImages = useMemo(() => {
+    const colorImages = activeColor?.images?.map(img => img.url) || [];
+    const productImages = product.images.map(img => img.url) || [];
+    
+    // Combine but ensure we have at least one image
+    const combined = [...colorImages, ...productImages];
+    return combined.length > 0 ? combined : ["https://placehold.co/600x750?text=No+Image"];
+  }, [activeColor, product.images]);
+
+  useEffect(() => {
+    // Reset active image when gallery changes
+    setActiveImage(0);
+    api?.scrollTo(0);
+  }, [galleryImages, api]);
 
   const discountPercent = useMemo(() => {
     if (!product.originalPrice || product.originalPrice <= product.price) return 0;
@@ -108,8 +134,19 @@ const ProductPreviewView = ({
     ...product.badges,
   ].filter(Boolean) as string[];
 
-  const images = product.images.length > 0 ? product.images : ["https://placehold.co/600x750?text=No+Image"];
+  const images = galleryImages;
   const mobileOnly = forceMobileLayout;
+
+  const currentSku = activeColor?.sku || product.sku;
+  const currentStock = activeColor?.stock ?? product.stock;
+
+  const getStockStatus = () => {
+    if (currentStock <= 0) return { label: "Out of Stock", class: "text-red-500 bg-red-50" };
+    if (currentStock < 5) return { label: `Only ${currentStock} Left`, class: "text-orange-500 bg-orange-50" };
+    return { label: "In Stock", class: "text-green-600 bg-green-50" };
+  };
+
+  const stockStatus = getStockStatus();
 
   return (
     <div className={`${compact ? "p-3" : "p-0"} ${mobileOnly ? "pt-3 px-3" : ""} bg-white`}>
@@ -140,31 +177,42 @@ const ProductPreviewView = ({
 
           <div className={`${compact || mobileOnly ? "order-1" : "order-1 md:order-2"} flex-1`}>
             <div className="relative w-full aspect-[4/5] rounded-2xl overflow-hidden border border-border/30">
-              <Carousel
-                setApi={setApi}
-                opts={{ loop: true }}
-                className="w-full h-full cursor-grab active:cursor-grabbing"
-              >
-                <CarouselContent className="ml-0 h-full">
-                  {images.map((img, idx) => (
-                    <CarouselItem key={idx} className="pl-0 basis-full h-full">
-                      <div className="w-full h-full overflow-hidden">
-                        <img
-                          src={img}
-                          alt={`${product.title} ${idx + 1}`}
-                          className={`w-full h-full object-cover select-none transition-transform duration-500 hover:scale-105 ${!previewMode ? "cursor-zoom-in" : ""}`}
-                          draggable={false}
-                          onClick={() => {
-                            if (!previewMode) setIsViewerOpen(true);
-                          }}
-                        />
-                      </div>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-              </Carousel>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeColor?.name || 'default'}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="w-full h-full"
+                >
+                  <Carousel
+                    setApi={setApi}
+                    opts={{ loop: true }}
+                    className="w-full h-full cursor-grab active:cursor-grabbing"
+                  >
+                    <CarouselContent className="ml-0 h-full">
+                      {images.map((img, idx) => (
+                        <CarouselItem key={idx} className="pl-0 basis-full h-full">
+                          <div className="w-full h-full overflow-hidden">
+                            <img
+                              src={img}
+                              alt={`${product.title} ${idx + 1}`}
+                              className={`w-full h-full object-cover select-none transition-transform duration-500 hover:scale-105 ${!previewMode ? "cursor-zoom-in" : ""}`}
+                              draggable={false}
+                              onClick={() => {
+                                if (!previewMode) setIsViewerOpen(true);
+                              }}
+                            />
+                          </div>
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                  </Carousel>
+                </motion.div>
+              </AnimatePresence>
               {discountPercent > 0 && (
-                <div className="absolute top-3 right-3 bg-red-500 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider pointer-events-none z-10">
+                <div className="absolute top-3 right-3 bg-red-500 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider pointer-events-none z-10 shadow-lg">
                   -{discountPercent}%
                 </div>
               )}
@@ -178,10 +226,21 @@ const ProductPreviewView = ({
             {product.title}
           </h1>
 
-          <div className="flex items-center gap-3 mb-4">
-            <span className={`${compact ? "text-xl" : "text-2xl"} font-bold text-[#0B5B55]`}>₹{product.price}</span>
-            {product.originalPrice > 0 && <span className="line-through text-gray-400">₹{product.originalPrice}</span>}
-            {discountPercent > 0 && <span className="text-xs font-semibold text-red-500">{discountPercent}% OFF</span>}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <span className={`${compact ? "text-xl" : "text-2xl"} font-bold text-[#0B5B55]`}>₹{product.price}</span>
+              {product.originalPrice > 0 && <span className="line-through text-gray-400">₹{product.originalPrice}</span>}
+              {discountPercent > 0 && <span className="text-xs font-semibold text-red-500">{discountPercent}% OFF</span>}
+            </div>
+            
+            <motion.div 
+              key={currentSku}
+              initial={{ opacity: 0, x: 5 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-[10px] font-mono font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-100"
+            >
+              {currentSku}
+            </motion.div>
           </div>
 
           {flags.length > 0 && (
@@ -202,15 +261,35 @@ const ProductPreviewView = ({
           </div>
 
           <div className="mb-5">
-            <p className="text-sm font-medium mb-2">Color</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium">Color: <span className="text-muted-foreground font-normal">{activeColor?.name}</span></p>
+              <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${stockStatus.class}`}>
+                {stockStatus.label}
+              </span>
+            </div>
             <div className="flex flex-wrap gap-3">
               {product.colors.map((color) => (
-                <button key={color.name} onClick={() => setSelectedColor(color.name)} className="flex flex-col items-center">
-                  <span
-                    className={`w-9 h-9 rounded-full border-2 ${selectedColor === color.name ? "border-[#115E59]" : "border-gray-200"}`}
-                    style={{ backgroundColor: color.hex }}
-                  />
-                  <span className="mt-1 text-[10px] text-slate-700">{color.name}</span>
+                <button 
+                  key={color.name} 
+                  onClick={() => setActiveColor(color)} 
+                  className="group flex flex-col items-center"
+                >
+                  <div className="relative">
+                    <motion.div
+                      className={`w-10 h-10 rounded-full border-2 transition-all duration-300 ${activeColor?.name === color.name ? "border-[#115E59] scale-110" : "border-gray-200 group-hover:border-gray-300"}`}
+                      style={{ backgroundColor: color.hex }}
+                    />
+                    {activeColor?.name === color.name && (
+                      <motion.div 
+                        layoutId="active-color-ring"
+                        className="absolute inset-[-4px] rounded-full border border-primary/40"
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                  </div>
+                  <span className={`mt-2 text-[10px] transition-colors ${activeColor?.name === color.name ? "text-primary font-bold" : "text-slate-500"}`}>
+                    {color.name}
+                  </span>
                 </button>
               ))}
             </div>

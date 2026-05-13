@@ -20,7 +20,8 @@ import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 import ProductPreviewView from "@/components/ProductPreviewView";
-import type { Product } from "@/types/product";
+import type { Product, ProductImage, ProductColor } from "@/types/product";
+import { generateBaseSku, generateColorSku } from "@/utils/sku";
 
 const SIZES = [
   "6-12 Months",
@@ -58,7 +59,13 @@ interface FormData {
   care: string;
   descriptionPoints: string[];
   selectedSizes: string[];
-  selectedColors: { name: string; hex: string }[];
+  selectedColors: {
+    name: string;
+    hex: string;
+    sku: string;
+    stock: number;
+    images: string[]; // URLs/Base64 strings for preview
+  }[];
   featured: boolean;
   newArrival: boolean;
   bestseller: boolean;
@@ -98,30 +105,50 @@ const HEX_TO_NAME = Object.fromEntries(
   Object.entries(COLOR_MAP).map(([name, hex]) => [hex.toUpperCase(), name])
 );
 
-const mapFormDataToProduct = (formData: FormData, imagePreviews: string[]): Product => ({
-  title: formData.name || "Untitled Product",
-  brand: formData.brand || "The Lil Edit",
-  sku: formData.sku || "SKU-DRAFT",
-  category: formData.category || "General",
-  gender: formData.gender || "Unisex",
-  price: Number(formData.price) || 0,
-  originalPrice: Number(formData.originalPrice) || 0,
-  stock: Number(formData.stock) || 0,
-  tags: formData.tags,
-  badges: formData.customBadges,
-  descriptionPoints: formData.descriptionPoints.length > 0 ? formData.descriptionPoints : ["No product details added yet."],
-  fabric: formData.fabric || "Not specified",
-  fit: formData.fit || "Not specified",
-  occasion: formData.occasion || "General wear",
-  care: formData.care || "Not specified",
-  images: imagePreviews,
-  sizes: formData.selectedSizes.length > 0 ? formData.selectedSizes : ["Free Size"],
-  colors: formData.selectedColors.length > 0 ? formData.selectedColors : [{ name: "Default", hex: "#E6E6FA" }],
-  featured: formData.featured,
-  newArrival: formData.newArrival,
-  bestseller: formData.bestseller,
-  trending: formData.trending,
-});
+const mapFormDataToProduct = (formData: FormData, imagePreviews: string[]): Product => {
+  const productImages: ProductImage[] = imagePreviews.map((url, index) => ({
+    id: `img-${index}`,
+    url,
+    sortOrder: index,
+  }));
+
+  const colors: ProductColor[] = formData.selectedColors.map((color) => ({
+    name: color.name,
+    hex: color.hex,
+    sku: color.sku,
+    stock: color.stock,
+    images: color.images.map((url, index) => ({
+      id: `img-${color.name}-${index}`,
+      url,
+      sortOrder: index,
+    })),
+  }));
+
+  return {
+    title: formData.name || "Untitled Product",
+    brand: formData.brand || "The Lil Edit",
+    sku: formData.sku || "SKU-DRAFT",
+    category: formData.category || "General",
+    gender: formData.gender || "Unisex",
+    price: Number(formData.price) || 0,
+    originalPrice: Number(formData.originalPrice) || 0,
+    stock: Number(formData.stock) || 0,
+    tags: formData.tags,
+    badges: formData.customBadges,
+    descriptionPoints: formData.descriptionPoints.length > 0 ? formData.descriptionPoints : ["No product details added yet."],
+    fabric: formData.fabric || "Not specified",
+    fit: formData.fit || "Not specified",
+    occasion: formData.occasion || "General wear",
+    care: formData.care || "Not specified",
+    images: productImages,
+    sizes: formData.selectedSizes.length > 0 ? formData.selectedSizes : ["Free Size"],
+    colors: colors.length > 0 ? colors : [],
+    featured: formData.featured,
+    newArrival: formData.newArrival,
+    bestseller: formData.bestseller,
+    trending: formData.trending,
+  };
+};
 
 const AddProduct = () => {
   const { user, loading: authLoading } = useAuth();
@@ -162,6 +189,7 @@ const AddProduct = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [savedPreviewProduct, setSavedPreviewProduct] = useState<Product | null>(null);
   const [previewActivated, setPreviewActivated] = useState(false);
+  const [activeImageTab, setActiveImageTab] = useState<"Global" | string>("Global");
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -238,12 +266,48 @@ const AddProduct = () => {
         }
       }
 
+      const baseSku = formData.sku || "SKU-DRAFT";
+      const variantSku = generateColorSku(baseSku, name);
+
       setFormData(prev => ({
         ...prev,
-        selectedColors: [...prev.selectedColors, { name, hex }]
+        selectedColors: [...prev.selectedColors, { 
+          name, 
+          hex, 
+          sku: variantSku, 
+          stock: 0, 
+          images: [] 
+        }]
       }));
       setNewColorInput("");
     }
+  };
+
+  const updateVariantStock = (colorName: string, stock: number) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedColors: prev.selectedColors.map(c => 
+        c.name === colorName ? { ...c, stock } : c
+      )
+    }));
+  };
+
+  const toggleImageInVariant = (colorName: string, imageUrl: string) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedColors: prev.selectedColors.map(c => {
+        if (c.name === colorName) {
+          const exists = c.images.includes(imageUrl);
+          return {
+            ...c,
+            images: exists 
+              ? c.images.filter(img => img !== imageUrl)
+              : [...c.images, imageUrl]
+          };
+        }
+        return c;
+      })
+    }));
   };
 
   const removeColor = (colorName: string) => {
@@ -295,13 +359,23 @@ const AddProduct = () => {
     setIsDragging(false);
   };
 
-  const processFiles = (files: FileList) => {
+  const processFiles = (files: FileList, targetTab: "Global" | string) => {
     const newFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
 
     newFiles.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setImagePreviews((prev) => [...prev, e.target?.result as string]);
+        const result = e.target?.result as string;
+        if (targetTab === "Global") {
+          setImagePreviews((prev) => [...prev, result]);
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            selectedColors: prev.selectedColors.map(c => 
+              c.name === targetTab ? { ...c, images: [...c.images, result] } : c
+            )
+          }));
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -310,17 +384,26 @@ const AddProduct = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    processFiles(e.dataTransfer.files);
+    processFiles(e.dataTransfer.files, activeImageTab);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      processFiles(e.target.files);
+      processFiles(e.target.files, activeImageTab);
     }
   };
 
-  const removeImage = (index: number) => {
-    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  const removeImage = (index: number, targetTab: "Global" | string) => {
+    if (targetTab === "Global") {
+      setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        selectedColors: prev.selectedColors.map(c => 
+          c.name === targetTab ? { ...c, images: c.images.filter((_, i) => i !== index) } : c
+        )
+      }));
+    }
   };
 
   const calculateDiscount = () => {
@@ -360,6 +443,19 @@ const AddProduct = () => {
     if (!previewActivated) return;
     setSavedPreviewProduct(mapFormDataToProduct(formData, imagePreviews));
   }, [previewActivated, formData, imagePreviews]);
+
+  // Reactive SKU update for variants
+  useEffect(() => {
+    if (formData.sku) {
+      setFormData(prev => ({
+        ...prev,
+        selectedColors: prev.selectedColors.map(color => ({
+          ...color,
+          sku: generateColorSku(formData.sku, color.name)
+        }))
+      }));
+    }
+  }, [formData.sku]);
 
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -685,14 +781,14 @@ const AddProduct = () => {
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
                       <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
-                        SKU Signature
+                        Product Base Identifier
                       </label>
                       <input
                         type="text"
                         name="sku"
                         value={formData.sku}
                         onChange={handleInputChange}
-                        placeholder="e.g. SKU-EDIT-001"
+                        placeholder="e.g. EDIT-ETHNIC-101"
                         className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
                       />
                     </motion.div>
@@ -810,118 +906,244 @@ const AddProduct = () => {
                     </div>
 
                     {/* Selected Colors List */}
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 gap-6">
                       {formData.selectedColors.length > 0 ? (
                         formData.selectedColors.map((color) => (
                           <motion.div
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            whileHover={{ y: -4 }}
                             key={color.name}
-                            className="flex items-center justify-between gap-4 p-4 bg-[#F9F8FA] border border-border/40 rounded-xl group hover:border-primary/20 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-md"
+                            className="bg-white border border-border/50 rounded-[2.5rem] p-8 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-500 group relative"
                           >
-                            <div className="flex items-center gap-4">
-                              <div
-                                className="w-10 h-10 rounded-full border border-border/20 shadow-inner transform group-hover:scale-110 transition-transform"
-                                style={{ backgroundColor: color.hex }}
-                              />
-                              <div className="flex flex-col">
-                                <span className="text-[13px] font-bold text-foreground">{color.name}</span>
-                                <span className="text-[10px] text-muted-foreground/60 font-mono tracking-tighter uppercase">{color.hex}</span>
+                            <div className="flex flex-col lg:flex-row gap-10 relative z-10">
+                              {/* Left side: Visual & Core Info */}
+                              <div className="flex-1 space-y-6">
+                                <div className="flex items-center gap-5">
+                                  <div className="relative">
+                                    <div
+                                      className="w-16 h-16 rounded-2xl border border-black/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] transition-all duration-700 group-hover:scale-110 group-hover:rotate-6"
+                                      style={{ backgroundColor: color.hex }}
+                                    />
+                                    <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white shadow-sm border border-border/20 flex items-center justify-center">
+                                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color.hex }} />
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <h3 className="text-xl font-display font-medium text-foreground tracking-tight leading-none mb-2">
+                                      {color.name}
+                                    </h3>
+                                    <span className="text-[10px] text-muted-foreground/40 font-mono tracking-[0.2em] uppercase">
+                                      {color.hex}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-8 pt-6 border-t border-border/10">
+                                  <div className="space-y-2">
+                                    <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-muted-foreground/50 block">Variant Signature</span>
+                                    <div className="font-mono text-[11px] text-primary/80 bg-primary/5 px-3 py-1.5 rounded-lg border border-primary/10 w-fit">
+                                      {color.sku}
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <label className="text-[9px] font-bold uppercase tracking-[0.25em] text-muted-foreground/50 block">Stock Inventory</label>
+                                    <div className="relative group/input">
+                                      <input
+                                        type="number"
+                                        value={color.stock}
+                                        onChange={(e) => updateVariantStock(color.name, parseInt(e.target.value) || 0)}
+                                        className="w-full bg-transparent border-b border-border/40 focus:border-primary/40 outline-none transition-all py-1 text-sm font-medium font-body"
+                                        placeholder="0"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Right side: Asset Management */}
+                              <div className="lg:w-48 flex flex-col items-center justify-center lg:border-l border-border/10 lg:pl-10">
+                                <div className="text-center group/assets cursor-pointer" onClick={() => setActiveImageTab(color.name)}>
+                                  <div className="text-4xl font-display font-medium text-primary mb-1 transition-transform duration-500 group-hover/assets:scale-110">
+                                    {color.images.length}
+                                  </div>
+                                  <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground/40 mb-6">
+                                    Visual Assets
+                                  </div>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setActiveImageTab(color.name); }}
+                                    className="w-full py-3 px-6 rounded-full bg-[#F9F8FA] hover:bg-primary hover:text-white border border-border/40 hover:border-primary text-primary text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/20"
+                                  >
+                                    Edit Gallery
+                                  </button>
+                                </div>
                               </div>
                             </div>
+
+                            {/* Corner Action */}
                             <button
                               onClick={() => removeColor(color.name)}
-                              className="p-2 text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                              className="absolute top-4 right-4 p-2.5 text-muted-foreground/20 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all z-20 opacity-0 group-hover:opacity-100"
                             >
-                              <X size={16} />
+                              <X size={14} />
                             </button>
                           </motion.div>
                         ))
                       ) : (
-                        <div className="p-12 text-center border-2 border-dashed border-border/20 rounded-[2rem] bg-secondary/5">
-                          <p className="text-sm text-muted-foreground/60 font-light italic">No colors added for this listing yet.</p>
+                        <div className="p-16 text-center border-2 border-dashed border-border/20 rounded-[3rem] bg-secondary/5">
+                          <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-6">
+                            <Plus className="w-6 h-6 text-muted-foreground/30" />
+                          </div>
+                          <p className="text-sm text-muted-foreground/60 font-light italic max-w-xs mx-auto leading-relaxed">
+                            No color variants curated yet. Begin by entering a color name or hex code above.
+                          </p>
                         </div>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Images */}
-                <div className="space-y-8">
+                {/* Merchandising Assets Card */}
+                <div className="space-y-6">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full bg-primary" />
-                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Images</h2>
+                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Merchandising Studio</h2>
                   </div>
 
-                  <motion.div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    whileHover={{ scale: 1.005 }}
-                    className={`border-2 border-dashed rounded-[2rem] p-12 text-center transition-all duration-300 ${isDragging
-                      ? "border-primary bg-primary/[0.02]"
-                      : "border-border/30 hover:border-primary/20 bg-[#F9F8FA]"
-                      }`}
-                  >
-                    <motion.div
-                      animate={{ y: isDragging ? -5 : 0 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                    >
-                      <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-6">
-                        <Upload className="w-6 h-6 text-primary" />
-                      </div>
-                      <p className="text-foreground font-display font-medium text-lg mb-2">Upload Images</p>
-                      <p className="text-sm text-muted-foreground font-body font-light mb-8 max-w-xs mx-auto">
-                        Drag & drop high-resolution JPG/PNG assets here or select from your gallery.
-                      </p>
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-8 py-3 rounded-full bg-primary text-white hover:brightness-95 transition-all duration-300 text-sm font-bold uppercase tracking-widest shadow-lg shadow-primary/20"
-                      >
-                        Browse Gallery
-                      </button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
-                    </motion.div>
-                  </motion.div>
-
-                  {/* Image Previews */}
-                  {imagePreviews.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="grid grid-cols-3 sm:grid-cols-4 gap-4"
-                    >
-                      {imagePreviews.map((preview, index) => (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="relative group aspect-square rounded-2xl overflow-hidden bg-secondary/20 border border-border/10"
+                  <div className="bg-white rounded-[2.5rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
+                    {/* Studio Header / Tabs */}
+                    <div className="px-8 py-6 border-b border-border/10 bg-[#FDFCFD] flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2 p-1 bg-[#F9F8FA] rounded-2xl border border-border/40 w-fit max-w-full overflow-x-auto no-scrollbar">
+                        <button
+                          onClick={() => setActiveImageTab("Global")}
+                          className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${
+                            activeImageTab === "Global" 
+                              ? "bg-white text-primary shadow-sm border border-border/40" 
+                              : "text-muted-foreground/60 hover:text-primary"
+                          }`}
                         >
-                          <img
-                            src={preview}
-                            alt={`Preview ${index}`}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          />
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => removeImage(index)}
-                            className="absolute top-2 right-2 bg-white/90 backdrop-blur-md text-destructive rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                          Global Assets
+                        </button>
+                        {formData.selectedColors.map((color) => (
+                          <button
+                            key={color.name}
+                            onClick={() => setActiveImageTab(color.name)}
+                            className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-3 whitespace-nowrap ${
+                              activeImageTab === color.name 
+                                ? "bg-white text-primary shadow-sm border border-border/40" 
+                                : "text-muted-foreground/60 hover:text-primary"
+                            }`}
                           >
-                            <X className="w-3 h-3" />
-                          </motion.button>
+                            <div className="w-2.5 h-2.5 rounded-full border border-black/5" style={{ backgroundColor: color.hex }} />
+                            {color.name}
+                          </button>
+                        ))}
+                      </div>
+                      
+                      <div className="hidden sm:block">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40">
+                          {activeImageTab === "Global" ? "Shared Gallery" : `${activeImageTab} Variant`}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Studio Body */}
+                    <div className="p-8 space-y-8">
+                      <motion.div
+                        key={activeImageTab}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        whileHover={{ scale: 1.002 }}
+                        className={`border-2 border-dashed rounded-[2rem] p-12 text-center transition-all duration-300 ${isDragging
+                          ? "border-primary bg-primary/[0.02]"
+                          : "border-border/20 hover:border-primary/20 bg-[#F9F8FA]"
+                          }`}
+                      >
+                        <motion.div
+                          animate={{ y: isDragging ? -5 : 0 }}
+                          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                        >
+                          <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-6">
+                            <Upload className="w-6 h-6 text-primary" />
+                          </div>
+                          <p className="text-foreground font-display font-medium text-lg mb-2">
+                            {activeImageTab === "Global" ? "Global Collection" : `${activeImageTab} Variant`}
+                          </p>
+                          <p className="text-sm text-muted-foreground font-body font-light mb-8 max-w-xs mx-auto">
+                            {activeImageTab === "Global" 
+                              ? "Upload general campaign or shared editorial shots."
+                              : `Upload exclusive shots for the ${activeImageTab} variant.`}
+                          </p>
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="px-10 py-3.5 rounded-full bg-primary text-white hover:brightness-95 transition-all duration-300 text-[11px] font-bold uppercase tracking-widest shadow-xl shadow-primary/10"
+                          >
+                            Upload Content
+                          </button>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                          />
                         </motion.div>
-                      ))}
-                    </motion.div>
-                  )}
+                      </motion.div>
+
+                      {/* Studio Previews */}
+                      {(() => {
+                        const currentImages = activeImageTab === "Global" 
+                          ? imagePreviews 
+                          : formData.selectedColors.find(c => c.name === activeImageTab)?.images || [];
+                        
+                        if (currentImages.length === 0) return null;
+
+                        return (
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                              <div className="h-px flex-1 bg-border/20" />
+                              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40">Current Selections</span>
+                              <div className="h-px flex-1 bg-border/20" />
+                            </div>
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-4"
+                            >
+                              {currentImages.map((preview, index) => (
+                                <motion.div
+                                  key={`${activeImageTab}-${index}`}
+                                  initial={{ opacity: 0, scale: 0.8 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  className="relative group aspect-square rounded-2xl overflow-hidden bg-secondary/10 border border-border/10"
+                                >
+                                  <img
+                                    src={preview}
+                                    alt={`Preview ${index}`}
+                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                  />
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                                  <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => removeImage(index, activeImageTab)}
+                                    className="absolute top-2 right-2 bg-white/90 backdrop-blur-md text-destructive rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </motion.button>
+                                </motion.div>
+                              ))}
+                            </motion.div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Status & Publishing */}
@@ -1086,7 +1308,12 @@ const AddProduct = () => {
                 {savedPreviewProduct ? (
                   <motion.div layout className="rounded-[1.5rem] overflow-hidden border border-border/30 bg-white mx-[-6px]">
                     <div className="max-h-[calc(100vh-220px)] overflow-y-auto">
-                      <ProductPreviewView product={savedPreviewProduct} previewMode={true} forceMobileLayout={true} />
+                      <ProductPreviewView 
+                        product={savedPreviewProduct} 
+                        previewMode={true} 
+                        forceMobileLayout={true} 
+                        initialColorName={activeImageTab !== "Global" ? activeImageTab : undefined}
+                      />
                     </div>
                   </motion.div>
                 ) : (

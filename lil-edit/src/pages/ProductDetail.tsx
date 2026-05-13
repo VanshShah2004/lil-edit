@@ -46,18 +46,35 @@ const product: Product & { reviewsData: any } = {
   tags: ["Festive", "Girlswear", "Lehenga"],
   badges: ["Premium Edit"],
   images: [
-    product_images["product-0001"]["lil-edit-product-0001-1-1.png"],
-    product_images["product-0001"]["lil-edit-product-0001-1-2.png"],
-    product_images["product-0001"]["lil-edit-product-0001-1-3.png"],
-    product_images["product-0001"]["lil-edit-product-0001-1-4.png"],
-    product_images["product-0001"]["lil-edit-product-0001-1-5.png"],
-    product_images["product-0001"]["lil-edit-product-0001-1-6.png"],
-    product_images["product-0001"]["lil-edit-product-0001-1-7.png"],
+    { id: "1", url: product_images["product-0001"]["lil-edit-product-0001-1-1.png"], isPrimary: true },
+    { id: "2", url: product_images["product-0001"]["lil-edit-product-0001-1-2.png"] },
+    { id: "3", url: product_images["product-0001"]["lil-edit-product-0001-1-3.png"] },
+    { id: "4", url: product_images["product-0001"]["lil-edit-product-0001-1-4.png"] },
+    { id: "5", url: product_images["product-0001"]["lil-edit-product-0001-1-5.png"] },
+    { id: "6", url: product_images["product-0001"]["lil-edit-product-0001-1-6.png"] },
+    { id: "7", url: product_images["product-0001"]["lil-edit-product-0001-1-7.png"] },
   ],
   sizes: ["6-12 Months", "1-2 Years", "2-3 Years", "3-4 Years"],
   colors: [
-    { name: "White", hex: "#FFFFFF" },
-    { name: "Black", hex: "#000000" },
+    { 
+      name: "Lavender", 
+      hex: "#B19CD9", 
+      sku: "EDIT-ETHNIC-102-LAV", 
+      stock: 12,
+      images: [
+        { id: "lav-1", url: product_images["product-0001"]["lil-edit-product-0001-1-1.png"] },
+        { id: "lav-2", url: product_images["product-0001"]["lil-edit-product-0001-1-2.png"] }
+      ]
+    },
+    { 
+      name: "White", 
+      hex: "#FFFFFF", 
+      sku: "EDIT-ETHNIC-102-WHT", 
+      stock: 5,
+      images: [
+        { id: "wht-1", url: product_images["product-0001"]["lil-edit-product-0001-1-3.png"] }
+      ]
+    },
   ],
   featured: true,
   newArrival: false,
