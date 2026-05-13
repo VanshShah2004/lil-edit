@@ -170,7 +170,7 @@ export default function ProductDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col pt-[calc(var(--navbar-height)+15px)]">
       {user ? <UserNavbar /> : <Navbar />}
 
       {/* Breadcrumb */}

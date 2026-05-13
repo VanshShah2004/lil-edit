@@ -135,7 +135,7 @@ const Navbar = () => {
         </div>
       )}
 
-      {!isProductPage && <MegaMenu />}
+      <MegaMenu />
       <SearchPanel isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </header>
   );

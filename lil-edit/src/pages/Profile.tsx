@@ -223,7 +223,7 @@ export default function Profile() {
     <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
       {user ? <UserNavbar /> : <Navbar />}
 
-      <main className="flex-grow pt-[7rem] md:pt-[6rem] pb-16 px-4 sm:px-6 lg:px-8">
+      <main className="flex-grow pt-[calc(var(--navbar-height)+15px)] pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
           <div className="mb-10 text-center">
             <h1 className="flex items-center justify-center gap-2 text-3xl md:text-4xl font-display text-teal-700 mb-3 font-semibold">

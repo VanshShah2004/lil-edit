@@ -30,7 +30,7 @@ const UserNavbar = () => {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const hideMegaMenu = location.pathname.startsWith("/product") || location.pathname.startsWith("/profile");
+  const hideMegaMenu = false;
   const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
   const firstNameCandidate =
     (typeof metadata.first_name === "string" && metadata.first_name.trim()) ||
