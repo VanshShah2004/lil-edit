@@ -110,7 +110,7 @@ const HEX_TO_NAME = Object.fromEntries(
   Object.entries(COLOR_MAP).map(([name, hex]) => [hex.toUpperCase(), name])
 );
 
-/** Payload shape expected by `backend/routes/products.ts` HTML preview. */
+/** Payload shape stored by `backend/routes/products.ts` (raw JSON). */
 function buildCurationPayload(formData: FormData, imagePreviews: string[]): Record<string, unknown> {
   return {
     name: formData.name,
@@ -510,7 +510,7 @@ const AddProduct = () => {
       const mappedProduct = mapFormDataToProduct(formData, imagePreviews);
       setSavedPreviewProduct(mappedProduct);
       setPreviewActivated(true);
-      toast.success("Draft sent to backend — preview opened in a new tab.");
+      toast.success("Draft sent to backend — JSON opened in a new tab.");
     } catch (e) {
       previewTab?.close();
       toast.error(e instanceof Error ? e.message : "Could not reach the backend. Is it running on port 5000?");
@@ -529,7 +529,7 @@ const AddProduct = () => {
       const mappedProduct = mapFormDataToProduct(formData, imagePreviews);
       setSavedPreviewProduct(mappedProduct);
       setPreviewActivated(true);
-      toast.success("Product launched — preview opened on the backend URL.");
+      toast.success("Product launched — JSON opened on the backend URL.");
     } catch (e) {
       previewTab?.close();
       toast.error(e instanceof Error ? e.message : "Could not reach the backend. Is it running on port 5000?");
