@@ -203,6 +203,14 @@ const AddProduct = () => {
   const [activeImageTab, setActiveImageTab] = useState<"Global" | string>("Global");
   const [isDirty, setIsDirty] = useState(false); // Track unsaved changes
 
+  const toTitleCase = (str: string) => {
+    return str
+      .toLowerCase()
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -283,13 +291,16 @@ const AddProduct = () => {
         }
       }
 
+      // Apply Title Case (e.g. red -> Red)
+      const formattedName = toTitleCase(name);
+
       const baseSku = formData.sku || "SKU-CAT";
-      const variantSku = generateColorSku(baseSku, name);
+      const variantSku = generateColorSku(baseSku, formattedName);
 
       setFormData(prev => ({
         ...prev,
         selectedColors: [...prev.selectedColors, { 
-          name, 
+          name: formattedName, 
           hex, 
           sku: variantSku, 
           stock: 0, 
@@ -1032,7 +1043,14 @@ const AddProduct = () => {
                                     Specific Images
                                   </div>
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); setActiveImageTab(color.name); }}
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      setActiveImageTab(color.name);
+                                      document.getElementById('image-studio')?.scrollIntoView({ behavior: 'smooth' });
+                                      setTimeout(() => {
+                                        fileInputRef.current?.click();
+                                      }, 300);
+                                    }}
                                     className="w-full py-3 px-6 rounded-full bg-[#F9F8FA] hover:bg-primary hover:text-white border border-border/40 hover:border-primary text-primary text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/20"
                                   >
                                     Edit Gallery
@@ -1066,7 +1084,7 @@ const AddProduct = () => {
 
                 {/* Image Assets Card */}
                 <div className="space-y-6">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4" id="image-studio">
                     <div className="w-2 h-2 rounded-full bg-primary" />
                     <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Image Studio</h2>
                   </div>
