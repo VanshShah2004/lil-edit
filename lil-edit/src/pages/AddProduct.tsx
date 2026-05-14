@@ -140,12 +140,17 @@ function buildCurationPayload(formData: FormData, imagePreviews: string[]): Reco
   };
 }
 
+type PersistDatabaseResult =
+  | { ok: true; draftProductId?: string; publishedProductId?: string }
+  | { ok: false; skipped: true; reason: string }
+  | { ok: false; error: string };
+
 async function sendCurationToBackend(
   status: "DRAFT" | "PUBLISHED",
   formData: FormData,
   imagePreviews: string[],
   previewWindow: Window | null
-): Promise<void> {
+): Promise<{ database?: PersistDatabaseResult }> {
   const base = getBackendBaseUrl();
   const body = { status, ...buildCurationPayload(formData, imagePreviews) };
   const res = await fetch(`${base}/api/products/preview`, {
@@ -153,14 +158,23 @@ async function sendCurationToBackend(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  let json: { ok?: boolean; previewPath?: string; message?: string } = {};
+  let json: {
+    ok?: boolean;
+    previewPath?: string;
+    message?: string;
+    database?: PersistDatabaseResult;
+  } = {};
   try {
     json = (await res.json()) as typeof json;
   } catch {
     /* non-JSON body */
   }
   if (!res.ok) {
-    throw new Error(json.message || `Backend error (${res.status})`);
+    throw new Error(
+      (json.database && "error" in json.database ? json.database.error : undefined) ||
+        json.message ||
+        `Backend error (${res.status})`
+    );
   }
   const path = json.previewPath ?? "/api/products/preview";
   const viewUrl = `${base}${path}`;
@@ -174,6 +188,7 @@ async function sendCurationToBackend(
       throw new Error("Popup blocked — allow popups for this site or open the preview URL from the toast.");
     }
   }
+  return { database: json.database };
 }
 
 const mapFormDataToProduct = (formData: FormData, imagePreviews: string[]): Product => {
@@ -506,11 +521,15 @@ const AddProduct = () => {
     const previewTab = window.open("about:blank", "_blank");
     setIsSaving(true);
     try {
-      await sendCurationToBackend("DRAFT", formData, imagePreviews, previewTab);
+      const { database } = await sendCurationToBackend("DRAFT", formData, imagePreviews, previewTab);
       const mappedProduct = mapFormDataToProduct(formData, imagePreviews);
       setSavedPreviewProduct(mappedProduct);
       setPreviewActivated(true);
-      toast.success("Draft sent to backend — JSON opened in a new tab.");
+      if (database && database.ok === false && "skipped" in database && database.skipped) {
+        toast.success(`JSON opened. ${database.reason}`);
+      } else {
+        toast.success("Draft saved to Supabase (draft tables) — JSON opened in a new tab.");
+      }
     } catch (e) {
       previewTab?.close();
       toast.error(e instanceof Error ? e.message : "Could not reach the backend. Is it running on port 5000?");
@@ -525,11 +544,15 @@ const AddProduct = () => {
     const previewTab = window.open("about:blank", "_blank");
     setIsPublishing(true);
     try {
-      await sendCurationToBackend("PUBLISHED", formData, imagePreviews, previewTab);
+      const { database } = await sendCurationToBackend("PUBLISHED", formData, imagePreviews, previewTab);
       const mappedProduct = mapFormDataToProduct(formData, imagePreviews);
       setSavedPreviewProduct(mappedProduct);
       setPreviewActivated(true);
-      toast.success("Product launched — JSON opened on the backend URL.");
+      if (database && database.ok === false && "skipped" in database && database.skipped) {
+        toast.success(`JSON opened. ${database.reason}`);
+      } else {
+        toast.success("Product published to Supabase (removed from drafts) — JSON opened.");
+      }
     } catch (e) {
       previewTab?.close();
       toast.error(e instanceof Error ? e.message : "Could not reach the backend. Is it running on port 5000?");

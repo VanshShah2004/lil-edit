@@ -1,4 +1,9 @@
 import { Router, type Request, type Response } from "express";
+import {
+  isSupabaseCatalogConfigured,
+  launchProductToDatabase,
+  saveDraftToDatabase,
+} from "../lib/persistCatalog.js";
 
 const router = Router();
 
@@ -15,12 +20,14 @@ function buildPublicPayload(): Record<string, unknown> | null {
   return { status: lastProduct.status, receivedAt: lastProduct.receivedAt, ...lastProduct.data };
 }
 
-// POST /api/products/preview — Curation Studio submits product JSON
-router.post("/preview", (req: Request, res: Response) => {
+// POST /api/products/preview — Curation Studio + optional Supabase persistence
+router.post("/preview", async (req: Request, res: Response) => {
   const { status, ...data } = req.body as { status: string; [key: string]: unknown };
 
+  const normalized: "DRAFT" | "PUBLISHED" = status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
+
   lastProduct = {
-    status: status === "PUBLISHED" ? "PUBLISHED" : "DRAFT",
+    status: normalized,
     receivedAt: new Date().toISOString(),
     data,
   };
@@ -31,10 +38,52 @@ router.post("/preview", (req: Request, res: Response) => {
 
   const previewPath = "/api/products/preview";
   const payload = buildPublicPayload();
-  res.json({ ok: true, status: lastProduct.status, previewPath, payload });
+
+  let database:
+    | { ok: true; draftProductId?: string; publishedProductId?: string }
+    | { ok: false; skipped: true; reason: string }
+    | { ok: false; error: string } = { ok: false, skipped: true, reason: "not_configured" };
+
+  if (isSupabaseCatalogConfigured()) {
+    try {
+      if (normalized === "DRAFT") {
+        const { draftProductId } = await saveDraftToDatabase(data);
+        database = { ok: true, draftProductId };
+      } else {
+        const { publishedProductId } = await launchProductToDatabase(data);
+        database = { ok: true, publishedProductId };
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[Products] Supabase persist failed:", message);
+      database = { ok: false, error: message };
+      res.status(500).json({
+        ok: false,
+        status: normalized,
+        previewPath,
+        payload,
+        database,
+      });
+      return;
+    }
+  } else {
+    database = {
+      ok: false,
+      skipped: true,
+      reason:
+        "Set SUPABASE_SERVICE_ROLE_KEY (or VITE_SUPABASE_SERVICE_KEY) in backend/.env to persist drafts and launches.",
+    };
+  }
+
+  res.json({
+    ok: true,
+    status: lastProduct.status,
+    previewPath,
+    payload,
+    database,
+  });
 });
 
-// GET /api/products/preview — raw JSON only (browser / curl)
 router.get("/preview", (_req: Request, res: Response) => {
   const payload = buildPublicPayload();
   if (!payload) {
