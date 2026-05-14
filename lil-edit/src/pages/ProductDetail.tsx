@@ -223,11 +223,11 @@ export default function ProductDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col pt-[calc(var(--navbar-height)+15px)]">
+    <div className="min-h-screen bg-white flex flex-col pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)]">
       {user ? <UserNavbar /> : <Navbar />}
 
       {/* Breadcrumb */}
-      <div className="page-container py-3 sm:py-4 text-sm text-gray-500">
+      <div className="page-container pt-1 pb-6 sm:pb-8 text-sm text-gray-500">
         <Link to="/" className="hover:text-slate-900 transition-colors">Home</Link>
         <ChevronRight className="inline w-4 h-4 mx-1" />
         <Link to={`/collections/${product.categorySlug}`} className="hover:text-slate-900 transition-colors">
@@ -451,10 +451,10 @@ export default function ProductDetail() {
                 className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all shrink-0 snap-start w-[240px] sm:w-auto"
               >
                 <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5">
-                  <img 
-                    src={item.image} 
-                    alt={item.title} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
                   />
                   <button className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-teal-600 transition-all">

@@ -151,10 +151,10 @@ const ProductPreviewView = ({
 
   return (
     <div className={`${compact ? "p-3" : "p-0"} ${mobileOnly ? "pt-3 px-3" : ""} bg-white`}>
-      <div className={`flex ${compact || mobileOnly ? "flex-col gap-5" : "flex-col md:flex-row gap-8 md:gap-12"}`}>
+      <div className={`flex ${compact || mobileOnly ? "flex-col gap-3" : "flex-col md:flex-row gap-4 md:gap-8 lg:gap-12"}`}>
         <div className={`w-full ${mobileOnly ? "block pt-1" : "md:hidden"}`}>
           <p className="text-xs leading-[1.35] font-bold uppercase tracking-[0.2em] bg-gradient-to-r from-[#0B5B55] to-primary bg-clip-text text-transparent mb-2 w-fit">{product.brand}</p>
-          <h1 className={`${compact ? "text-lg" : "text-2xl"} font-semibold text-slate-900 leading-snug mb-3`}>
+          <h1 className={`${compact ? "text-lg" : "text-2xl"} font-semibold text-slate-900 leading-tight mb-2`}>
             {product.title}
           </h1>
         </div>
