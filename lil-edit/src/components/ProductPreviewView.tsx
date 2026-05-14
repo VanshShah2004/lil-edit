@@ -262,7 +262,7 @@ const ProductPreviewView = ({
 
           <div className="mb-5">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium">Color: <span className="text-muted-foreground font-normal">{activeColor?.name}</span></p>
+              <p className="text-sm font-medium">Color: <span className="text-[#0B5B55] font-semibold">{activeColor?.name}</span></p>
               <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${stockStatus.class}`}>
                 {stockStatus.label}
               </span>
@@ -287,7 +287,7 @@ const ProductPreviewView = ({
                       />
                     )}
                   </div>
-                  <span className={`mt-2 text-[10px] transition-colors ${activeColor?.name === color.name ? "text-primary font-bold" : "text-slate-500"}`}>
+                  <span className={`mt-2 text-[10px] transition-colors ${activeColor?.name === color.name ? "text-[#0B5B55] font-bold" : "text-slate-500"}`}>
                     {color.name}
                   </span>
                 </button>

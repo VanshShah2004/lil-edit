@@ -8,6 +8,14 @@ import product_images from "@/assets/products";
 import ProductPreviewView from "@/components/ProductPreviewView";
 import type { Product } from "@/types/product";
 
+import le0 from "@/assets/searchbar-frequent_searches/le-0.png";
+import le1 from "@/assets/searchbar-frequent_searches/le-1.png";
+import le2 from "@/assets/searchbar-frequent_searches/le-2.png";
+import le3 from "@/assets/searchbar-frequent_searches/le-3.png";
+import le4 from "@/assets/searchbar-frequent_searches/le-4.png";
+import le5 from "@/assets/searchbar-frequent_searches/le-5.png";
+import le6 from "@/assets/searchbar-frequent_searches/le-6.png";
+
 const LAVENDER = "#B19CD9";
 const TEAL = "#0B5B55";
 const TEAL_DARK = "#08423E";
@@ -58,23 +66,29 @@ const product: Product & { reviewsData: any } = {
   ],
   sizes: ["6-12 Months", "1-2 Years", "2-3 Years", "3-4 Years"],
   colors: [
-    { 
-      name: "Lavender", 
-      hex: "#B19CD9", 
-      sku: "EDIT-ETHNIC-102-LAV", 
+    {
+      name: "Lavender",
+      hex: "#B19CD9",
+      sku: "EDIT-ETHNIC-102-LAV",
       stock: 12,
       images: [
         { id: "lav-1", url: product_images["product-0001"]["lil-edit-product-0001-1-1.png"] },
         { id: "lav-2", url: product_images["product-0001"]["lil-edit-product-0001-1-2.png"] }
       ]
     },
-    { 
-      name: "White", 
-      hex: "#FFFFFF", 
-      sku: "EDIT-ETHNIC-102-WHT", 
+    {
+      name: "White",
+      hex: "#FFFFFF",
+      sku: "EDIT-ETHNIC-102-WHT",
       stock: 5,
       images: [
-        { id: "wht-1", url: product_images["product-0001"]["lil-edit-product-0001-1-3.png"] }
+        { id: "wht-0", url: le0 },
+        { id: "wht-1", url: le1 },
+        { id: "wht-2", url: le2 },
+        { id: "wht-3", url: le3 },
+        { id: "wht-4", url: le4 },
+        { id: "wht-5", url: le5 },
+        { id: "wht-6", url: le6 },
       ]
     },
   ],
@@ -213,7 +227,7 @@ export default function ProductDetail() {
 
       {/* Breadcrumb */}
       <div className="page-container py-3 sm:py-4 text-sm text-gray-500">
-        <Link to="/" className="hover:text-slate-900 transition-colors">Home</Link> 
+        <Link to="/" className="hover:text-slate-900 transition-colors">Home</Link>
         <ChevronRight className="inline w-4 h-4 mx-1" />
         <Link to={`/collections/${product.categorySlug}`} className="hover:text-slate-900 transition-colors">
           {product.category}
