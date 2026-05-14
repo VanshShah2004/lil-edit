@@ -1,5 +1,16 @@
+const CATEGORY_MAP: Record<string, string> = {
+  "Kids Ethnic Wear": "ETHNIC",
+  "Party Wear": "PARTY",
+  "Casual Wear": "CASUAL",
+  "Nightwear": "NIGHT",
+  "Accessories": "ACC",
+};
+
 export const generateCategoryCode = (category: string): string => {
-  // Remove spaces and special chars, take first 4 letters or first letters of each word
+  // Check for explicit mapping first
+  if (CATEGORY_MAP[category]) return CATEGORY_MAP[category];
+
+  // Fallback to original logic
   const clean = category.replace(/[^a-zA-Z]/g, "").toUpperCase();
   if (clean.length <= 4) return clean;
   
@@ -15,9 +26,19 @@ export const generateColorCode = (colorName: string): string => {
   return colorName.replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase();
 };
 
-export const generateBaseSku = (category: string, uniqueNumber: string | number): string => {
-  const catCode = generateCategoryCode(category);
-  return `EDIT-${catCode}-${uniqueNumber}`;
+export const generateGenderCode = (gender: string): string => {
+  const map: Record<string, string> = {
+    "Boys": "BOY",
+    "Girls": "GIRL",
+    "Unisex": "UNI"
+  };
+  return map[gender] || "GEN";
+};
+
+export const generateBaseSku = (category: string, gender: string, uniqueNumber: string | number): string => {
+  const catCode = category ? generateCategoryCode(category) : "CAT";
+  const genCode = gender ? generateGenderCode(gender) : "GEN";
+  return `EDIT-${catCode}-${genCode}-${uniqueNumber}`;
 };
 
 export const generateColorSku = (baseSku: string, colorName: string): string => {

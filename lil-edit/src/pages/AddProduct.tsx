@@ -127,7 +127,7 @@ const mapFormDataToProduct = (formData: FormData, imagePreviews: string[]): Prod
   return {
     title: formData.name || "Untitled Product",
     brand: formData.brand || "The Lil Edit",
-    sku: formData.sku || "SKU-DRAFT",
+    sku: formData.sku || "SKU-CAT",
     category: formData.category || "General",
     gender: formData.gender || "Unisex",
     price: Number(formData.price) || 0,
@@ -185,11 +185,16 @@ const AddProduct = () => {
     customBadges: [],
   });
 
+  // In a real system, this would be fetched from the backend based on the last product ID
+  // For this prototype, we'll start at 0001 and pad to 4 digits
+  const [nextProductId] = useState("0001");
+
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [savedPreviewProduct, setSavedPreviewProduct] = useState<Product | null>(null);
   const [previewActivated, setPreviewActivated] = useState(false);
   const [activeImageTab, setActiveImageTab] = useState<"Global" | string>("Global");
+  const [isDirty, setIsDirty] = useState(false); // Track unsaved changes
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -197,6 +202,7 @@ const AddProduct = () => {
       ...prev,
       [name]: value,
     }));
+    setIsDirty(true);
   };
 
   const handleToggle = (field: keyof FormData) => {
@@ -204,6 +210,7 @@ const AddProduct = () => {
       ...prev,
       [field]: !prev[field],
     }));
+    setIsDirty(true);
   };
 
   const addDescriptionPoint = () => {
@@ -213,6 +220,7 @@ const AddProduct = () => {
         descriptionPoints: [...prev.descriptionPoints, newPoint.trim()]
       }));
       setNewPoint("");
+      setIsDirty(true);
     }
   };
 
@@ -221,6 +229,7 @@ const AddProduct = () => {
       ...prev,
       descriptionPoints: prev.descriptionPoints.filter((_, i) => i !== index)
     }));
+    setIsDirty(true);
   };
 
   const toggleSize = (size: string) => {
@@ -230,6 +239,7 @@ const AddProduct = () => {
         ? prev.selectedSizes.filter((s) => s !== size)
         : [...prev.selectedSizes, size],
     }));
+    setIsDirty(true);
   };
 
   const addColor = () => {
@@ -266,7 +276,7 @@ const AddProduct = () => {
         }
       }
 
-      const baseSku = formData.sku || "SKU-DRAFT";
+      const baseSku = formData.sku || "SKU-CAT";
       const variantSku = generateColorSku(baseSku, name);
 
       setFormData(prev => ({
@@ -290,6 +300,7 @@ const AddProduct = () => {
         c.name === colorName ? { ...c, stock } : c
       )
     }));
+    setIsDirty(true);
   };
 
   const toggleImageInVariant = (colorName: string, imageUrl: string) => {
@@ -308,6 +319,7 @@ const AddProduct = () => {
         return c;
       })
     }));
+    setIsDirty(true);
   };
 
   const removeColor = (colorName: string) => {
@@ -315,6 +327,7 @@ const AddProduct = () => {
       ...prev,
       selectedColors: prev.selectedColors.filter(c => c.name !== colorName)
     }));
+    setIsDirty(true);
   };
 
   const addTag = () => {
@@ -324,6 +337,7 @@ const AddProduct = () => {
         tags: [...prev.tags, newTag.trim()]
       }));
       setNewTag("");
+      setIsDirty(true);
     }
   };
 
@@ -332,12 +346,14 @@ const AddProduct = () => {
       ...prev,
       tags: prev.tags.filter(t => t !== tag)
     }));
+    setIsDirty(true);
   };
 
   const createBadge = () => {
     if (newBadgeName.trim() && !availableCustomBadges.includes(newBadgeName.trim())) {
       setAvailableCustomBadges(prev => [...prev, newBadgeName.trim()]);
       setNewBadgeName("");
+      setIsDirty(true);
     }
   };
 
@@ -348,6 +364,7 @@ const AddProduct = () => {
         ? prev.customBadges.filter(b => b !== badge)
         : [...prev.customBadges, badge]
     }));
+    setIsDirty(true);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -379,6 +396,7 @@ const AddProduct = () => {
       };
       reader.readAsDataURL(file);
     });
+    setIsDirty(true);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -404,6 +422,7 @@ const AddProduct = () => {
         )
       }));
     }
+    setIsDirty(true);
   };
 
   const calculateDiscount = () => {
@@ -414,13 +433,30 @@ const AddProduct = () => {
     return Math.round(((original - selling) / original) * 100);
   };
 
+  const validateForm = () => {
+    const missingFields: string[] = [];
+    if (!formData.name.trim()) missingFields.push("Product Title");
+    if (!formData.category) missingFields.push("Category");
+    if (!formData.gender) missingFields.push("Gender Category");
+    if (!formData.sku.trim()) missingFields.push("Product Base Identifier");
+
+    if (missingFields.length > 0) {
+      alert(`Required Details Missing: \n\nPlease provide: ${missingFields.join(", ")}`);
+      return false;
+    }
+    return true;
+  };
+
   const handleSaveDraft = async () => {
+    if (!validateForm()) return;
+    
     setIsSaving(true);
     try {
       const mappedProduct = mapFormDataToProduct(formData, imagePreviews);
       setSavedPreviewProduct(mappedProduct);
       setPreviewActivated(true);
       await new Promise((resolve) => setTimeout(resolve, 1000));
+      setIsDirty(false); // Reset dirty state on save
       console.log("Draft saved:", formData);
     } finally {
       setIsSaving(false);
@@ -428,6 +464,8 @@ const AddProduct = () => {
   };
 
   const handlePublish = async () => {
+    if (!validateForm()) return;
+
     setIsPublishing(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -456,6 +494,12 @@ const AddProduct = () => {
       }));
     }
   }, [formData.sku]);
+
+  // Reactive Base SKU generation when category or gender changes
+  useEffect(() => {
+    const newBaseSku = generateBaseSku(formData.category, formData.gender, nextProductId);
+    setFormData(prev => ({ ...prev, sku: newBaseSku }));
+  }, [formData.category, formData.gender, nextProductId]);
 
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -783,13 +827,13 @@ const AddProduct = () => {
                       <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
                         Product Base Identifier
                       </label>
-                      <input
+                       <input
                         type="text"
                         name="sku"
                         value={formData.sku}
-                        onChange={handleInputChange}
-                        placeholder="e.g. EDIT-ETHNIC-101"
-                        className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
+                        readOnly
+                        placeholder="Generated SKU..."
+                        className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F5F4F6] text-muted-foreground cursor-not-allowed outline-none transition-all duration-300 font-mono text-[13px] tracking-wider"
                       />
                     </motion.div>
                   </div>
@@ -962,14 +1006,14 @@ const AddProduct = () => {
                                 </div>
                               </div>
 
-                              {/* Right side: Asset Management */}
+                              {/* Right side: Image Management */}
                               <div className="lg:w-48 flex flex-col items-center justify-center lg:border-l border-border/10 lg:pl-10">
                                 <div className="text-center group/assets cursor-pointer" onClick={() => setActiveImageTab(color.name)}>
                                   <div className="text-4xl font-display font-medium text-primary mb-1 transition-transform duration-500 group-hover/assets:scale-110">
                                     {color.images.length}
                                   </div>
                                   <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground/40 mb-6">
-                                    Visual Assets
+                                    Specific Images
                                   </div>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setActiveImageTab(color.name); }}
@@ -1004,11 +1048,11 @@ const AddProduct = () => {
                   </div>
                 </div>
 
-                {/* Merchandising Assets Card */}
+                {/* Image Assets Card */}
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full bg-primary" />
-                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Merchandising Studio</h2>
+                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Image Studio</h2>
                   </div>
 
                   <div className="bg-white rounded-[2.5rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
@@ -1023,7 +1067,7 @@ const AddProduct = () => {
                               : "text-muted-foreground/60 hover:text-primary"
                           }`}
                         >
-                          Global Assets
+                          Global Images
                         </button>
                         {formData.selectedColors.map((color) => (
                           <button
@@ -1270,11 +1314,15 @@ const AddProduct = () => {
                   </motion.button>
 
                   <motion.button
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={!isDirty ? { scale: 1.02, y: -2 } : {}}
+                    whileTap={!isDirty ? { scale: 0.98 } : {}}
                     onClick={handlePublish}
-                    disabled={isPublishing}
-                    className="flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-primary text-white font-bold uppercase tracking-widest text-xs hover:brightness-95 transition-all duration-300 shadow-xl shadow-primary/20 disabled:opacity-50"
+                    disabled={isPublishing || isDirty || !previewActivated || !formData.name || !formData.category || !formData.gender || !formData.sku}
+                    className={`flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full font-bold uppercase tracking-widest text-xs transition-all duration-300 shadow-xl ${
+                      isDirty || !previewActivated || !formData.name || !formData.category || !formData.gender || !formData.sku
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none border border-gray-200"
+                        : "bg-primary text-white hover:brightness-95 shadow-primary/20"
+                    } disabled:opacity-50`}
                   >
                     {isPublishing ? (
                       <Loader className="w-4 h-4 animate-spin" />
