@@ -4,12 +4,12 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRouter from "./routes/auth.js";
+import productsRouter from "./routes/products.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, ".env") });
 
 const app = express();
-app.use(express.json());
 
 const origin =
   process.env.CORS_ORIGIN?.split(",").map((o) => o.trim()).filter(Boolean) ?? [
@@ -26,7 +26,11 @@ app.use(
   })
 );
 
+// Large limit: Curation Studio sends base64 image data URLs in the payload.
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT ?? "50mb" }));
+
 app.use("/api/auth", authRouter);
+app.use("/api/products", productsRouter);
 
 app.get("/", (_req, res) => {
   res.json({ ok: true, message: "new-ecomm backend" });

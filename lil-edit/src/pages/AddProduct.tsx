@@ -23,6 +23,8 @@ import ProductPreviewView from "@/components/ProductPreviewView";
 import type { Product, ProductImage, ProductColor } from "@/types/product";
 import { generateBaseSku, generateColorSku } from "@/utils/sku";
 import { slugify } from "@/utils/slug";
+import { getBackendBaseUrl } from "@/lib/backend";
+import { toast } from "sonner";
 
 const SIZES = [
   "6-12 Months",
@@ -107,6 +109,72 @@ const COLOR_MAP: Record<string, string> = {
 const HEX_TO_NAME = Object.fromEntries(
   Object.entries(COLOR_MAP).map(([name, hex]) => [hex.toUpperCase(), name])
 );
+
+/** Payload shape expected by `backend/routes/products.ts` HTML preview. */
+function buildCurationPayload(formData: FormData, imagePreviews: string[]): Record<string, unknown> {
+  return {
+    name: formData.name,
+    brand: formData.brand,
+    sku: formData.sku,
+    slug: formData.slug,
+    categorySlug: formData.categorySlug,
+    category: formData.category,
+    gender: formData.gender,
+    price: formData.price,
+    originalPrice: formData.originalPrice,
+    stock: formData.stock,
+    fabric: formData.fabric,
+    fit: formData.fit,
+    occasion: formData.occasion,
+    care: formData.care,
+    descriptionPoints: formData.descriptionPoints,
+    tags: formData.tags,
+    selectedSizes: formData.selectedSizes,
+    selectedColors: formData.selectedColors,
+    customBadges: formData.customBadges,
+    featured: formData.featured,
+    newArrival: formData.newArrival,
+    bestseller: formData.bestseller,
+    trending: formData.trending,
+    imagePreviews,
+  };
+}
+
+async function sendCurationToBackend(
+  status: "DRAFT" | "PUBLISHED",
+  formData: FormData,
+  imagePreviews: string[],
+  previewWindow: Window | null
+): Promise<void> {
+  const base = getBackendBaseUrl();
+  const body = { status, ...buildCurationPayload(formData, imagePreviews) };
+  const res = await fetch(`${base}/api/products/preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  let json: { ok?: boolean; previewPath?: string; message?: string } = {};
+  try {
+    json = (await res.json()) as typeof json;
+  } catch {
+    /* non-JSON body */
+  }
+  if (!res.ok) {
+    throw new Error(json.message || `Backend error (${res.status})`);
+  }
+  const path = json.previewPath ?? "/api/products/preview";
+  const viewUrl = `${base}${path}`;
+  // Do not use `noopener` on the placeholder open — it makes `window.open` return `null`,
+  // so the tab stays on about:blank and the post-fetch navigation never runs.
+  if (previewWindow && !previewWindow.closed) {
+    previewWindow.location.href = viewUrl;
+  } else {
+    const w = window.open(viewUrl, "_blank");
+    if (!w) {
+      throw new Error("Popup blocked — allow popups for this site or open the preview URL from the toast.");
+    }
+  }
+}
 
 const mapFormDataToProduct = (formData: FormData, imagePreviews: string[]): Product => {
   const productImages: ProductImage[] = imagePreviews.map((url, index) => ({
@@ -201,7 +269,6 @@ const AddProduct = () => {
   const [savedPreviewProduct, setSavedPreviewProduct] = useState<Product | null>(null);
   const [previewActivated, setPreviewActivated] = useState(false);
   const [activeImageTab, setActiveImageTab] = useState<"Global" | string>("Global");
-  const [isDirty, setIsDirty] = useState(false); // Track unsaved changes
 
   const toTitleCase = (str: string) => {
     return str
@@ -217,7 +284,6 @@ const AddProduct = () => {
       ...prev,
       [name]: value,
     }));
-    setIsDirty(true);
   };
 
   const handleToggle = (field: keyof FormData) => {
@@ -225,7 +291,6 @@ const AddProduct = () => {
       ...prev,
       [field]: !prev[field],
     }));
-    setIsDirty(true);
   };
 
   const addDescriptionPoint = () => {
@@ -235,7 +300,6 @@ const AddProduct = () => {
         descriptionPoints: [...prev.descriptionPoints, newPoint.trim()]
       }));
       setNewPoint("");
-      setIsDirty(true);
     }
   };
 
@@ -244,7 +308,6 @@ const AddProduct = () => {
       ...prev,
       descriptionPoints: prev.descriptionPoints.filter((_, i) => i !== index)
     }));
-    setIsDirty(true);
   };
 
   const toggleSize = (size: string) => {
@@ -254,7 +317,6 @@ const AddProduct = () => {
         ? prev.selectedSizes.filter((s) => s !== size)
         : [...prev.selectedSizes, size],
     }));
-    setIsDirty(true);
   };
 
   const addColor = () => {
@@ -318,26 +380,6 @@ const AddProduct = () => {
         c.name === colorName ? { ...c, stock } : c
       )
     }));
-    setIsDirty(true);
-  };
-
-  const toggleImageInVariant = (colorName: string, imageUrl: string) => {
-    setFormData(prev => ({
-      ...prev,
-      selectedColors: prev.selectedColors.map(c => {
-        if (c.name === colorName) {
-          const exists = c.images.includes(imageUrl);
-          return {
-            ...c,
-            images: exists 
-              ? c.images.filter(img => img !== imageUrl)
-              : [...c.images, imageUrl]
-          };
-        }
-        return c;
-      })
-    }));
-    setIsDirty(true);
   };
 
   const removeColor = (colorName: string) => {
@@ -345,7 +387,6 @@ const AddProduct = () => {
       ...prev,
       selectedColors: prev.selectedColors.filter(c => c.name !== colorName)
     }));
-    setIsDirty(true);
   };
 
   const addTag = () => {
@@ -355,7 +396,6 @@ const AddProduct = () => {
         tags: [...prev.tags, newTag.trim()]
       }));
       setNewTag("");
-      setIsDirty(true);
     }
   };
 
@@ -364,14 +404,12 @@ const AddProduct = () => {
       ...prev,
       tags: prev.tags.filter(t => t !== tag)
     }));
-    setIsDirty(true);
   };
 
   const createBadge = () => {
     if (newBadgeName.trim() && !availableCustomBadges.includes(newBadgeName.trim())) {
       setAvailableCustomBadges(prev => [...prev, newBadgeName.trim()]);
       setNewBadgeName("");
-      setIsDirty(true);
     }
   };
 
@@ -382,7 +420,6 @@ const AddProduct = () => {
         ? prev.customBadges.filter(b => b !== badge)
         : [...prev.customBadges, badge]
     }));
-    setIsDirty(true);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -414,7 +451,6 @@ const AddProduct = () => {
       };
       reader.readAsDataURL(file);
     });
-    setIsDirty(true);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -440,7 +476,6 @@ const AddProduct = () => {
         )
       }));
     }
-    setIsDirty(true);
   };
 
   const calculateDiscount = () => {
@@ -467,15 +502,18 @@ const AddProduct = () => {
 
   const handleSaveDraft = async () => {
     if (!validateForm()) return;
-    
+
+    const previewTab = window.open("about:blank", "_blank");
     setIsSaving(true);
     try {
+      await sendCurationToBackend("DRAFT", formData, imagePreviews, previewTab);
       const mappedProduct = mapFormDataToProduct(formData, imagePreviews);
       setSavedPreviewProduct(mappedProduct);
       setPreviewActivated(true);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setIsDirty(false); // Reset dirty state on save
-      console.log("Draft saved:", formData);
+      toast.success("Draft sent to backend — preview opened in a new tab.");
+    } catch (e) {
+      previewTab?.close();
+      toast.error(e instanceof Error ? e.message : "Could not reach the backend. Is it running on port 5000?");
     } finally {
       setIsSaving(false);
     }
@@ -484,10 +522,17 @@ const AddProduct = () => {
   const handlePublish = async () => {
     if (!validateForm()) return;
 
+    const previewTab = window.open("about:blank", "_blank");
     setIsPublishing(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log("Product published:", formData);
+      await sendCurationToBackend("PUBLISHED", formData, imagePreviews, previewTab);
+      const mappedProduct = mapFormDataToProduct(formData, imagePreviews);
+      setSavedPreviewProduct(mappedProduct);
+      setPreviewActivated(true);
+      toast.success("Product launched — preview opened on the backend URL.");
+    } catch (e) {
+      previewTab?.close();
+      toast.error(e instanceof Error ? e.message : "Could not reach the backend. Is it running on port 5000?");
     } finally {
       setIsPublishing(false);
     }
@@ -1348,12 +1393,18 @@ const AddProduct = () => {
                   </motion.button>
 
                   <motion.button
-                    whileHover={!isDirty ? { scale: 1.02, y: -2 } : {}}
-                    whileTap={!isDirty ? { scale: 0.98 } : {}}
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={handlePublish}
-                    disabled={isPublishing || isDirty || !previewActivated || !formData.name || !formData.category || !formData.gender || !formData.sku}
+                    disabled={
+                      isPublishing ||
+                      !formData.name ||
+                      !formData.category ||
+                      !formData.gender ||
+                      !formData.sku
+                    }
                     className={`flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full font-bold uppercase tracking-widest text-xs transition-all duration-300 shadow-xl ${
-                      isDirty || !previewActivated || !formData.name || !formData.category || !formData.gender || !formData.sku
+                      !formData.name || !formData.category || !formData.gender || !formData.sku
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none border border-gray-200"
                         : "bg-primary text-white hover:brightness-95 shadow-primary/20"
                     } disabled:opacity-50`}
