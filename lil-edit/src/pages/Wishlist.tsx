@@ -34,6 +34,8 @@ const wishlistItemsMock = [
   {
     id: "w1",
     name: "Embroidered Silk Lehenga",
+    slug: "embroidered-silk-lehenga",
+    categorySlug: "kids-ethnic-wear",
     brand: "Heritage Kids",
     price: 4500,
     originalPrice: 5200,
@@ -47,6 +49,8 @@ const wishlistItemsMock = [
   {
     id: "w2",
     name: "Floral Ruffle Party Dress",
+    slug: "floral-ruffle-party-dress",
+    categorySlug: "party-wear",
     brand: "Petit Bloom",
     price: 3200,
     originalPrice: 3200,
@@ -60,6 +64,8 @@ const wishlistItemsMock = [
   {
     id: "w3",
     name: "Classic Linen Shirt & Shorts Set",
+    slug: "classic-linen-shirt-and-shorts-set",
+    categorySlug: "casual-wear",
     brand: "The Lil Edit Co.",
     price: 2800,
     originalPrice: 3500,
@@ -73,6 +79,8 @@ const wishlistItemsMock = [
   {
     id: "w4",
     name: "Velvet Bow Headband",
+    slug: "velvet-bow-headband",
+    categorySlug: "accessories",
     brand: "Lil Accessories",
     price: 850,
     originalPrice: 1200,
@@ -87,36 +95,41 @@ const wishlistItemsMock = [
 
 const recommendedProducts = [
   {
-    id: "rec-1",
     title: "Blush Pink Net Indo-Western Gown",
+    slug: "blush-pink-net-indo-western-gown",
+    categorySlug: "party-wear",
     price: 5200,
     originalPrice: 6000,
     image: img3,
   },
   {
-    id: "rec-2",
     title: "Royal Blue Embroidered Party Set",
+    slug: "royal-blue-embroidered-party-set",
+    categorySlug: "party-wear",
     price: 4899,
     originalPrice: 5600,
     image: img4,
   },
   {
-    id: "rec-3",
     title: "Peach Floral Princess Dress",
+    slug: "peach-floral-princess-dress",
+    categorySlug: "party-wear",
     price: 3999,
     originalPrice: 4700,
     image: img5,
   },
   {
-    id: "rec-4",
     title: "Ivory Ethnic Festive Wear",
+    slug: "ivory-ethnic-festive-wear",
+    categorySlug: "kids-ethnic-wear",
     price: 5799,
     originalPrice: 6500,
     image: img6,
   },
   {
-    id: "rec-5",
     title: "Golden Silk Lehenga Collection",
+    slug: "golden-silk-lehenga-collection",
+    categorySlug: "kids-ethnic-wear",
     price: 6200,
     originalPrice: 7500,
     image: img1,
@@ -469,7 +482,7 @@ const WishlistPage = () => {
                     </button>
                     <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                       <Link
-                        to={`/product/${p.id}`}
+                        to={`/collections/${p.categorySlug}/product/${p.slug}`}
                         className="w-full py-1.5 bg-white/90 backdrop-blur text-gray-900 rounded-lg font-medium text-[10px] md:text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm block text-center"
                       >
                         View Details

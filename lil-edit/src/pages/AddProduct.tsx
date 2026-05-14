@@ -22,6 +22,7 @@ import Footer from "@/components/layout/Footer";
 import ProductPreviewView from "@/components/ProductPreviewView";
 import type { Product, ProductImage, ProductColor } from "@/types/product";
 import { generateBaseSku, generateColorSku } from "@/utils/sku";
+import { slugify } from "@/utils/slug";
 
 const SIZES = [
   "6-12 Months",
@@ -71,6 +72,8 @@ interface FormData {
   bestseller: boolean;
   trending: boolean;
   customBadges: string[];
+  slug: string;
+  categorySlug: string;
 }
 
 const COLOR_MAP: Record<string, string> = {
@@ -126,6 +129,8 @@ const mapFormDataToProduct = (formData: FormData, imagePreviews: string[]): Prod
 
   return {
     title: formData.name || "Untitled Product",
+    slug: formData.slug || slugify(formData.name || "Untitled Product"),
+    categorySlug: formData.categorySlug || slugify(formData.category || "General"),
     brand: formData.brand || "The Lil Edit",
     sku: formData.sku || "SKU-CAT",
     category: formData.category || "General",
@@ -183,6 +188,8 @@ const AddProduct = () => {
     bestseller: false,
     trending: false,
     customBadges: [],
+    slug: "",
+    categorySlug: "",
   });
 
   // In a real system, this would be fetched from the backend based on the last product ID
@@ -500,6 +507,15 @@ const AddProduct = () => {
     const newBaseSku = generateBaseSku(formData.category, formData.gender, nextProductId);
     setFormData(prev => ({ ...prev, sku: newBaseSku }));
   }, [formData.category, formData.gender, nextProductId]);
+
+  // Reactive Slug generation when name or category changes
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      slug: slugify(prev.name),
+      categorySlug: slugify(prev.category)
+    }));
+  }, [formData.name, formData.category]);
 
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -966,7 +982,7 @@ const AddProduct = () => {
                                 <div className="flex items-center gap-5">
                                   <div className="relative">
                                     <div
-                                      className="w-16 h-16 rounded-2xl border border-black/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] transition-all duration-700 group-hover:scale-110 group-hover:rotate-6"
+                                      className="w-16 h-16 rounded-2xl border border-black/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] transition-all duration-700 group-hover:scale-110"
                                       style={{ backgroundColor: color.hex }}
                                     />
                                     <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white shadow-sm border border-border/20 flex items-center justify-center">

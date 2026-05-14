@@ -15,6 +15,8 @@ export interface ProductColor {
 
 export interface Product {
   title: string;
+  slug: string;
+  categorySlug: string;
   brand: string;
   sku: string;
   category: string;

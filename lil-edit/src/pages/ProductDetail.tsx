@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { ChevronRight, Heart, Star, BadgeCheck, ThumbsUp } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
@@ -17,6 +17,8 @@ const BETWEEN_BLOCKS_GAP_PX = SWATCH_GAP_PX * 4; // 4x swatch gap
 // MOCK DATA
 const product: Product & { reviewsData: any } = {
   title: "Stunning Criss-Cross Back Knot Top And Crushed Sheen Lehenga",
+  slug: "stunning-criss-cross-back-knot-top-and-crushed-sheen-lehenga",
+  categorySlug: "kids-ethnic-wear",
   brand: "The Lil Edit",
   sku: "LIL-12345",
   category: "Kids Ethnic Wear",
@@ -143,36 +145,41 @@ const product: Product & { reviewsData: any } = {
 };
 const recommendedProducts = [
   {
-    id: "rec-1",
     title: "Lilac Embroidered Georgette Lehenga Set",
+    slug: "lilac-embroidered-georgette-lehenga-set",
+    categorySlug: "kids-ethnic-wear",
     price: 3500,
     originalPrice: 4200,
     image: product_images["product-0001"]["lil-edit-product-0001-1-2.png"]
   },
   {
-    id: "rec-2",
     title: "Mint Green Ruffle Trim Party Dress",
+    slug: "mint-green-ruffle-trim-party-dress",
+    categorySlug: "party-wear",
     price: 2999,
     originalPrice: 3599,
     image: product_images["product-0001"]["lil-edit-product-0001-1-3.png"]
   },
   {
-    id: "rec-3",
     title: "Ivory Organza Peplum Kurta with Dhoti Pants",
+    slug: "ivory-organza-peplum-kurta-with-dhoti-pants",
+    categorySlug: "kids-ethnic-wear",
     price: 4500,
     originalPrice: 5100,
     image: product_images["product-0001"]["lil-edit-product-0001-1-4.png"]
   },
   {
-    id: "rec-4",
     title: "Blush Pink Net Indo-Western Gown",
+    slug: "blush-pink-net-indo-western-gown",
+    categorySlug: "party-wear",
     price: 5200,
     originalPrice: 6000,
     image: product_images["product-0001"]["lil-edit-product-0001-1-5.png"]
   },
   {
-    id: "rec-5",
     title: "Mustard Yellow Silk Blend Sharara Suit",
+    slug: "mustard-yellow-silk-blend-sharara-suit",
+    categorySlug: "kids-ethnic-wear",
     price: 3800,
     originalPrice: 4500,
     image: product_images["product-0001"]["lil-edit-product-0001-1-6.png"]
@@ -180,10 +187,24 @@ const recommendedProducts = [
 ];
 
 export default function ProductDetail() {
+  const { category: categoryParam, productSlug } = useParams();
   const { user, loading: authLoading } = useAuth();
 
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  // Graceful failure for incorrect URLs
+  const isCorrectPath = categoryParam === product.categorySlug && productSlug === product.slug;
+
+  if (!isCorrectPath && !authLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-center p-4">
+        <h2 className="text-2xl font-bold mb-4">Product Not Found</h2>
+        <p className="text-gray-600 mb-8">The product you're looking for doesn't exist in this collection.</p>
+        <Link to="/collections" className="text-primary hover:underline">Browse Collections</Link>
+      </div>
+    );
   }
 
   return (
@@ -192,8 +213,13 @@ export default function ProductDetail() {
 
       {/* Breadcrumb */}
       <div className="page-container py-3 sm:py-4 text-sm text-gray-500">
-        <Link to="/">Home</Link> <ChevronRight className="inline w-4 h-4 mx-1" />
-        <span className="text-gray-800">{product.title}</span>
+        <Link to="/" className="hover:text-slate-900 transition-colors">Home</Link> 
+        <ChevronRight className="inline w-4 h-4 mx-1" />
+        <Link to={`/collections/${product.categorySlug}`} className="hover:text-slate-900 transition-colors">
+          {product.category}
+        </Link>
+        <ChevronRight className="inline w-4 h-4 mx-1" />
+        <span className="text-gray-800 font-medium">{product.title}</span>
       </div>
 
       <main className="page-container w-full pb-[calc(env(safe-area-inset-bottom)+2rem)] sm:pb-[calc(env(safe-area-inset-bottom)+2rem)] md:pb-6">
@@ -314,7 +340,7 @@ export default function ProductDetail() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                       <div className="flex items-center gap-4">
                         <div
-                          className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-lg font-bold text-white shadow-inner transform group-hover:rotate-6 transition-transform duration-500"
+                          className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-lg font-bold text-white shadow-inner transform transition-transform duration-500"
                           style={{ background: `linear-gradient(135deg, ${TEAL}, #14B8A6)` }}
                         >
                           {review.user.charAt(0)}
@@ -407,8 +433,8 @@ export default function ProductDetail() {
           <div className="flex sm:grid overflow-x-auto sm:overflow-visible flex-nowrap sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 no-scrollbar snap-x snap-mandatory px-1 sm:px-0">
             {recommendedProducts.map((item) => (
               <Link
-                to={`/product/${item.id}`}
-                key={item.id}
+                to={`/collections/${item.categorySlug}/product/${item.slug}`}
+                key={item.slug}
                 className="w-[150px] sm:w-auto shrink-0 snap-start group flex flex-col"
               >
                 {/* Image Container */}
