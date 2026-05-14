@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 import product_images from "@/assets/products";
 import ProductPreviewView from "@/components/ProductPreviewView";
+import { Badge } from "@/components/ui/badge";
 import type { Product } from "@/types/product";
 
 import le0 from "@/assets/searchbar-frequent_searches/le-0.png";
@@ -443,55 +444,60 @@ export default function ProductDetail() {
             </button>
           </div>
 
-          {/* Mobile: Horizontal scroll | Desktop: Grid */}
           <div className="flex sm:grid overflow-x-auto sm:overflow-visible flex-nowrap sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 no-scrollbar snap-x snap-mandatory px-1 sm:px-0">
             {recommendedProducts.map((item) => (
-              <Link
-                to={`/collections/${item.categorySlug}/product/${item.slug}`}
+              <div
                 key={item.slug}
-                className="w-[150px] sm:w-auto shrink-0 snap-start group flex flex-col"
+                className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all shrink-0 snap-start w-[240px] sm:w-auto"
               >
-                {/* Image Container */}
-                <div className="relative w-full aspect-[4/5] rounded-xl overflow-hidden bg-gray-50 mb-3 shadow-sm group-hover:shadow-md transition-shadow">
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5">
+                  <img 
+                    src={item.image} 
+                    alt={item.title} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                     loading="lazy"
                   />
-                  {/* Wishlist Button */}
-                  <button
-                    className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/70 backdrop-blur-md hover:bg-white text-slate-700 transition"
-                    onClick={(e) => { e.preventDefault(); }}
-                  >
-                    <Heart size={14} />
+                  <button className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-teal-600 transition-all">
+                    <Heart className="w-3.5 h-3.5" />
                   </button>
-                  {/* Add to Cart Overlay */}
                   <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <button
-                      className="w-full py-1.5 bg-white/90 backdrop-blur text-foreground rounded-lg font-medium text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm"
-                      onClick={(e) => { e.preventDefault(); }}
+                    <Link
+                      to={`/collections/${item.categorySlug}/product/${item.slug}`}
+                      className="w-full py-1.5 bg-white/90 backdrop-blur text-slate-900 rounded-lg font-medium text-[10px] md:text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm block text-center"
                     >
-                      Add to Cart
-                    </button>
+                      View Details
+                    </Link>
                   </div>
                 </div>
-
-                {/* Details */}
-                <div className="flex justify-between items-start gap-2 px-0.5">
-                  <h3 className="text-sm font-medium text-slate-800 leading-snug">
-                    {item.title}
-                  </h3>
-                  <div className="flex flex-col items-end shrink-0">
-                    <span className="text-sm font-bold" style={{ color: TEAL }}>
+                <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
+                  <div className="flex-1">
+                    <h3 className="font-display text-xs md:text-sm font-medium text-slate-900 leading-snug line-clamp-2">
+                      {item.title}
+                    </h3>
+                    {(item.tags ?? []).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {item.tags?.map((tag, idx) => (
+                          <Badge
+                            key={idx}
+                            variant="secondary"
+                            className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-[9px] px-1.5 py-0 rounded font-medium shadow-sm"
+                          >
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-body text-xs font-semibold text-[#0F766E]">
                       ₹{item.price}
-                    </span>
-                    <span className="text-[10px] line-through text-gray-400">
-                      ₹{item.originalPrice}
-                    </span>
+                    </p>
+                    {item.originalPrice > item.price && (
+                      <p className="text-[10px] text-gray-400 line-through">₹{item.originalPrice}</p>
+                    )}
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </section>

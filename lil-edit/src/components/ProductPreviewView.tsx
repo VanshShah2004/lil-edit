@@ -7,6 +7,7 @@ import {
   CarouselItem,
   type CarouselApi
 } from "@/components/ui/carousel";
+import { Badge } from "@/components/ui/badge";
 import type { Product } from "@/types/product";
 
 interface ProductPreviewViewProps {
@@ -244,11 +245,15 @@ const ProductPreviewView = ({
           </div>
 
           {flags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {flags.map((flag) => (
-                <span key={flag} className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary">
+            <div className="flex flex-wrap gap-1.5 mt-1 sm:mt-1.5 mb-4">
+              {flags.map((flag, idx) => (
+                <Badge
+                  key={idx}
+                  variant="secondary"
+                  className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-[10px] sm:text-[11px] px-2 py-0.5 whitespace-nowrap rounded-md font-medium shadow-sm"
+                >
                   {flag}
-                </span>
+                </Badge>
               ))}
             </div>
           )}
