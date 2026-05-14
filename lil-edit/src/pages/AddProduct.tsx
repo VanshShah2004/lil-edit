@@ -148,8 +148,7 @@ type PersistDatabaseResult =
 async function sendCurationToBackend(
   status: "DRAFT" | "PUBLISHED",
   formData: FormData,
-  imagePreviews: string[],
-  previewWindow: Window | null
+  imagePreviews: string[]
 ): Promise<{ database?: PersistDatabaseResult }> {
   const base = getBackendBaseUrl();
   const body = { status, ...buildCurationPayload(formData, imagePreviews) };
@@ -175,18 +174,6 @@ async function sendCurationToBackend(
         json.message ||
         `Backend error (${res.status})`
     );
-  }
-  const path = json.previewPath ?? "/api/products/preview";
-  const viewUrl = `${base}${path}`;
-  // Do not use `noopener` on the placeholder open — it makes `window.open` return `null`,
-  // so the tab stays on about:blank and the post-fetch navigation never runs.
-  if (previewWindow && !previewWindow.closed) {
-    previewWindow.location.href = viewUrl;
-  } else {
-    const w = window.open(viewUrl, "_blank");
-    if (!w) {
-      throw new Error("Popup blocked — allow popups for this site or open the preview URL from the toast.");
-    }
   }
   return { database: json.database };
 }
@@ -518,20 +505,18 @@ const AddProduct = () => {
   const handleSaveDraft = async () => {
     if (!validateForm()) return;
 
-    const previewTab = window.open("about:blank", "_blank");
     setIsSaving(true);
     try {
-      const { database } = await sendCurationToBackend("DRAFT", formData, imagePreviews, previewTab);
+      const { database } = await sendCurationToBackend("DRAFT", formData, imagePreviews);
       const mappedProduct = mapFormDataToProduct(formData, imagePreviews);
       setSavedPreviewProduct(mappedProduct);
       setPreviewActivated(true);
       if (database && database.ok === false && "skipped" in database && database.skipped) {
-        toast.success(`JSON opened. ${database.reason}`);
+        toast.warning(database.reason);
       } else {
-        toast.success("Draft saved to Supabase (draft tables) — JSON opened in a new tab.");
+        toast.success("Draft saved to Supabase (draft tables).");
       }
     } catch (e) {
-      previewTab?.close();
       toast.error(e instanceof Error ? e.message : "Could not reach the backend. Is it running on port 5000?");
     } finally {
       setIsSaving(false);
@@ -541,20 +526,18 @@ const AddProduct = () => {
   const handlePublish = async () => {
     if (!validateForm()) return;
 
-    const previewTab = window.open("about:blank", "_blank");
     setIsPublishing(true);
     try {
-      const { database } = await sendCurationToBackend("PUBLISHED", formData, imagePreviews, previewTab);
+      const { database } = await sendCurationToBackend("PUBLISHED", formData, imagePreviews);
       const mappedProduct = mapFormDataToProduct(formData, imagePreviews);
       setSavedPreviewProduct(mappedProduct);
       setPreviewActivated(true);
       if (database && database.ok === false && "skipped" in database && database.skipped) {
-        toast.success(`JSON opened. ${database.reason}`);
+        toast.warning(database.reason);
       } else {
-        toast.success("Product published to Supabase (removed from drafts) — JSON opened.");
+        toast.success("Product published to Supabase (removed from drafts).");
       }
     } catch (e) {
-      previewTab?.close();
       toast.error(e instanceof Error ? e.message : "Could not reach the backend. Is it running on port 5000?");
     } finally {
       setIsPublishing(false);
