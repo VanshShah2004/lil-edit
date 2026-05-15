@@ -424,7 +424,7 @@ const ManageProducts = () => {
                   <div className="flex flex-col md:flex-row justify-between items-start gap-12">
                     <div className="flex-1 space-y-6">
                       <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{selectedProduct.title}</h2>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-12 gap-y-6 border-t border-b border-gray-100 py-6">
+                      <div className="grid grid-cols-2 gap-x-12 gap-y-8 border-t border-b border-gray-100 py-6">
                         <div className="space-y-1">
                           <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Master SKU</p>
                           <p className="text-xs font-bold text-gray-900 font-mono">{selectedProduct.base_sku}</p>
