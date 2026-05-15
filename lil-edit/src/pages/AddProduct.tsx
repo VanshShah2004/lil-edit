@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -617,14 +617,11 @@ const AddProduct = () => {
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
-            className="mb-6"
+            className="mb-8 space-y-1"
           >
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">
-                Curation Studio
-              </span>
-              <div className="h-px w-8 bg-gray-900/20" />
-            </div>
+            <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: "#B19CD9" }}>
+              Curation Studio
+            </p>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">
               Add & Curate Products
             </h1>
