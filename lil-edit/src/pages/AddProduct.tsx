@@ -230,6 +230,7 @@ const AddProduct = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isGeneratingSku, setIsGeneratingSku] = useState(false);
   const [newPoint, setNewPoint] = useState("");
   const [newColorInput, setNewColorInput] = useState("");
   const [newTag, setNewTag] = useState("");
@@ -564,11 +565,28 @@ const AddProduct = () => {
     }
   }, [formData.sku]);
 
-  // Reactive Base SKU generation when category or gender changes
+  // Reactive Base SKU generation from server when category or gender changes
   useEffect(() => {
-    const newBaseSku = generateBaseSku(formData.category, formData.gender, nextProductId);
-    setFormData(prev => ({ ...prev, sku: newBaseSku }));
-  }, [formData.category, formData.gender, nextProductId]);
+    if (!formData.category || !formData.gender) return;
+
+    const fetchSku = async () => {
+      setIsGeneratingSku(true);
+      try {
+        const base = getBackendBaseUrl();
+        const res = await fetch(`${base}/api/sku/generate?category=${encodeURIComponent(formData.category)}&gender=${encodeURIComponent(formData.gender)}`);
+        const json = await res.json();
+        if (json.sku) {
+          setFormData(prev => ({ ...prev, sku: json.sku }));
+        }
+      } catch (err) {
+        console.error("Failed to fetch SKU:", err);
+      } finally {
+        setIsGeneratingSku(false);
+      }
+    };
+
+    fetchSku();
+  }, [formData.category, formData.gender]);
 
   // Reactive Slug generation when name or category changes
   useEffect(() => {
@@ -905,14 +923,26 @@ const AddProduct = () => {
                       <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
                         Product Base Identifier
                       </label>
-                       <input
-                        type="text"
-                        name="sku"
-                        value={formData.sku}
-                        readOnly
-                        placeholder="Generated SKU..."
-                        className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F5F4F6] text-muted-foreground cursor-not-allowed outline-none transition-all duration-300 font-mono text-[13px] tracking-wider"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          name="sku"
+                          value={formData.sku}
+                          readOnly
+                          placeholder={isGeneratingSku ? "Generating..." : "Select category & gender"}
+                          className={`w-full px-5 py-4 rounded-xl border border-border/50 ${isGeneratingSku ? 'bg-[#F0F0F2] animate-pulse' : 'bg-[#F5F4F6]'} text-muted-foreground cursor-not-allowed outline-none transition-all duration-300 font-mono text-[13px] tracking-wider`}
+                        />
+                        {isGeneratingSku && (
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                            <Loader className="w-4 h-4 text-primary animate-spin" />
+                          </div>
+                        )}
+                        {!isGeneratingSku && formData.sku && (
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                            <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
+                          </div>
+                        )}
+                      </div>
                     </motion.div>
                   </div>
                 </div>

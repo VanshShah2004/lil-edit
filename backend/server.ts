@@ -5,6 +5,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRouter from "./routes/auth.js";
 import productsRouter from "./routes/products.js";
+import skuRouter from "./routes/sku.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, ".env") });
@@ -31,6 +32,7 @@ app.use(express.json({ limit: process.env.JSON_BODY_LIMIT ?? "50mb" }));
 
 app.use("/api/auth", authRouter);
 app.use("/api/products", productsRouter);
+app.use("/api/sku", skuRouter);
 
 app.get("/", (_req, res) => {
   res.json({ ok: true, message: "new-ecomm backend" });
