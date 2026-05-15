@@ -1170,17 +1170,19 @@ const AddProduct = () => {
 
                               {/* Footer Grid: Signature and Stock */}
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                                <div className="space-y-2">
-                                  <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-gray-400/50 block">Variant Signature</span>
+                                <div className="space-y-3">
+                                  <div className="flex items-center h-10">
+                                    <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-gray-400/50 block">Variant Signature</span>
+                                  </div>
                                   <div className="font-mono text-[11px] text-gray-900/80 bg-gray-900/5 px-3 py-1.5 rounded-lg border border-primary/10 w-fit">
                                     {color.sku}
                                   </div>
                                 </div>
 
                                 <div className="space-y-3">
-                                  <div className="flex items-center justify-between">
+                                  <div className="flex items-center justify-between h-10">
                                     <label className="text-[9px] font-bold uppercase tracking-widest text-gray-400/50 block">
-                                      {color.isUnlimited ? "Stock (Auto)" : "Stock Level"}
+                                      {color.isUnlimited ? "Stock Level (Auto)" : "Stock Level"}
                                     </label>
                                     
                                     <div className="flex p-1 bg-gray-100/50 rounded-lg border border-gray-200/50 scale-90 origin-right">
@@ -1207,7 +1209,7 @@ const AddProduct = () => {
                                       value={color.isUnlimited ? "" : color.stock}
                                       onChange={(e) => updateVariantStock(color.name, parseInt(e.target.value) || 0)}
                                       disabled={color.isUnlimited}
-                                      className={`w-full bg-transparent border-b border-gray-200/40 focus:border-primary/40 outline-none transition-all py-1 text-sm font-medium font-body ${color.isUnlimited ? 'text-gray-400 opacity-50' : 'text-gray-900 opacity-100'}`}
+                                      className={`w-full bg-transparent border-b border-gray-200/40 focus:border-[#B19CD9] outline-none transition-all py-1 text-sm font-medium font-body ${color.isUnlimited ? 'text-gray-400 opacity-50' : 'text-gray-900 opacity-100'}`}
                                       placeholder={color.isUnlimited ? "Unlimited" : "1"}
                                       min="1"
                                     />
@@ -1404,19 +1406,19 @@ const AddProduct = () => {
                           whileTap={{ scale: 0.99 }}
                           onClick={() => handleToggle(key as keyof FormData)}
                           className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${formData[key as keyof FormData]
-                            ? "border-primary bg-gray-900/[0.02] shadow-xl shadow-primary/5"
-                            : "border-gray-200 bg-gray-50 hover:border-primary/20"
+                            ? "border-[#B19CD9] bg-[#B19CD9]/[0.02] shadow-xl shadow-[#B19CD9]/5"
+                            : "border-gray-200 bg-gray-50 hover:border-[#B19CD9]/20"
                             }`}
                         >
                           <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData[key as keyof FormData] ? "bg-gray-900/10 text-gray-900" : "bg-white text-gray-400/40 shadow-sm"
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData[key as keyof FormData] ? "bg-[#B19CD9]/20 text-gray-900" : "bg-white text-gray-400/40 shadow-sm"
                               }`}>
                               <Icon className="w-5 h-5" />
                             </div>
                             <span className="font-display font-medium text-gray-900 text-sm">{label}</span>
                           </div>
                           <div
-                            className={`w-12 h-6 rounded-full transition-all duration-300 p-1 ${formData[key as keyof FormData] ? "bg-gray-900" : "bg-muted-foreground/20"
+                            className={`w-12 h-6 rounded-full transition-all duration-300 p-1 ${formData[key as keyof FormData] ? "bg-[#B19CD9]" : "bg-muted-foreground/20"
                               }`}
                           >
                             <motion.div
@@ -1438,19 +1440,19 @@ const AddProduct = () => {
                           whileTap={{ scale: 0.99 }}
                           onClick={() => toggleCustomBadge(badge)}
                           className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${formData.customBadges.includes(badge)
-                            ? "border-primary bg-gray-900/[0.02] shadow-xl shadow-primary/5"
-                            : "border-gray-200 bg-gray-50 hover:border-primary/20"
+                            ? "border-[#B19CD9] bg-[#B19CD9]/[0.02] shadow-xl shadow-[#B19CD9]/5"
+                            : "border-gray-200 bg-gray-50 hover:border-[#B19CD9]/20"
                             }`}
                         >
                           <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData.customBadges.includes(badge) ? "bg-gray-900/10 text-gray-900" : "bg-white text-gray-400/40 shadow-sm"
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData.customBadges.includes(badge) ? "bg-[#B19CD9]/20 text-gray-900" : "bg-white text-gray-400/40 shadow-sm"
                               }`}>
                               <Tag className="w-5 h-5" />
                             </div>
                             <span className="font-display font-medium text-gray-900 text-sm">{badge}</span>
                           </div>
                           <div
-                            className={`w-12 h-6 rounded-full transition-all duration-300 p-1 ${formData.customBadges.includes(badge) ? "bg-gray-900" : "bg-muted-foreground/20"
+                            className={`w-12 h-6 rounded-full transition-all duration-300 p-1 ${formData.customBadges.includes(badge) ? "bg-[#B19CD9]" : "bg-muted-foreground/20"
                               }`}
                           >
                             <motion.div
@@ -1480,7 +1482,7 @@ const AddProduct = () => {
                       </div>
                       <button
                         onClick={createBadge}
-                        className="px-8 py-4 rounded-md bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
+                        className="px-8 py-4 rounded-md bg-[#B19CD9] text-black font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-purple-900/10"
                       >
                         Create Badge
                       </button>
@@ -1495,7 +1497,7 @@ const AddProduct = () => {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleSaveDraft}
                     disabled={isSaving}
-                    className="flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full border border-gray-200 text-gray-900 font-bold uppercase tracking-widest text-xs hover:bg-[#0B5B55] hover:text-white hover:border-[#0B5B55] transition-all duration-300 disabled:opacity-50 group"
+                    className="flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full border border-gray-200 text-gray-900 font-bold uppercase tracking-widest text-xs hover:bg-black hover:text-white hover:border-black active:bg-black active:text-white transition-all duration-300 disabled:opacity-50 group"
                   >
                     {isSaving ? (
                       <Loader className="w-4 h-4 animate-spin text-gray-900 group-hover:text-white" />
@@ -1519,8 +1521,8 @@ const AddProduct = () => {
                     className={`flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full font-bold uppercase tracking-widest text-xs transition-all duration-300 shadow-xl ${
                       !formData.name || !formData.category || !formData.gender || !formData.sku
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none border border-gray-200"
-                        : "bg-gray-900 text-white hover:brightness-95 shadow-primary/20"
-                    } disabled:opacity-50`}
+                        : "bg-[#B19CD9] text-black hover:brightness-105 shadow-[#B19CD9]/30"
+                    } disabled:opacity-50 text-xs`}
                   >
                     {isPublishing ? (
                       <Loader className="w-4 h-4 animate-spin" />

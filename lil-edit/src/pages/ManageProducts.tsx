@@ -533,7 +533,7 @@ const ManageProducts = () => {
                         {selectedProduct.status === "DRAFT" && (
                           <button
                             onClick={() => handleLaunchProduct(selectedProduct)}
-                            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded font-bold text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-900/10"
+                            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#B19CD9] text-black rounded font-bold text-[10px] uppercase tracking-widest hover:brightness-105 transition-all shadow-lg shadow-[#B19CD9]/20"
                           >
                             <Zap size={14} /> Launch Product
                           </button>
