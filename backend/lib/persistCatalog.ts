@@ -165,3 +165,20 @@ export async function fetchAllProducts() {
 export function isSupabaseCatalogConfigured(): boolean {
   return supabaseAdmin !== null;
 }
+
+export async function deleteProductFromDatabase(id: string, status: "DRAFT" | "PUBLISHED"): Promise<void> {
+  const sb = requireAdmin();
+  
+  const isDraft = status === "DRAFT";
+  const table = isDraft ? "draft_products" : "products";
+  const imageTable = isDraft ? "draft_product_images" : "product_images";
+  const variantTable = isDraft ? "draft_product_variants" : "product_variants";
+
+  // Manually delete children first in case ON DELETE CASCADE is not configured
+  await sb.from(imageTable).delete().eq("product_id", id);
+  await sb.from(variantTable).delete().eq("product_id", id);
+  
+  // Delete the parent record
+  const { error } = await sb.from(table).delete().eq("id", id);
+  if (error) throw error;
+}

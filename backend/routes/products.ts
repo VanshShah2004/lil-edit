@@ -4,6 +4,7 @@ import {
   isSupabaseCatalogConfigured,
   launchProductToDatabase,
   saveDraftToDatabase,
+  deleteProductFromDatabase
 } from "../lib/persistCatalog.js";
 
 const router = Router();
@@ -105,6 +106,31 @@ router.get("/preview", (_req: Request, res: Response) => {
   }
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.json(payload);
+});
+
+// DELETE /api/products/:id?status=DRAFT|PUBLISHED
+router.delete("/:id", async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const status = req.query.status as string;
+
+  if (status !== "DRAFT" && status !== "PUBLISHED") {
+    res.status(400).json({ error: "Invalid or missing status query parameter. Must be DRAFT or PUBLISHED." });
+    return;
+  }
+
+  if (!isSupabaseCatalogConfigured()) {
+    res.status(503).json({ error: "Supabase is not configured." });
+    return;
+  }
+
+  try {
+    await deleteProductFromDatabase(id, status);
+    res.json({ success: true, message: `Successfully deleted ${status} product ${id}.` });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[Products] Delete failed for ${id}:`, message);
+    res.status(500).json({ error: message });
+  }
 });
 
 export default router;

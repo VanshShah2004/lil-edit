@@ -135,6 +135,31 @@ const ManageProducts = () => {
     setIsMobileDetailView(true);
   };
 
+  const handleDeleteProduct = async (product: ProductItem) => {
+    if (!window.confirm(`Are you sure you want to permanently delete "${product.title}"?\n\nThis will remove the product, all its variants, and images from the database. This action cannot be undone.`)) return;
+
+    try {
+      const base = getBackendBaseUrl();
+      const res = await fetch(`${base}/api/products/${product.id}?status=${product.status}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete product");
+      }
+
+      toast.success("Product permanently deleted");
+
+      // Update local state
+      setProducts(prev => prev.filter(p => p.id !== product.id));
+      setSelectedProduct(null);
+      setIsMobileDetailView(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   const handleDownloadPdf = (product: ProductItem) => {
     const allImages: ProductImage[] = (product.status === "PUBLISHED"
       ? product.product_images
@@ -241,11 +266,11 @@ const ManageProducts = () => {
             <div class="label">Merchandising Flags</div>
             <div class="value">
               ${[
-                product.is_featured ? 'Featured' : '',
-                product.is_new_arrival ? 'New Arrival' : '',
-                product.is_bestseller ? 'Bestseller' : '',
-                product.is_trending ? 'Trending' : ''
-              ].filter(Boolean).join(', ') || 'None'}
+        product.is_featured ? 'Featured' : '',
+        product.is_new_arrival ? 'New Arrival' : '',
+        product.is_bestseller ? 'Bestseller' : '',
+        product.is_trending ? 'Trending' : ''
+      ].filter(Boolean).join(', ') || 'None'}
             </div>
           </div>
           <div><div class="label">Occasion</div><div class="value">${product.occasion ?? 'N/A'}</div></div>
@@ -430,7 +455,10 @@ const ManageProducts = () => {
                       <button className="w-full flex items-center justify-center gap-2 px-6 py-3 border border-gray-200 text-gray-600 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all" onClick={() => handleDownloadPdf(selectedProduct)}>
                         <Download size={14} /> Download as PDF
                       </button>
-                      <button className="w-full flex items-center justify-center gap-2 px-6 py-3 text-red-500 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all">
+                      <button
+                        onClick={() => handleDeleteProduct(selectedProduct)}
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3 text-red-500 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all"
+                      >
                         <Trash2 size={14} /> Delete Permanent
                       </button>
                     </div>
