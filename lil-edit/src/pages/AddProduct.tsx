@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Upload,
@@ -227,6 +228,7 @@ const mapFormDataToProduct = (formData: FormData, imagePreviews: string[]): Prod
 
 const AddProduct = () => {
   const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -537,6 +539,10 @@ const AddProduct = () => {
         toast.warning(database.reason);
       } else {
         toast.success("Product published to Supabase (removed from drafts).");
+        // Redirect to home page after successful launch
+        setTimeout(() => {
+          navigate("/");
+        }, 2000);
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not reach the backend. Is it running on port 5000?");
