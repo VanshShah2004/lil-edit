@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -14,7 +14,8 @@ import {
   Search,
   Plus,
   Flame,
-  Tag
+  Tag,
+  Play
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
@@ -608,7 +609,7 @@ const AddProduct = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFCFD] overflow-x-hidden w-full selection:bg-primary/20">
+    <div className="min-h-screen bg-white overflow-x-hidden w-full selection:bg-gray-900/20">
       {user ? <UserNavbar /> : <Navbar />}
       <div className="pt-[160px] md:pt-[128px] pb-24 px-4 sm:px-8 lg:px-12 xl:px-20">
         <div className="mx-auto max-w-none">
@@ -619,12 +620,12 @@ const AddProduct = () => {
             className="mb-6"
           >
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">
                 Curation Studio
               </span>
-              <div className="h-px w-8 bg-primary/20" />
+              <div className="h-px w-8 bg-gray-900/20" />
             </div>
-            <h1 className="text-4xl lg:text-5xl font-display font-black tracking-tight text-foreground">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
               Add & Curate Products
             </h1>
           </motion.div>
@@ -637,17 +638,17 @@ const AddProduct = () => {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="lg:col-span-3"
             >
-              <div className="bg-white rounded-[2rem] border border-border/60 shadow-[0_8px_40px_rgb(0,0,0,0.06)] p-10 space-y-12">
+              <div className="bg-white rounded border border-gray-200 shadow-sm p-10 space-y-12">
                 {/* Basic Info */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Essential Details</h2>
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Essential Details</h2>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
                         Product Title
                       </label>
                       <input
@@ -656,12 +657,12 @@ const AddProduct = () => {
                         value={formData.name}
                         onChange={handleInputChange}
                         placeholder="e.g. Criss-Cross Back Knot Top"
-                        className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
+                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
                       />
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
                         Brand House
                       </label>
                       <input
@@ -670,7 +671,7 @@ const AddProduct = () => {
                         value={formData.brand}
                         onChange={handleInputChange}
                         placeholder="e.g. Atelier Edit"
-                        className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
+                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
                       />
                     </motion.div>
                   </div>
@@ -679,13 +680,13 @@ const AddProduct = () => {
                 {/* Editorial Specifications */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Specifications</h2>
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Specifications</h2>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
                         Fabric & Lining
                       </label>
                       <input
@@ -694,12 +695,12 @@ const AddProduct = () => {
                         value={formData.fabric}
                         onChange={handleInputChange}
                         placeholder="e.g. Organza with Cotton Lining"
-                        className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
+                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
                       />
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
                         Silhouette & Fit
                       </label>
                       <input
@@ -708,12 +709,12 @@ const AddProduct = () => {
                         value={formData.fit}
                         onChange={handleInputChange}
                         placeholder="e.g. Regular Fit"
-                        className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
+                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
                       />
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
                         Occasion
                       </label>
                       <input
@@ -722,12 +723,12 @@ const AddProduct = () => {
                         value={formData.occasion}
                         onChange={handleInputChange}
                         placeholder="e.g. Festive, Wedding"
-                        className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
+                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
                       />
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
                         Care Instructions
                       </label>
                       <input
@@ -736,7 +737,7 @@ const AddProduct = () => {
                         value={formData.care}
                         onChange={handleInputChange}
                         placeholder="e.g. Dry Clean Only"
-                        className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
+                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
                       />
                     </motion.div>
                   </div>
@@ -745,8 +746,8 @@ const AddProduct = () => {
                 {/* Description Points */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Product Details</h2>
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Product Details</h2>
                   </div>
 
                   <div className="space-y-4">
@@ -757,11 +758,11 @@ const AddProduct = () => {
                         onChange={(e) => setNewPoint(e.target.value)}
                         onKeyPress={(e) => e.key === "Enter" && addDescriptionPoint()}
                         placeholder="Add a product feature or note..."
-                        className="flex-1 px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-[15px]"
+                        className="flex-1 px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-xs"
                       />
                       <button
                         onClick={addDescriptionPoint}
-                        className="px-8 py-4 rounded-xl bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
+                        className="px-8 py-4 rounded-md bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
                       >
                         Add Details
                       </button>
@@ -773,15 +774,15 @@ const AddProduct = () => {
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           key={idx}
-                          className="flex items-center justify-between gap-4 p-4 bg-[#F9F8FA] border border-border/40 rounded-xl group hover:border-primary/20 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-md"
+                          className="flex items-center justify-between gap-4 p-4 bg-gray-50 border border-gray-200/40 rounded-md group hover:border-primary/20 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-md"
                         >
                           <div className="flex items-start gap-3">
-                            <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
-                            <span className="text-[13px] text-foreground font-body leading-relaxed">{point}</span>
+                            <Play className="w-4 h-4 text-teal-600 mt-0.5 shrink-0 fill-teal-600" />
+                            <span className="text-[13px] text-gray-900 leading-relaxed">{point}</span>
                           </div>
                           <button
                             onClick={() => removeDescriptionPoint(idx)}
-                            className="p-2 text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            className="p-2 text-gray-400/40 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                           >
                             <X size={16} />
                           </button>
@@ -794,13 +795,13 @@ const AddProduct = () => {
                 {/* Classification */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Classification</h2>
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Classification</h2>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
                         Category
                       </label>
                       <div className="relative">
@@ -808,7 +809,7 @@ const AddProduct = () => {
                           name="category"
                           value={formData.category}
                           onChange={handleInputChange}
-                          className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none appearance-none transition-all duration-300 font-body text-[15px]"
+                          className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none appearance-none transition-all duration-300 font-body text-xs"
                         >
                           <option value="">Select a category</option>
                           {CATEGORIES.map((cat) => (
@@ -817,12 +818,12 @@ const AddProduct = () => {
                             </option>
                           ))}
                         </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                       </div>
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
                         Gender Category
                       </label>
                       <div className="relative">
@@ -830,7 +831,7 @@ const AddProduct = () => {
                           name="gender"
                           value={formData.gender}
                           onChange={handleInputChange}
-                          className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none appearance-none transition-all duration-300 font-body text-[15px]"
+                          className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none appearance-none transition-all duration-300 font-body text-xs"
                         >
                           <option value="">Select gender</option>
                           {GENDERS.map((g) => (
@@ -839,7 +840,7 @@ const AddProduct = () => {
                             </option>
                           ))}
                         </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                       </div>
                     </motion.div>
                   </div>
@@ -848,41 +849,41 @@ const AddProduct = () => {
                 {/* Pricing */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Pricing</h2>
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Pricing</h2>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
                         Original Price (MRP)
                       </label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50 font-body">₹</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/50 font-body">â‚¹</span>
                         <input
                           type="number"
                           name="originalPrice"
                           value={formData.originalPrice}
                           onChange={handleInputChange}
                           placeholder="0.00"
-                          className="w-full pl-8 pr-4 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
+                          className="w-full pl-8 pr-4 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
                         />
                       </div>
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
                         Selling Price
                       </label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50 font-body">₹</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/50 font-body">â‚¹</span>
                         <input
                           type="number"
                           name="price"
                           value={formData.price}
                           onChange={handleInputChange}
                           placeholder="0.00"
-                          className="w-full pl-8 pr-4 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
+                          className="w-full pl-8 pr-4 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
                         />
                       </div>
                     </motion.div>
@@ -893,9 +894,9 @@ const AddProduct = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         className="flex items-end pb-1"
                       >
-                        <div className="px-4 py-3 bg-red-500/5 border border-red-500/10 rounded-xl w-full text-center">
+                        <div className="px-4 py-3 bg-red-500/5 border border-red-500/10 rounded-md w-full text-center">
                           <p className="text-[10px] font-bold uppercase tracking-widest text-red-500/60 mb-0.5">Markdown</p>
-                          <p className="text-xl font-display font-medium text-red-500">{discountPercent}% OFF</p>
+                          <p className="text-lg font-bold text-red-500">{discountPercent}% OFF</p>
                         </div>
                       </motion.div>
                     )}
@@ -905,13 +906,13 @@ const AddProduct = () => {
                 {/* Inventory */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Inventory Control</h2>
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Inventory Control</h2>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
                         Stock Level
                       </label>
                       <input
@@ -921,12 +922,12 @@ const AddProduct = () => {
                         onChange={handleInputChange}
                         placeholder="0"
                         min="0"
-                        className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 font-body text-[15px]"
+                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
                       />
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 mb-2 transition-colors group-focus-within:text-primary">
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
                         Product Base Identifier
                       </label>
                       <div className="relative">
@@ -936,11 +937,11 @@ const AddProduct = () => {
                           value={formData.sku}
                           readOnly
                           placeholder={isGeneratingSku ? "Generating..." : "Select category & gender"}
-                          className={`w-full px-5 py-4 rounded-xl border border-border/50 ${isGeneratingSku ? 'bg-[#F0F0F2] animate-pulse' : 'bg-[#F5F4F6]'} text-muted-foreground cursor-not-allowed outline-none transition-all duration-300 font-mono text-[13px] tracking-wider`}
+                          className={`w-full px-5 py-4 rounded-md border border-gray-200 ${isGeneratingSku ? 'bg-[#F0F0F2] animate-pulse' : 'bg-[#F5F4F6]'} text-gray-400 cursor-not-allowed outline-none transition-all duration-300 font-mono text-[13px] tracking-wider`}
                         />
                         {isGeneratingSku && (
                           <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                            <Loader className="w-4 h-4 text-primary animate-spin" />
+                            <Loader className="w-4 h-4 text-gray-900 animate-spin" />
                           </div>
                         )}
                         {!isGeneratingSku && formData.sku && (
@@ -956,14 +957,14 @@ const AddProduct = () => {
                 {/* Tags */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Search & Discovery</h2>
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Search & Discovery</h2>
                   </div>
 
                   <div className="space-y-6">
                     <div className="flex gap-3">
                       <div className="relative flex-1 group">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/40 group-focus-within:text-gray-900 transition-colors">
                           <Search size={18} />
                         </div>
                         <input
@@ -972,30 +973,30 @@ const AddProduct = () => {
                           onChange={(e) => setNewTag(e.target.value)}
                           onKeyPress={(e) => e.key === "Enter" && addTag()}
                           placeholder="Add discovery tags (e.g. Minimalist, Organic)..."
-                          className="w-full pl-12 pr-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-[15px]"
+                          className="w-full pl-12 pr-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-xs"
                         />
                       </div>
                       <button
                         onClick={addTag}
-                        className="px-8 py-4 rounded-xl bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
+                        className="px-8 py-4 rounded-md bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
                       >
                         Add Tag
                       </button>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 min-h-[48px] p-2 rounded-2xl border border-dashed border-border/20 bg-secondary/5">
+                    <div className="flex flex-wrap gap-2 min-h-[48px] p-2 rounded-2xl border border-dashed border-gray-200/20 bg-secondary/5">
                       {formData.tags.length > 0 ? (
                         formData.tags.map((tag) => (
                           <motion.div
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             key={tag}
-                            className="flex items-center gap-2 px-4 py-2 bg-white border border-border/50 rounded-full text-[11px] font-bold text-primary uppercase tracking-widest shadow-sm hover:shadow-md transition-all group"
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-[11px] font-bold text-gray-900 uppercase tracking-widest shadow-sm hover:shadow-md transition-all group"
                           >
                             {tag}
                             <button
                               onClick={() => removeTag(tag)}
-                              className="text-muted-foreground/40 hover:text-red-500 transition-colors"
+                              className="text-gray-400/40 hover:text-red-500 transition-colors"
                             >
                               <X size={12} />
                             </button>
@@ -1003,7 +1004,7 @@ const AddProduct = () => {
                         ))
                       ) : (
                         <div className="w-full flex items-center justify-center py-2">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/30">No tags defined</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400/30">No tags defined</p>
                         </div>
                       )}
                     </div>
@@ -1013,8 +1014,8 @@ const AddProduct = () => {
                 {/* Sizes */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Available Sizes</h2>
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Available Sizes</h2>
                   </div>
 
                   <div className="flex flex-wrap gap-4">
@@ -1024,9 +1025,9 @@ const AddProduct = () => {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => toggleSize(size)}
-                        className={`px-6 py-3 rounded-xl font-display font-medium text-sm transition-all duration-300 border ${formData.selectedSizes.includes(size)
-                          ? "border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                          : "border-border/50 bg-[#F9F8FA] text-foreground hover:border-primary/30"
+                        className={`px-6 py-3 rounded-md font-display font-medium text-sm transition-all duration-300 border ${formData.selectedSizes.includes(size)
+                          ? "border-primary bg-gray-900 text-primary-foreground shadow-lg shadow-primary/20"
+                          : "border-gray-200 bg-gray-50 text-gray-900 hover:border-primary/30"
                           }`}
                       >
                         {size}
@@ -1038,8 +1039,8 @@ const AddProduct = () => {
                 {/* Colors */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Color Palette</h2>
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Color Palette</h2>
                   </div>
 
                   <div className="space-y-6">
@@ -1052,12 +1053,12 @@ const AddProduct = () => {
                           onChange={(e) => setNewColorInput(e.target.value)}
                           onKeyPress={(e) => e.key === "Enter" && addColor()}
                           placeholder="Type 'Lavender', '#E6E6FA', or 'Lavender #E6E6FA'..."
-                          className="w-full px-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-[15px]"
+                          className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-xs"
                         />
                       </div>
                       <button
                         onClick={addColor}
-                        className="px-8 py-4 rounded-xl bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
+                        className="px-8 py-4 rounded-md bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
                       >
                         Add Color
                       </button>
@@ -1072,7 +1073,7 @@ const AddProduct = () => {
                             animate={{ opacity: 1, y: 0 }}
                             whileHover={{ y: -4 }}
                             key={color.name}
-                            className="bg-white border border-border/50 rounded-[2.5rem] p-8 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-500 group relative"
+                            className="bg-white border border-gray-200 rounded-[2.5rem] p-8 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-500 group relative"
                           >
                             <div className="flex flex-col lg:flex-row gap-10 relative z-10">
                               {/* Left side: Visual & Core Info */}
@@ -1083,36 +1084,36 @@ const AddProduct = () => {
                                       className="w-16 h-16 rounded-2xl border border-black/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] transition-all duration-700 group-hover:scale-110"
                                       style={{ backgroundColor: color.hex }}
                                     />
-                                    <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white shadow-sm border border-border/20 flex items-center justify-center">
+                                    <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white shadow-sm border border-gray-200/20 flex items-center justify-center">
                                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color.hex }} />
                                     </div>
                                   </div>
                                   <div className="flex flex-col">
-                                    <h3 className="text-xl font-display font-medium text-foreground tracking-tight leading-none mb-2">
+                                    <h3 className="text-lg font-bold text-gray-900 tracking-tight leading-none mb-2">
                                       {color.name}
                                     </h3>
-                                    <span className="text-[10px] text-muted-foreground/40 font-mono tracking-[0.2em] uppercase">
+                                    <span className="text-[10px] text-gray-400/40 font-mono tracking-[0.2em] uppercase">
                                       {color.hex}
                                     </span>
                                   </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-8 pt-6 border-t border-border/10">
+                                <div className="grid grid-cols-2 gap-8 pt-6 border-t border-gray-200/10">
                                   <div className="space-y-2">
-                                    <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-muted-foreground/50 block">Variant Signature</span>
-                                    <div className="font-mono text-[11px] text-primary/80 bg-primary/5 px-3 py-1.5 rounded-lg border border-primary/10 w-fit">
+                                    <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-gray-400/50 block">Variant Signature</span>
+                                    <div className="font-mono text-[11px] text-gray-900/80 bg-gray-900/5 px-3 py-1.5 rounded-lg border border-primary/10 w-fit">
                                       {color.sku}
                                     </div>
                                   </div>
 
                                   <div className="space-y-2">
-                                    <label className="text-[9px] font-bold uppercase tracking-[0.25em] text-muted-foreground/50 block">Stock Inventory</label>
+                                    <label className="text-[9px] font-bold uppercase tracking-[0.25em] text-gray-400/50 block">Stock Inventory</label>
                                     <div className="relative group/input">
                                       <input
                                         type="number"
                                         value={color.stock}
                                         onChange={(e) => updateVariantStock(color.name, parseInt(e.target.value) || 0)}
-                                        className="w-full bg-transparent border-b border-border/40 focus:border-primary/40 outline-none transition-all py-1 text-sm font-medium font-body"
+                                        className="w-full bg-transparent border-b border-gray-200/40 focus:border-primary/40 outline-none transition-all py-1 text-sm font-medium font-body"
                                         placeholder="0"
                                       />
                                     </div>
@@ -1121,12 +1122,12 @@ const AddProduct = () => {
                               </div>
 
                               {/* Right side: Image Management */}
-                              <div className="lg:w-48 flex flex-col items-center justify-center lg:border-l border-border/10 lg:pl-10">
+                              <div className="lg:w-48 flex flex-col items-center justify-center lg:border-l border-gray-200/10 lg:pl-10">
                                 <div className="text-center group/assets cursor-pointer" onClick={() => setActiveImageTab(color.name)}>
-                                  <div className="text-4xl font-display font-medium text-primary mb-1 transition-transform duration-500 group-hover/assets:scale-110">
+                                  <div className="text-4xl font-display font-medium text-gray-900 mb-1 transition-transform duration-500 group-hover/assets:scale-110">
                                     {color.images.length}
                                   </div>
-                                  <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground/40 mb-6">
+                                  <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400/40 mb-6">
                                     Specific Images
                                   </div>
                                   <button
@@ -1138,7 +1139,7 @@ const AddProduct = () => {
                                         fileInputRef.current?.click();
                                       }, 300);
                                     }}
-                                    className="w-full py-3 px-6 rounded-full bg-[#F9F8FA] hover:bg-primary hover:text-white border border-border/40 hover:border-primary text-primary text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/20"
+                                    className="w-full py-3 px-6 rounded-full bg-gray-50 hover:bg-gray-900 hover:text-white border border-gray-200/40 hover:border-primary text-gray-900 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/20"
                                   >
                                     Edit Gallery
                                   </button>
@@ -1149,18 +1150,18 @@ const AddProduct = () => {
                             {/* Corner Action */}
                             <button
                               onClick={() => removeColor(color.name)}
-                              className="absolute top-4 right-4 p-2.5 text-muted-foreground/20 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all z-20 opacity-0 group-hover:opacity-100"
+                              className="absolute top-4 right-4 p-2.5 text-gray-400/20 hover:text-red-500 hover:bg-red-50 rounded-md transition-all z-20 opacity-0 group-hover:opacity-100"
                             >
                               <X size={14} />
                             </button>
                           </motion.div>
                         ))
                       ) : (
-                        <div className="p-16 text-center border-2 border-dashed border-border/20 rounded-[3rem] bg-secondary/5">
+                        <div className="p-16 text-center border-2 border-dashed border-gray-200/20 rounded-[3rem] bg-secondary/5">
                           <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-6">
-                            <Plus className="w-6 h-6 text-muted-foreground/30" />
+                            <Plus className="w-6 h-6 text-gray-400/30" />
                           </div>
-                          <p className="text-sm text-muted-foreground/60 font-light italic max-w-xs mx-auto leading-relaxed">
+                          <p className="text-sm text-gray-400/60 font-light italic max-w-xs mx-auto leading-relaxed">
                             No color variants curated yet. Begin by entering a color name or hex code above.
                           </p>
                         </div>
@@ -1172,20 +1173,20 @@ const AddProduct = () => {
                 {/* Image Assets Card */}
                 <div className="space-y-6">
                   <div className="flex items-center gap-4" id="image-studio">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Image Studio</h2>
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Image Studio</h2>
                   </div>
 
-                  <div className="bg-white rounded-[2.5rem] border border-border/40 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
+                  <div className="bg-white rounded-[2.5rem] border border-gray-200/40 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
                     {/* Studio Header / Tabs */}
-                    <div className="px-8 py-6 border-b border-border/10 bg-[#FDFCFD] flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-2 p-1 bg-[#F9F8FA] rounded-2xl border border-border/40 w-fit max-w-full overflow-x-auto no-scrollbar">
+                    <div className="px-8 py-6 border-b border-gray-200/10 bg-white flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2 p-1 bg-gray-50 rounded-2xl border border-gray-200/40 w-fit max-w-full overflow-x-auto no-scrollbar">
                         <button
                           onClick={() => setActiveImageTab("Global")}
-                          className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${
+                          className={`px-6 py-2.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${
                             activeImageTab === "Global" 
-                              ? "bg-white text-primary shadow-sm border border-border/40" 
-                              : "text-muted-foreground/60 hover:text-primary"
+                              ? "bg-white text-gray-900 shadow-sm border border-gray-200/40" 
+                              : "text-gray-400/60 hover:text-gray-900"
                           }`}
                         >
                           Global Images
@@ -1194,10 +1195,10 @@ const AddProduct = () => {
                           <button
                             key={color.name}
                             onClick={() => setActiveImageTab(color.name)}
-                            className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-3 whitespace-nowrap ${
+                            className={`px-6 py-2.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-3 whitespace-nowrap ${
                               activeImageTab === color.name 
-                                ? "bg-white text-primary shadow-sm border border-border/40" 
-                                : "text-muted-foreground/60 hover:text-primary"
+                                ? "bg-white text-gray-900 shadow-sm border border-gray-200/40" 
+                                : "text-gray-400/60 hover:text-gray-900"
                             }`}
                           >
                             <div className="w-2.5 h-2.5 rounded-full border border-black/5" style={{ backgroundColor: color.hex }} />
@@ -1207,7 +1208,7 @@ const AddProduct = () => {
                       </div>
                       
                       <div className="hidden sm:block">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400/40">
                           {activeImageTab === "Global" ? "Shared Gallery" : `${activeImageTab} Variant`}
                         </span>
                       </div>
@@ -1223,9 +1224,9 @@ const AddProduct = () => {
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
                         whileHover={{ scale: 1.002 }}
-                        className={`border-2 border-dashed rounded-[2rem] p-12 text-center transition-all duration-300 ${isDragging
-                          ? "border-primary bg-primary/[0.02]"
-                          : "border-border/20 hover:border-primary/20 bg-[#F9F8FA]"
+                        className={`border-2 border-dashed rounded p-12 text-center transition-all duration-300 ${isDragging
+                          ? "border-primary bg-gray-900/[0.02]"
+                          : "border-gray-200/20 hover:border-primary/20 bg-gray-50"
                           }`}
                       >
                         <motion.div
@@ -1233,19 +1234,19 @@ const AddProduct = () => {
                           transition={{ type: "spring", stiffness: 400, damping: 25 }}
                         >
                           <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-6">
-                            <Upload className="w-6 h-6 text-primary" />
+                            <Upload className="w-6 h-6 text-gray-900" />
                           </div>
-                          <p className="text-foreground font-display font-medium text-lg mb-2">
+                          <p className="text-gray-900 font-display font-medium text-lg mb-2">
                             {activeImageTab === "Global" ? "Global Collection" : `${activeImageTab} Variant`}
                           </p>
-                          <p className="text-sm text-muted-foreground font-body font-light mb-8 max-w-xs mx-auto">
+                          <p className="text-sm text-gray-400 font-body font-light mb-8 max-w-xs mx-auto">
                             {activeImageTab === "Global" 
                               ? "Upload general campaign or shared editorial shots."
                               : `Upload exclusive shots for the ${activeImageTab} variant.`}
                           </p>
                           <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="px-10 py-3.5 rounded-full bg-primary text-white hover:brightness-95 transition-all duration-300 text-[11px] font-bold uppercase tracking-widest shadow-xl shadow-primary/10"
+                            className="px-10 py-3.5 rounded-full bg-gray-900 text-white hover:brightness-95 transition-all duration-300 text-[11px] font-bold uppercase tracking-widest shadow-xl shadow-primary/10"
                           >
                             Upload Content
                           </button>
@@ -1272,7 +1273,7 @@ const AddProduct = () => {
                           <div className="space-y-4">
                             <div className="flex items-center gap-3">
                               <div className="h-px flex-1 bg-border/20" />
-                              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40">Current Selections</span>
+                              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400/40">Current Selections</span>
                               <div className="h-px flex-1 bg-border/20" />
                             </div>
                             <motion.div
@@ -1285,7 +1286,7 @@ const AddProduct = () => {
                                   key={`${activeImageTab}-${index}`}
                                   initial={{ opacity: 0, scale: 0.8 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  className="relative group aspect-square rounded-2xl overflow-hidden bg-secondary/10 border border-border/10"
+                                  className="relative group aspect-square rounded-2xl overflow-hidden bg-secondary/10 border border-gray-200/10"
                                 >
                                   <img
                                     src={preview}
@@ -1314,8 +1315,8 @@ const AddProduct = () => {
                 {/* Status & Publishing */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <h2 className="text-xl font-display font-medium text-foreground tracking-tight">Status & Publishing</h2>
+                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Status & Publishing</h2>
                   </div>
 
                   <div className="space-y-6">
@@ -1333,19 +1334,19 @@ const AddProduct = () => {
                           whileTap={{ scale: 0.99 }}
                           onClick={() => handleToggle(key as keyof FormData)}
                           className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${formData[key as keyof FormData]
-                            ? "border-primary bg-primary/[0.02] shadow-xl shadow-primary/5"
-                            : "border-border/50 bg-[#F9F8FA] hover:border-primary/20"
+                            ? "border-primary bg-gray-900/[0.02] shadow-xl shadow-primary/5"
+                            : "border-gray-200 bg-gray-50 hover:border-primary/20"
                             }`}
                         >
                           <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData[key as keyof FormData] ? "bg-primary/10 text-primary" : "bg-white text-muted-foreground/40 shadow-sm"
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData[key as keyof FormData] ? "bg-gray-900/10 text-gray-900" : "bg-white text-gray-400/40 shadow-sm"
                               }`}>
                               <Icon className="w-5 h-5" />
                             </div>
-                            <span className="font-display font-medium text-foreground text-sm">{label}</span>
+                            <span className="font-display font-medium text-gray-900 text-sm">{label}</span>
                           </div>
                           <div
-                            className={`w-12 h-6 rounded-full transition-all duration-300 p-1 ${formData[key as keyof FormData] ? "bg-primary" : "bg-muted-foreground/20"
+                            className={`w-12 h-6 rounded-full transition-all duration-300 p-1 ${formData[key as keyof FormData] ? "bg-gray-900" : "bg-muted-foreground/20"
                               }`}
                           >
                             <motion.div
@@ -1367,19 +1368,19 @@ const AddProduct = () => {
                           whileTap={{ scale: 0.99 }}
                           onClick={() => toggleCustomBadge(badge)}
                           className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${formData.customBadges.includes(badge)
-                            ? "border-primary bg-primary/[0.02] shadow-xl shadow-primary/5"
-                            : "border-border/50 bg-[#F9F8FA] hover:border-primary/20"
+                            ? "border-primary bg-gray-900/[0.02] shadow-xl shadow-primary/5"
+                            : "border-gray-200 bg-gray-50 hover:border-primary/20"
                             }`}
                         >
                           <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData.customBadges.includes(badge) ? "bg-primary/10 text-primary" : "bg-white text-muted-foreground/40 shadow-sm"
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData.customBadges.includes(badge) ? "bg-gray-900/10 text-gray-900" : "bg-white text-gray-400/40 shadow-sm"
                               }`}>
                               <Tag className="w-5 h-5" />
                             </div>
-                            <span className="font-display font-medium text-foreground text-sm">{badge}</span>
+                            <span className="font-display font-medium text-gray-900 text-sm">{badge}</span>
                           </div>
                           <div
-                            className={`w-12 h-6 rounded-full transition-all duration-300 p-1 ${formData.customBadges.includes(badge) ? "bg-primary" : "bg-muted-foreground/20"
+                            className={`w-12 h-6 rounded-full transition-all duration-300 p-1 ${formData.customBadges.includes(badge) ? "bg-gray-900" : "bg-muted-foreground/20"
                               }`}
                           >
                             <motion.div
@@ -1395,7 +1396,7 @@ const AddProduct = () => {
                     {/* Create Badge Input */}
                     <div className="flex gap-3 pt-2">
                       <div className="relative flex-1 group">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/40 group-focus-within:text-gray-900 transition-colors">
                           <Plus size={18} />
                         </div>
                         <input
@@ -1404,12 +1405,12 @@ const AddProduct = () => {
                           onChange={(e) => setNewBadgeName(e.target.value)}
                           onKeyPress={(e) => e.key === "Enter" && createBadge()}
                           placeholder="Create custom badge (e.g. Limited Edition, Sustainable)..."
-                          className="w-full pl-12 pr-5 py-4 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-[15px]"
+                          className="w-full pl-12 pr-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-xs"
                         />
                       </div>
                       <button
                         onClick={createBadge}
-                        className="px-8 py-4 rounded-xl bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
+                        className="px-8 py-4 rounded-md bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
                       >
                         Create Badge
                       </button>
@@ -1424,12 +1425,12 @@ const AddProduct = () => {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleSaveDraft}
                     disabled={isSaving}
-                    className="flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full border border-border/60 text-foreground font-bold uppercase tracking-widest text-xs hover:bg-[#0B5B55] hover:text-white hover:border-[#0B5B55] transition-all duration-300 disabled:opacity-50 group"
+                    className="flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full border border-gray-200 text-gray-900 font-bold uppercase tracking-widest text-xs hover:bg-[#0B5B55] hover:text-white hover:border-[#0B5B55] transition-all duration-300 disabled:opacity-50 group"
                   >
                     {isSaving ? (
-                      <Loader className="w-4 h-4 animate-spin text-primary group-hover:text-white" />
+                      <Loader className="w-4 h-4 animate-spin text-gray-900 group-hover:text-white" />
                     ) : (
-                      <Save className="w-4 h-4 text-primary group-hover:text-white" />
+                      <Save className="w-4 h-4 text-gray-900 group-hover:text-white" />
                     )}
                     {isSaving ? "Saving..." : "Save Draft"}
                   </motion.button>
@@ -1448,7 +1449,7 @@ const AddProduct = () => {
                     className={`flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full font-bold uppercase tracking-widest text-xs transition-all duration-300 shadow-xl ${
                       !formData.name || !formData.category || !formData.gender || !formData.sku
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none border border-gray-200"
-                        : "bg-primary text-white hover:brightness-95 shadow-primary/20"
+                        : "bg-gray-900 text-white hover:brightness-95 shadow-primary/20"
                     } disabled:opacity-50`}
                   >
                     {isPublishing ? (
@@ -1469,8 +1470,8 @@ const AddProduct = () => {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="lg:col-span-2 lg:sticky lg:top-32 h-fit"
             >
-              <div className="bg-white rounded-[2rem] border border-border/60 shadow-[0_8px_40px_rgb(0,0,0,0.06)] px-4 py-3 space-y-4">
-                <div className="flex items-center justify-between pb-1 border-b border-border/20">
+              <div className="bg-white rounded border border-gray-200 shadow-sm px-4 py-3 space-y-4">
+                <div className="flex items-center justify-between pb-1 border-b border-gray-200/20">
                   <h2 className="text-lg font-bold uppercase tracking-[0.15em] text-slate-900">
                     Live Preview
                   </h2>
@@ -1481,7 +1482,7 @@ const AddProduct = () => {
                 </div>
 
                 {savedPreviewProduct ? (
-                  <motion.div layout className="rounded-[1.5rem] overflow-hidden border border-border/30 bg-white mx-[-6px]">
+                  <motion.div layout className="rounded-[1.5rem] overflow-hidden border border-gray-200/30 bg-white mx-[-6px]">
                     <div className="max-h-[calc(100vh-220px)] overflow-y-auto">
                       <ProductPreviewView 
                         product={savedPreviewProduct} 
@@ -1492,12 +1493,12 @@ const AddProduct = () => {
                     </div>
                   </motion.div>
                 ) : (
-                  <div className="rounded-[1.5rem] border-2 border-dashed border-border/30 bg-[#F9F8FA] p-10 text-center">
+                  <div className="rounded-[1.5rem] border-2 border-dashed border-gray-200/30 bg-gray-50 p-10 text-center">
                     <div className="w-14 h-14 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-4">
-                      <Upload className="w-6 h-6 text-muted-foreground/40" />
+                      <Upload className="w-6 h-6 text-gray-400/40" />
                     </div>
-                    <p className="text-sm font-semibold text-foreground mb-1">Your Product Detail Preview Will Appear Here</p>
-                    <p className="text-xs text-muted-foreground">Click Save Draft to generate the full customer page preview.</p>
+                    <p className="text-sm font-semibold text-gray-900 mb-1">Your Product Detail Preview Will Appear Here</p>
+                    <p className="text-xs text-gray-400">Click Save Draft to generate the full customer page preview.</p>
                   </div>
                 )}
               </div>
@@ -1511,3 +1512,6 @@ const AddProduct = () => {
 };
 
 export default AddProduct;
+
+
+
