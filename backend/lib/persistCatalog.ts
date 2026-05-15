@@ -129,6 +129,31 @@ export async function launchProductToDatabase(data: CurationPayload): Promise<{ 
   return { publishedProductId: productId };
 }
 
+export async function fetchAllProducts() {
+  const sb = requireAdmin();
+  
+  // Fetch published products
+  const { data: published, error: pubErr } = await sb
+    .from("products")
+    .select("*, product_images(image_url)")
+    .order('created_at', { ascending: false });
+    
+  if (pubErr) throw pubErr;
+
+  // Fetch draft products
+  const { data: drafts, error: draftErr } = await sb
+    .from("draft_products")
+    .select("*, draft_product_images(image_url)")
+    .order('created_at', { ascending: false });
+
+  if (draftErr) throw draftErr;
+
+  return {
+    published: published || [],
+    drafts: drafts || []
+  };
+}
+
 export function isSupabaseCatalogConfigured(): boolean {
   return supabaseAdmin !== null;
 }

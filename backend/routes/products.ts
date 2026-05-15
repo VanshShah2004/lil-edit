@@ -1,11 +1,21 @@
 import { Router, type Request, type Response } from "express";
 import {
+  fetchAllProducts,
   isSupabaseCatalogConfigured,
   launchProductToDatabase,
   saveDraftToDatabase,
 } from "../lib/persistCatalog.js";
 
 const router = Router();
+
+router.get("/", async (req: Request, res: Response) => {
+  try {
+    const products = await fetchAllProducts();
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
 
 interface StoredProduct {
   status: "DRAFT" | "PUBLISHED";

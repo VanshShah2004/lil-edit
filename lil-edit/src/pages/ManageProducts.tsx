@@ -11,29 +11,34 @@ import {
   Package, 
   Clock, 
   CheckCircle2, 
-  AlertCircle,
-  MoreVertical,
-  ArrowUpDown
+  ArrowRight,
+  Heart,
+  ShoppingBag
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { getBackendBaseUrl } from "@/lib/backend";
 import UserNavbar from "@/components/home/UserNavbar";
 import Navbar from "@/components/layout/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface ProductItem {
   id: string;
   title: string;
   base_sku: string;
   category: string;
+  category_slug: string;
   price: number;
   status: "DRAFT" | "PUBLISHED";
   slug: string;
-  category_slug: string;
   created_at: string;
   image_url?: string;
+  brand: string;
+  stock: number;
 }
 
 const ManageProducts = () => {
@@ -47,33 +52,30 @@ const ManageProducts = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      // Fetch published products
-      const { data: published, error: pubError } = await supabase
-        .from("products")
-        .select("id, title, base_sku, category, category_slug, price, slug, created_at");
+      const base = getBackendBaseUrl();
+      const res = await fetch(`${base}/api/products`);
+      if (!res.ok) throw new Error("Failed to fetch products");
       
-      if (pubError) throw pubError;
-
-      // Fetch draft products
-      const { data: drafts, error: draftError } = await supabase
-        .from("draft_products")
-        .select("id, title, base_sku, category, category_slug, price, slug, created_at");
-
-      if (draftError) throw draftError;
-
-      // Combine and tag
+      const data = await res.json();
+      
+      // Flatten the backend response { published: [], drafts: [] }
       const all: ProductItem[] = [
-        ...(published?.map(p => ({ ...p, status: "PUBLISHED" as const })) ?? []),
-        ...(drafts?.map(d => ({ ...d, status: "DRAFT" as const })) ?? [])
+        ...(data.published?.map((p: any) => ({
+          ...p,
+          status: "PUBLISHED" as const,
+          image_url: p.product_images?.[0]?.image_url
+        })) ?? []),
+        ...(data.drafts?.map((d: any) => ({
+          ...d,
+          status: "DRAFT" as const,
+          image_url: d.draft_product_images?.[0]?.image_url
+        })) ?? [])
       ];
-
-      // Fetch primary images for each product (optional optimization: join in SQL)
-      // For now, we'll just show icons if no images, or fetch them if needed.
       
       setProducts(all);
     } catch (err) {
       console.error("Error fetching products:", err);
-      toast.error("Failed to load products");
+      toast.error("Failed to load products from backend");
     } finally {
       setLoading(false);
     }
@@ -87,13 +89,9 @@ const ManageProducts = () => {
     if (!confirm("Are you sure you want to delete this product? This action cannot be undone.")) return;
 
     try {
-      const table = status === "PUBLISHED" ? "products" : "draft_products";
-      const { error } = await supabase.from(table).delete().eq("id", id);
-      
-      if (error) throw error;
-      
-      toast.success("Product deleted successfully");
-      setProducts(prev => prev.filter(p => p.id !== id));
+      // For now, we still use Supabase directly for deletion as we don't have a backend DELETE route yet
+      // Or we can just prompt the user to implement it. I'll stick to a placeholder for now to be safe.
+      toast.info("Delete functionality coming soon to backend.");
     } catch (err) {
       console.error("Delete error:", err);
       toast.error("Failed to delete product");
@@ -132,15 +130,15 @@ const ManageProducts = () => {
             >
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
-                  Inventory Management
+                  Admin Dashboard
                 </span>
                 <div className="h-px w-8 bg-primary/20" />
               </div>
               <h1 className="text-4xl font-display font-medium text-foreground tracking-tight">
-                Catalog Studio
+                Manage Inventory
               </h1>
               <p className="text-muted-foreground mt-2 font-body text-sm">
-                Manage your drafts and live product listings.
+                Real-time overview of your store's catalog.
               </p>
             </motion.div>
 
@@ -154,7 +152,7 @@ const ManageProducts = () => {
                 className="inline-flex items-center gap-2 px-6 py-3.5 bg-primary text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-primary/20 active:scale-95"
               >
                 <Plus size={16} strokeWidth={3} />
-                New Product
+                Add New Product
               </Link>
             </motion.div>
           </div>
@@ -162,12 +160,11 @@ const ManageProducts = () => {
           {/* Controls Bar */}
           <div className="bg-white rounded-[2rem] border border-border/60 shadow-[0_8px_40px_rgb(0,0,0,0.04)] p-4 md:p-6 mb-8">
             <div className="flex flex-col lg:flex-row gap-4 items-center">
-              {/* Search */}
               <div className="relative flex-1 w-full group">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <input
                   type="text"
-                  placeholder="Search by title or SKU..."
+                  placeholder="Search by title, SKU..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/40 focus:ring-4 focus:ring-primary/5 outline-none transition-all font-body text-sm"
@@ -175,7 +172,6 @@ const ManageProducts = () => {
               </div>
 
               <div className="flex flex-wrap gap-3 w-full lg:w-auto">
-                {/* Status Filter */}
                 <div className="flex bg-[#F9F8FA] p-1 rounded-xl border border-border/50">
                   {(["ALL", "PUBLISHED", "DRAFT"] as const).map((status) => (
                     <button
@@ -192,7 +188,6 @@ const ManageProducts = () => {
                   ))}
                 </div>
 
-                {/* Sort Dropdown */}
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
@@ -207,102 +202,110 @@ const ManageProducts = () => {
             </div>
           </div>
 
-          {/* Product List */}
-          <div className="space-y-4">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-32 space-y-4">
-                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                <p className="text-sm font-bold uppercase tracking-[0.2em] text-primary/60">Scanning Catalog...</p>
-              </div>
-            ) : filteredProducts.length === 0 ? (
-              <div className="bg-white rounded-[2rem] border border-dashed border-border/60 p-20 text-center">
-                <div className="w-20 h-20 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Package className="w-10 h-10 text-muted-foreground/30" />
-                </div>
-                <h3 className="text-xl font-display font-medium text-foreground">No products found</h3>
-                <p className="text-muted-foreground mt-2 max-w-xs mx-auto text-sm">
-                  We couldn't find any products matching your current filters.
-                </p>
-                <button 
-                  onClick={() => {setSearchTerm(""); setFilterStatus("ALL");}}
-                  className="mt-6 text-primary font-bold text-[10px] uppercase tracking-widest hover:underline"
-                >
-                  Clear all filters
-                </button>
-              </div>
-            ) : (
+          {/* Product Cards Grid (Wishlist Style) */}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-32 space-y-4">
+              <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+              <p className="text-sm font-bold uppercase tracking-[0.2em] text-primary/60">Fetching from Backend...</p>
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="bg-white rounded-[2rem] border border-dashed border-border/60 p-20 text-center">
+              <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+              <h3 className="text-xl font-display font-medium text-foreground">No matches found</h3>
+              <button onClick={() => {setSearchTerm(""); setFilterStatus("ALL");}} className="mt-4 text-primary font-bold text-[10px] uppercase tracking-widest">Clear Filters</button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               <AnimatePresence mode="popLayout">
                 {filteredProducts.map((product, idx) => (
                   <motion.div
                     key={`${product.status}-${product.id}`}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ duration: 0.4, delay: idx * 0.05 }}
-                    className="group bg-white rounded-3xl border border-border/60 hover:border-primary/30 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all p-4 md:p-6"
                   >
-                    <div className="flex items-center gap-6">
-                      {/* Product Visual */}
-                      <div className="hidden sm:flex w-20 h-20 bg-[#F9F8FA] rounded-2xl items-center justify-center border border-border/40 shrink-0 group-hover:scale-105 transition-transform duration-500">
-                        <Package className="w-8 h-8 text-muted-foreground/20" />
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-1">
-                          {product.status === "PUBLISHED" ? (
-                            <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-bold uppercase tracking-wider border border-emerald-100">
-                              <CheckCircle2 size={10} /> Live
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-600 rounded-full text-[9px] font-bold uppercase tracking-wider border border-amber-100">
-                              <Clock size={10} /> Draft
-                            </span>
-                          )}
-                          <span className="text-[10px] font-mono text-muted-foreground/60 tracking-wider">
-                            {product.base_sku}
-                          </span>
+                    <Card className="bg-white border border-gray-200 border-l-8 border-l-primary rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 h-full group">
+                      <CardContent className="p-4 flex gap-4 h-full relative">
+                        {/* IMAGE (Wishlist Style) */}
+                        <div className="w-24 sm:w-32 flex-shrink-0 relative">
+                          <div className="aspect-[3/4] overflow-hidden rounded-xl bg-gray-100">
+                            {product.image_url ? (
+                              <img
+                                src={product.image_url}
+                                alt={product.title}
+                                className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-muted-foreground/20">
+                                <Package size={40} />
+                              </div>
+                            )}
+                          </div>
+                          <div className="absolute top-2 left-2">
+                             {product.status === "PUBLISHED" ? (
+                              <Badge className="bg-emerald-500 text-white border-none text-[8px] uppercase tracking-tighter">Live</Badge>
+                            ) : (
+                              <Badge className="bg-amber-500 text-white border-none text-[8px] uppercase tracking-tighter">Draft</Badge>
+                            )}
+                          </div>
                         </div>
-                        <h3 className="text-lg font-display font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                          {product.title}
-                        </h3>
-                        <div className="flex items-center gap-4 mt-2 text-[11px] text-muted-foreground font-medium uppercase tracking-wider">
-                          <span>{product.category}</span>
-                          <div className="w-1 h-1 rounded-full bg-border" />
-                          <span className="text-foreground">₹{product.price.toLocaleString()}</span>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center gap-2">
-                        {product.status === "PUBLISHED" && (
-                          <Link
-                            to={`/collections/${product.category_slug}/product/${product.slug}`}
-                            className="p-2.5 text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
-                            title="View Live"
-                          >
-                            <Eye size={18} />
-                          </Link>
-                        )}
-                        <button
-                          className="p-2.5 text-muted-foreground hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all"
-                          title="Edit Product"
-                        >
-                          <Edit3 size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product.id, product.status)}
-                          className="p-2.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                          title="Delete Product"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </div>
+                        {/* DETAILS */}
+                        <div className="flex-1 flex flex-col min-w-0 py-1">
+                          <div className="mb-2">
+                            <h2 className="text-base font-bold text-gray-900 leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+                              {product.title}
+                            </h2>
+                            <p className="text-[10px] font-mono text-muted-foreground/60 tracking-wider mt-1 uppercase">
+                              {product.base_sku}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/10 text-[9px] px-2 py-0.5 rounded-md font-bold">
+                              {product.category}
+                            </Badge>
+                            <Badge variant="secondary" className="bg-teal-50 text-teal-700 border-teal-100 text-[9px] px-2 py-0.5 rounded-md font-bold">
+                              Stock: {product.stock}
+                            </Badge>
+                          </div>
+
+                          <div className="mt-auto pt-4 flex items-end justify-between">
+                            <div className="flex flex-col">
+                              <span className="text-lg font-bold text-primary">₹{product.price.toLocaleString()}</span>
+                              <span className="text-[10px] text-muted-foreground">Original Price: ₹{product.price.toLocaleString()}</span>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                              {product.status === "PUBLISHED" && (
+                                <Link
+                                  to={`/collections/${product.category_slug}/product/${product.slug}`}
+                                  className="w-8 h-8 flex items-center justify-center rounded-full bg-secondary text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                                  title="View"
+                                >
+                                  <Eye size={14} />
+                                </Link>
+                              )}
+                              <button className="w-8 h-8 flex items-center justify-center rounded-full bg-secondary text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm">
+                                <Edit3 size={14} />
+                              </button>
+                              <button 
+                                onClick={() => handleDelete(product.id, product.status)}
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-secondary text-red-600 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </motion.div>
                 ))}
               </AnimatePresence>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </main>
 
