@@ -11,7 +11,8 @@ import {
   Image as ImageIcon,
   FileText,
   Boxes,
-  Activity
+  Activity,
+  Zap
 } from "lucide-react";
 import { getBackendBaseUrl } from "@/lib/backend";
 import UserNavbar from "@/components/home/UserNavbar";
@@ -133,6 +134,71 @@ const ManageProducts = () => {
   const handleProductSelect = (product: ProductItem) => {
     setSelectedProduct(product);
     setIsMobileDetailView(true);
+  };
+
+  const handleLaunchProduct = async (product: ProductItem) => {
+    if (!window.confirm(`Are you sure you want to launch "${product.title}"?\n\nThis will move the product from Drafts to the Live Catalog and it will become visible to customers.`)) return;
+
+    try {
+      const base = getBackendBaseUrl();
+      const images = product.status === "DRAFT" ? product.draft_product_images : product.product_images;
+      const variants = product.status === "DRAFT" ? product.draft_product_variants : product.product_variants;
+
+      // Construct payload compatible with backend/lib/persistCatalog.ts
+      const payload = {
+        status: "PUBLISHED",
+        name: product.title || "Untitled Product",
+        brand: product.brand || "The Lil Edit",
+        sku: product.base_sku || "SKU-UNKNOWN",
+        slug: product.slug || "",
+        categorySlug: product.category_slug || "",
+        category: product.category || "General",
+        gender: product.gender || "Unisex",
+        price: String(product.price ?? 0),
+        originalPrice: String(product.original_price ?? ""),
+        stock: String(product.stock ?? 0),
+        fabric: product.fabric || "",
+        fit: product.fit || "",
+        occasion: product.occasion || "",
+        care: product.care || "",
+        descriptionPoints: product.description_points || [],
+        tags: product.tags || [],
+        selectedSizes: product.sizes || [],
+        customBadges: product.badges || [],
+        featured: !!product.is_featured,
+        newArrival: !!product.is_new_arrival,
+        bestseller: !!product.is_bestseller,
+        trending: !!product.is_trending,
+        // Global images (no variant_id)
+        imagePreviews: images?.filter(img => !img.variant_id).map(img => img.image_url) || [],
+        // Map variants and their specific images
+        selectedColors: variants?.map(v => ({
+          name: v.color_name || "Color",
+          hex: v.color_hex || "#cccccc",
+          sku: v.variant_sku || "",
+          stock: Number(v.stock ?? 0),
+          images: images?.filter(img => img.variant_id === v.id).map(img => img.image_url) || []
+        })) || []
+      };
+
+      const res = await fetch(`${base}/api/products/preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to launch product");
+      }
+
+      toast.success(`"${product.title}" has been successfully launched!`);
+      
+      // Refresh the product list and selection
+      await fetchProducts();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
   };
 
   const handleDeleteProduct = async (product: ProductItem) => {
@@ -421,50 +487,68 @@ const ManageProducts = () => {
                 <div className="space-y-16">
 
                   {/* Summary Row */}
-                  <div className="flex flex-col md:flex-row justify-between items-start gap-12">
-                    <div className="flex-1 space-y-6">
+                  <div className="space-y-8">
+                    <div className="flex items-center gap-4">
                       <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{selectedProduct.title}</h2>
-                      <div className="grid grid-cols-2 gap-x-12 gap-y-8 border-t border-b border-gray-100 py-6">
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Master SKU</p>
-                          <p className="text-xs font-bold text-gray-900 font-mono">{selectedProduct.base_sku}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Brand House</p>
-                          <p className="text-xs font-bold text-gray-900">{selectedProduct.brand}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Selling Price (INR)</p>
-                          <p className="text-xs font-bold text-gray-900">₹{selectedProduct.price.toLocaleString()}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">MRP / Original Price</p>
-                          <p className="text-xs font-bold text-gray-900">
-                            {selectedProduct.original_price
-                              ? `₹${selectedProduct.original_price.toLocaleString()}`
-                              : "—"}
-                          </p>
+                      <Badge className="bg-[#E6E6FA] text-[#4B0082] border-none hover:bg-[#D8BFD8] text-[10px] font-bold uppercase tracking-widest px-3 py-1">
+                        {selectedProduct.status}
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex flex-col md:flex-row justify-between items-start gap-12">
+                      <div className="flex-1">
+                        <div className="grid grid-cols-2 gap-x-12 gap-y-8 border-t border-b border-gray-100 py-6">
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Master SKU</p>
+                            <p className="text-xs font-bold text-gray-900 font-mono">{selectedProduct.base_sku}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Brand House</p>
+                            <p className="text-xs font-bold text-gray-900">{selectedProduct.brand}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Selling Price (INR)</p>
+                            <p className="text-xs font-bold text-gray-900">₹{selectedProduct.price.toLocaleString()}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">MRP / Original Price</p>
+                            <p className="text-xs font-bold text-gray-900">
+                              {selectedProduct.original_price
+                                ? `₹${selectedProduct.original_price.toLocaleString()}`
+                                : "—"}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="w-full md:w-auto flex flex-col gap-3">
-                      <button className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white rounded font-bold text-[10px] uppercase tracking-widest hover:bg-gray-800 transition-all">
-                        <Edit3 size={14} /> Update Entry
-                      </button>
-                      <button className="w-full flex items-center justify-center gap-2 px-6 py-3 border border-gray-200 text-gray-600 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all" onClick={() => handleDownloadPdf(selectedProduct)}>
-                        <Download size={14} /> Download as PDF
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProduct(selectedProduct)}
-                        className="w-full flex items-center justify-center gap-2 px-6 py-3 border-2 border-red-500 text-red-500 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all"
-                      >
-                        <Trash2 size={14} /> Delete Permanent
-                      </button>
+                      <div className="w-full md:w-auto flex flex-col gap-3">
+                        <div className="flex gap-3">
+                          <button className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white rounded font-bold text-[10px] uppercase tracking-widest hover:bg-gray-800 transition-all">
+                            <Edit3 size={14} /> Update Entry
+                          </button>
+                          <button className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border border-gray-200 text-gray-600 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all" onClick={() => handleDownloadPdf(selectedProduct)}>
+                            <Download size={14} /> Download PDF
+                          </button>
+                        </div>
+                        {selectedProduct.status === "DRAFT" && (
+                          <button
+                            onClick={() => handleLaunchProduct(selectedProduct)}
+                            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded font-bold text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-900/10"
+                          >
+                            <Zap size={14} /> Launch Product
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteProduct(selectedProduct)}
+                          className="w-full flex items-center justify-center gap-2 px-6 py-3 border-2 border-red-500 text-red-500 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all"
+                        >
+                          <Trash2 size={14} /> Delete Permanent
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Documentation Grid */}
+                {/* Documentation Grid */}
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
 
                     {/* — IMAGE STUDIO — */}
