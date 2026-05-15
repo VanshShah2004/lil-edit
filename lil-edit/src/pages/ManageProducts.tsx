@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Search, 
-  Edit3, 
-  Trash2, 
-  Eye, 
-  Plus, 
-  Package, 
+import {
+  Search,
+  Edit3,
+  Trash2,
+  Download,
+  Plus,
+  Package,
   ArrowLeft,
   Image as ImageIcon,
   FileText,
@@ -59,6 +59,13 @@ interface ProductItem {
   care?: string;
   description_points?: string[];
   gender?: string;
+  sizes?: string[];
+  tags?: string[];
+  badges?: string[];
+  is_featured?: boolean;
+  is_new_arrival?: boolean;
+  is_bestseller?: boolean;
+  is_trending?: boolean;
   product_images?: ProductImage[];
   draft_product_images?: ProductImage[];
   product_variants?: ProductVariant[];
@@ -128,6 +135,154 @@ const ManageProducts = () => {
     setIsMobileDetailView(true);
   };
 
+  const handleDownloadPdf = (product: ProductItem) => {
+    const allImages: ProductImage[] = (product.status === "PUBLISHED"
+      ? product.product_images
+      : product.draft_product_images) ?? [];
+    const variants: ProductVariant[] = (product.status === "PUBLISHED"
+      ? product.product_variants
+      : product.draft_product_variants) ?? [];
+
+    // Build grouped image sections
+    const globalImages = allImages.filter(img => !img.variant_id);
+    const imageSections = [
+      { label: "Global Gallery", images: globalImages, hex: null },
+      ...variants.map(v => ({
+        label: `${v.color_name} Variant`,
+        images: allImages.filter(img => img.variant_id === v.id),
+        hex: v.color_hex
+      }))
+    ].filter(s => s.images.length > 0);
+
+    const imageGroupsHtml = imageSections.map(section => `
+      <div style="margin-bottom:32px;">
+        <div class="section-title" style="display:flex;align-items:center;gap:8px;">
+          ${section.hex ? `<span style="width:10px;height:10px;border-radius:50%;background:${section.hex};display:inline-block;border:1px solid rgba(0,0,0,0.1);flex-shrink:0;"></span>` : ''}
+          ${section.label}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+          ${section.images.map(img => `
+            <div style="aspect-ratio:3/4;overflow:hidden;border:1px solid #eee;border-radius:4px;">
+              <img src="${img.image_url}" style="width:100%;height:100%;object-fit:cover;" alt="${img.alt_text ?? section.label}" />
+            </div>
+          `).join("")}
+        </div>
+      </div>`).join("");
+
+    const variantRows = variants.map(v => `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;">
+          <span style="display:inline-flex;align-items:center;gap:6px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:${v.color_hex};display:inline-block;border:1px solid rgba(0,0,0,0.1);"></span>
+            ${v.color_name}
+          </span>
+        </td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-family:monospace;font-size:11px;color:#888;">${v.variant_sku}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:bold;">${v.stock}</td>
+      </tr>`).join("");
+
+    const highlights = (product.description_points ?? []).map((pt, i) => `
+      <div style="display:flex;gap:10px;margin-bottom:8px;">
+        <span style="font-weight:bold;color:#111;min-width:24px;">0${i + 1}.</span>
+        <span style="color:#555;font-size:12px;line-height:1.6;">${pt}</span>
+      </div>`).join("");
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Product Sheet — ${product.title}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #111; padding: 48px; font-size: 13px; line-height: 1.6; }
+          h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
+          .label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #999; margin-bottom: 3px; }
+          .value { font-size: 12px; font-weight: 700; color: #111; }
+          .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 6px; margin-bottom: 16px; }
+          .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px 32px; margin-bottom: 32px; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          th { background: #f8f8f8; padding: 8px 12px; text-align: left; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #999; }
+          .footer { margin-top: 40px; border-top: 1px solid #eee; padding-top: 12px; color: #bbb; font-size: 10px; display: flex; justify-content: space-between; }
+          @media print { body { padding: 32px; } img { break-inside: avoid; } }
+        </style>
+      </head>
+      <body>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:20px;margin-bottom:28px;">
+          <div>
+            <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#999;margin-bottom:6px;">Product Data Sheet</p>
+            <h1>${product.title}</h1>
+          </div>
+          <div style="text-align:right;">
+            <div class="label">Status</div>
+            <span style="background:${product.status === 'PUBLISHED' ? '#111' : '#e0e0e0'};color:${product.status === 'PUBLISHED' ? '#fff' : '#555'};padding:3px 10px;border-radius:4px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;">${product.status}</span>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div><div class="label">Master SKU</div><div class="value" style="font-family:monospace;">${product.base_sku}</div></div>
+          <div><div class="label">Brand</div><div class="value">${product.brand}</div></div>
+          <div><div class="label">Selling Price (INR)</div><div class="value">₹${product.price.toLocaleString()}</div></div>
+          <div><div class="label">MRP / Original Price</div><div class="value">${product.original_price ? `₹${product.original_price.toLocaleString()}` : '—'}</div></div>
+          <div><div class="label">Category</div><div class="value">${product.category}</div></div>
+          <div><div class="label">Gender</div><div class="value">${product.gender ?? 'N/A'}</div></div>
+          <div><div class="label">Total Stock</div><div class="value">${product.stock} units</div></div>
+          <div><div class="label">Sizes</div><div class="value">${product.sizes?.length ? product.sizes.join(', ') : 'N/A'}</div></div>
+          <div><div class="label">Fabrication</div><div class="value">${product.fabric ?? 'N/A'}</div></div>
+          <div><div class="label">Silhouette</div><div class="value">${product.fit ?? 'N/A'}</div></div>
+          <div><div class="label">Occasion</div><div class="value">${product.occasion ?? 'N/A'}</div></div>
+          <div><div class="label">Maintenance</div><div class="value">${product.care ?? 'N/A'}</div></div>
+        </div>
+
+        <div class="grid">
+          <div><div class="label">Tags</div><div class="value">${product.tags?.length ? product.tags.join(', ') : 'None'}</div></div>
+          <div><div class="label">Badges</div><div class="value">${product.badges?.length ? product.badges.join(', ') : 'None'}</div></div>
+          <div>
+            <div class="label">Merchandising Flags</div>
+            <div class="value">
+              ${[
+                product.is_featured ? 'Featured' : '',
+                product.is_new_arrival ? 'New Arrival' : '',
+                product.is_bestseller ? 'Bestseller' : '',
+                product.is_trending ? 'Trending' : ''
+              ].filter(Boolean).join(', ') || 'None'}
+            </div>
+          </div>
+          <div><div class="label">Occasion</div><div class="value">${product.occasion ?? 'N/A'}</div></div>
+          <div><div class="label">Maintenance</div><div class="value">${product.care ?? 'N/A'}</div></div>
+        </div>
+
+        ${variants.length > 0 ? `
+        <div class="section-title">Inventory Distribution Matrix</div>
+        <table style="margin-bottom:32px;">
+          <thead><tr><th>Variant</th><th>SKU</th><th style="text-align:right;">Units</th></tr></thead>
+          <tbody>${variantRows}</tbody>
+          <tfoot><tr><td colspan="2" style="padding:8px 12px;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#999;border-top:1px solid #eee;">Consolidated Total</td><td style="padding:8px 12px;text-align:right;font-weight:800;border-top:1px solid #eee;">${product.stock}</td></tr></tfoot>
+        </table>` : ''}
+
+        ${imageGroupsHtml ? `
+        <div class="section-title">Product Image Assets</div>
+        ${imageGroupsHtml}` : ''}
+
+        ${highlights ? `
+        <div class="section-title">Catalogue Highlights</div>
+        <div>${highlights}</div>` : ''}
+
+        <div class="footer">
+          <span>The Lil Edit — Inventory Management</span>
+          <span>Generated: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+        </div>
+      </body>
+      </html>`;
+
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 600);
+  };
+
   const filteredProducts = products.filter(p => {
     const matchesSearch =
       p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -146,7 +301,7 @@ const ManageProducts = () => {
       <div className="pt-[160px] md:pt-[128px] px-8 lg:px-12 bg-white border-b border-gray-100 pb-8">
         <div className="max-w-screen-2xl mx-auto">
           <div className="space-y-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Administration / Store Catalog</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Catalog Studio</p>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Inventory Management</h1>
           </div>
         </div>
@@ -236,7 +391,7 @@ const ManageProducts = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="p-8 lg:p-16 max-w-5xl mx-auto"
+                className="px-8 pt-2 pb-16 lg:px-16 lg:pt-4 lg:pb-20 max-w-5xl mx-auto"
               >
                 <div className="space-y-16">
 
@@ -254,8 +409,16 @@ const ManageProducts = () => {
                           <p className="text-xs font-bold text-gray-900">{selectedProduct.brand}</p>
                         </div>
                         <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Base Price (INR)</p>
+                          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Selling Price (INR)</p>
                           <p className="text-xs font-bold text-gray-900">₹{selectedProduct.price.toLocaleString()}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">MRP / Original Price</p>
+                          <p className="text-xs font-bold text-gray-900">
+                            {selectedProduct.original_price
+                              ? `₹${selectedProduct.original_price.toLocaleString()}`
+                              : "—"}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -264,8 +427,8 @@ const ManageProducts = () => {
                       <button className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white rounded font-bold text-[10px] uppercase tracking-widest hover:bg-gray-800 transition-all">
                         <Edit3 size={14} /> Update Entry
                       </button>
-                      <button className="w-full flex items-center justify-center gap-2 px-6 py-3 border border-gray-200 text-gray-600 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all">
-                        <Eye size={14} /> View Store Record
+                      <button className="w-full flex items-center justify-center gap-2 px-6 py-3 border border-gray-200 text-gray-600 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all" onClick={() => handleDownloadPdf(selectedProduct)}>
+                        <Download size={14} /> Download as PDF
                       </button>
                       <button className="w-full flex items-center justify-center gap-2 px-6 py-3 text-red-500 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all">
                         <Trash2 size={14} /> Delete Permanent
@@ -367,6 +530,7 @@ const ManageProducts = () => {
                           {[
                             { label: "Category", value: selectedProduct.category },
                             { label: "Gender", value: selectedProduct.gender || "N/A" },
+                            { label: "Sizes", value: selectedProduct.sizes?.length ? selectedProduct.sizes.join(", ") : "N/A" },
                             { label: "Fabrication", value: selectedProduct.fabric || "N/A" },
                             { label: "Silhouette", value: selectedProduct.fit || "N/A" },
                             { label: "Occasion", value: selectedProduct.occasion || "N/A" },
@@ -416,6 +580,51 @@ const ManageProducts = () => {
                               </tr>
                             </tfoot>
                           </table>
+                        </div>
+                      </div>
+
+                      {/* Merchandising Details */}
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-2">
+                          <FileText size={14} className="text-gray-400" />
+                          <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Merchandising & Taxonomy</h3>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-4">
+                          <div className="space-y-2">
+                            <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Tags</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {selectedProduct.tags?.length ? selectedProduct.tags.map(tag => (
+                                <Badge key={tag} variant="secondary" className="text-[9px] font-bold uppercase tracking-widest bg-gray-100 text-gray-600 hover:bg-gray-200 border-none">{tag}</Badge>
+                              )) : <span className="text-[11px] font-bold text-gray-900">None</span>}
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Badges</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {selectedProduct.badges?.length ? selectedProduct.badges.map(badge => (
+                                <Badge key={badge} variant="secondary" className="text-[9px] font-bold uppercase tracking-widest bg-gray-900 text-white hover:bg-gray-800 border-none">{badge}</Badge>
+                              )) : <span className="text-[11px] font-bold text-gray-900">None</span>}
+                            </div>
+                          </div>
+                          <div className="space-y-2 sm:col-span-2">
+                            <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Active Flags</p>
+                            <div className="flex flex-wrap gap-3 mt-1">
+                              {[
+                                { key: 'is_featured', label: 'Featured' },
+                                { key: 'is_new_arrival', label: 'New Arrival' },
+                                { key: 'is_bestseller', label: 'Bestseller' },
+                                { key: 'is_trending', label: 'Trending' }
+                              ].map(flag => {
+                                const isActive = !!selectedProduct[flag.key as keyof ProductItem];
+                                return (
+                                  <div key={flag.key} className="flex items-center gap-1.5">
+                                    <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+                                    <span className={`text-[10px] font-bold uppercase tracking-widest ${isActive ? 'text-gray-900' : 'text-gray-400'}`}>{flag.label}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
                         </div>
                       </div>
 
