@@ -538,7 +538,7 @@ const AddProduct = () => {
       if (database && database.ok === false && "skipped" in database && database.skipped) {
         toast.warning(database.reason);
       } else {
-        toast.success("Product published to Supabase (removed from drafts).");
+        toast.success(`The Product\nTitle: ${formData.name}\nSKU: ${formData.sku}\nhas successfully launched!`);
         // Redirect to home page after successful launch
         setTimeout(() => {
           navigate("/");
