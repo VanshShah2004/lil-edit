@@ -756,7 +756,7 @@ const AddProduct = () => {
                 {/* Description Points */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
                     <h2 className="text-lg font-bold text-gray-900 tracking-tight">Product Details</h2>
                   </div>
 
@@ -805,7 +805,7 @@ const AddProduct = () => {
                 {/* Classification */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
                     <h2 className="text-lg font-bold text-gray-900 tracking-tight">Classification</h2>
                   </div>
 
@@ -859,7 +859,7 @@ const AddProduct = () => {
                 {/* Pricing */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
                     <h2 className="text-lg font-bold text-gray-900 tracking-tight">Pricing</h2>
                   </div>
 
@@ -916,18 +916,18 @@ const AddProduct = () => {
                 {/* Inventory */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
                     <h2 className="text-lg font-bold text-gray-900 tracking-tight">Inventory Control</h2>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
                     <motion.div whileHover={{ scale: isStockUnlimited ? 1 : 1.01 }} className={`group transition-all duration-300 ${isStockUnlimited ? 'opacity-50 grayscale' : 'opacity-100'}`}>
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center justify-between h-12 mb-2">
                         <label className="text-[9px] font-bold uppercase tracking-widest text-gray-400 transition-colors group-focus-within:text-gray-900">
                           {isStockUnlimited ? "Stock Level (Auto)" : "Stock Level"}
                         </label>
                         
-                        <div className="flex p-1 bg-gray-100/50 rounded-lg border border-gray-200/50">
+                        <div className="flex p-0.5 bg-gray-100/50 rounded-md border border-gray-200/50 scale-90 origin-right">
                           <button 
                             type="button"
                             onClick={() => {
@@ -936,7 +936,7 @@ const AddProduct = () => {
                                 setFormData(prev => ({ ...prev, stock: "1" }));
                               }
                             }}
-                            className={`px-3 py-1.5 rounded-md text-[8px] font-bold uppercase tracking-widest transition-all duration-300 ${!isStockUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
+                            className={`px-3 py-1.5 rounded-sm text-[8px] font-bold uppercase tracking-widest transition-all duration-300 ${!isStockUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
                           >
                             Limited
                           </button>
@@ -946,7 +946,7 @@ const AddProduct = () => {
                               setIsStockUnlimited(true);
                               setFormData(prev => ({ ...prev, stock: "99999" }));
                             }}
-                            className={`px-3 py-1.5 rounded-md text-[8px] font-bold uppercase tracking-widest transition-all duration-300 ${isStockUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
+                            className={`px-3 py-1.5 rounded-sm text-[8px] font-bold uppercase tracking-widest transition-all duration-300 ${isStockUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
                           >
                             Unlimited
                           </button>
@@ -961,14 +961,16 @@ const AddProduct = () => {
                         placeholder={isStockUnlimited ? "Unlimited Stock" : "1"}
                         min="1"
                         disabled={isStockUnlimited}
-                        className={`w-full px-5 py-4 rounded-md border border-gray-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs ${isStockUnlimited ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-900'}`}
+                        className={`w-full px-5 py-4 rounded-md border border-gray-200 focus:border-[#B19CD9] outline-none transition-all duration-300 font-body text-xs ${isStockUnlimited ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-900'}`}
                       />
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
-                        Product Base Identifier
-                      </label>
+                      <div className="flex items-center h-12 mb-2">
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray-400 transition-colors group-focus-within:text-gray-900">
+                          Product Base Identifier
+                        </label>
+                      </div>
                       <div className="relative">
                         <input
                           type="text"
@@ -996,7 +998,7 @@ const AddProduct = () => {
                 {/* Tags */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
                     <h2 className="text-lg font-bold text-gray-900 tracking-tight">Search & Discovery</h2>
                   </div>
 
@@ -1053,7 +1055,7 @@ const AddProduct = () => {
                 {/* Sizes */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
                     <h2 className="text-lg font-bold text-gray-900 tracking-tight">Available Sizes</h2>
                   </div>
 
@@ -1065,8 +1067,8 @@ const AddProduct = () => {
                         whileTap={{ scale: 0.95 }}
                         onClick={() => toggleSize(size)}
                         className={`px-6 py-3 rounded-md font-display font-medium text-sm transition-all duration-300 border ${formData.selectedSizes.includes(size)
-                          ? "border-primary bg-gray-900 text-primary-foreground shadow-lg shadow-primary/20"
-                          : "border-gray-200 bg-gray-50 text-gray-900 hover:border-primary/30"
+                          ? "border-[#9E86C9] bg-[#B19CD9] text-black shadow-md shadow-purple-900/10"
+                          : "border-gray-200 bg-gray-50 text-gray-900 hover:border-[#B19CD9]/30"
                           }`}
                       >
                         {size}
@@ -1078,7 +1080,7 @@ const AddProduct = () => {
                 {/* Colors */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
                     <h2 className="text-lg font-bold text-gray-900 tracking-tight">Color Palette</h2>
                   </div>
 
@@ -1240,7 +1242,7 @@ const AddProduct = () => {
                 {/* Image Assets Card */}
                 <div className="space-y-6">
                   <div className="flex items-center gap-4" id="image-studio">
-                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
                     <h2 className="text-lg font-bold text-gray-900 tracking-tight">Image Studio</h2>
                   </div>
 
@@ -1383,7 +1385,7 @@ const AddProduct = () => {
                 {/* Status & Publishing */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
                     <h2 className="text-lg font-bold text-gray-900 tracking-tight">Status & Publishing</h2>
                   </div>
 
