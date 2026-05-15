@@ -47,6 +47,7 @@ const UserNavbar = () => {
     { to: "#", label: "Orders", icon: Package, adminOnly: false },
     // Keep this role-aware list so admin-only options can be expanded easily.
     { to: "/admin/add-product", label: "Add Product", icon: Plus, adminOnly: true },
+    { to: "/admin/manage-products", label: "View/Edit Products", icon: Shirt, adminOnly: true },
     { to: "#", label: "Admin Settings", icon: Settings, adminOnly: true },
   ];
   const visibleMenuItems = dashboardMenuItems.filter((item) => !item.adminOnly || isAdmin);

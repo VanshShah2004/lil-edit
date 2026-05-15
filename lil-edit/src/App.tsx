@@ -18,6 +18,7 @@ import Wishlist from "./pages/Wishlist";
 import Collections from "./pages/Collections";
 
 import AddProduct from "./pages/AddProduct";
+import ManageProducts from "./pages/ManageProducts";
 import AdminRoute from "./components/AdminRoute";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
           <Route path="/about" element={<About />} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/admin/add-product" element={<AdminRoute><AddProduct /></AdminRoute>} />
+          <Route path="/admin/manage-products" element={<AdminRoute><ManageProducts /></AdminRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
