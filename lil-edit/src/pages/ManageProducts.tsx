@@ -457,7 +457,7 @@ const ManageProducts = () => {
                       </button>
                       <button
                         onClick={() => handleDeleteProduct(selectedProduct)}
-                        className="w-full flex items-center justify-center gap-2 px-6 py-3 text-red-500 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all"
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3 border-2 border-red-500 text-red-500 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all"
                       >
                         <Trash2 size={14} /> Delete Permanent
                       </button>

@@ -623,7 +623,7 @@ const AddProduct = () => {
               Curation Studio
             </p>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-              Add & Curate Products
+              Product Listings
             </h1>
           </motion.div>
 
