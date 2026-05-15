@@ -137,7 +137,7 @@ export async function fetchAllProducts() {
     .from("products")
     .select(`
       *,
-      product_images(id, image_url, alt_text, is_primary, sort_order),
+      product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
       product_variants(id, color_name, color_hex, variant_sku, stock, sort_order)
     `)
     .order('created_at', { ascending: false });
@@ -149,7 +149,7 @@ export async function fetchAllProducts() {
     .from("draft_products")
     .select(`
       *,
-      draft_product_images(id, image_url, alt_text, is_primary, sort_order),
+      draft_product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
       draft_product_variants(id, color_name, color_hex, variant_sku, stock, sort_order)
     `)
     .order('created_at', { ascending: false });

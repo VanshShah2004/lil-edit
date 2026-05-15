@@ -29,6 +29,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
 -- INITIALIZATION: Sync existing products and drafts into sku_counters
 -- This ensures the counter starts AFTER the highest existing product number.
 DO $$
