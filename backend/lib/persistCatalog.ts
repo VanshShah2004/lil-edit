@@ -135,7 +135,11 @@ export async function fetchAllProducts() {
   // Fetch published products
   const { data: published, error: pubErr } = await sb
     .from("products")
-    .select("*, product_images(image_url)")
+    .select(`
+      *,
+      product_images(id, image_url, alt_text, is_primary, sort_order),
+      product_variants(id, color_name, color_hex, variant_sku, stock, sort_order)
+    `)
     .order('created_at', { ascending: false });
     
   if (pubErr) throw pubErr;
@@ -143,7 +147,11 @@ export async function fetchAllProducts() {
   // Fetch draft products
   const { data: drafts, error: draftErr } = await sb
     .from("draft_products")
-    .select("*, draft_product_images(image_url)")
+    .select(`
+      *,
+      draft_product_images(id, image_url, alt_text, is_primary, sort_order),
+      draft_product_variants(id, color_name, color_hex, variant_sku, stock, sort_order)
+    `)
     .order('created_at', { ascending: false });
 
   if (draftErr) throw draftErr;

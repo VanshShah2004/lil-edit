@@ -2,18 +2,20 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Search, 
-  Filter, 
   Edit3, 
   Trash2, 
   Eye, 
   Plus, 
-  ChevronRight, 
   Package, 
   Clock, 
   CheckCircle2, 
-  ArrowRight,
-  Heart,
-  ShoppingBag
+  ArrowLeft,
+  ChevronRight,
+  Shield,
+  Tag,
+  Layers,
+  Box,
+  Image as ImageIcon
 } from "lucide-react";
 import { getBackendBaseUrl } from "@/lib/backend";
 import UserNavbar from "@/components/home/UserNavbar";
@@ -33,21 +35,33 @@ interface ProductItem {
   category: string;
   category_slug: string;
   price: number;
+  original_price?: number;
   status: "DRAFT" | "PUBLISHED";
   slug: string;
   created_at: string;
-  image_url?: string;
   brand: string;
   stock: number;
+  fabric?: string;
+  fit?: string;
+  occasion?: string;
+  care?: string;
+  description_points?: string[];
+  gender?: string;
+  product_images?: any[];
+  draft_product_images?: any[];
+  product_variants?: any[];
+  draft_product_variants?: any[];
+  image_url?: string; // Derived
 }
 
 const ManageProducts = () => {
   const { user, loading: authLoading } = useAuth();
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"ALL" | "DRAFT" | "PUBLISHED">("ALL");
-  const [sortBy, setSortBy] = useState<"newest" | "price-high" | "price-low" | "title">("newest");
+  const [isMobileDetailView, setIsMobileDetailView] = useState(false);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -58,7 +72,6 @@ const ManageProducts = () => {
       
       const data = await res.json();
       
-      // Flatten the backend response { published: [], drafts: [] }
       const all: ProductItem[] = [
         ...(data.published?.map((p: any) => ({
           ...p,
@@ -70,12 +83,15 @@ const ManageProducts = () => {
           status: "DRAFT" as const,
           image_url: d.draft_product_images?.[0]?.image_url
         })) ?? [])
-      ];
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
       setProducts(all);
+      if (all.length > 0) {
+        setSelectedProduct(all[0]);
+      }
     } catch (err) {
       console.error("Error fetching products:", err);
-      toast.error("Failed to load products from backend");
+      toast.error("Failed to load catalog");
     } finally {
       setLoading(false);
     }
@@ -85,33 +101,17 @@ const ManageProducts = () => {
     fetchProducts();
   }, []);
 
-  const handleDelete = async (id: string, status: "DRAFT" | "PUBLISHED") => {
-    if (!confirm("Are you sure you want to delete this product? This action cannot be undone.")) return;
-
-    try {
-      // For now, we still use Supabase directly for deletion as we don't have a backend DELETE route yet
-      // Or we can just prompt the user to implement it. I'll stick to a placeholder for now to be safe.
-      toast.info("Delete functionality coming soon to backend.");
-    } catch (err) {
-      console.error("Delete error:", err);
-      toast.error("Failed to delete product");
-    }
+  const handleProductSelect = (product: ProductItem) => {
+    setSelectedProduct(product);
+    setIsMobileDetailView(true);
   };
 
-  const filteredProducts = products
-    .filter(p => {
-      const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           p.base_sku.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = filterStatus === "ALL" || p.status === filterStatus;
-      return matchesSearch && matchesStatus;
-    })
-    .sort((a, b) => {
-      if (sortBy === "newest") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      if (sortBy === "price-high") return b.price - a.price;
-      if (sortBy === "price-low") return a.price - b.price;
-      if (sortBy === "title") return a.title.localeCompare(b.title);
-      return 0;
-    });
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         p.base_sku.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === "ALL" || p.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
@@ -119,194 +119,229 @@ const ManageProducts = () => {
     <div className="min-h-screen bg-[#FDFCFD] selection:bg-primary/20 flex flex-col">
       {user ? <UserNavbar /> : <Navbar />}
       
-      <main className="flex-1 pt-[160px] md:pt-[128px] pb-24 px-4 sm:px-8 lg:px-12 xl:px-20">
-        <div className="mx-auto max-w-7xl">
-          {/* Header Section */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
-                  Admin Dashboard
-                </span>
-                <div className="h-px w-8 bg-primary/20" />
-              </div>
-              <h1 className="text-4xl font-display font-medium text-foreground tracking-tight">
-                Manage Inventory
-              </h1>
-              <p className="text-muted-foreground mt-2 font-body text-sm">
-                Real-time overview of your store's catalog.
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              <Link
-                to="/admin/add-product"
-                className="inline-flex items-center gap-2 px-6 py-3.5 bg-primary text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-primary/20 active:scale-95"
-              >
-                <Plus size={16} strokeWidth={3} />
-                Add New Product
+      <main className="flex-1 pt-[160px] md:pt-[128px] flex flex-col md:flex-row relative min-h-[calc(100vh-160px)]">
+        
+        {/* LEFT COLUMN - Product List */}
+        <aside className={`w-full md:w-[350px] lg:w-[400px] border-r border-border/50 bg-white flex flex-col shrink-0 md:sticky md:top-[128px] md:h-[calc(100vh-128px)] transition-transform duration-300 md:translate-x-0 ${isMobileDetailView ? "-translate-x-full md:translate-x-0 hidden md:flex" : "translate-x-0 flex"}`}>
+          <div className="p-4 border-b border-border/40">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-display font-bold">Catalog</h2>
+              <Link to="/admin/add-product" className="p-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors">
+                <Plus size={18} />
               </Link>
-            </motion.div>
-          </div>
+            </div>
+            
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Find product..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 rounded-xl border border-border/50 bg-[#F9F8FA] text-xs outline-none focus:border-primary/30 transition-all"
+              />
+            </div>
 
-          {/* Controls Bar */}
-          <div className="bg-white rounded-[2rem] border border-border/60 shadow-[0_8px_40px_rgb(0,0,0,0.04)] p-4 md:p-6 mb-8">
-            <div className="flex flex-col lg:flex-row gap-4 items-center">
-              <div className="relative flex-1 w-full group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                <input
-                  type="text"
-                  placeholder="Search by title, SKU..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-border/50 bg-[#F9F8FA] focus:bg-white focus:border-primary/40 focus:ring-4 focus:ring-primary/5 outline-none transition-all font-body text-sm"
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-3 w-full lg:w-auto">
-                <div className="flex bg-[#F9F8FA] p-1 rounded-xl border border-border/50">
-                  {(["ALL", "PUBLISHED", "DRAFT"] as const).map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => setFilterStatus(status)}
-                      className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
-                        filterStatus === status 
-                        ? "bg-white text-primary shadow-sm" 
-                        : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {status}
-                    </button>
-                  ))}
-                </div>
-
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="bg-[#F9F8FA] border border-border/50 rounded-xl px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-muted-foreground outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/5 transition-all cursor-pointer"
+            <div className="flex gap-1 bg-[#F9F8FA] p-1 rounded-xl border border-border/40">
+              {(["ALL", "PUBLISHED", "DRAFT"] as const).map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setFilterStatus(status)}
+                  className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${
+                    filterStatus === status 
+                    ? "bg-white text-primary shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
+                  }`}
                 >
-                  <option value="newest">Newest First</option>
-                  <option value="title">Alphabetical</option>
-                  <option value="price-high">Price: High to Low</option>
-                  <option value="price-low">Price: Low to High</option>
-                </select>
-              </div>
+                  {status}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Product Cards Grid (Wishlist Style) */}
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-32 space-y-4">
-              <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-primary/60">Fetching from Backend...</p>
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="bg-white rounded-[2rem] border border-dashed border-border/60 p-20 text-center">
-              <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-              <h3 className="text-xl font-display font-medium text-foreground">No matches found</h3>
-              <button onClick={() => {setSearchTerm(""); setFilterStatus("ALL");}} className="mt-4 text-primary font-bold text-[10px] uppercase tracking-widest">Clear Filters</button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              <AnimatePresence mode="popLayout">
-                {filteredProducts.map((product, idx) => (
-                  <motion.div
-                    key={`${product.status}-${product.id}`}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.4, delay: idx * 0.05 }}
-                  >
-                    <Card className="bg-white border border-gray-200 border-l-8 border-l-primary rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 h-full group">
-                      <CardContent className="p-4 flex gap-4 h-full relative">
-                        {/* IMAGE (Wishlist Style) */}
-                        <div className="w-24 sm:w-32 flex-shrink-0 relative">
-                          <div className="aspect-[3/4] overflow-hidden rounded-xl bg-gray-100">
-                            {product.image_url ? (
-                              <img
-                                src={product.image_url}
-                                alt={product.title}
-                                className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-muted-foreground/20">
-                                <Package size={40} />
-                              </div>
-                            )}
-                          </div>
-                          <div className="absolute top-2 left-2">
-                             {product.status === "PUBLISHED" ? (
-                              <Badge className="bg-emerald-500 text-white border-none text-[8px] uppercase tracking-tighter">Live</Badge>
-                            ) : (
-                              <Badge className="bg-amber-500 text-white border-none text-[8px] uppercase tracking-tighter">Draft</Badge>
-                            )}
-                          </div>
+          <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
+            {loading ? (
+              <div className="p-8 text-center text-xs font-bold text-muted-foreground animate-pulse">Syncing Database...</div>
+            ) : filteredProducts.map((p) => (
+              <button
+                key={`${p.status}-${p.id}`}
+                onClick={() => handleProductSelect(p)}
+                className={`w-full text-left p-3 rounded-2xl transition-all flex gap-3 group ${
+                  selectedProduct?.id === p.id 
+                  ? "bg-primary/5 border border-primary/20 shadow-sm" 
+                  : "hover:bg-secondary/50 border border-transparent"
+                }`}
+              >
+                <div className="w-12 h-16 rounded-lg bg-secondary flex-shrink-0 overflow-hidden relative border border-border/30">
+                  {p.image_url ? (
+                    <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <ImageIcon className="w-4 h-4 text-muted-foreground/30 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  )}
+                  <div className={`absolute top-1 left-1 w-2 h-2 rounded-full ${p.status === "PUBLISHED" ? "bg-emerald-500" : "bg-amber-500"}`} />
+                </div>
+                <div className="flex-1 min-w-0 py-0.5">
+                  <h3 className={`text-xs font-bold truncate ${selectedProduct?.id === p.id ? "text-primary" : "text-foreground"}`}>
+                    {p.title}
+                  </h3>
+                  <p className="text-[10px] text-muted-foreground/60 font-mono mt-0.5 uppercase tracking-tighter">
+                    {p.base_sku}
+                  </p>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-[10px] font-bold">₹{p.price.toLocaleString()}</span>
+                    <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${p.status === "PUBLISHED" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
+                      {p.status}
+                    </span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        {/* RIGHT COLUMN - Detailed View */}
+        <section className={`flex-1 bg-[#FCFBFE] pb-32 transition-transform duration-300 md:translate-x-0 ${isMobileDetailView ? "block translate-x-0" : "hidden md:block translate-x-full md:translate-x-0"}`}>
+          
+          {/* Mobile Back Button */}
+          <div className="md:hidden p-4 sticky top-[160px] bg-[#FCFBFE]/90 backdrop-blur-md z-20 flex items-center gap-4 border-b border-border/40 mb-4">
+            <button 
+              onClick={() => setIsMobileDetailView(false)}
+              className="p-2 bg-white rounded-full shadow-sm border border-border/50 text-primary"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Back to List</span>
+          </div>
+
+          <AnimatePresence mode="wait">
+            {selectedProduct ? (
+              <motion.div
+                key={selectedProduct.id}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="p-6 lg:p-10 max-w-5xl mx-auto"
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10">
+                  
+                  {/* Left: Images */}
+                  <div className="lg:col-span-5 space-y-4">
+                    <div className="aspect-[3/4] bg-white rounded-[2.5rem] overflow-hidden border border-border/60 shadow-xl shadow-primary/5 group">
+                      {selectedProduct.image_url ? (
+                        <img 
+                          src={selectedProduct.image_url} 
+                          alt={selectedProduct.title} 
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/10">
+                          <Package size={80} />
+                          <p className="mt-4 text-xs font-bold uppercase tracking-widest text-muted-foreground/30">No Image Preview</p>
                         </div>
-
-                        {/* DETAILS */}
-                        <div className="flex-1 flex flex-col min-w-0 py-1">
-                          <div className="mb-2">
-                            <h2 className="text-base font-bold text-gray-900 leading-tight line-clamp-1 group-hover:text-primary transition-colors">
-                              {product.title}
-                            </h2>
-                            <p className="text-[10px] font-mono text-muted-foreground/60 tracking-wider mt-1 uppercase">
-                              {product.base_sku}
-                            </p>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2 mt-1">
-                            <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/10 text-[9px] px-2 py-0.5 rounded-md font-bold">
-                              {product.category}
-                            </Badge>
-                            <Badge variant="secondary" className="bg-teal-50 text-teal-700 border-teal-100 text-[9px] px-2 py-0.5 rounded-md font-bold">
-                              Stock: {product.stock}
-                            </Badge>
-                          </div>
-
-                          <div className="mt-auto pt-4 flex items-end justify-between">
-                            <div className="flex flex-col">
-                              <span className="text-lg font-bold text-primary">₹{product.price.toLocaleString()}</span>
-                              <span className="text-[10px] text-muted-foreground">Original Price: ₹{product.price.toLocaleString()}</span>
-                            </div>
-                            
-                            <div className="flex gap-2">
-                              {product.status === "PUBLISHED" && (
-                                <Link
-                                  to={`/collections/${product.category_slug}/product/${product.slug}`}
-                                  className="w-8 h-8 flex items-center justify-center rounded-full bg-secondary text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
-                                  title="View"
-                                >
-                                  <Eye size={14} />
-                                </Link>
-                              )}
-                              <button className="w-8 h-8 flex items-center justify-center rounded-full bg-secondary text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm">
-                                <Edit3 size={14} />
-                              </button>
-                              <button 
-                                onClick={() => handleDelete(product.id, product.status)}
-                                className="w-8 h-8 flex items-center justify-center rounded-full bg-secondary text-red-600 hover:bg-red-500 hover:text-white transition-all shadow-sm"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-4 gap-3">
+                      {(selectedProduct.status === "PUBLISHED" ? selectedProduct.product_images : selectedProduct.draft_product_images)?.slice(1, 5).map((img: any, i: number) => (
+                        <div key={i} className="aspect-square bg-white rounded-2xl border border-border/40 overflow-hidden shadow-sm">
+                          <img src={img.image_url} className="w-full h-full object-cover opacity-60 hover:opacity-100 transition-opacity" />
                         </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          )}
-        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Right: Info */}
+                  <div className="lg:col-span-7 space-y-8">
+                    <div>
+                      <div className="flex items-center gap-3 mb-4">
+                        <Badge variant="outline" className={`border-none px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full ${selectedProduct.status === "PUBLISHED" ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"}`}>
+                          {selectedProduct.status === "PUBLISHED" ? "Live on Store" : "Pending Draft"}
+                        </Badge>
+                        <span className="text-[10px] font-mono text-muted-foreground/60 font-bold uppercase tracking-widest">{selectedProduct.base_sku}</span>
+                      </div>
+                      
+                      <h1 className="text-3xl lg:text-4xl font-display font-medium text-foreground tracking-tight leading-tight">
+                        {selectedProduct.title}
+                      </h1>
+                      
+                      <div className="mt-6 flex items-baseline gap-4">
+                        <span className="text-3xl font-bold text-primary">₹{selectedProduct.price.toLocaleString()}</span>
+                        {selectedProduct.original_price && selectedProduct.original_price > selectedProduct.price && (
+                          <span className="text-xl text-muted-foreground line-through decoration-primary/30 decoration-2">₹{selectedProduct.original_price.toLocaleString()}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 lg:gap-6 py-6 lg:py-8 border-y border-border/40">
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5">
+                          <Tag size={10} /> Category
+                        </p>
+                        <p className="text-xs font-bold text-foreground">{selectedProduct.category}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5">
+                          <Shield size={10} /> Brand
+                        </p>
+                        <p className="text-xs font-bold text-foreground">{selectedProduct.brand}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5">
+                          <Layers size={10} /> Fabric
+                        </p>
+                        <p className="text-xs font-bold text-foreground">{selectedProduct.fabric || "N/A"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5">
+                          <Box size={10} /> Current Stock
+                        </p>
+                        <p className={`text-xs font-bold ${selectedProduct.stock > 0 ? "text-emerald-600" : "text-red-500"}`}>
+                          {selectedProduct.stock} Units
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-4 pt-4">
+                      {selectedProduct.status === "PUBLISHED" && (
+                        <Link
+                          to={`/collections/${selectedProduct.category_slug}/product/${selectedProduct.slug}`}
+                          className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-6 py-4 bg-secondary text-primary rounded-2xl font-bold text-[11px] uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-sm active:scale-95"
+                        >
+                          <Eye size={16} /> View Store
+                        </Link>
+                      )}
+                      <button className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-6 py-4 bg-primary text-white rounded-2xl font-bold text-[11px] uppercase tracking-widest shadow-lg shadow-primary/20 hover:brightness-110 transition-all active:scale-95">
+                        <Edit3 size={16} /> Edit Product
+                      </button>
+                      <button className="p-4 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all">
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+
+                    {selectedProduct.description_points && selectedProduct.description_points.length > 0 && (
+                      <div className="bg-white rounded-3xl border border-border/40 p-6 space-y-4">
+                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary">Product Highlights</h4>
+                        <ul className="space-y-3">
+                          {selectedProduct.description_points.map((pt, i) => (
+                            <li key={i} className="flex gap-3 text-xs text-muted-foreground leading-relaxed italic">
+                              <span className="text-primary font-bold">•</span> {pt}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-muted-foreground/30">
+                <Package size={60} strokeWidth={1} />
+                <p className="mt-4 text-xs font-bold uppercase tracking-widest">Select a product</p>
+              </div>
+            )}
+          </AnimatePresence>
+        </section>
       </main>
 
       <Footer />
