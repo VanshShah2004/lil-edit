@@ -642,7 +642,7 @@ const AddProduct = () => {
                 {/* Basic Info */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#B19CD9" }} />
                     <h2 className="text-lg font-bold text-gray-900 tracking-tight">Essential Details</h2>
                   </div>
 
@@ -680,7 +680,7 @@ const AddProduct = () => {
                 {/* Editorial Specifications */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-purple-600" />
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#B19CD9" }} />
                     <h2 className="text-lg font-bold text-gray-900 tracking-tight">Specifications</h2>
                   </div>
 
@@ -1246,7 +1246,8 @@ const AddProduct = () => {
                           </p>
                           <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="px-10 py-3.5 rounded-full bg-gray-900 text-white hover:brightness-95 transition-all duration-300 text-[11px] font-bold uppercase tracking-widest shadow-xl shadow-primary/10"
+                            className="px-10 py-3.5 rounded-full text-white hover:brightness-95 transition-all duration-300 text-[11px] font-bold uppercase tracking-widest shadow-xl"
+                            style={{ backgroundColor: "#B19CD9" }}
                           >
                             Upload Content
                           </button>
