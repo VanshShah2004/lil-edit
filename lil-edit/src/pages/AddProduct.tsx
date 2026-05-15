@@ -624,7 +624,7 @@ const AddProduct = () => {
               </span>
               <div className="h-px w-8 bg-primary/20" />
             </div>
-            <h1 className="text-4xl font-display font-medium text-foreground tracking-tight">
+            <h1 className="text-4xl lg:text-5xl font-display font-black tracking-tight text-foreground">
               Add & Curate Products
             </h1>
           </motion.div>
