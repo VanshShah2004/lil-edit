@@ -193,7 +193,7 @@ const ManageProducts = () => {
       }
 
       toast.success(`"${product.title}" has been successfully launched!`);
-      
+
       // Refresh the product list and selection
       await fetchProducts();
     } catch (err) {
@@ -494,7 +494,7 @@ const ManageProducts = () => {
                         {selectedProduct.status}
                       </Badge>
                     </div>
-                    
+
                     <div className="flex flex-col md:flex-row justify-between items-start gap-12">
                       <div className="flex-1">
                         <div className="grid grid-cols-2 gap-x-12 gap-y-8 border-t border-b border-gray-100 py-6">
@@ -548,7 +548,7 @@ const ManageProducts = () => {
                     </div>
                   </div>
 
-                {/* Documentation Grid */}
+                  {/* Documentation Grid */}
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
 
                     {/* — IMAGE STUDIO — */}

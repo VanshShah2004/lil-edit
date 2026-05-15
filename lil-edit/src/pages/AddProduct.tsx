@@ -69,6 +69,7 @@ interface FormData {
     hex: string;
     sku: string;
     stock: number;
+    isUnlimited?: boolean;
     images: string[]; // URLs/Base64 strings for preview
   }[];
   featured: boolean;
@@ -275,6 +276,7 @@ const AddProduct = () => {
   const [savedPreviewProduct, setSavedPreviewProduct] = useState<Product | null>(null);
   const [previewActivated, setPreviewActivated] = useState(false);
   const [activeImageTab, setActiveImageTab] = useState<"Global" | string>("Global");
+  const [isStockUnlimited, setIsStockUnlimited] = useState(false);
 
   const toTitleCase = (str: string) => {
     return str
@@ -371,12 +373,22 @@ const AddProduct = () => {
           name: formattedName, 
           hex, 
           sku: variantSku, 
-          stock: 0, 
+          stock: 1, 
+          isUnlimited: false,
           images: [] 
         }]
       }));
       setNewColorInput("");
     }
+  };
+
+  const toggleVariantStockMode = (colorName: string, isUnlimited: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedColors: prev.selectedColors.map(c => 
+        c.name === colorName ? { ...c, isUnlimited, stock: isUnlimited ? 99999 : 1 } : c
+      )
+    }));
   };
 
   const updateVariantStock = (colorName: string, stock: number) => {
@@ -498,6 +510,7 @@ const AddProduct = () => {
     if (!formData.category) missingFields.push("Category");
     if (!formData.gender) missingFields.push("Gender Category");
     if (!formData.sku.trim()) missingFields.push("Product Base Identifier");
+    if (!isStockUnlimited && (!formData.stock || parseInt(formData.stock) < 0)) missingFields.push("Stock Level");
 
     if (missingFields.length > 0) {
       alert(`Required Details Missing: \n\nPlease provide: ${missingFields.join(", ")}`);
@@ -908,18 +921,47 @@ const AddProduct = () => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
-                        Stock Level
-                      </label>
+                    <motion.div whileHover={{ scale: isStockUnlimited ? 1 : 1.01 }} className={`group transition-all duration-300 ${isStockUnlimited ? 'opacity-50 grayscale' : 'opacity-100'}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray-400 transition-colors group-focus-within:text-gray-900">
+                          {isStockUnlimited ? "Stock Level (Auto)" : "Stock Level"}
+                        </label>
+                        
+                        <div className="flex p-1 bg-gray-100/50 rounded-lg border border-gray-200/50">
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setIsStockUnlimited(false);
+                              if (formData.stock === "99999") {
+                                setFormData(prev => ({ ...prev, stock: "1" }));
+                              }
+                            }}
+                            className={`px-3 py-1.5 rounded-md text-[8px] font-bold uppercase tracking-widest transition-all duration-300 ${!isStockUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
+                          >
+                            Limited
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setIsStockUnlimited(true);
+                              setFormData(prev => ({ ...prev, stock: "99999" }));
+                            }}
+                            className={`px-3 py-1.5 rounded-md text-[8px] font-bold uppercase tracking-widest transition-all duration-300 ${isStockUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
+                          >
+                            Unlimited
+                          </button>
+                        </div>
+                      </div>
+                      
                       <input
                         type="number"
                         name="stock"
-                        value={formData.stock}
+                        value={isStockUnlimited ? "" : formData.stock}
                         onChange={handleInputChange}
-                        placeholder="0"
-                        min="0"
-                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
+                        placeholder={isStockUnlimited ? "Unlimited Stock" : "1"}
+                        min="1"
+                        disabled={isStockUnlimited}
+                        className={`w-full px-5 py-4 rounded-md border border-gray-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs ${isStockUnlimited ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-900'}`}
                       />
                     </motion.div>
 
@@ -1072,17 +1114,17 @@ const AddProduct = () => {
                             key={color.name}
                             className="bg-white border border-gray-200 rounded-[2.5rem] p-8 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-500 group relative"
                           >
-                            <div className="flex flex-col lg:flex-row gap-10 relative z-10">
-                              {/* Left side: Visual & Core Info */}
-                              <div className="flex-1 space-y-6">
+                            <div className="space-y-8 relative z-10">
+                              {/* Header Row: Swatch, Name, and Image Management */}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-gray-100">
                                 <div className="flex items-center gap-5">
                                   <div className="relative">
                                     <div
-                                      className="w-16 h-16 rounded-2xl border border-black/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] transition-all duration-700 group-hover:scale-110"
+                                      className="w-14 h-14 rounded-2xl border border-black/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] transition-all duration-700 group-hover:scale-110"
                                       style={{ backgroundColor: color.hex }}
                                     />
-                                    <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white shadow-sm border border-gray-200/20 flex items-center justify-center">
-                                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color.hex }} />
+                                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white shadow-sm border border-gray-200/20 flex items-center justify-center">
+                                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color.hex }} />
                                     </div>
                                   </div>
                                   <div className="flex flex-col">
@@ -1095,38 +1137,19 @@ const AddProduct = () => {
                                   </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-8 pt-6 border-t border-gray-200/10">
-                                  <div className="space-y-2">
-                                    <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-gray-400/50 block">Variant Signature</span>
-                                    <div className="font-mono text-[11px] text-gray-900/80 bg-gray-900/5 px-3 py-1.5 rounded-lg border border-primary/10 w-fit">
-                                      {color.sku}
+                                <div className="flex items-center gap-6 sm:gap-10">
+                                  <div 
+                                    className="flex items-center gap-3 cursor-pointer group/assets" 
+                                    onClick={() => setActiveImageTab(color.name)}
+                                  >
+                                    <div className="text-2xl font-bold text-gray-900 group-hover/assets:scale-110 transition-transform">
+                                      {color.images.length}
+                                    </div>
+                                    <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400/50">
+                                      Specific <br /> Images
                                     </div>
                                   </div>
 
-                                  <div className="space-y-2">
-                                    <label className="text-[9px] font-bold uppercase tracking-[0.25em] text-gray-400/50 block">Stock Inventory</label>
-                                    <div className="relative group/input">
-                                      <input
-                                        type="number"
-                                        value={color.stock}
-                                        onChange={(e) => updateVariantStock(color.name, parseInt(e.target.value) || 0)}
-                                        className="w-full bg-transparent border-b border-gray-200/40 focus:border-primary/40 outline-none transition-all py-1 text-sm font-medium font-body"
-                                        placeholder="0"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Right side: Image Management */}
-                              <div className="lg:w-48 flex flex-col items-center justify-center lg:border-l border-gray-200/10 lg:pl-10">
-                                <div className="text-center group/assets cursor-pointer" onClick={() => setActiveImageTab(color.name)}>
-                                  <div className="text-4xl font-display font-medium text-gray-900 mb-1 transition-transform duration-500 group-hover/assets:scale-110">
-                                    {color.images.length}
-                                  </div>
-                                  <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400/40 mb-6">
-                                    Specific Images
-                                  </div>
                                   <button
                                     onClick={(e) => { 
                                       e.stopPropagation(); 
@@ -1136,10 +1159,57 @@ const AddProduct = () => {
                                         fileInputRef.current?.click();
                                       }, 300);
                                     }}
-                                    className="w-full py-3 px-6 rounded-full bg-gray-50 hover:bg-gray-900 hover:text-white border border-gray-200/40 hover:border-primary text-gray-900 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/20"
+                                    className="py-2.5 px-6 rounded-full bg-gray-50 hover:bg-gray-900 hover:text-white border border-gray-200/40 hover:border-primary text-gray-900 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/20 whitespace-nowrap"
                                   >
                                     Edit Gallery
                                   </button>
+                                </div>
+                              </div>
+
+                              {/* Footer Grid: Signature and Stock */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                                <div className="space-y-2">
+                                  <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-gray-400/50 block">Variant Signature</span>
+                                  <div className="font-mono text-[11px] text-gray-900/80 bg-gray-900/5 px-3 py-1.5 rounded-lg border border-primary/10 w-fit">
+                                    {color.sku}
+                                  </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray-400/50 block">
+                                      {color.isUnlimited ? "Stock (Auto)" : "Stock Level"}
+                                    </label>
+                                    
+                                    <div className="flex p-1 bg-gray-100/50 rounded-lg border border-gray-200/50 scale-90 origin-right">
+                                      <button 
+                                        type="button"
+                                        onClick={() => toggleVariantStockMode(color.name, false)}
+                                        className={`px-3 py-1.5 rounded-md text-[7px] font-bold uppercase tracking-widest transition-all ${!color.isUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
+                                      >
+                                        Limited
+                                      </button>
+                                      <button 
+                                        type="button"
+                                        onClick={() => toggleVariantStockMode(color.name, true)}
+                                        className={`px-3 py-1.5 rounded-md text-[7px] font-bold uppercase tracking-widest transition-all ${color.isUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
+                                      >
+                                        Unlimited
+                                      </button>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="relative group/input">
+                                    <input
+                                      type="number"
+                                      value={color.isUnlimited ? "" : color.stock}
+                                      onChange={(e) => updateVariantStock(color.name, parseInt(e.target.value) || 0)}
+                                      disabled={color.isUnlimited}
+                                      className={`w-full bg-transparent border-b border-gray-200/40 focus:border-primary/40 outline-none transition-all py-1 text-sm font-medium font-body ${color.isUnlimited ? 'text-gray-400 opacity-50' : 'text-gray-900 opacity-100'}`}
+                                      placeholder={color.isUnlimited ? "Unlimited" : "1"}
+                                      min="1"
+                                    />
+                                  </div>
                                 </div>
                               </div>
                             </div>
