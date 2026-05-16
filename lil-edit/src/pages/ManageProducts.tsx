@@ -20,7 +20,7 @@ import Navbar from "@/components/layout/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 import { toast } from "sonner";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 
 interface ProductImage {
@@ -74,16 +74,268 @@ interface ProductItem {
   image_url?: string;
 }
 
+interface ProductVersionViewProps {
+  version: { type: "PUBLISHED" | "DRAFT"; data: ProductItem; label: string };
+  isSecondary?: boolean;
+  onEdit: (p: ProductItem) => void;
+  onLaunch: (p: ProductItem) => void;
+  onDelete: (p: ProductItem) => void;
+  onDownloadPdf: (p: ProductItem) => void;
+}
+
+const ProductVersionView = ({ version, isSecondary, onEdit, onLaunch, onDelete, onDownloadPdf }: ProductVersionViewProps) => {
+  const [activeImageTab, setActiveImageTab] = useState<string>("Global");
+  const [activeImage, setActiveImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const images = version.type === "PUBLISHED" ? version.data.product_images : version.data.draft_product_images;
+    const firstGlobal = images?.find(i => !i.variant_id)?.image_url ?? images?.[0]?.image_url ?? null;
+    setActiveImage(firstGlobal);
+  }, [version.data.id]);
+
+  const p = version.data;
+  const images = version.type === "PUBLISHED" ? p.product_images ?? [] : p.draft_product_images ?? [];
+  const variants = version.type === "PUBLISHED" ? p.product_variants ?? [] : p.draft_product_variants ?? [];
+
+  return (
+    <div className={`space-y-10 ${isSecondary ? "pt-4 relative" : ""}`}>
+      {isSecondary && (
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-center">
+          <div className="w-full h-0.5 bg-black" />
+          <div className="absolute px-6 py-2 bg-amber-50 border border-amber-100 rounded-full z-10 whitespace-nowrap">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-700">Pending Update Version Below</p>
+          </div>
+        </div>
+      )}
+
+      {/* Summary Row */}
+      <div className="space-y-8">
+        <div className="space-y-1">
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{p.title}</h2>
+            <Badge className={`${version.type === "PUBLISHED" ? "bg-gray-900 text-white hover:bg-gray-900" : "bg-amber-100 text-amber-700 hover:bg-amber-100"} border-none text-[10px] font-bold uppercase tracking-widest px-3 py-1`}>
+              {version.label}
+            </Badge>
+          </div>
+          <p className="text-[11px] font-bold text-gray-400 font-mono tracking-widest uppercase">{p.base_sku}</p>
+        </div>
+
+        <div className="flex flex-col md:flex-row justify-between items-start gap-12">
+          <div className="flex-1">
+            <div className="grid grid-cols-2 gap-x-12 gap-y-8 border-t border-b border-gray-100 py-6">
+              <div className="space-y-1">
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Brand House</p>
+                <p className="text-xs font-bold text-gray-900">{p.brand}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Category</p>
+                <p className="text-xs font-bold text-gray-900">{p.category}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Selling Price (INR)</p>
+                <p className="text-xs font-bold text-gray-900">₹{p.price.toLocaleString()}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">MRP / Original Price</p>
+                <p className="text-xs font-bold text-gray-900">
+                  {p.original_price ? `₹${p.original_price.toLocaleString()}` : "—"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full md:w-auto flex flex-col gap-3">
+            <div className="flex gap-3">
+              <button onClick={() => onEdit(p)} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white rounded font-bold text-[10px] uppercase tracking-widest hover:bg-gray-800 transition-all">
+                <Edit3 size={14} /> {version.type === "PUBLISHED" ? "Update" : "Edit Draft"}
+              </button>
+              <button onClick={() => onDownloadPdf(p)} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border border-gray-200 text-gray-600 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all">
+                <Download size={14} /> PDF
+              </button>
+            </div>
+            {version.type === "DRAFT" && (
+              <button onClick={() => onLaunch(p)} className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#B19CD9] text-black rounded font-bold text-[10px] uppercase tracking-widest hover:brightness-105 transition-all shadow-lg shadow-[#B19CD9]/20">
+                <Zap size={14} /> Sync Updates to Live
+              </button>
+            )}
+            <button onClick={() => onDelete(p)} className="w-full flex items-center justify-center gap-2 px-6 py-3 border border-red-200 text-red-500 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all">
+              <Trash2 size={14} /> Remove Version
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Documentation Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+        {/* — IMAGE STUDIO — */}
+        <div className="lg:col-span-4 space-y-4">
+          <div className="aspect-[3/4] border border-gray-100 bg-gray-50/50 rounded-sm overflow-hidden flex items-center justify-center">
+            {activeImage ? (
+              <img src={activeImage} className="w-full h-full object-cover" alt={p.title} />
+            ) : (
+              <div className="flex flex-col items-center gap-2 text-gray-200">
+                <ImageIcon size={32} />
+                <span className="text-[9px] font-bold uppercase tracking-widest">No Image</span>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-1">
+              {["Global", ...variants.map(v => v.color_name)].map(tab => {
+                const variant = variants.find(v => v.color_name === tab);
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => {
+                      setActiveImageTab(tab);
+                      const tabImages = tab === "Global" ? images.filter(img => !img.variant_id) : images.filter(img => img.variant_id === variant?.id);
+                      setActiveImage(tabImages[0]?.image_url ?? null);
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider rounded border transition-all ${activeImageTab === tab ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-500 border-gray-100 hover:border-gray-300"}`}
+                  >
+                    {variant && <div className="w-2 h-2 rounded-full border border-white/20" style={{ backgroundColor: variant.color_hex }} />}
+                    {tab}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(activeImageTab === "Global" ? images.filter(img => !img.variant_id) : images.filter(img => img.variant_id === variants.find(v => v.color_name === activeImageTab)?.id)).map((img, i) => (
+                <button key={i} onClick={() => setActiveImage(img.image_url)} className={`w-12 h-16 border bg-gray-50 shrink-0 overflow-hidden transition-all ${activeImage === img.image_url ? "border-gray-900" : "border-gray-100 opacity-50 hover:opacity-80"}`}>
+                  <img src={img.image_url} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* — SPECS & MATRIX — */}
+        <div className="lg:col-span-8 space-y-12">
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <FileText size={14} className="text-gray-400" />
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Technical Specifications</h3>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-8 gap-x-4">
+              {[
+                { label: "Category", value: p.category },
+                { label: "Gender", value: p.gender || "N/A" },
+                { label: "Sizes", value: p.sizes?.length ? p.sizes.join(", ") : "N/A" },
+                { label: "Fabrication", value: p.fabric || "N/A" },
+                { label: "Silhouette", value: p.fit || "N/A" },
+                { label: "Occasion", value: p.occasion || "N/A" },
+                { label: "Maintenance", value: p.care || "N/A" }
+              ].map((item, i) => (
+                <div key={i} className="space-y-1">
+                  <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{item.label}</p>
+                  <p className="text-[11px] font-bold text-gray-900">{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <Boxes size={14} className="text-gray-400" />
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Inventory Distribution Matrix</h3>
+            </div>
+            <div className="border border-gray-100 rounded-sm overflow-hidden">
+              <table className="w-full text-left text-[11px]">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="px-6 py-3 font-bold text-gray-400 uppercase tracking-wider">Variant</th>
+                    <th className="px-6 py-3 font-bold text-gray-400 uppercase tracking-wider">SKU</th>
+                    <th className="px-6 py-3 font-bold text-gray-400 uppercase tracking-wider text-right">Units</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {variants.map((v, i) => (
+                    <tr key={i} className="hover:bg-gray-50/30">
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full border border-gray-100" style={{ backgroundColor: v.color_hex }} />
+                          <span className="font-bold">{v.color_name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 font-mono text-[10px] text-gray-400">{v.variant_sku}</td>
+                      <td className="px-6 py-3 font-bold text-right text-gray-900">{v.stock}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <FileText size={14} className="text-gray-400" />
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Merchandising & Taxonomy</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-4">
+              <div className="space-y-2">
+                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Tags</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {p.tags?.length ? p.tags.map(tag => (
+                    <Badge key={tag} variant="secondary" className="text-[9px] font-bold uppercase tracking-widest bg-gray-100 text-gray-600 border-none">{tag}</Badge>
+                  )) : <span className="text-[11px] font-bold text-gray-900">None</span>}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Badges</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {p.badges?.length ? p.badges.map(badge => (
+                    <Badge key={badge} variant="secondary" className="text-[9px] font-bold uppercase tracking-widest bg-gray-900 text-white border-none">{badge}</Badge>
+                  )) : <span className="text-[11px] font-bold text-gray-900">None</span>}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <Activity size={14} className="text-gray-400" />
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Catalogue Highlights</h3>
+            </div>
+            <div className="space-y-3">
+              {p.description_points?.length ? p.description_points.map((pt, i) => (
+                <div key={i} className="flex gap-3 text-[11px] leading-relaxed text-gray-500 font-medium">
+                  <span className="text-gray-900 font-bold shrink-0">0{i + 1}.</span>
+                  <p>{pt}</p>
+                </div>
+              )) : <p className="text-[11px] text-gray-300 italic">No highlights provided.</p>}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface GroupedProduct {
+  base_sku: string;
+  published?: ProductItem;
+  draft?: ProductItem;
+  // Metadata for the list view (prefers published data)
+  id: string;
+  title: string;
+  price: number;
+  image_url: string;
+  created_at: string;
+}
+
 const ManageProducts = () => {
   const { user, loading: authLoading } = useAuth();
-  const [products, setProducts] = useState<ProductItem[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null);
+  const navigate = useNavigate();
+  const [products, setProducts] = useState<GroupedProduct[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<GroupedProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"ALL" | "DRAFT" | "PUBLISHED">("ALL");
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [activeImageTab, setActiveImageTab] = useState<string>("Global");
+  const [activeVersion, setActiveVersion] = useState<"PUBLISHED" | "DRAFT">("PUBLISHED");
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -92,20 +344,56 @@ const ManageProducts = () => {
       const res = await fetch(`${base}/api/products`);
       if (!res.ok) throw new Error("Failed to fetch products");
       const data = await res.json();
-      const all: ProductItem[] = [
-        ...(data.published?.map((p: any) => ({
-          ...p,
-          status: "PUBLISHED" as const,
-          image_url: p.product_images?.find((i: ProductImage) => !i.variant_id)?.image_url
-            ?? p.product_images?.[0]?.image_url
-        })) ?? []),
-        ...(data.drafts?.map((d: any) => ({
-          ...d,
-          status: "DRAFT" as const,
-          image_url: d.draft_product_images?.find((i: ProductImage) => !i.variant_id)?.image_url
-            ?? d.draft_product_images?.[0]?.image_url
-        })) ?? [])
-      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      const published = data.published?.map((p: any) => ({
+        ...p,
+        status: "PUBLISHED" as const,
+        image_url: p.product_images?.find((i: ProductImage) => !i.variant_id)?.image_url
+          ?? p.product_images?.[0]?.image_url
+      })) ?? [];
+
+      const drafts = data.drafts?.map((d: any) => ({
+        ...d,
+        status: "DRAFT" as const,
+        image_url: d.draft_product_images?.find((i: ProductImage) => !i.variant_id)?.image_url
+          ?? d.draft_product_images?.[0]?.image_url
+      })) ?? [];
+
+      // Grouping logic
+      const groupedMap = new Map<string, GroupedProduct>();
+
+      published.forEach((p: ProductItem) => {
+        groupedMap.set(p.base_sku, {
+          base_sku: p.base_sku,
+          published: p,
+          id: p.id,
+          title: p.title,
+          price: p.price,
+          image_url: p.image_url ?? "",
+          created_at: p.created_at
+        });
+      });
+
+      drafts.forEach((d: ProductItem) => {
+        const existing = groupedMap.get(d.base_sku);
+        if (existing) {
+          existing.draft = d;
+        } else {
+          groupedMap.set(d.base_sku, {
+            base_sku: d.base_sku,
+            draft: d,
+            id: d.id,
+            title: d.title,
+            price: d.price,
+            image_url: d.image_url ?? "",
+            created_at: d.created_at
+          });
+        }
+      });
+
+      const all: GroupedProduct[] = Array.from(groupedMap.values())
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
       setProducts(all);
       if (all.length > 0) {
         setSelectedProduct(all[0]);
@@ -124,16 +412,16 @@ const ManageProducts = () => {
   useEffect(() => {
     if (!selectedProduct) return;
     setActiveImageTab("Global");
-    const allImages: ProductImage[] = selectedProduct.status === "PUBLISHED"
-      ? selectedProduct.product_images ?? []
-      : selectedProduct.draft_product_images ?? [];
-    const firstGlobal = allImages.find(i => !i.variant_id)?.image_url ?? null;
-    setActiveImage(firstGlobal);
-  }, [selectedProduct?.id]);
+  }, [selectedProduct?.base_sku]);
 
-  const handleProductSelect = (product: ProductItem) => {
+  const handleProductSelect = (product: GroupedProduct) => {
     setSelectedProduct(product);
+    setActiveVersion(product.draft ? "DRAFT" : "PUBLISHED");
     setIsMobileDetailView(true);
+  };
+
+  const handleEditProduct = (product: ProductItem) => {
+    navigate(`/admin/edit/${product.id}`);
   };
 
   const handleLaunchProduct = async (product: ProductItem) => {
@@ -378,7 +666,14 @@ const ManageProducts = () => {
     const matchesSearch =
       p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.base_sku.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === "ALL" || p.status === filterStatus;
+
+    let matchesStatus = true;
+    if (filterStatus === "PUBLISHED") {
+      matchesStatus = !!p.published;
+    } else if (filterStatus === "DRAFT") {
+      matchesStatus = !!p.draft;
+    }
+
     return matchesSearch && matchesStatus;
   });
 
@@ -440,9 +735,9 @@ const ManageProducts = () => {
               <div className="p-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-300">Loading Records...</div>
             ) : filteredProducts.map((p) => (
               <button
-                key={`${p.status}-${p.id}`}
+                key={p.base_sku}
                 onClick={() => handleProductSelect(p)}
-                className={`w-full text-left px-6 py-4 transition-all flex gap-4 ${selectedProduct?.id === p.id ? "bg-gray-50 border-r-4 border-r-gray-900" : "hover:bg-gray-50/50"}`}
+                className={`w-full text-left px-6 py-4 transition-all flex gap-4 ${selectedProduct?.base_sku === p.base_sku ? "bg-gray-50 border-r-4 border-r-gray-900" : "hover:bg-gray-50/50"}`}
               >
                 <div className="w-10 h-12 bg-gray-100 rounded border border-gray-200 flex-shrink-0 overflow-hidden relative">
                   {p.image_url ? (
@@ -451,13 +746,27 @@ const ManageProducts = () => {
                     <ImageIcon className="w-4 h-4 text-gray-300 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className={`text-xs font-bold truncate leading-tight ${selectedProduct?.id === p.id ? "text-gray-900" : "text-gray-600"}`}>{p.title}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[9px] text-gray-400 font-mono font-medium">{p.base_sku}</span>
-                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${p.status === "PUBLISHED" ? "bg-gray-900 text-white" : "bg-gray-200 text-gray-600"}`}>{p.status}</span>
+                <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`text-xs font-bold truncate leading-tight ${selectedProduct?.base_sku === p.base_sku ? "text-gray-900" : "text-gray-600"}`}>{p.title}</h3>
+                      <span className="text-[9px] text-gray-400 font-mono font-medium block mt-0.5">{p.base_sku}</span>
+                    </div>
+                    {p.published && (
+                      <span className="text-[7px] font-black px-1.5 py-0.5 rounded bg-gray-900 text-white whitespace-nowrap uppercase">Published</span>
+                    )}
                   </div>
-                  <p className="text-[10px] font-bold text-gray-900 mt-1">₹{p.price.toLocaleString()}</p>
+                  <div className="flex items-end justify-between mt-2">
+                    <p className="text-[10px] font-bold text-gray-900">₹{p.price.toLocaleString()}</p>
+                    <div className="flex flex-col items-end gap-1">
+                      {p.published && p.draft && (
+                        <span className="text-[7px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 whitespace-nowrap uppercase">Updates To be Synced</span>
+                      )}
+                      {!p.published && p.draft && (
+                        <span className="text-[7px] font-black px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 whitespace-nowrap uppercase">Draft</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </button>
             ))}
@@ -468,299 +777,40 @@ const ManageProducts = () => {
         <section className={`md:w-[75%] bg-white pb-32 transition-all duration-300 md:translate-x-0 ${isMobileDetailView ? "block translate-x-0" : "hidden md:block translate-x-full md:translate-x-0"}`}>
 
           {/* Mobile Back */}
-          <div className="md:hidden p-6 sticky top-[160px] bg-white border-b border-gray-100 z-20 flex items-center justify-between">
+          <div className="md:hidden p-6 bg-white border-b border-gray-100 flex items-center justify-between">
             <button onClick={() => setIsMobileDetailView(false)} className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-gray-900 transition-all">
               <ArrowLeft size={16} /> Back to Catalog
             </button>
-            <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest">{selectedProduct?.status}</Badge>
+            <div className="flex gap-2">
+              {selectedProduct?.published && <Badge variant="outline" className="text-[7px] font-bold uppercase">Live</Badge>}
+              {selectedProduct?.draft && <Badge variant="outline" className="text-[7px] font-bold uppercase bg-amber-50 text-amber-600 border-amber-100">Sync</Badge>}
+            </div>
           </div>
 
           <AnimatePresence mode="wait">
             {selectedProduct ? (
               <motion.div
-                key={selectedProduct.id}
+                key={selectedProduct.base_sku}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="px-8 pt-2 pb-16 lg:px-16 lg:pt-4 lg:pb-20 max-w-5xl mx-auto"
               >
-                <div className="space-y-16">
-
-                  {/* Summary Row */}
-                  <div className="space-y-8">
-                    <div className="flex items-center gap-4">
-                      <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{selectedProduct.title}</h2>
-                      <Badge className="bg-[#E6E6FA] text-[#4B0082] border-none hover:bg-[#D8BFD8] text-[10px] font-bold uppercase tracking-widest px-3 py-1">
-                        {selectedProduct.status}
-                      </Badge>
-                    </div>
-
-                    <div className="flex flex-col md:flex-row justify-between items-start gap-12">
-                      <div className="flex-1">
-                        <div className="grid grid-cols-2 gap-x-12 gap-y-8 border-t border-b border-gray-100 py-6">
-                          <div className="space-y-1">
-                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Master SKU</p>
-                            <p className="text-xs font-bold text-gray-900 font-mono">{selectedProduct.base_sku}</p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Brand House</p>
-                            <p className="text-xs font-bold text-gray-900">{selectedProduct.brand}</p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Selling Price (INR)</p>
-                            <p className="text-xs font-bold text-gray-900">₹{selectedProduct.price.toLocaleString()}</p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">MRP / Original Price</p>
-                            <p className="text-xs font-bold text-gray-900">
-                              {selectedProduct.original_price
-                                ? `₹${selectedProduct.original_price.toLocaleString()}`
-                                : "—"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="w-full md:w-auto flex flex-col gap-3">
-                        <div className="flex gap-3">
-                          <button className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white rounded font-bold text-[10px] uppercase tracking-widest hover:bg-gray-800 transition-all">
-                            <Edit3 size={14} /> Update Entry
-                          </button>
-                          <button className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border border-gray-200 text-gray-600 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all" onClick={() => handleDownloadPdf(selectedProduct)}>
-                            <Download size={14} /> Download PDF
-                          </button>
-                        </div>
-                        {selectedProduct.status === "DRAFT" && (
-                          <button
-                            onClick={() => handleLaunchProduct(selectedProduct)}
-                            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#B19CD9] text-black rounded font-bold text-[10px] uppercase tracking-widest hover:brightness-105 transition-all shadow-lg shadow-[#B19CD9]/20"
-                          >
-                            <Zap size={14} /> Launch Product
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDeleteProduct(selectedProduct)}
-                          className="w-full flex items-center justify-center gap-2 px-6 py-3 border-2 border-red-500 text-red-500 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all"
-                        >
-                          <Trash2 size={14} /> Delete Permanent
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Documentation Grid */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-
-                    {/* — IMAGE STUDIO — */}
-                    <div className="lg:col-span-4 space-y-4">
-                      {/* Main Preview */}
-                      <div className="aspect-[3/4] border border-gray-100 bg-gray-50/50 rounded-sm overflow-hidden flex items-center justify-center">
-                        {activeImage ? (
-                          <img src={activeImage} className="w-full h-full object-cover" alt={selectedProduct.title} />
-                        ) : (
-                          <div className="flex flex-col items-center gap-2 text-gray-200">
-                            <ImageIcon size={32} />
-                            <span className="text-[9px] font-bold uppercase tracking-widest">No Image</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Variant Tabs + Thumbnails */}
-                      {(() => {
-                        const allImages: ProductImage[] = selectedProduct.status === "PUBLISHED"
-                          ? selectedProduct.product_images ?? []
-                          : selectedProduct.draft_product_images ?? [];
-                        const variants: ProductVariant[] = selectedProduct.status === "PUBLISHED"
-                          ? selectedProduct.product_variants ?? []
-                          : selectedProduct.draft_product_variants ?? [];
-
-                        const tabs = ["Global", ...variants.map(v => v.color_name)];
-
-                        const getTabImages = (tab: string): ProductImage[] => {
-                          if (tab === "Global") return allImages.filter(img => !img.variant_id);
-                          const variant = variants.find(v => v.color_name === tab);
-                          return variant ? allImages.filter(img => img.variant_id === variant.id) : [];
-                        };
-
-                        const tabImages = getTabImages(activeImageTab);
-
-                        return (
-                          <div className="space-y-3">
-                            {/* Tab Bar */}
-                            <div className="flex flex-wrap gap-1">
-                              {tabs.map((tab) => {
-                                const variant = variants.find(v => v.color_name === tab);
-                                return (
-                                  <button
-                                    key={tab}
-                                    onClick={() => {
-                                      setActiveImageTab(tab);
-                                      setActiveImage(getTabImages(tab)[0]?.image_url ?? null);
-                                    }}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider rounded border transition-all ${activeImageTab === tab ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-500 border-gray-100 hover:border-gray-300"}`}
-                                  >
-                                    {variant && (
-                                      <div className="w-2 h-2 rounded-full border border-white/20" style={{ backgroundColor: variant.color_hex }} />
-                                    )}
-                                    {tab}
-                                  </button>
-                                );
-                              })}
-                            </div>
-
-                            {/* Thumbnail Strip */}
-                            <div className="flex flex-wrap gap-2">
-                              {tabImages.length > 0 ? tabImages.map((img, i) => (
-                                <button
-                                  key={i}
-                                  onClick={() => setActiveImage(img.image_url)}
-                                  className={`w-12 h-16 border bg-gray-50 shrink-0 overflow-hidden transition-all ${activeImage === img.image_url ? "border-gray-900" : "border-gray-100 opacity-50 hover:opacity-80"}`}
-                                >
-                                  <img src={img.image_url} className="w-full h-full object-cover" />
-                                </button>
-                              )) : (
-                                <p className="text-[9px] text-gray-300 font-bold uppercase tracking-widest py-2">
-                                  No images for {activeImageTab === "Global" ? "global gallery" : `${activeImageTab} variant`}.
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    {/* — SPECS & MATRIX — */}
-                    <div className="lg:col-span-8 space-y-12">
-
-                      {/* Technical Specifications */}
-                      <div className="space-y-6">
-                        <div className="flex items-center gap-2">
-                          <FileText size={14} className="text-gray-400" />
-                          <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Technical Specifications</h3>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-8 gap-x-4">
-                          {[
-                            { label: "Category", value: selectedProduct.category },
-                            { label: "Gender", value: selectedProduct.gender || "N/A" },
-                            { label: "Sizes", value: selectedProduct.sizes?.length ? selectedProduct.sizes.join(", ") : "N/A" },
-                            { label: "Fabrication", value: selectedProduct.fabric || "N/A" },
-                            { label: "Silhouette", value: selectedProduct.fit || "N/A" },
-                            { label: "Occasion", value: selectedProduct.occasion || "N/A" },
-                            { label: "Maintenance", value: selectedProduct.care || "N/A" }
-                          ].map((item, i) => (
-                            <div key={i} className="space-y-1">
-                              <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{item.label}</p>
-                              <p className="text-[11px] font-bold text-gray-900">{item.value}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Inventory Matrix */}
-                      <div className="space-y-6">
-                        <div className="flex items-center gap-2">
-                          <Boxes size={14} className="text-gray-400" />
-                          <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Inventory Distribution Matrix</h3>
-                        </div>
-                        <div className="border border-gray-100 rounded-sm overflow-hidden">
-                          <table className="w-full text-left text-[11px]">
-                            <thead className="bg-gray-50 border-b border-gray-100">
-                              <tr>
-                                <th className="px-6 py-3 font-bold text-gray-400 uppercase tracking-wider">Variant Label</th>
-                                <th className="px-6 py-3 font-bold text-gray-400 uppercase tracking-wider">Unique SKU</th>
-                                <th className="px-6 py-3 font-bold text-gray-400 uppercase tracking-wider text-right">Units On-Hand</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                              {(selectedProduct.status === "PUBLISHED" ? selectedProduct.product_variants : selectedProduct.draft_product_variants)?.map((v, i) => (
-                                <tr key={i} className="hover:bg-gray-50/30">
-                                  <td className="px-6 py-3">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-2.5 h-2.5 rounded-full border border-gray-100" style={{ backgroundColor: v.color_hex }} />
-                                      <span className="font-bold">{v.color_name}</span>
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-3 font-mono text-[10px] text-gray-400">{v.variant_sku}</td>
-                                  <td className="px-6 py-3 font-bold text-right text-gray-900">{v.stock}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                            <tfoot className="bg-gray-50/50 font-bold border-t border-gray-100">
-                              <tr>
-                                <td colSpan={2} className="px-6 py-3 text-gray-400 uppercase tracking-wider text-[10px]">Consolidated Total</td>
-                                <td className="px-6 py-3 text-right text-gray-900">{selectedProduct.stock}</td>
-                              </tr>
-                            </tfoot>
-                          </table>
-                        </div>
-                      </div>
-
-                      {/* Merchandising Details */}
-                      <div className="space-y-6">
-                        <div className="flex items-center gap-2">
-                          <FileText size={14} className="text-gray-400" />
-                          <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Merchandising & Taxonomy</h3>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-4">
-                          <div className="space-y-2">
-                            <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Tags</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {selectedProduct.tags?.length ? selectedProduct.tags.map(tag => (
-                                <Badge key={tag} variant="secondary" className="text-[9px] font-bold uppercase tracking-widest bg-gray-100 text-gray-600 hover:bg-gray-200 border-none">{tag}</Badge>
-                              )) : <span className="text-[11px] font-bold text-gray-900">None</span>}
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Badges</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {selectedProduct.badges?.length ? selectedProduct.badges.map(badge => (
-                                <Badge key={badge} variant="secondary" className="text-[9px] font-bold uppercase tracking-widest bg-gray-900 text-white hover:bg-gray-800 border-none">{badge}</Badge>
-                              )) : <span className="text-[11px] font-bold text-gray-900">None</span>}
-                            </div>
-                          </div>
-                          <div className="space-y-2 sm:col-span-2">
-                            <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Active Flags</p>
-                            <div className="flex flex-wrap gap-3 mt-1">
-                              {[
-                                { key: 'is_featured', label: 'Featured' },
-                                { key: 'is_new_arrival', label: 'New Arrival' },
-                                { key: 'is_bestseller', label: 'Bestseller' },
-                                { key: 'is_trending', label: 'Trending' }
-                              ].map(flag => {
-                                const isActive = !!selectedProduct[flag.key as keyof ProductItem];
-                                return (
-                                  <div key={flag.key} className="flex items-center gap-1.5">
-                                    <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-200'}`} />
-                                    <span className={`text-[10px] font-bold uppercase tracking-widest ${isActive ? 'text-gray-900' : 'text-gray-400'}`}>{flag.label}</span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Catalogue Highlights */}
-                      <div className="space-y-6">
-                        <div className="flex items-center gap-2">
-                          <Activity size={14} className="text-gray-400" />
-                          <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Catalogue Highlights</h3>
-                        </div>
-                        <div className="space-y-3">
-                          {selectedProduct.description_points?.length ? (
-                            selectedProduct.description_points.map((pt, i) => (
-                              <div key={i} className="flex gap-3 text-[11px] leading-relaxed text-gray-500 font-medium">
-                                <span className="text-gray-900 font-bold shrink-0">0{i + 1}.</span>
-                                <p>{pt}</p>
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-[11px] text-gray-300 italic">No highlights provided for this product.</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                <div className="space-y-12">
+                  {[
+                    { type: "PUBLISHED" as const, data: selectedProduct.published, label: "Published Version" },
+                    { type: "DRAFT" as const, data: selectedProduct.draft, label: "Updates To be Synced" }
+                  ].filter(v => v.data).map((version, idx) => (
+                    <ProductVersionView
+                      key={version.type}
+                      version={version as any}
+                      isSecondary={idx > 0}
+                      onEdit={handleEditProduct}
+                      onLaunch={handleLaunchProduct}
+                      onDelete={handleDeleteProduct}
+                      onDownloadPdf={handleDownloadPdf}
+                    />
+                  ))}
                 </div>
               </motion.div>
             ) : (
