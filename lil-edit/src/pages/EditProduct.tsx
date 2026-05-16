@@ -372,12 +372,7 @@ const EditProduct = () => {
         const globalImages = (images || []).filter((img: any) => !img.variant_id).map((img: any) => img.image_url);
         setImagePreviews(globalImages);
         
-        // If this is a published product being edited, make sure the sync tag is available
-        const badges = product.badges || [];
-        if (product.status === "PUBLISHED" && !badges.includes("Updates yet to be synced")) {
-          badges.push("Updates yet to be synced");
-        }
-        setAvailableCustomBadges(badges);
+        setAvailableCustomBadges(product.badges || []);
 
         if (product.stock >= 99999) {
           setIsStockUnlimited(true);
@@ -672,11 +667,7 @@ const EditProduct = () => {
 
     setIsSaving(true);
     try {
-      // If original product was published, add the sync tag
       const updatedFormData = { ...formData };
-      if (originalProduct?.status === "PUBLISHED" && !updatedFormData.customBadges.includes("Updates yet to be synced")) {
-        updatedFormData.customBadges = [...updatedFormData.customBadges, "Updates yet to be synced"];
-      }
 
       const { database } = await sendCurationToBackend("DRAFT", updatedFormData, imagePreviews);
       const mappedProduct = mapFormDataToProduct(updatedFormData, imagePreviews);
@@ -703,11 +694,7 @@ const EditProduct = () => {
 
     setIsPublishing(true);
     try {
-      // Remove the sync tag when publishing
-      const updatedFormData = {
-        ...formData,
-        customBadges: formData.customBadges.filter(b => b !== "Updates yet to be synced")
-      };
+      const updatedFormData = { ...formData };
 
       const { database } = await sendCurationToBackend("PUBLISHED", updatedFormData, imagePreviews);
       const mappedProduct = mapFormDataToProduct(updatedFormData, imagePreviews);
@@ -1563,7 +1550,7 @@ const EditProduct = () => {
                         </motion.button>
                       ))}
 
-                      {availableCustomBadges.map((badge) => (
+                      {availableCustomBadges.filter(b => b !== "Updates yet to be synced").map((badge) => (
                         <motion.button
                           key={badge}
                           initial={{ opacity: 0, scale: 0.9 }}

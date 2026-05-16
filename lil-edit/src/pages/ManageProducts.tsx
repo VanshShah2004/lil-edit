@@ -284,7 +284,7 @@ const ProductVersionView = ({ version, isSecondary, onEdit, onLaunch, onDelete, 
               <div className="space-y-2">
                 <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Badges</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {p.badges?.length ? p.badges.map(badge => (
+                  {p.badges?.filter(b => b !== "Updates yet to be synced").length ? p.badges.filter(b => b !== "Updates yet to be synced").map(badge => (
                     <Badge key={badge} variant="secondary" className="text-[9px] font-bold uppercase tracking-widest bg-gray-900 text-white border-none">{badge}</Badge>
                   )) : <span className="text-[11px] font-bold text-gray-900">None</span>}
                 </div>
