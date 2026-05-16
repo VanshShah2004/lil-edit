@@ -154,7 +154,7 @@ const ProductVersionView = ({ version, isSecondary, onEdit, onLaunch, onDelete, 
               </button>
             </div>
             {version.type === "DRAFT" && (
-              <button onClick={() => onLaunch(p)} className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#B19CD9] text-black rounded font-bold text-[10px] uppercase tracking-widest hover:brightness-105 transition-all shadow-lg shadow-[#B19CD9]/20">
+              <button onClick={() => onLaunch(p)} className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#4DB01E] text-white rounded font-bold text-[10px] uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-[#4DB01E]/20">
                 <Zap size={14} /> Sync Updates to Live
               </button>
             )}
@@ -737,7 +737,7 @@ const ManageProducts = () => {
               <button
                 key={p.base_sku}
                 onClick={() => handleProductSelect(p)}
-                className={`w-full text-left px-6 py-4 transition-all flex gap-4 ${selectedProduct?.base_sku === p.base_sku ? "bg-gray-50 border-r-4 border-r-gray-900" : "hover:bg-gray-50/50"}`}
+                className={`w-full text-left px-6 py-4 transition-all flex gap-4 border-b border-black/20 ${selectedProduct?.base_sku === p.base_sku ? "bg-gray-50 border-r-4 border-r-gray-900" : "hover:bg-gray-50/50"}`}
               >
                 <div className="w-10 h-12 bg-gray-100 rounded border border-gray-200 flex-shrink-0 overflow-hidden relative">
                   {p.image_url ? (
@@ -752,18 +752,17 @@ const ManageProducts = () => {
                       <h3 className={`text-xs font-bold truncate leading-tight ${selectedProduct?.base_sku === p.base_sku ? "text-gray-900" : "text-gray-600"}`}>{p.title}</h3>
                       <span className="text-[9px] text-gray-400 font-mono font-medium block mt-0.5">{p.base_sku}</span>
                     </div>
-                    {p.published && (
-                      <span className="text-[7px] font-black px-1.5 py-0.5 rounded bg-gray-900 text-white whitespace-nowrap uppercase">Published</span>
+                    {p.published ? (
+                      <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-gray-900 text-white whitespace-nowrap uppercase">Published</span>
+                    ) : (
+                      <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 whitespace-nowrap uppercase">Draft</span>
                     )}
                   </div>
                   <div className="flex items-end justify-between mt-2">
                     <p className="text-[10px] font-bold text-gray-900">₹{p.price.toLocaleString()}</p>
                     <div className="flex flex-col items-end gap-1">
                       {p.published && p.draft && (
-                        <span className="text-[7px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 whitespace-nowrap uppercase">Updates To be Synced</span>
-                      )}
-                      {!p.published && p.draft && (
-                        <span className="text-[7px] font-black px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 whitespace-nowrap uppercase">Draft</span>
+                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 whitespace-nowrap uppercase">Updates To be Synced</span>
                       )}
                     </div>
                   </div>
