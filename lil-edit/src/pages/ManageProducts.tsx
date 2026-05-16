@@ -77,13 +77,14 @@ interface ProductItem {
 interface ProductVersionViewProps {
   version: { type: "PUBLISHED" | "DRAFT"; data: ProductItem; label: string };
   isSecondary?: boolean;
+  isUpdate?: boolean;
   onEdit: (p: ProductItem) => void;
   onLaunch: (p: ProductItem) => void;
   onDelete: (p: ProductItem) => void;
   onDownloadPdf: (p: ProductItem) => void;
 }
 
-const ProductVersionView = ({ version, isSecondary, onEdit, onLaunch, onDelete, onDownloadPdf }: ProductVersionViewProps) => {
+const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, onDelete, onDownloadPdf }: ProductVersionViewProps) => {
   const [activeImageTab, setActiveImageTab] = useState<string>("Global");
   const [activeImage, setActiveImage] = useState<string | null>(null);
 
@@ -113,7 +114,13 @@ const ProductVersionView = ({ version, isSecondary, onEdit, onLaunch, onDelete, 
         <div className="space-y-1">
           <div className="flex items-center gap-4">
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{p.title}</h2>
-            <Badge className={`${version.type === "PUBLISHED" ? "bg-gray-900 text-white hover:bg-gray-900" : "bg-amber-100 text-amber-700 hover:bg-amber-100"} border-none text-[10px] font-bold uppercase tracking-widest px-3 py-1`}>
+            <Badge className={`${
+              version.type === "PUBLISHED" 
+                ? "bg-gray-900 text-white hover:bg-gray-900" 
+                : (isUpdate 
+                    ? "bg-amber-100 text-amber-700 hover:bg-amber-100" 
+                    : "bg-gray-200 text-gray-600 hover:bg-gray-200")
+            } border-none text-[10px] font-bold uppercase tracking-widest px-3 py-1`}>
               {version.label}
             </Badge>
           </div>
@@ -154,8 +161,15 @@ const ProductVersionView = ({ version, isSecondary, onEdit, onLaunch, onDelete, 
               </button>
             </div>
             {version.type === "DRAFT" && (
-              <button onClick={() => onLaunch(p)} className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#4DB01E] text-white rounded font-bold text-[10px] uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-[#4DB01E]/20">
-                <Zap size={14} /> Sync Updates to Live
+              <button 
+                onClick={() => onLaunch(p)} 
+                className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded font-bold text-[10px] uppercase tracking-widest transition-all shadow-lg ${
+                  isUpdate 
+                    ? "bg-[#4DB01E] text-white shadow-[#4DB01E]/20 hover:brightness-110" 
+                    : "bg-[#B19CD9] text-black shadow-[#B19CD9]/20 hover:brightness-105"
+                }`}
+              >
+                <Zap size={14} /> {isUpdate ? "Sync Updates to Live" : "Launch Product"}
               </button>
             )}
             <button onClick={() => onDelete(p)} className="w-full flex items-center justify-center gap-2 px-6 py-3 border border-red-200 text-red-500 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all">
@@ -798,12 +812,17 @@ const ManageProducts = () => {
                 <div className="space-y-12">
                   {[
                     { type: "PUBLISHED" as const, data: selectedProduct.published, label: "Published Version" },
-                    { type: "DRAFT" as const, data: selectedProduct.draft, label: "Updates To be Synced" }
+                    { 
+                      type: "DRAFT" as const, 
+                      data: selectedProduct.draft, 
+                      label: selectedProduct.published ? "Updates To be Synced" : "Draft Version" 
+                    }
                   ].filter(v => v.data).map((version, idx) => (
                     <ProductVersionView
                       key={version.type}
                       version={version as any}
                       isSecondary={idx > 0}
+                      isUpdate={!!selectedProduct.published}
                       onEdit={handleEditProduct}
                       onLaunch={handleLaunchProduct}
                       onDelete={handleDeleteProduct}
