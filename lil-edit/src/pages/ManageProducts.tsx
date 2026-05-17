@@ -809,7 +809,7 @@ const ManageProducts = () => {
                 exit={{ opacity: 0 }}
                 className="px-8 pt-2 pb-16 lg:px-16 lg:pt-4 lg:pb-20 max-w-5xl mx-auto"
               >
-                <div className="space-y-12">
+                <div className="space-y-32">
                   {[
                     { type: "PUBLISHED" as const, data: selectedProduct.published, label: "Published Version" },
                     { 

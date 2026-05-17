@@ -516,8 +516,8 @@ const EditProduct = () => {
           name: formattedName, 
           hex, 
           sku: variantSku, 
-          stock: 1, 
-          isUnlimited: false,
+          stock: isStockUnlimited ? 99999 : 1, 
+          isUnlimited: isStockUnlimited,
           images: [] 
         }]
       }));
@@ -653,7 +653,6 @@ const EditProduct = () => {
     if (!formData.category) missingFields.push("Category");
     if (!formData.gender) missingFields.push("Gender Category");
     if (!formData.sku.trim()) missingFields.push("Product Base Identifier");
-    if (!isStockUnlimited && (!formData.stock || parseInt(formData.stock) < 0)) missingFields.push("Stock Level");
 
     if (missingFields.length > 0) {
       alert(`Required Details Missing: \n\nPlease provide: ${missingFields.join(", ")}`);
@@ -741,6 +740,16 @@ const EditProduct = () => {
       categorySlug: slugify(prev.category)
     }));
   }, [formData.name, formData.category]);
+
+  // Reactive Global Stock calculation from variants
+  useEffect(() => {
+    if (!isStockUnlimited && formData.selectedColors.length > 0) {
+      const totalStock = formData.selectedColors.reduce((acc, curr) => acc + curr.stock, 0);
+      if (formData.stock !== String(totalStock)) {
+        setFormData(prev => ({ ...prev, stock: String(totalStock) }));
+      }
+    }
+  }, [formData.selectedColors, isStockUnlimited, formData.stock]);
 
   if (authLoading || isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -1058,48 +1067,51 @@ const EditProduct = () => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
-                    <motion.div whileHover={{ scale: isStockUnlimited ? 1 : 1.01 }} className={`group transition-all duration-300 ${isStockUnlimited ? 'opacity-50 grayscale' : 'opacity-100'}`}>
-                      <div className="flex items-center justify-between h-12 mb-2">
+                    <motion.div whileHover={{ scale: 1.01 }} className="group transition-all duration-300">
+                      <div className="flex items-center h-12 mb-2">
                         <label className="text-[9px] font-bold uppercase tracking-widest text-gray-400 transition-colors group-focus-within:text-gray-900">
-                          {isStockUnlimited ? "Stock Level (Auto)" : "Stock Level"}
+                          Overall Stock Level
                         </label>
-                        
-                        <div className="flex p-0.5 bg-gray-100/50 rounded-md border border-gray-200/50 scale-90 origin-right">
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              setIsStockUnlimited(false);
-                              if (formData.stock === "99999") {
-                                setFormData(prev => ({ ...prev, stock: "1" }));
-                              }
-                            }}
-                            className={`px-3 py-1.5 rounded-sm text-[8px] font-bold uppercase tracking-widest transition-all duration-300 ${!isStockUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
-                          >
-                            Limited
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              setIsStockUnlimited(true);
-                              setFormData(prev => ({ ...prev, stock: "99999" }));
-                            }}
-                            className={`px-3 py-1.5 rounded-sm text-[8px] font-bold uppercase tracking-widest transition-all duration-300 ${isStockUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
-                          >
-                            Unlimited
-                          </button>
-                        </div>
                       </div>
                       
-                      <input
-                        type="number"
-                        name="stock"
-                        value={isStockUnlimited ? "" : formData.stock}
-                        onChange={handleInputChange}
-                        placeholder={isStockUnlimited ? "Unlimited Stock" : "1"}
-                        min="1"
-                        disabled={isStockUnlimited}
-                        className={`w-full px-5 py-4 rounded-md border border-gray-200 focus:border-[#B19CD9] outline-none transition-all duration-300 font-body text-xs ${isStockUnlimited ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-900'}`}
-                      />
+                      <div className="flex p-1 bg-gray-100/50 rounded-md border border-gray-200/50 w-full h-[50px]">
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setIsStockUnlimited(false);
+                            setFormData(prev => ({
+                              ...prev,
+                              stock: "0",
+                              selectedColors: prev.selectedColors.map(c => ({
+                                ...c,
+                                isUnlimited: false,
+                                stock: c.stock === 99999 ? 1 : c.stock
+                              }))
+                            }));
+                          }}
+                          className={`flex-1 flex items-center justify-center rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${!isStockUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
+                        >
+                          Limited
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setIsStockUnlimited(true);
+                            setFormData(prev => ({
+                              ...prev,
+                              stock: "99999",
+                              selectedColors: prev.selectedColors.map(c => ({
+                                ...c,
+                                isUnlimited: true,
+                                stock: 99999
+                              }))
+                            }));
+                          }}
+                          className={`flex-1 flex items-center justify-center rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${isStockUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
+                        >
+                          Unlimited
+                        </button>
+                      </div>
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
