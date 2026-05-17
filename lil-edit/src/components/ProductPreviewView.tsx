@@ -139,7 +139,7 @@ const ProductPreviewView = ({
   const mobileOnly = forceMobileLayout;
 
   const currentSku = activeColor?.sku || product.sku;
-  const currentStock = activeColor?.stock ?? product.stock;
+  const currentStock = activeColor ? activeColor.stock : product.colors.reduce((sum, c) => sum + (c.stock ?? 0), 0);
 
   const getStockStatus = () => {
     if (currentStock <= 0) return { label: "Out of Stock", class: "text-red-500 bg-red-50" };

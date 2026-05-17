@@ -57,7 +57,6 @@ interface FormData {
   gender: string;
   price: string;
   originalPrice: string;
-  stock: string;
   tags: string[];
   fabric: string;
   fit: string;
@@ -125,7 +124,6 @@ function buildCurationPayload(formData: FormData, imagePreviews: string[]): Reco
     gender: formData.gender,
     price: formData.price,
     originalPrice: formData.originalPrice,
-    stock: formData.stock,
     fabric: formData.fabric,
     fit: formData.fit,
     occasion: formData.occasion,
@@ -210,7 +208,6 @@ const mapFormDataToProduct = (formData: FormData, imagePreviews: string[]): Prod
     gender: formData.gender || "Unisex",
     price: Number(formData.price) || 0,
     originalPrice: Number(formData.originalPrice) || 0,
-    stock: Number(formData.stock) || 0,
     tags: formData.tags,
     badges: formData.customBadges,
     descriptionPoints: formData.descriptionPoints.length > 0 ? formData.descriptionPoints : ["No product details added yet."],
@@ -239,7 +236,6 @@ interface EditableProduct {
   status: "DRAFT" | "PUBLISHED";
   slug: string;
   brand: string;
-  stock: number;
   fabric?: string;
   fit?: string;
   occasion?: string;
@@ -283,7 +279,6 @@ const EditProduct = () => {
     gender: "",
     price: "",
     originalPrice: "",
-    stock: "",
     tags: [],
     fabric: "",
     fit: "",
@@ -344,7 +339,6 @@ const EditProduct = () => {
           gender: product.gender || "",
           price: String(product.price ?? ""),
           originalPrice: String(product.original_price ?? ""),
-          stock: String(product.stock ?? ""),
           tags: product.tags || [],
           fabric: product.fabric || "",
           fit: product.fit || "",
@@ -374,9 +368,8 @@ const EditProduct = () => {
         
         setAvailableCustomBadges(product.badges || []);
 
-        if (product.stock >= 99999) {
-          setIsStockUnlimited(true);
-        }
+        const isUnlimited = variants.some((v: any) => Number(v.stock ?? 0) >= 99999);
+        setIsStockUnlimited(isUnlimited);
 
         // Generate and display preview immediately
         const previewProduct = mapFormDataToProduct(
@@ -388,7 +381,6 @@ const EditProduct = () => {
             gender: product.gender || "",
             price: String(product.price ?? ""),
             originalPrice: String(product.original_price ?? ""),
-            stock: String(product.stock ?? ""),
             tags: product.tags || [],
             fabric: product.fabric || "",
             fit: product.fit || "",
@@ -741,15 +733,7 @@ const EditProduct = () => {
     }));
   }, [formData.name, formData.category]);
 
-  // Reactive Global Stock calculation from variants
-  useEffect(() => {
-    if (!isStockUnlimited && formData.selectedColors.length > 0) {
-      const totalStock = formData.selectedColors.reduce((acc, curr) => acc + curr.stock, 0);
-      if (formData.stock !== String(totalStock)) {
-        setFormData(prev => ({ ...prev, stock: String(totalStock) }));
-      }
-    }
-  }, [formData.selectedColors, isStockUnlimited, formData.stock]);
+
 
   if (authLoading || isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;

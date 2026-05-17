@@ -53,7 +53,6 @@ interface ProductItem {
   slug: string;
   created_at: string;
   brand: string;
-  stock: number;
   fabric?: string;
   fit?: string;
   occasion?: string;
@@ -273,7 +272,9 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
                         </div>
                       </td>
                       <td className="px-6 py-3 font-mono text-[10px] text-gray-400">{v.variant_sku}</td>
-                      <td className="px-6 py-3 font-bold text-right text-gray-900">{v.stock}</td>
+                      <td className="px-6 py-3 font-bold text-right text-gray-900">
+                        {v.stock >= 99999 ? "Unlimited" : v.stock}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -458,7 +459,6 @@ const ManageProducts = () => {
         gender: product.gender || "Unisex",
         price: String(product.price ?? 0),
         originalPrice: String(product.original_price ?? ""),
-        stock: String(product.stock ?? 0),
         fabric: product.fabric || "",
         fit: product.fit || "",
         occasion: product.occasion || "",
@@ -535,6 +535,8 @@ const ManageProducts = () => {
     const variants: ProductVariant[] = (product.status === "PUBLISHED"
       ? product.product_variants
       : product.draft_product_variants) ?? [];
+    const totalStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+    const isUnlimited = variants.some(v => v.stock >= 99999);
 
     // Build grouped image sections
     const globalImages = allImages.filter(img => !img.variant_id);
@@ -571,7 +573,7 @@ const ManageProducts = () => {
           </span>
         </td>
         <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-family:monospace;font-size:11px;color:#888;">${v.variant_sku}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:bold;">${v.stock}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:bold;">${v.stock >= 99999 ? 'Unlimited' : v.stock}</td>
       </tr>`).join("");
 
     const highlights = (product.description_points ?? []).map((pt, i) => `
@@ -619,7 +621,7 @@ const ManageProducts = () => {
           <div><div class="label">MRP / Original Price</div><div class="value">${product.original_price ? `₹${product.original_price.toLocaleString()}` : '—'}</div></div>
           <div><div class="label">Category</div><div class="value">${product.category}</div></div>
           <div><div class="label">Gender</div><div class="value">${product.gender ?? 'N/A'}</div></div>
-          <div><div class="label">Total Stock</div><div class="value">${product.stock} units</div></div>
+          <div><div class="label">Total Stock</div><div class="value">${isUnlimited ? 'Unlimited' : `${totalStock} units`}</div></div>
           <div><div class="label">Sizes</div><div class="value">${product.sizes?.length ? product.sizes.join(', ') : 'N/A'}</div></div>
           <div><div class="label">Fabrication</div><div class="value">${product.fabric ?? 'N/A'}</div></div>
           <div><div class="label">Silhouette</div><div class="value">${product.fit ?? 'N/A'}</div></div>
@@ -650,7 +652,7 @@ const ManageProducts = () => {
         <table style="margin-bottom:32px;">
           <thead><tr><th>Variant</th><th>SKU</th><th style="text-align:right;">Units</th></tr></thead>
           <tbody>${variantRows}</tbody>
-          <tfoot><tr><td colspan="2" style="padding:8px 12px;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#999;border-top:1px solid #eee;">Consolidated Total</td><td style="padding:8px 12px;text-align:right;font-weight:800;border-top:1px solid #eee;">${product.stock}</td></tr></tfoot>
+          <tfoot><tr><td colspan="2" style="padding:8px 12px;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#999;border-top:1px solid #eee;">Consolidated Total</td><td style="padding:8px 12px;text-align:right;font-weight:800;border-top:1px solid #eee;">${isUnlimited ? 'Unlimited' : totalStock}</td></tr></tfoot>
         </table>` : ''}
 
         ${imageGroupsHtml ? `

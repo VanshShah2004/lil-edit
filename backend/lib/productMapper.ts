@@ -71,7 +71,6 @@ export type ProductRowDraft = {
   gender: string;
   price: number;
   original_price: number | null;
-  total_stock: number;
   fabric: string | null;
   fit: string | null;
   occasion: string | null;
@@ -120,8 +119,6 @@ export function mapCurationPayloadToCatalog(data: CurationPayload): {
   const category_slug = categorySlugRaw || slugify(category);
 
   const variants = asColorVariants(data.selectedColors);
-  const variantStockSum = variants.reduce((s, v) => s + v.stock, 0);
-  const total_stock = variants.length > 0 ? variantStockSum : asNum(data.stock);
 
   const original = asString(data.originalPrice).trim();
   const original_price = original === "" ? null : asNum(data.originalPrice);
@@ -136,7 +133,6 @@ export function mapCurationPayloadToCatalog(data: CurationPayload): {
     gender: asString(data.gender, "Unisex").trim() || "Unisex",
     price: asNum(data.price),
     original_price,
-    total_stock,
     fabric: asString(data.fabric).trim() || null,
     fit: asString(data.fit).trim() || null,
     occasion: asString(data.occasion).trim() || null,

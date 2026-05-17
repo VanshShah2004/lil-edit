@@ -124,7 +124,7 @@ router.delete("/:id", async (req: Request, res: Response) => {
   }
 
   try {
-    await deleteProductFromDatabase(id, status);
+    await deleteProductFromDatabase(id as string, status as "DRAFT" | "PUBLISHED");
     res.json({ success: true, message: `Successfully deleted ${status} product ${id}.` });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

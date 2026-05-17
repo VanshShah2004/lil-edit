@@ -23,7 +23,6 @@ export interface Product {
   gender: string;
   price: number;
   originalPrice: number;
-  stock: number;
   tags: string[];
   badges: string[];
   descriptionPoints: string[];
