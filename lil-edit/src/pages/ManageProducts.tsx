@@ -58,6 +58,7 @@ interface ProductItem {
   fit?: string;
   occasion?: string;
   care?: string;
+  care_instructions?: string;
   description_points?: string[];
   gender?: string;
   sizes?: string[];
@@ -74,6 +75,85 @@ interface ProductItem {
   image_url?: string;
   is_unlimited?: boolean;
 }
+
+const hasPendingUpdates = (draft: any, published: any): boolean => {
+  if (!draft || !published) return false;
+
+  // 1. Basic Fields Comparison
+  const basicFields = [
+    "title", "brand", "base_sku", "slug", "category", "category_slug", 
+    "gender", "price", "original_price", "fabric", "fit", "occasion", 
+    "care_instructions", "is_featured", "is_new_arrival", "is_bestseller", 
+    "is_trending", "is_unlimited"
+  ];
+  for (const field of basicFields) {
+    if (draft[field] !== published[field]) return true;
+  }
+
+  // 2. Arrays Comparison
+  const arrayFields = ["description_points", "sizes", "tags", "badges"];
+  for (const field of arrayFields) {
+    const arr1 = Array.isArray(draft[field]) ? draft[field] : [];
+    const arr2 = Array.isArray(published[field]) ? published[field] : [];
+    if (arr1.length !== arr2.length || JSON.stringify([...arr1].sort()) !== JSON.stringify([...arr2].sort())) {
+      return true;
+    }
+  }
+
+  // 3. Variants Comparison
+  const dVars = draft.draft_product_variants || [];
+  const pVars = published.product_variants || [];
+  if (dVars.length !== pVars.length) return true;
+
+  const dVarsMapped = dVars.map((v: any) => ({
+    color_name: v.color_name,
+    color_hex: v.color_hex,
+    variant_sku: v.variant_sku,
+    stock: v.is_unlimited ? null : v.stock,
+    is_unlimited: !!v.is_unlimited
+  })).sort((a: any, b: any) => a.variant_sku.localeCompare(b.variant_sku));
+
+  const pVarsMapped = pVars.map((v: any) => ({
+    color_name: v.color_name,
+    color_hex: v.color_hex,
+    variant_sku: v.variant_sku,
+    stock: v.is_unlimited ? null : v.stock,
+    is_unlimited: !!v.is_unlimited
+  })).sort((a: any, b: any) => a.variant_sku.localeCompare(b.variant_sku));
+
+  if (JSON.stringify(dVarsMapped) !== JSON.stringify(pVarsMapped)) return true;
+
+  // 4. Images Comparison
+  const dImgs = draft.draft_product_images || [];
+  const pImgs = published.product_images || [];
+  if (dImgs.length !== pImgs.length) return true;
+
+  const dImgsMapped = dImgs.map((img: any) => {
+    const vColor = img.variant_id ? dVars.find((v: any) => v.id === img.variant_id)?.color_name : null;
+    return {
+      image_url: img.image_url,
+      alt_text: img.alt_text || "",
+      is_primary: !!img.is_primary,
+      sort_order: img.sort_order || 0,
+      color: vColor
+    };
+  }).sort((a: any, b: any) => a.image_url.localeCompare(b.image_url));
+
+  const pImgsMapped = pImgs.map((img: any) => {
+    const vColor = img.variant_id ? pVars.find((v: any) => v.id === img.variant_id)?.color_name : null;
+    return {
+      image_url: img.image_url,
+      alt_text: img.alt_text || "",
+      is_primary: !!img.is_primary,
+      sort_order: img.sort_order || 0,
+      color: vColor
+    };
+  }).sort((a: any, b: any) => a.image_url.localeCompare(b.image_url));
+
+  if (JSON.stringify(dImgsMapped) !== JSON.stringify(pImgsMapped)) return true;
+
+  return false;
+};
 
 interface ProductVersionViewProps {
   version: { type: "PUBLISHED" | "DRAFT"; data: ProductItem; label: string };
@@ -240,7 +320,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
                 { label: "Fabrication", value: p.fabric || "N/A" },
                 { label: "Silhouette", value: p.fit || "N/A" },
                 { label: "Occasion", value: p.occasion || "N/A" },
-                { label: "Maintenance", value: p.care || "N/A" }
+                { label: "Maintenance", value: p.care_instructions || p.care || "N/A" }
               ].map((item, i) => (
                 <div key={i} className="space-y-1">
                   <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{item.label}</p>
@@ -464,7 +544,7 @@ const ManageProducts = () => {
         fabric: product.fabric || "",
         fit: product.fit || "",
         occasion: product.occasion || "",
-        care: product.care || "",
+        care: product.care_instructions || product.care || "",
         descriptionPoints: product.description_points || [],
         tags: product.tags || [],
         selectedSizes: product.sizes || [],
@@ -630,7 +710,7 @@ const ManageProducts = () => {
           <div><div class="label">Fabrication</div><div class="value">${product.fabric ?? 'N/A'}</div></div>
           <div><div class="label">Silhouette</div><div class="value">${product.fit ?? 'N/A'}</div></div>
           <div><div class="label">Occasion</div><div class="value">${product.occasion ?? 'N/A'}</div></div>
-          <div><div class="label">Maintenance</div><div class="value">${product.care ?? 'N/A'}</div></div>
+          <div><div class="label">Maintenance</div><div class="value">${product.care_instructions ?? product.care ?? 'N/A'}</div></div>
         </div>
 
         <div class="grid">
@@ -648,7 +728,7 @@ const ManageProducts = () => {
             </div>
           </div>
           <div><div class="label">Occasion</div><div class="value">${product.occasion ?? 'N/A'}</div></div>
-          <div><div class="label">Maintenance</div><div class="value">${product.care ?? 'N/A'}</div></div>
+          <div><div class="label">Maintenance</div><div class="value">${product.care_instructions ?? product.care ?? 'N/A'}</div></div>
         </div>
 
         ${variants.length > 0 ? `
@@ -781,7 +861,7 @@ const ManageProducts = () => {
                   <div className="flex items-end justify-between mt-2">
                     <p className="text-[10px] font-bold text-gray-900">₹{p.price.toLocaleString()}</p>
                     <div className="flex flex-col items-end gap-1">
-                      {p.published && p.draft && (
+                      {p.published && p.draft && hasPendingUpdates(p.draft, p.published) && (
                         <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 whitespace-nowrap uppercase">Updates To be Synced</span>
                       )}
                     </div>
@@ -802,7 +882,9 @@ const ManageProducts = () => {
             </button>
             <div className="flex gap-2">
               {selectedProduct?.published && <Badge variant="outline" className="text-[7px] font-bold uppercase">Live</Badge>}
-              {selectedProduct?.draft && <Badge variant="outline" className="text-[7px] font-bold uppercase bg-amber-50 text-amber-600 border-amber-100">Sync</Badge>}
+              {selectedProduct?.draft && (!selectedProduct.published || hasPendingUpdates(selectedProduct.draft, selectedProduct.published)) && (
+                <Badge variant="outline" className="text-[7px] font-bold uppercase bg-amber-50 text-amber-600 border-amber-100">Sync</Badge>
+              )}
             </div>
           </div>
 
@@ -821,14 +903,14 @@ const ManageProducts = () => {
                     { 
                       type: "DRAFT" as const, 
                       data: selectedProduct.draft, 
-                      label: selectedProduct.published ? "Updates To be Synced" : "Draft Version" 
+                      label: (selectedProduct.published && hasPendingUpdates(selectedProduct.draft, selectedProduct.published)) ? "Updates To be Synced" : "Draft Version" 
                     }
-                  ].filter(v => v.data).map((version, idx) => (
+                  ].filter(v => v.data && (v.type !== "DRAFT" || !selectedProduct.published || hasPendingUpdates(selectedProduct.draft, selectedProduct.published))).map((version, idx) => (
                     <ProductVersionView
                       key={version.type}
                       version={version as any}
                       isSecondary={idx > 0}
-                      isUpdate={!!selectedProduct.published}
+                      isUpdate={!!selectedProduct.published && hasPendingUpdates(selectedProduct.draft, selectedProduct.published)}
                       onEdit={handleEditProduct}
                       onLaunch={handleLaunchProduct}
                       onDelete={handleDeleteProduct}

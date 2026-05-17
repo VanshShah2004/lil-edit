@@ -274,6 +274,7 @@ const EditProduct = () => {
   const [newBadgeName, setNewBadgeName] = useState("");
   const [availableCustomBadges, setAvailableCustomBadges] = useState<string[]>([]);
   const [originalProduct, setOriginalProduct] = useState<EditableProduct | null>(null);
+  const [initialState, setInitialState] = useState<any>(null);
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -337,7 +338,7 @@ const EditProduct = () => {
         const images = product.status === "PUBLISHED" ? product.product_images : product.draft_product_images || [];
         const variants = product.status === "PUBLISHED" ? product.product_variants : product.draft_product_variants || [];
 
-        setFormData({
+        const initialFormValues = {
           name: product.title || "",
           brand: product.brand || "The Lil Edit",
           sku: product.base_sku || "",
@@ -349,7 +350,7 @@ const EditProduct = () => {
           fabric: product.fabric || "",
           fit: product.fit || "",
           occasion: product.occasion || "",
-          care: product.care || "",
+          care: product.care_instructions || product.care || "",
           descriptionPoints: product.description_points || [],
           selectedSizes: product.sizes || [],
           selectedColors: (variants || []).map((v: any) => ({
@@ -367,7 +368,9 @@ const EditProduct = () => {
           customBadges: product.badges || [],
           slug: product.slug || "",
           categorySlug: product.category_slug || "",
-        });
+        };
+
+        setFormData(initialFormValues);
 
         const globalImages = (images || []).filter((img: any) => !img.variant_id).map((img: any) => img.image_url);
         setImagePreviews(globalImages);
@@ -376,6 +379,12 @@ const EditProduct = () => {
 
         const isUnlimited = variants.some((v: any) => !!v.is_unlimited);
         setIsStockUnlimited(isUnlimited);
+
+        setInitialState({
+          formData: initialFormValues,
+          globalImages,
+          isStockUnlimited: isUnlimited
+        });
 
         // Generate and display preview immediately
         const previewProduct = mapFormDataToProduct(
@@ -391,7 +400,7 @@ const EditProduct = () => {
             fabric: product.fabric || "",
             fit: product.fit || "",
             occasion: product.occasion || "",
-            care: product.care || "",
+            care: product.care_instructions || product.care || "",
             descriptionPoints: product.description_points || [],
             selectedSizes: product.sizes || [],
             selectedColors: (variants || []).map((v: any) => ({
@@ -659,8 +668,71 @@ const EditProduct = () => {
     return true;
   };
 
+  const hasFormChanged = (): boolean => {
+    if (!initialState) return false;
+
+    // 1. Basic Fields
+    const fields = [
+      "name", "brand", "sku", "category", "gender", "price", "originalPrice",
+      "fabric", "fit", "occasion", "care", "featured", "newArrival", "bestseller",
+      "trending", "slug", "categorySlug"
+    ];
+    for (const f of fields) {
+      if (formData[f as keyof typeof formData] !== initialState.formData[f]) {
+        return true;
+      }
+    }
+
+    // 2. Arrays
+    const arrayFields = ["tags", "descriptionPoints", "selectedSizes", "customBadges"];
+    for (const f of arrayFields) {
+      const arr1 = formData[f as keyof typeof formData] as any[];
+      const arr2 = initialState.formData[f] as any[];
+      const sorted1 = [...(arr1 || [])].sort();
+      const sorted2 = [...(arr2 || [])].sort();
+      if (sorted1.length !== sorted2.length || JSON.stringify(sorted1) !== JSON.stringify(sorted2)) {
+        return true;
+      }
+    }
+
+    // 3. Global Images (imagePreviews vs initialState.globalImages)
+    if (imagePreviews.length !== initialState.globalImages.length || JSON.stringify([...imagePreviews].sort()) !== JSON.stringify([...initialState.globalImages].sort())) {
+      return true;
+    }
+
+    // 4. Stock Unlimited Toggle
+    if (isStockUnlimited !== initialState.isStockUnlimited) {
+      return true;
+    }
+
+    // 5. Variants (selectedColors)
+    const colors1 = formData.selectedColors || [];
+    const colors2 = initialState.formData.selectedColors || [];
+    if (colors1.length !== colors2.length) return true;
+
+    for (let i = 0; i < colors1.length; i++) {
+      const c1 = colors1[i];
+      const c2 = colors2[i];
+      if (c1.name !== c2.name || c1.hex !== c2.hex || c1.sku !== c2.sku || c1.isUnlimited !== c2.isUnlimited || c1.stock !== c2.stock) {
+        return true;
+      }
+      const imgs1 = c1.images || [];
+      const imgs2 = c2.images || [];
+      if (imgs1.length !== imgs2.length || JSON.stringify([...imgs1].sort()) !== JSON.stringify([...imgs2].sort())) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   const handleSaveDraft = async () => {
     if (!validateForm()) return;
+
+    if (!hasFormChanged()) {
+      toast.warning("No changes were made when clicking Save Draft.");
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -678,6 +750,11 @@ const EditProduct = () => {
         toast.warning(database.reason);
       } else {
         toast.success("Changes saved to drafts!");
+        setInitialState({
+          formData: JSON.parse(JSON.stringify(updatedFormData)),
+          globalImages: [...imagePreviews],
+          isStockUnlimited
+        });
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not reach the backend. Is it running on port 5000?");
