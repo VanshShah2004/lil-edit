@@ -9,7 +9,8 @@ export interface ProductColor {
   name: string;
   hex: string;
   sku: string;
-  stock: number;
+  stock?: number | null;
+  isUnlimited?: boolean;
   images: ProductImage[];
 }
 
@@ -37,4 +38,5 @@ export interface Product {
   newArrival: boolean;
   bestseller: boolean;
   trending: boolean;
+  isUnlimited?: boolean;
 }

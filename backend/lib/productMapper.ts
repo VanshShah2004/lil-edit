@@ -40,7 +40,8 @@ export interface ColorVariantInput {
   name: string;
   hex: string;
   sku: string;
-  stock: number;
+  stock: number | null;
+  isUnlimited?: boolean;
   images: string[];
 }
 
@@ -54,7 +55,8 @@ function asColorVariants(v: unknown): ColorVariantInput[] {
       name: asString(o.name, "Color"),
       hex: asString(o.hex, "#cccccc"),
       sku: asString(o.sku, "SKU-UNKNOWN"),
-      stock: asNum(o.stock),
+      stock: o.stock === null || o.stock === undefined ? null : asNum(o.stock),
+      isUnlimited: Boolean(o.isUnlimited),
       images: Array.isArray(o.images) ? o.images.filter((x): x is string => typeof x === "string") : [],
     });
   }
@@ -83,6 +85,7 @@ export type ProductRowDraft = {
   is_new_arrival: boolean;
   is_bestseller: boolean;
   is_trending: boolean;
+  is_unlimited: boolean;
 };
 
 export type ProductRowPublished = ProductRowDraft & { status: "PUBLISHED" };
@@ -91,7 +94,8 @@ export type VariantRowInsert = {
   color_name: string;
   color_hex: string | null;
   variant_sku: string;
-  stock: number;
+  stock: number | null;
+  is_unlimited: boolean;
   sort_order: number;
 };
 
@@ -123,6 +127,8 @@ export function mapCurationPayloadToCatalog(data: CurationPayload): {
   const original = asString(data.originalPrice).trim();
   const original_price = original === "" ? null : asNum(data.originalPrice);
 
+  const is_unlimited = asBool(data.isStockUnlimited) || variants.some(v => v.isUnlimited);
+
   const productBase: ProductRowDraft = {
     title,
     brand: asString(data.brand, "The Lil Edit").trim() || "The Lil Edit",
@@ -151,6 +157,7 @@ export function mapCurationPayloadToCatalog(data: CurationPayload): {
     is_new_arrival: asBool(data.newArrival),
     is_bestseller: asBool(data.bestseller),
     is_trending: asBool(data.trending),
+    is_unlimited,
   };
 
   const images: ImageRowInsert[] = [];
@@ -186,7 +193,8 @@ export function mapCurationPayloadToCatalog(data: CurationPayload): {
     color_name: v.name,
     color_hex: v.hex || null,
     variant_sku: v.sku.trim() || `${productBase.base_sku}-${slugify(v.name)}`,
-    stock: v.stock,
+    stock: v.isUnlimited ? null : v.stock,
+    is_unlimited: !!v.isUnlimited,
     sort_order: i,
   }));
 

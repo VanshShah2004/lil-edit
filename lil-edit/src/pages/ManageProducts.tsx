@@ -37,7 +37,8 @@ interface ProductVariant {
   color_name: string;
   color_hex: string;
   variant_sku: string;
-  stock: number;
+  stock: number | null;
+  is_unlimited: boolean;
   sort_order?: number;
 }
 
@@ -71,6 +72,7 @@ interface ProductItem {
   product_variants?: ProductVariant[];
   draft_product_variants?: ProductVariant[];
   image_url?: string;
+  is_unlimited?: boolean;
 }
 
 interface ProductVersionViewProps {
@@ -273,7 +275,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
                       </td>
                       <td className="px-6 py-3 font-mono text-[10px] text-gray-400">{v.variant_sku}</td>
                       <td className="px-6 py-3 font-bold text-right text-gray-900">
-                        {v.stock >= 99999 ? "Unlimited" : v.stock}
+                        {v.is_unlimited ? "Unlimited" : v.stock}
                       </td>
                     </tr>
                   ))}
@@ -471,6 +473,7 @@ const ManageProducts = () => {
         newArrival: !!product.is_new_arrival,
         bestseller: !!product.is_bestseller,
         trending: !!product.is_trending,
+        isStockUnlimited: !!product.is_unlimited,
         // Global images (no variant_id)
         imagePreviews: images?.filter(img => !img.variant_id).map(img => img.image_url) || [],
         // Map variants and their specific images
@@ -478,7 +481,8 @@ const ManageProducts = () => {
           name: v.color_name || "Color",
           hex: v.color_hex || "#cccccc",
           sku: v.variant_sku || "",
-          stock: Number(v.stock ?? 0),
+          stock: v.is_unlimited ? null : Number(v.stock ?? 0),
+          isUnlimited: !!v.is_unlimited,
           images: images?.filter(img => img.variant_id === v.id).map(img => img.image_url) || []
         })) || []
       };
@@ -536,7 +540,7 @@ const ManageProducts = () => {
       ? product.product_variants
       : product.draft_product_variants) ?? [];
     const totalStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0);
-    const isUnlimited = variants.some(v => v.stock >= 99999);
+    const isUnlimited = variants.some(v => v.is_unlimited);
 
     // Build grouped image sections
     const globalImages = allImages.filter(img => !img.variant_id);
@@ -573,7 +577,7 @@ const ManageProducts = () => {
           </span>
         </td>
         <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-family:monospace;font-size:11px;color:#888;">${v.variant_sku}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:bold;">${v.stock >= 99999 ? 'Unlimited' : v.stock}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:bold;">${v.is_unlimited ? 'Unlimited' : v.stock}</td>
       </tr>`).join("");
 
     const highlights = (product.description_points ?? []).map((pt, i) => `

@@ -46,6 +46,7 @@ router.post("/preview", async (req: Request, res: Response) => {
   console.log(
     `\n[Products] Received ${lastProduct.status}: "${(data as { name?: string }).name ?? "Untitled"}"\n`
   );
+  console.log("[Products] payload body:", JSON.stringify(data, null, 2));
 
   const previewPath = "/api/products/preview";
   const payload = buildPublicPayload();

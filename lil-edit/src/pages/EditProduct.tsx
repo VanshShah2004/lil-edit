@@ -113,9 +113,10 @@ const HEX_TO_NAME = Object.fromEntries(
   Object.entries(COLOR_MAP).map(([name, hex]) => [hex.toUpperCase(), name])
 );
 
-function buildCurationPayload(formData: FormData, imagePreviews: string[]): Record<string, unknown> {
+function buildCurationPayload(formData: FormData, imagePreviews: string[], isStockUnlimited: boolean): Record<string, unknown> {
   return {
     name: formData.name,
+    isStockUnlimited,
     brand: formData.brand,
     sku: formData.sku,
     slug: formData.slug,
@@ -149,10 +150,11 @@ type PersistDatabaseResult =
 async function sendCurationToBackend(
   status: "DRAFT" | "PUBLISHED",
   formData: FormData,
-  imagePreviews: string[]
+  imagePreviews: string[],
+  isStockUnlimited: boolean
 ): Promise<{ database?: PersistDatabaseResult }> {
   const base = getBackendBaseUrl();
-  const body = { status, ...buildCurationPayload(formData, imagePreviews) };
+  const body = { status, ...buildCurationPayload(formData, imagePreviews, isStockUnlimited) };
   const res = await fetch(`${base}/api/products/preview`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -179,7 +181,7 @@ async function sendCurationToBackend(
   return { database: json.database };
 }
 
-const mapFormDataToProduct = (formData: FormData, imagePreviews: string[]): Product => {
+const mapFormDataToProduct = (formData: FormData, imagePreviews: string[], isStockUnlimited = false): Product => {
   const productImages: ProductImage[] = imagePreviews.map((url, index) => ({
     id: `img-${index}`,
     url,
@@ -190,7 +192,8 @@ const mapFormDataToProduct = (formData: FormData, imagePreviews: string[]): Prod
     name: color.name,
     hex: color.hex,
     sku: color.sku,
-    stock: color.stock,
+    stock: color.isUnlimited ? null : color.stock,
+    isUnlimited: color.isUnlimited,
     images: color.images.map((url, index) => ({
       id: `img-${color.name}-${index}`,
       url,
@@ -222,6 +225,7 @@ const mapFormDataToProduct = (formData: FormData, imagePreviews: string[]): Prod
     newArrival: formData.newArrival,
     bestseller: formData.bestseller,
     trending: formData.trending,
+    isUnlimited: isStockUnlimited,
   };
 };
 
@@ -317,7 +321,9 @@ const EditProduct = () => {
         if (!res.ok) throw new Error("Failed to fetch products");
         const data = await res.json();
         
-        const allProducts = [...(data.published || []), ...(data.drafts || [])];
+        const published = (data.published || []).map((p: any) => ({ ...p, status: "PUBLISHED" }));
+        const drafts = (data.drafts || []).map((d: any) => ({ ...d, status: "DRAFT" }));
+        const allProducts = [...published, ...drafts];
         const product = allProducts.find((p: EditableProduct) => p.id === productId);
         
         if (!product) {
@@ -350,8 +356,8 @@ const EditProduct = () => {
             name: v.color_name || "Color",
             hex: v.color_hex || "#cccccc",
             sku: v.variant_sku || "",
-            stock: Number(v.stock ?? 0),
-            isUnlimited: Number(v.stock ?? 0) >= 99999,
+            stock: v.is_unlimited ? null : Number(v.stock ?? 0),
+            isUnlimited: !!v.is_unlimited,
             images: (images || []).filter((img: any) => img.variant_id === v.id).map((img: any) => img.image_url) || []
           })),
           featured: product.is_featured || false,
@@ -368,7 +374,7 @@ const EditProduct = () => {
         
         setAvailableCustomBadges(product.badges || []);
 
-        const isUnlimited = variants.some((v: any) => Number(v.stock ?? 0) >= 99999);
+        const isUnlimited = variants.some((v: any) => !!v.is_unlimited);
         setIsStockUnlimited(isUnlimited);
 
         // Generate and display preview immediately
@@ -392,8 +398,8 @@ const EditProduct = () => {
               name: v.color_name || "Color",
               hex: v.color_hex || "#cccccc",
               sku: v.variant_sku || "",
-              stock: Number(v.stock ?? 0),
-              isUnlimited: Number(v.stock ?? 0) >= 99999,
+              stock: v.is_unlimited ? null : Number(v.stock ?? 0),
+              isUnlimited: !!v.is_unlimited,
               images: (images || []).filter((img: any) => img.variant_id === v.id).map((img: any) => img.image_url) || []
             })),
             featured: product.is_featured || false,
@@ -508,7 +514,7 @@ const EditProduct = () => {
           name: formattedName, 
           hex, 
           sku: variantSku, 
-          stock: isStockUnlimited ? 99999 : 1, 
+          stock: isStockUnlimited ? null : 1, 
           isUnlimited: isStockUnlimited,
           images: [] 
         }]
@@ -521,7 +527,7 @@ const EditProduct = () => {
     setFormData(prev => ({
       ...prev,
       selectedColors: prev.selectedColors.map(c => 
-        c.name === colorName ? { ...c, isUnlimited, stock: isUnlimited ? 99999 : 1 } : c
+        c.name === colorName ? { ...c, isUnlimited, stock: isUnlimited ? null : 1 } : c
       )
     }));
   };
@@ -660,8 +666,8 @@ const EditProduct = () => {
     try {
       const updatedFormData = { ...formData };
 
-      const { database } = await sendCurationToBackend("DRAFT", updatedFormData, imagePreviews);
-      const mappedProduct = mapFormDataToProduct(updatedFormData, imagePreviews);
+      const { database } = await sendCurationToBackend("DRAFT", updatedFormData, imagePreviews, isStockUnlimited);
+      const mappedProduct = mapFormDataToProduct(updatedFormData, imagePreviews, isStockUnlimited);
       setSavedPreviewProduct(mappedProduct);
       setPreviewActivated(true);
       
@@ -687,8 +693,8 @@ const EditProduct = () => {
     try {
       const updatedFormData = { ...formData };
 
-      const { database } = await sendCurationToBackend("PUBLISHED", updatedFormData, imagePreviews);
-      const mappedProduct = mapFormDataToProduct(updatedFormData, imagePreviews);
+      const { database } = await sendCurationToBackend("PUBLISHED", updatedFormData, imagePreviews, isStockUnlimited);
+      const mappedProduct = mapFormDataToProduct(updatedFormData, imagePreviews, isStockUnlimited);
       setSavedPreviewProduct(mappedProduct);
       setPreviewActivated(true);
       if (database && database.ok === false && "skipped" in database && database.skipped) {
@@ -710,8 +716,8 @@ const EditProduct = () => {
 
   useEffect(() => {
     if (!previewActivated) return;
-    setSavedPreviewProduct(mapFormDataToProduct(formData, imagePreviews));
-  }, [previewActivated, formData, imagePreviews]);
+    setSavedPreviewProduct(mapFormDataToProduct(formData, imagePreviews, isStockUnlimited));
+  }, [previewActivated, formData, imagePreviews, isStockUnlimited]);
 
   useEffect(() => {
     if (formData.sku) {
@@ -1065,11 +1071,10 @@ const EditProduct = () => {
                             setIsStockUnlimited(false);
                             setFormData(prev => ({
                               ...prev,
-                              stock: "0",
                               selectedColors: prev.selectedColors.map(c => ({
                                 ...c,
                                 isUnlimited: false,
-                                stock: c.stock === 99999 ? 1 : c.stock
+                                stock: c.isUnlimited ? 1 : c.stock
                               }))
                             }));
                           }}
@@ -1083,11 +1088,10 @@ const EditProduct = () => {
                             setIsStockUnlimited(true);
                             setFormData(prev => ({
                               ...prev,
-                              stock: "99999",
                               selectedColors: prev.selectedColors.map(c => ({
                                 ...c,
                                 isUnlimited: true,
-                                stock: 99999
+                                stock: null
                               }))
                             }));
                           }}

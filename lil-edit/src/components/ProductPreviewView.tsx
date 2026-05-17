@@ -139,9 +139,11 @@ const ProductPreviewView = ({
   const mobileOnly = forceMobileLayout;
 
   const currentSku = activeColor?.sku || product.sku;
-  const currentStock = activeColor ? activeColor.stock : product.colors.reduce((sum, c) => sum + (c.stock ?? 0), 0);
+  const isCurrentUnlimited = activeColor ? !!activeColor.isUnlimited : product.colors.some(c => c.isUnlimited);
+  const currentStock = activeColor ? (activeColor.stock ?? 0) : product.colors.reduce((sum, c) => sum + (c.stock ?? 0), 0);
 
   const getStockStatus = () => {
+    if (isCurrentUnlimited) return { label: "In Stock", class: "text-green-600 bg-green-50" };
     if (currentStock <= 0) return { label: "Out of Stock", class: "text-red-500 bg-red-50" };
     if (currentStock < 5) return { label: `Only ${currentStock} Left`, class: "text-orange-500 bg-orange-50" };
     return { label: "In Stock", class: "text-green-600 bg-green-50" };
