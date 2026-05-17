@@ -113,7 +113,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
       {/* Summary Row */}
       <div className="space-y-8">
         <div className="space-y-1">
-          <div className="flex items-center gap-4">
+          <div className="flex items-start justify-between gap-4">
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{p.title}</h2>
             <Badge className={`${
               version.type === "PUBLISHED" 
@@ -121,7 +121,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
                 : (isUpdate 
                     ? "bg-amber-100 text-amber-700 hover:bg-amber-100" 
                     : "bg-gray-200 text-gray-600 hover:bg-gray-200")
-            } border-none text-[10px] font-bold uppercase tracking-widest px-3 py-1`}>
+            } border-none text-[10px] font-bold uppercase tracking-widest px-3 py-1 shrink-0 whitespace-nowrap`}>
               {version.label}
             </Badge>
           </div>
