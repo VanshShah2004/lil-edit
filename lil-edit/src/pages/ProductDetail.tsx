@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, Navigate, useNavigate } from "react-router-dom";
 import { ChevronRight, Heart, Star, BadgeCheck, ThumbsUp } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
@@ -19,9 +19,6 @@ import le6 from "@/assets/searchbar-frequent_searches/le-6.png";
 
 const LAVENDER = "#B19CD9";
 const TEAL = "#0B5B55";
-const TEAL_DARK = "#08423E";
-const SWATCH_GAP_PX = 12; // gap-3
-const BETWEEN_BLOCKS_GAP_PX = SWATCH_GAP_PX * 4; // 4x swatch gap
 
 // MOCK DATA
 const product: Product & { reviewsData: any } = {
@@ -29,9 +26,13 @@ const product: Product & { reviewsData: any } = {
   slug: "stunning-criss-cross-back-knot-top-and-crushed-sheen-lehenga",
   categorySlug: "kids-ethnic-wear",
   brand: "The Lil Edit",
-  sku: "LIL-12345",
+  sku: "EDIT-ETHNIC-102",
   category: "Kids Ethnic Wear",
   gender: "Girls",
+  price: 4999,
+  originalPrice: 6500,
+  tags: ["Festive", "Girlswear", "Lehenga"],
+  badges: ["Premium Edit"],
   descriptionPoints: [
     "Top Closure: Tie-up knot at the back",
     "Bottom Closure: Side hook-and-zip",
@@ -51,11 +52,6 @@ const product: Product & { reviewsData: any } = {
   fit: "Regular fit",
   occasion: "Festive, Wedding, Party",
   care: "Dry clean recommended",
-  price: 4999,
-  originalPrice: 6500,
-  stock: 35,
-  tags: ["Festive", "Girlswear", "Lehenga"],
-  badges: ["Premium Edit"],
   images: [
     { id: "1", url: product_images["product-0001"]["lil-edit-product-0001-1-1.png"], isPrimary: true },
     { id: "2", url: product_images["product-0001"]["lil-edit-product-0001-1-2.png"] },
@@ -72,6 +68,7 @@ const product: Product & { reviewsData: any } = {
       hex: "#B19CD9",
       sku: "EDIT-ETHNIC-102-LAV",
       stock: 12,
+      isUnlimited: false,
       images: [
         { id: "lav-1", url: product_images["product-0001"]["lil-edit-product-0001-1-1.png"] },
         { id: "lav-2", url: product_images["product-0001"]["lil-edit-product-0001-1-2.png"] }
@@ -82,6 +79,7 @@ const product: Product & { reviewsData: any } = {
       hex: "#FFFFFF",
       sku: "EDIT-ETHNIC-102-WHT",
       stock: 5,
+      isUnlimited: false,
       images: [
         { id: "wht-0", url: le0 },
         { id: "wht-1", url: le1 },
@@ -97,6 +95,7 @@ const product: Product & { reviewsData: any } = {
   newArrival: false,
   bestseller: true,
   trending: true,
+  isUnlimited: false,
   reviewsData: {
     averageRating: 4.8,
     totalReviews: 124,
@@ -165,7 +164,9 @@ const recommendedProducts = [
     categorySlug: "kids-ethnic-wear",
     price: 3500,
     originalPrice: 4200,
-    image: product_images["product-0001"]["lil-edit-product-0001-1-2.png"]
+    image: product_images["product-0001"]["lil-edit-product-0001-1-2.png"],
+    sku: "EDIT-ETHNIC-101",
+    tags: ["Ethnic", "Lehenga"]
   },
   {
     title: "Mint Green Ruffle Trim Party Dress",
@@ -173,7 +174,9 @@ const recommendedProducts = [
     categorySlug: "party-wear",
     price: 2999,
     originalPrice: 3599,
-    image: product_images["product-0001"]["lil-edit-product-0001-1-3.png"]
+    image: product_images["product-0001"]["lil-edit-product-0001-1-3.png"],
+    sku: "EDIT-PARTY-101",
+    tags: ["Party", "Dress"]
   },
   {
     title: "Ivory Organza Peplum Kurta with Dhoti Pants",
@@ -181,7 +184,9 @@ const recommendedProducts = [
     categorySlug: "kids-ethnic-wear",
     price: 4500,
     originalPrice: 5100,
-    image: product_images["product-0001"]["lil-edit-product-0001-1-4.png"]
+    image: product_images["product-0001"]["lil-edit-product-0001-1-4.png"],
+    sku: "EDIT-ETHNIC-103",
+    tags: ["Ethnic", "Kurta"]
   },
   {
     title: "Blush Pink Net Indo-Western Gown",
@@ -189,7 +194,9 @@ const recommendedProducts = [
     categorySlug: "party-wear",
     price: 5200,
     originalPrice: 6000,
-    image: product_images["product-0001"]["lil-edit-product-0001-1-5.png"]
+    image: product_images["product-0001"]["lil-edit-product-0001-1-5.png"],
+    sku: "EDIT-PARTY-102",
+    tags: ["Party", "Gown"]
   },
   {
     title: "Mustard Yellow Silk Blend Sharara Suit",
@@ -197,20 +204,50 @@ const recommendedProducts = [
     categorySlug: "kids-ethnic-wear",
     price: 3800,
     originalPrice: 4500,
-    image: product_images["product-0001"]["lil-edit-product-0001-1-6.png"]
+    image: product_images["product-0001"]["lil-edit-product-0001-1-6.png"],
+    sku: "EDIT-ETHNIC-104",
+    tags: ["Ethnic", "Sharara"]
   }
 ];
 
 export default function ProductDetail() {
-  const { category: categoryParam, productSlug } = useParams();
+  const { category: categoryParam, productPath } = useParams();
   const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
 
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  // Graceful failure for incorrect URLs
-  const isCorrectPath = categoryParam === product.categorySlug && productSlug === product.slug;
+  // Parse productSlug and skuId from combined parameter (separated by $)
+  const [productSlug, skuId] = productPath?.split('$') ?? [undefined, undefined];
+
+  // Determine if it's a full color SKU or just base SKU
+  // Full color SKU format: EDIT-ETHNIC-102-WHT
+  // Base SKU format: EDIT-ETHNIC-102
+  let selectedColorName: string | undefined;
+  let isValidSku = false;
+
+  if (skuId) {
+    // Check if it matches a color SKU exactly
+    const matchingColorBySku = product.colors.find(c => c.sku === skuId);
+    if (matchingColorBySku) {
+      // Full color SKU provided
+      selectedColorName = matchingColorBySku.name;
+      isValidSku = true;
+    } else if (skuId === product.sku) {
+      // Only base SKU provided - use primary color
+      selectedColorName = product.colors[0]?.name;
+      isValidSku = true;
+    }
+  }
+
+  // Graceful failure for incorrect URLs (requires valid productSlug and skuId)
+  const isCorrectPath = 
+    categoryParam === product.categorySlug && 
+    productSlug === product.slug &&
+    skuId &&
+    isValidSku;
 
   if (!isCorrectPath && !authLoading) {
     return (
@@ -221,6 +258,22 @@ export default function ProductDetail() {
       </div>
     );
   }
+
+  // If only base SKU provided (no color code), redirect to primary color URL
+  if (isCorrectPath && skuId === product.sku && selectedColorName) {
+    const primaryColor = product.colors.find(c => c.name === selectedColorName);
+    if (primaryColor) {
+      return <Navigate to={`/collections/${categoryParam}/product/${productSlug}$${primaryColor.sku}`} replace />;
+    }
+  }
+
+  // Handle color change - update URL when color is selected
+  const handleColorChange = (colorName: string) => {
+    const selectedColor = product.colors.find(c => c.name === colorName);
+    if (selectedColor) {
+      navigate(`/collections/${categoryParam}/product/${productSlug}$${selectedColor.sku}`, { replace: false });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white flex flex-col pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)]">
@@ -238,7 +291,7 @@ export default function ProductDetail() {
       </div>
 
       <main className="page-container w-full pb-[calc(env(safe-area-inset-bottom)+2rem)] sm:pb-[calc(env(safe-area-inset-bottom)+2rem)] md:pb-6">
-        <ProductPreviewView product={product} />
+        <ProductPreviewView product={product} initialColorName={selectedColorName} onColorChange={handleColorChange} />
 
         {/* Reviews & Ratings - Full Width Section */}
         <section className="mt-16 sm:mt-24 pt-12 border-t border-gray-100">
@@ -295,7 +348,7 @@ export default function ProductDetail() {
                     </p>
 
                     <div className="w-full space-y-3">
-                      {product.reviewsData.distribution.map((item) => {
+                      {product.reviewsData.distribution.map((item: any) => {
                         const pct = Math.round((item.count / product.reviewsData.totalReviews) * 100);
                         return (
                           <div key={item.stars} className="flex items-center gap-4 group">
@@ -462,7 +515,7 @@ export default function ProductDetail() {
                   </button>
                   <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                     <Link
-                      to={`/collections/${item.categorySlug}/product/${item.slug}`}
+                      to={`/collections/${item.categorySlug}/product/${item.slug}+${item.sku}`}
                       className="w-full py-1.5 bg-white/90 backdrop-blur text-slate-900 rounded-lg font-medium text-[10px] md:text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm block text-center"
                     >
                       View Details
@@ -476,7 +529,7 @@ export default function ProductDetail() {
                     </h3>
                     {(item.tags ?? []).length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
-                        {item.tags?.map((tag, idx) => (
+                        {item.tags?.map((tag: string, idx: number) => (
                           <Badge
                             key={idx}
                             variant="secondary"

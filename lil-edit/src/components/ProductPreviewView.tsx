@@ -16,6 +16,7 @@ interface ProductPreviewViewProps {
   compact?: boolean;
   forceMobileLayout?: boolean;
   initialColorName?: string;
+  onColorChange?: (colorName: string) => void;
 }
 
 const ProductPreviewView = ({
@@ -24,6 +25,7 @@ const ProductPreviewView = ({
   compact = false,
   forceMobileLayout = false,
   initialColorName,
+  onColorChange,
 }: ProductPreviewViewProps) => {
   const [activeImage, setActiveImage] = useState(0);
   const [api, setApi] = useState<CarouselApi>();
@@ -275,10 +277,20 @@ const ProductPreviewView = ({
               </span>
             </div>
             <div className="flex flex-wrap gap-3">
-              {product.colors.map((color) => (
+              {product.colors
+                .sort((a, b) => {
+                  // Put active color first
+                  if (activeColor?.name === a.name) return -1;
+                  if (activeColor?.name === b.name) return 1;
+                  return 0;
+                })
+                .map((color) => (
                 <button 
                   key={color.name} 
-                  onClick={() => setActiveColor(color)} 
+                  onClick={() => {
+                    setActiveColor(color);
+                    onColorChange?.(color.name);
+                  }} 
                   className="group flex flex-col items-center"
                 >
                   <div className="relative">
