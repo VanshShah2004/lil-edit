@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import {
   fetchAllProducts,
+  fetchFilteredProducts,
   isSupabaseCatalogConfigured,
   launchProductToDatabase,
   saveDraftToDatabase,
@@ -11,8 +12,38 @@ const router = Router();
 
 router.get("/", async (req: Request, res: Response) => {
   try {
-    const products = await fetchAllProducts();
-    res.json(products);
+    const status = req.query.status as "ALL" | "PUBLISHED" | "DRAFT" | undefined;
+    const limitQuery = req.query.limit as string | undefined;
+    const limit = limitQuery ? parseInt(limitQuery, 10) : undefined;
+
+    if (status) {
+      const data = await fetchFilteredProducts(status, limit);
+      res.json({
+        published: data.published,
+        drafts: data.drafts,
+        products: {
+          published: data.published,
+          drafts: data.drafts
+        },
+        totalCount: data.totalCount,
+        total: data.totalCount,
+        hasMore: data.hasMore
+      });
+    } else {
+      // Default fallback (backward compatible with no query parameters)
+      const data = await fetchAllProducts();
+      res.json({
+        published: data.published,
+        drafts: data.drafts,
+        products: {
+          published: data.published,
+          drafts: data.drafts
+        },
+        totalCount: data.published.length + data.drafts.length,
+        total: data.published.length + data.drafts.length,
+        hasMore: false
+      });
+    }
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }

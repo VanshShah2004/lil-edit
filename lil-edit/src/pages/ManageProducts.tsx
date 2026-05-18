@@ -434,29 +434,61 @@ const ManageProducts = () => {
   const [activeImageTab, setActiveImageTab] = useState<string>("Global");
   const [activeVersion, setActiveVersion] = useState<"PUBLISHED" | "DRAFT">("PUBLISHED");
 
-  const fetchProducts = async () => {
+  const [showAllMap, setShowAllMap] = useState<{
+    ALL: boolean;
+    PUBLISHED: boolean;
+    DRAFT: boolean;
+  }>({
+    ALL: false,
+    PUBLISHED: false,
+    DRAFT: false
+  });
+
+  const [hasMoreMap, setHasMoreMap] = useState<{
+    ALL: boolean;
+    PUBLISHED: boolean;
+    DRAFT: boolean;
+  }>({
+    ALL: false,
+    PUBLISHED: false,
+    DRAFT: false
+  });
+
+  const fetchProducts = async (
+    status: "ALL" | "PUBLISHED" | "DRAFT",
+    showAll: boolean
+  ) => {
     setLoading(true);
     try {
       const base = getBackendBaseUrl();
-      const res = await fetch(`${base}/api/products`);
+      const params = new URLSearchParams();
+      params.append("status", status);
+      if (!showAll) {
+        params.append("limit", "10");
+      }
+
+      const res = await fetch(`${base}/api/products?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch products");
       const data = await res.json();
 
-      const published = data.published?.map((p: any) => ({
+      const publishedSource = data.products?.published || data.published || [];
+      const draftsSource = data.products?.drafts || data.drafts || [];
+
+      const published = publishedSource.map((p: any) => ({
         ...p,
         status: "PUBLISHED" as const,
         image_url: p.product_images?.find((i: ProductImage) => !i.variant_id)?.image_url
           ?? p.product_images?.[0]?.image_url
       })) ?? [];
 
-      const drafts = data.drafts?.map((d: any) => ({
+      const drafts = draftsSource.map((d: any) => ({
         ...d,
         status: "DRAFT" as const,
         image_url: d.draft_product_images?.find((i: ProductImage) => !i.variant_id)?.image_url
           ?? d.draft_product_images?.[0]?.image_url
       })) ?? [];
 
-      // Grouping logic
+      // Grouping logic (preserves base_sku grouped versions)
       const groupedMap = new Map<string, GroupedProduct>();
 
       published.forEach((p: ProductItem) => {
@@ -492,8 +524,20 @@ const ManageProducts = () => {
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setProducts(all);
+      
+      setHasMoreMap(prev => ({
+        ...prev,
+        [status]: !!data.hasMore
+      }));
+
       if (all.length > 0) {
-        setSelectedProduct(all[0]);
+        const selectionExists = all.some(p => p.base_sku === selectedProduct?.base_sku);
+        if (!selectedProduct || !selectionExists) {
+          setSelectedProduct(all[0]);
+          setActiveVersion(all[0].draft ? "DRAFT" : "PUBLISHED");
+        }
+      } else {
+        setSelectedProduct(null);
       }
     } catch (err) {
       console.error("Error fetching products:", err);
@@ -503,7 +547,9 @@ const ManageProducts = () => {
     }
   };
 
-  useEffect(() => { fetchProducts(); }, []);
+  useEffect(() => {
+    fetchProducts(filterStatus, showAllMap[filterStatus]);
+  }, [filterStatus, showAllMap[filterStatus]]);
 
   // Reset image studio state when product changes
   useEffect(() => {
@@ -581,7 +627,7 @@ const ManageProducts = () => {
       toast.success(`"${product.title}" has been successfully launched!`);
 
       // Refresh the product list and selection
-      await fetchProducts();
+      await fetchProducts(filterStatus, showAllMap[filterStatus]);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     }
@@ -763,18 +809,8 @@ const ManageProducts = () => {
   };
 
   const filteredProducts = products.filter(p => {
-    const matchesSearch =
-      p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    return p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.base_sku.toLowerCase().includes(searchTerm.toLowerCase());
-
-    let matchesStatus = true;
-    if (filterStatus === "PUBLISHED") {
-      matchesStatus = !!p.published;
-    } else if (filterStatus === "DRAFT") {
-      matchesStatus = !!p.draft;
-    }
-
-    return matchesSearch && matchesStatus;
   });
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -828,47 +864,74 @@ const ManageProducts = () => {
                 </button>
               ))}
             </div>
+            {/* Elegant progressive load selector row */}
+            <div className="flex justify-between items-center mt-3 text-[9px] font-bold uppercase tracking-[0.1em] gap-4">
+              <button
+                onClick={() => setShowAllMap(prev => ({ ...prev, [filterStatus]: false }))}
+                className={`flex-1 py-1.5 px-3 rounded transition-all text-center ${
+                  !showAllMap[filterStatus]
+                    ? "bg-[#B19CD9] text-black font-black"
+                    : "bg-gray-100 text-gray-400 hover:text-gray-600 border border-gray-200/50"
+                }`}
+              >
+                Top 10
+              </button>
+              <button
+                onClick={() => setShowAllMap(prev => ({ ...prev, [filterStatus]: true }))}
+                className={`flex-1 py-1.5 px-3 rounded transition-all text-center ${
+                  showAllMap[filterStatus]
+                    ? "bg-[#B19CD9] text-black font-black"
+                    : "bg-gray-100 text-gray-400 hover:text-gray-600 border border-gray-200/50"
+                }`}
+              >
+                See All
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto no-scrollbar py-2">
             {loading ? (
               <div className="p-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-300">Loading Records...</div>
-            ) : filteredProducts.map((p) => (
-              <button
-                key={p.base_sku}
-                onClick={() => handleProductSelect(p)}
-                className={`w-full text-left px-6 py-4 transition-all flex gap-4 border-b border-black/20 ${selectedProduct?.base_sku === p.base_sku ? "bg-gray-50 border-r-4 border-r-gray-900" : "hover:bg-gray-50/50"}`}
-              >
-                <div className="w-10 h-12 bg-gray-100 rounded border border-gray-200 flex-shrink-0 overflow-hidden relative">
-                  {p.image_url ? (
-                    <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <ImageIcon className="w-4 h-4 text-gray-300 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h3 className={`text-xs font-bold truncate leading-tight ${selectedProduct?.base_sku === p.base_sku ? "text-gray-900" : "text-gray-600"}`}>{p.title}</h3>
-                      <span className="text-[9px] text-gray-400 font-mono font-medium block mt-0.5">{p.base_sku}</span>
-                    </div>
-                    {p.published ? (
-                      <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-gray-900 text-white whitespace-nowrap uppercase">Published</span>
-                    ) : (
-                      <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 whitespace-nowrap uppercase">Draft</span>
-                    )}
-                  </div>
-                  <div className="flex items-end justify-between mt-2">
-                    <p className="text-[10px] font-bold text-gray-900">₹{p.price.toLocaleString()}</p>
-                    <div className="flex flex-col items-end gap-1">
-                      {p.published && p.draft && hasPendingUpdates(p.draft, p.published) && (
-                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 whitespace-nowrap uppercase">Updates To be Synced</span>
+            ) : (
+              <>
+                {filteredProducts.map((p) => (
+                  <button
+                    key={p.base_sku}
+                    onClick={() => handleProductSelect(p)}
+                    className={`w-full text-left px-6 py-4 transition-all flex gap-4 border-b border-black/20 ${selectedProduct?.base_sku === p.base_sku ? "bg-gray-50 border-r-4 border-r-gray-900" : "hover:bg-gray-50/50"}`}
+                  >
+                    <div className="w-10 h-12 bg-gray-100 rounded border border-gray-200 flex-shrink-0 overflow-hidden relative">
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <ImageIcon className="w-4 h-4 text-gray-300 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                       )}
                     </div>
-                  </div>
-                </div>
-              </button>
-            ))}
+                    <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <h3 className={`text-xs font-bold truncate leading-tight ${selectedProduct?.base_sku === p.base_sku ? "text-gray-900" : "text-gray-600"}`}>{p.title}</h3>
+                          <span className="text-[9px] text-gray-400 font-mono font-medium block mt-0.5">{p.base_sku}</span>
+                        </div>
+                        {p.published ? (
+                          <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-gray-900 text-white whitespace-nowrap uppercase">Published</span>
+                        ) : (
+                          <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 whitespace-nowrap uppercase">Draft</span>
+                        )}
+                      </div>
+                      <div className="flex items-end justify-between mt-2">
+                        <p className="text-[10px] font-bold text-gray-900">₹{p.price.toLocaleString()}</p>
+                        <div className="flex flex-col items-end gap-1">
+                          {p.published && p.draft && hasPendingUpdates(p.draft, p.published) && (
+                            <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 whitespace-nowrap uppercase">Updates To be Synced</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         </aside>
 

@@ -163,6 +163,171 @@ export async function fetchAllProducts() {
   };
 }
 
+export async function fetchFilteredProducts(status: "ALL" | "PUBLISHED" | "DRAFT", limit?: number) {
+  const sb = requireAdmin();
+
+  if (status === "PUBLISHED") {
+    // 1. Get total count of published products
+    const { count, error: countErr } = await sb
+      .from("products")
+      .select("id", { count: "exact", head: true });
+    if (countErr) throw countErr;
+    const totalCount = count || 0;
+
+    // 2. Fetch limited published products
+    let query = sb
+      .from("products")
+      .select(`
+        *,
+        product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
+        product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (limit) {
+      query = query.limit(limit);
+    }
+    const { data: published, error: pubErr } = await query;
+    if (pubErr) throw pubErr;
+
+    // 3. Fetch matching drafts for the returned products to support status badges and side-by-side comparison
+    let drafts: any[] = [];
+    if (published && published.length > 0) {
+      const skus = published.map(p => p.base_sku);
+      const { data: draftData, error: draftErr } = await sb
+        .from("draft_products")
+        .select(`
+          *,
+          draft_product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
+          draft_product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
+        `)
+        .in("base_sku", skus);
+      if (draftErr) throw draftErr;
+      drafts = draftData || [];
+    }
+
+    return {
+      published: published || [],
+      drafts: drafts,
+      totalCount,
+      hasMore: limit ? totalCount > limit : false
+    };
+  } else if (status === "DRAFT") {
+    // 1. Get total count of draft products
+    const { count, error: countErr } = await sb
+      .from("draft_products")
+      .select("id", { count: "exact", head: true });
+    if (countErr) throw countErr;
+    const totalCount = count || 0;
+
+    // 2. Fetch limited draft products
+    let query = sb
+      .from("draft_products")
+      .select(`
+        *,
+        draft_product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
+        draft_product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (limit) {
+      query = query.limit(limit);
+    }
+    const { data: drafts, error: draftErr } = await query;
+    if (draftErr) throw draftErr;
+
+    // 3. Fetch matching published for the returned drafts to support status badges and side-by-side comparison
+    let published: any[] = [];
+    if (drafts && drafts.length > 0) {
+      const skus = drafts.map(d => d.base_sku);
+      const { data: pubData, error: pubErr } = await sb
+        .from("products")
+        .select(`
+          *,
+          product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
+          product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
+        `)
+        .in("base_sku", skus);
+      if (pubErr) throw pubErr;
+      published = pubData || [];
+    }
+
+    return {
+      published: published,
+      drafts: drafts || [],
+      totalCount,
+      hasMore: limit ? totalCount > limit : false
+    };
+  } else {
+    // status === "ALL"
+    // Fetch all lightweight base_skus and created_at to group and sort them progressively
+    const { data: pubSkus, error: pubSkuErr } = await sb
+      .from("products")
+      .select("base_sku, created_at");
+    if (pubSkuErr) throw pubSkuErr;
+
+    const { data: draftSkus, error: draftSkuErr } = await sb
+      .from("draft_products")
+      .select("base_sku, created_at");
+    if (draftSkuErr) throw draftSkuErr;
+
+    const skuMap = new Map<string, Date>();
+    pubSkus?.forEach(p => {
+      skuMap.set(p.base_sku, new Date(p.created_at));
+    });
+    draftSkus?.forEach(d => {
+      const current = skuMap.get(d.base_sku);
+      const dDate = new Date(d.created_at);
+      if (!current || dDate > current) {
+        skuMap.set(d.base_sku, dDate);
+      }
+    });
+
+    const sortedSkus = Array.from(skuMap.entries())
+      .sort((a, b) => b[1].getTime() - a[1].getTime())
+      .map(entry => entry[0]);
+
+    const totalCount = sortedSkus.length;
+    const slicedSkus = limit ? sortedSkus.slice(0, limit) : sortedSkus;
+    const hasMore = limit ? totalCount > limit : false;
+
+    let published: any[] = [];
+    let drafts: any[] = [];
+
+    if (slicedSkus.length > 0) {
+      const { data: pubData, error: pubErr } = await sb
+        .from("products")
+        .select(`
+          *,
+          product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
+          product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
+        `)
+        .in("base_sku", slicedSkus);
+      if (pubErr) throw pubErr;
+      published = pubData || [];
+
+      const { data: draftData, error: draftErr } = await sb
+        .from("draft_products")
+        .select(`
+          *,
+          draft_product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
+          draft_product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
+        `)
+        .in("base_sku", slicedSkus);
+      if (draftErr) throw draftErr;
+      drafts = draftData || [];
+    }
+
+    return {
+      published,
+      drafts,
+      totalCount,
+      hasMore
+    };
+  }
+}
+
+
 export function isSupabaseCatalogConfigured(): boolean {
   return supabaseAdmin !== null;
 }
