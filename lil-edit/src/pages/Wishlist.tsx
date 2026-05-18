@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import {
   ChevronRight,
@@ -95,44 +96,54 @@ const wishlistItemsMock = [
 
 const recommendedProducts = [
   {
+    id: "r1",
     title: "Blush Pink Net Indo-Western Gown",
     slug: "blush-pink-net-indo-western-gown",
     categorySlug: "party-wear",
     price: 5200,
     originalPrice: 6000,
     image: img3,
+    sku: "LIL-REC1",
   },
   {
+    id: "r2",
     title: "Royal Blue Embroidered Party Set",
     slug: "royal-blue-embroidered-party-set",
     categorySlug: "party-wear",
     price: 4899,
     originalPrice: 5600,
     image: img4,
+    sku: "LIL-REC2",
   },
   {
+    id: "r3",
     title: "Peach Floral Princess Dress",
     slug: "peach-floral-princess-dress",
     categorySlug: "party-wear",
     price: 3999,
     originalPrice: 4700,
     image: img5,
+    sku: "LIL-REC3",
   },
   {
+    id: "r4",
     title: "Ivory Ethnic Festive Wear",
     slug: "ivory-ethnic-festive-wear",
     categorySlug: "kids-ethnic-wear",
     price: 5799,
     originalPrice: 6500,
     image: img6,
+    sku: "LIL-REC4",
   },
   {
+    id: "r5",
     title: "Golden Silk Lehenga Collection",
     slug: "golden-silk-lehenga-collection",
     categorySlug: "kids-ethnic-wear",
     price: 6200,
     originalPrice: 7500,
     image: img1,
+    sku: "LIL-REC5",
   },
 ];
 
@@ -142,7 +153,77 @@ const WishlistPage = () => {
   const { user, loading: authLoading } = useAuth();
 
   const removeItem = (id: string) => {
+    const itemToRemove = items.find(item => item.id === id);
     setItems((prev) => prev.filter((item) => item.id !== id));
+    if (itemToRemove) {
+      toast.success(`Removed "${itemToRemove.name}" from your wishlist`);
+    }
+  };
+
+  const moveToCart = (id: string) => {
+    const itemToMove = items.find(item => item.id === id);
+    if (itemToMove) {
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      toast.success(`"${itemToMove.name}" has been moved to your Shopping Bag!`, {
+        action: {
+          label: "View Bag",
+          onClick: () => window.location.href = "/cart",
+        }
+      });
+    }
+  };
+
+  const buyNow = (id: string) => {
+    const itemToBuy = items.find(item => item.id === id);
+    if (itemToBuy) {
+      toast.success(`Proceeding to checkout with "${itemToBuy.name}"...`);
+      setTimeout(() => {
+        window.location.href = "/cart";
+      }, 800);
+    }
+  };
+
+  const moveAllToCart = () => {
+    const availableItems = items.filter(item => item.inStock);
+    if (availableItems.length === 0) {
+      toast.error("No in-stock items to move to the cart.");
+      return;
+    }
+    
+    setItems((prev) => prev.filter((item) => !item.inStock));
+    toast.success(`Moved all ${availableItems.length} in-stock items to your Shopping Bag!`, {
+      action: {
+        label: "View Bag",
+        onClick: () => window.location.href = "/cart",
+      }
+    });
+  };
+
+  const addToWishlist = (product: typeof recommendedProducts[0]) => {
+    const exists = items.some(item => item.slug === product.slug);
+    if (exists) {
+      toast.warning(`"${product.title}" is already in your wishlist!`);
+      return;
+    }
+
+    const newItem = {
+      id: `w_${Date.now()}`,
+      name: product.title,
+      slug: product.slug,
+      categorySlug: product.categorySlug,
+      brand: "The Lil Edit Co.",
+      price: product.price,
+      originalPrice: product.originalPrice,
+      image: product.image,
+      size: "2-3Y",
+      color: { name: "Lilac", hex: "#C8A4D4" },
+      quantity: 1,
+      inStock: true,
+      tags: ["New Arrival"],
+    };
+
+    setItems((prev) => [...prev, newItem]);
+    toast.success(`Added "${product.title}" to your wishlist!`);
   };
 
   const tabs = [
@@ -272,7 +353,11 @@ const WishlistPage = () => {
                     </div>
 
                     {/* Heart overlay (mirrors Cart's wishlist button) */}
-                    <button className="absolute top-2 right-2 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-md shadow-sm hover:bg-white transition">
+                    <button 
+                      onClick={() => removeItem(item.id)}
+                      className="absolute top-2 right-2 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-md shadow-sm hover:bg-white transition"
+                      title="Remove from wishlist"
+                    >
                       <Heart size={16} className="text-primary" fill="hsl(268 45% 65%)" />
                     </button>
                   </div>
@@ -326,6 +411,7 @@ const WishlistPage = () => {
                       <div className="flex items-center justify-between gap-2 sm:gap-3 flex-wrap">
                         <div className="flex gap-2 sm:gap-2.5 flex-1">
                           <Button
+                            onClick={() => moveToCart(item.id)}
                             size="sm"
                             disabled={!item.inStock}
                             className="h-9 sm:h-10 flex-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center gap-1.5"
@@ -334,6 +420,7 @@ const WishlistPage = () => {
                             <span>Cart it</span>
                           </Button>
                           <Button
+                            onClick={() => buyNow(item.id)}
                             size="sm"
                             disabled={!item.inStock}
                             className="h-9 sm:h-10 flex-1 bg-teal-600 hover:bg-teal-700 text-white rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center"
@@ -407,7 +494,10 @@ const WishlistPage = () => {
             </div>
 
             {/* Move All to Cart */}
-            <Button className="w-full bg-[#0F766E] hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-full font-semibold text-sm sm:text-base transition-colors gap-2">
+            <Button 
+              onClick={moveAllToCart}
+              className="w-full bg-[#0F766E] hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-full font-semibold text-sm sm:text-base transition-colors gap-2"
+            >
               <ShoppingBag className="w-4 h-4" />
               Move All to Cart
             </Button>
@@ -477,7 +567,11 @@ const WishlistPage = () => {
                       }}
                       className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                     />
-                    <button className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-600 hover:text-[#0F766E] transition-all">
+                    <button 
+                      onClick={() => addToWishlist(p)}
+                      className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-600 hover:text-[#0F766E] hover:bg-white transition-all shadow-sm"
+                      title="Add to wishlist"
+                    >
                       <Heart className="w-3.5 h-3.5" />
                     </button>
                     <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
