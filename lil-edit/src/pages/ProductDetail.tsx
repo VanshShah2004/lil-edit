@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link, useParams, Navigate, useNavigate } from "react-router-dom";
 import { ChevronRight, Heart, Star, BadgeCheck, ThumbsUp } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
@@ -8,6 +9,7 @@ import product_images from "@/assets/products";
 import ProductPreviewView from "@/components/ProductPreviewView";
 import { Badge } from "@/components/ui/badge";
 import type { Product } from "@/types/product";
+import { getBackendBaseUrl } from "@/lib/backend";
 
 import le0 from "@/assets/searchbar-frequent_searches/le-0.png";
 import le1 from "@/assets/searchbar-frequent_searches/le-1.png";
@@ -20,207 +22,100 @@ import le6 from "@/assets/searchbar-frequent_searches/le-6.png";
 const LAVENDER = "#B19CD9";
 const TEAL = "#0B5B55";
 
-// MOCK DATA
-const product: Product & { reviewsData: any } = {
-  title: "Stunning Criss-Cross Back Knot Top And Crushed Sheen Lehenga",
-  slug: "stunning-criss-cross-back-knot-top-and-crushed-sheen-lehenga",
-  categorySlug: "kids-ethnic-wear",
-  brand: "The Lil Edit",
-  sku: "EDIT-ETHNIC-102",
-  category: "Kids Ethnic Wear",
-  gender: "Girls",
-  price: 4999,
-  originalPrice: 6500,
-  tags: ["Festive", "Girlswear", "Lehenga"],
-  badges: ["Premium Edit"],
-  descriptionPoints: [
-    "Top Closure: Tie-up knot at the back",
-    "Bottom Closure: Side hook-and-zip",
-    "Lining: Cotton lining",
-    "Note: Embroidery placement may vary from the website image",
-    "Note: The curve of the lehenga hem may vary as it is machine-wired",
-    "Gender: Girls",
-    "Material: Organza",
-    "Colour: Lavender",
-    "Waistband: Drawstring",
-    "Sleeve Length: Sleeveless",
-    "Image Taken Of: 2 - 3 Years",
-    "Washing Care: Dry Clean",
-    "Made in India",
-  ],
-  fabric: "Silk blend with soft inner lining",
-  fit: "Regular fit",
-  occasion: "Festive, Wedding, Party",
-  care: "Dry clean recommended",
-  images: [
-    { id: "1", url: product_images["product-0001"]["lil-edit-product-0001-1-1.png"], isPrimary: true },
-    { id: "2", url: product_images["product-0001"]["lil-edit-product-0001-1-2.png"] },
-    { id: "3", url: product_images["product-0001"]["lil-edit-product-0001-1-3.png"] },
-    { id: "4", url: product_images["product-0001"]["lil-edit-product-0001-1-4.png"] },
-    { id: "5", url: product_images["product-0001"]["lil-edit-product-0001-1-5.png"] },
-    { id: "6", url: product_images["product-0001"]["lil-edit-product-0001-1-6.png"] },
-    { id: "7", url: product_images["product-0001"]["lil-edit-product-0001-1-7.png"] },
-  ],
-  sizes: ["6-12 Months", "1-2 Years", "2-3 Years", "3-4 Years"],
-  colors: [
-    {
-      name: "Lavender",
-      hex: "#B19CD9",
-      sku: "EDIT-ETHNIC-102-LAV",
-      stock: 12,
-      isUnlimited: false,
-      images: [
-        { id: "lav-1", url: product_images["product-0001"]["lil-edit-product-0001-1-1.png"] },
-        { id: "lav-2", url: product_images["product-0001"]["lil-edit-product-0001-1-2.png"] }
-      ]
-    },
-    {
-      name: "White",
-      hex: "#FFFFFF",
-      sku: "EDIT-ETHNIC-102-WHT",
-      stock: 5,
-      isUnlimited: false,
-      images: [
-        { id: "wht-0", url: le0 },
-        { id: "wht-1", url: le1 },
-        { id: "wht-2", url: le2 },
-        { id: "wht-3", url: le3 },
-        { id: "wht-4", url: le4 },
-        { id: "wht-5", url: le5 },
-        { id: "wht-6", url: le6 },
-      ]
-    },
-  ],
-  featured: true,
-  newArrival: false,
-  bestseller: true,
-  trending: true,
-  isUnlimited: false,
-  reviewsData: {
-    averageRating: 4.8,
-    totalReviews: 124,
-    distribution: [
-      { stars: 5, count: 98 },
-      { stars: 4, count: 18 },
-      { stars: 3, count: 5 },
-      { stars: 2, count: 2 },
-      { stars: 1, count: 1 },
-    ],
-    reviews: [
-      {
-        id: "rev-1",
-        user: "Priya S.",
-        rating: 5,
-        date: "12 Oct 2023",
-        title: "Absolutely gorgeous lehenga!",
-        comment: "The quality of the organza is amazing and my daughter loved wearing it for Diwali. Highly recommend!",
-        verified: true,
-        images: [product_images["product-0001"]["lil-edit-product-0001-1-2.png"]]
-      },
-      {
-        id: "rev-2",
-        user: "Neha Verma",
-        rating: 4,
-        date: "05 Nov 2023",
-        title: "Beautiful color, slightly loose",
-        comment: "The lavender color is precisely as shown in the pictures. The fit was a tiny bit loose around the waist but the drawstring helped.",
-        verified: true,
-      },
-      {
-        id: "rev-3",
-        user: "Anjali K.",
-        rating: 5,
-        date: "28 Nov 2023",
-        title: "Perfect festive wear",
-        comment: "Stunning design. The knot top looks very cute and the material is soft enough for kids. Worth the price.",
-        verified: true,
-        images: [product_images["product-0001"]["lil-edit-product-0001-1-4.png"]]
-      },
-      {
-        id: "rev-4",
-        user: "Sameer M.",
-        rating: 5,
-        date: "15 Dec 2023",
-        title: "Exceptional craftsmanship",
-        comment: "I was hesitant to buy organza for a toddler, but this is so soft. The lining is pure cotton which is a big plus.",
-        verified: true,
-      },
-      {
-        id: "rev-5",
-        user: "Ritu G.",
-        rating: 3,
-        date: "20 Dec 2023",
-        title: "Runs a bit small",
-        comment: "The dress is lovely but I had to exchange for a larger size. The customer service was helpful though.",
-        verified: true,
-      }
-    ]
-  }
-};
-const recommendedProducts = [
-  {
-    title: "Lilac Embroidered Georgette Lehenga Set",
-    slug: "lilac-embroidered-georgette-lehenga-set",
-    categorySlug: "kids-ethnic-wear",
-    price: 3500,
-    originalPrice: 4200,
-    image: product_images["product-0001"]["lil-edit-product-0001-1-2.png"],
-    sku: "EDIT-ETHNIC-101",
-    tags: ["Ethnic", "Lehenga"]
-  },
-  {
-    title: "Mint Green Ruffle Trim Party Dress",
-    slug: "mint-green-ruffle-trim-party-dress",
-    categorySlug: "party-wear",
-    price: 2999,
-    originalPrice: 3599,
-    image: product_images["product-0001"]["lil-edit-product-0001-1-3.png"],
-    sku: "EDIT-PARTY-101",
-    tags: ["Party", "Dress"]
-  },
-  {
-    title: "Ivory Organza Peplum Kurta with Dhoti Pants",
-    slug: "ivory-organza-peplum-kurta-with-dhoti-pants",
-    categorySlug: "kids-ethnic-wear",
-    price: 4500,
-    originalPrice: 5100,
-    image: product_images["product-0001"]["lil-edit-product-0001-1-4.png"],
-    sku: "EDIT-ETHNIC-103",
-    tags: ["Ethnic", "Kurta"]
-  },
-  {
-    title: "Blush Pink Net Indo-Western Gown",
-    slug: "blush-pink-net-indo-western-gown",
-    categorySlug: "party-wear",
-    price: 5200,
-    originalPrice: 6000,
-    image: product_images["product-0001"]["lil-edit-product-0001-1-5.png"],
-    sku: "EDIT-PARTY-102",
-    tags: ["Party", "Gown"]
-  },
-  {
-    title: "Mustard Yellow Silk Blend Sharara Suit",
-    slug: "mustard-yellow-silk-blend-sharara-suit",
-    categorySlug: "kids-ethnic-wear",
-    price: 3800,
-    originalPrice: 4500,
-    image: product_images["product-0001"]["lil-edit-product-0001-1-6.png"],
-    sku: "EDIT-ETHNIC-104",
-    tags: ["Ethnic", "Sharara"]
-  }
-];
+// ⚡ Module-level product cache — persists across route changes within the session.
+// Key = product slug. All variant SKUs of the same product share one entry.
+const productCache = new Map<string, { product: Product; recommended: any[] }>();
 
+// Dynamic details page architecture
 export default function ProductDetail() {
   const { category: categoryParam, productPath } = useParams();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-
-  if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
 
   // Parse productSlug and skuId from combined parameter (separated by $)
   const [productSlug, skuId] = productPath?.split('$') ?? [undefined, undefined];
+
+  // Seed state from module cache immediately — renders in one frame if visited before
+  const cached = productSlug ? productCache.get(productSlug) : undefined;
+  const [product, setProduct] = useState<Product | null>(cached?.product ?? null);
+  const [recommendedProducts, setRecommendedProducts] = useState<any[]>(cached?.recommended ?? []);
+  const [loading, setLoading] = useState(!cached);  // skip spinner if cache hit
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch product details — stale-while-revalidate pattern:
+  // If cache hit → render immediately, fetch runs silently in background to refresh.
+  // If cache miss → show spinner until first response.
+  useEffect(() => {
+    if (!productSlug || !skuId) return;
+
+    let cancelled = false;
+
+    // Only show spinner on a true cold miss
+    if (!productCache.has(productSlug)) setLoading(true);
+    setError(null);
+
+    const base = getBackendBaseUrl();
+    fetch(`${base}/api/products/detail?slug=${encodeURIComponent(productSlug)}&sku=${encodeURIComponent(skuId)}&category=${encodeURIComponent(categoryParam ?? "")}`)
+      .then(async (res) => {
+        if (cancelled) return;
+        if (!res.ok) {
+          const errMsg = await res.json().catch(() => ({}));
+          throw new Error(errMsg.error || "Product not found");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled || !data) return;
+        // Update module cache
+        productCache.set(productSlug, { product: data.product, recommended: data.recommended || [] });
+        setProduct(data.product);
+        setRecommendedProducts(data.recommended || []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("[ProductDetail] Error:", err);
+        // Only show error if we have nothing cached to show
+        if (!productCache.has(productSlug)) {
+          setError(err instanceof Error ? err.message : "Failed to load product details");
+          setProduct(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [productSlug, skuId, categoryParam]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white pt-[calc(var(--navbar-height)+20px)]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto" />
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Loading Product Details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Graceful failure for missing or validation-failed products
+  if (error || !product) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-center p-4 bg-white pt-[calc(var(--navbar-height)+20px)]">
+        <h2 className="text-2xl font-bold mb-4 text-slate-900">Product Not Found</h2>
+        <p className="text-gray-500 mb-8 max-w-sm">
+          {error || "The product you're looking for doesn't exist or is no longer available in this collection."}
+        </p>
+        <Link 
+          to="/collections" 
+          className="px-8 py-3 rounded-full text-[10px] font-bold text-white uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-teal-900/10"
+          style={{ backgroundColor: TEAL }}
+        >
+          Browse Collections
+        </Link>
+      </div>
+    );
+  }
 
   // Determine if it's a full color SKU or just base SKU
   // Full color SKU format: EDIT-ETHNIC-102-WHT
@@ -228,7 +123,7 @@ export default function ProductDetail() {
   let selectedColorName: string | undefined;
   let isValidSku = false;
 
-  if (skuId) {
+  if (skuId && product.colors) {
     // Check if it matches a color SKU exactly
     const matchingColorBySku = product.colors.find(c => c.sku === skuId);
     if (matchingColorBySku) {
@@ -242,25 +137,8 @@ export default function ProductDetail() {
     }
   }
 
-  // Graceful failure for incorrect URLs (requires valid productSlug and skuId)
-  const isCorrectPath = 
-    categoryParam === product.categorySlug && 
-    productSlug === product.slug &&
-    skuId &&
-    isValidSku;
-
-  if (!isCorrectPath && !authLoading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-center p-4">
-        <h2 className="text-2xl font-bold mb-4">Product Not Found</h2>
-        <p className="text-gray-600 mb-8">The product you're looking for doesn't exist in this collection.</p>
-        <Link to="/collections" className="text-primary hover:underline">Browse Collections</Link>
-      </div>
-    );
-  }
-
-  // If only base SKU provided (no color code), redirect to primary color URL
-  if (isCorrectPath && skuId === product.sku && selectedColorName) {
+  // Sku redirect to variant SKU if only base SKU is specified
+  if (skuId === product.sku && selectedColorName && product.colors) {
     const primaryColor = product.colors.find(c => c.name === selectedColorName);
     if (primaryColor) {
       return <Navigate to={`/collections/${categoryParam}/product/${productSlug}$${primaryColor.sku}`} replace />;
@@ -269,6 +147,7 @@ export default function ProductDetail() {
 
   // Handle color change - update URL when color is selected
   const handleColorChange = (colorName: string) => {
+    if (!product.colors) return;
     const selectedColor = product.colors.find(c => c.name === colorName);
     if (selectedColor) {
       navigate(`/collections/${categoryParam}/product/${productSlug}$${selectedColor.sku}`, { replace: false });
@@ -515,7 +394,7 @@ export default function ProductDetail() {
                   </button>
                   <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                     <Link
-                      to={`/collections/${item.categorySlug}/product/${item.slug}+${item.sku}`}
+                      to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}
                       className="w-full py-1.5 bg-white/90 backdrop-blur text-slate-900 rounded-lg font-medium text-[10px] md:text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm block text-center"
                     >
                       View Details

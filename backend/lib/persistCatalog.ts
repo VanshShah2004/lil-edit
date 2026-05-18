@@ -348,3 +348,67 @@ export async function deleteProductFromDatabase(id: string, status: "DRAFT" | "P
   const { error } = await sb.from(table).delete().eq("id", id);
   if (error) throw error;
 }
+
+export async function fetchProductBySlugAndSku(slug: string, sku: string) {
+  const sb = requireAdmin();
+  
+  // Fetch published product where slug matches
+  const { data: published, error: pubErr } = await sb
+    .from("products")
+    .select(`
+      *,
+      product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
+      product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
+    `)
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (pubErr) throw pubErr;
+  return published;
+}
+
+export async function fetchRecommendedProducts(slug: string, categorySlug: string) {
+  const sb = requireAdmin();
+  
+  // Fetch up to 5 products in the same category (excluding current slug)
+  const { data: recommended, error: recErr } = await sb
+    .from("products")
+    .select(`
+      *,
+      product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
+      product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
+    `)
+    .eq("category_slug", categorySlug)
+    .neq("slug", slug)
+    .limit(5);
+
+  if (recErr) throw recErr;
+
+  let list = recommended || [];
+
+  // Pad with other general published products if less than 5
+  if (list.length < 5) {
+    const { data: general, error: genErr } = await sb
+      .from("products")
+      .select(`
+        *,
+        product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
+        product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
+      `)
+      .neq("slug", slug)
+      .limit(10);
+
+    if (!genErr && general) {
+      const existingSlugs = new Set(list.map(p => p.slug));
+      for (const item of general) {
+        if (!existingSlugs.has(item.slug) && list.length < 5) {
+          list.push(item);
+          existingSlugs.add(item.slug);
+        }
+      }
+    }
+  }
+
+  return list;
+}
+
