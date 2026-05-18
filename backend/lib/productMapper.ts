@@ -144,10 +144,7 @@ export function mapCurationPayloadToCatalog(data: CurationPayload): {
     fit: asString(data.fit).trim() || null,
     occasion: asString(data.occasion).trim() || null,
     care_instructions: asString(data.care).trim() || null,
-    description_points:
-      asStringArray(data.descriptionPoints).length > 0
-        ? asStringArray(data.descriptionPoints)
-        : ["No product details added yet."],
+    description_points: asStringArray(data.descriptionPoints),
     sizes:
       asStringArray(data.selectedSizes).length > 0
         ? asStringArray(data.selectedSizes)
