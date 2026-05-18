@@ -213,7 +213,7 @@ const mapFormDataToProduct = (formData: FormData, imagePreviews: string[], isSto
     originalPrice: Number(formData.originalPrice) || 0,
     tags: formData.tags,
     badges: formData.customBadges,
-    descriptionPoints: formData.descriptionPoints.length > 0 ? formData.descriptionPoints : ["No product details added yet."],
+    descriptionPoints: formData.descriptionPoints,
     fabric: formData.fabric || "Not specified",
     fit: formData.fit || "Not specified",
     occasion: formData.occasion || "General wear",

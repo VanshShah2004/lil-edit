@@ -157,6 +157,16 @@ const hasPendingUpdates = (draft: any, published: any): boolean => {
   return false;
 };
 
+const isPlaceholderDescription = (pts?: string[]) => {
+  if (!pts || pts.length === 0) return true;
+  if (pts.length === 1 && (
+    pts[0] === "No product details added yet." ||
+    pts[0].toLowerCase().includes("no product details") ||
+    pts[0] === ""
+  )) return true;
+  return false;
+};
+
 interface ProductVersionViewProps {
   version: { type: "PUBLISHED" | "DRAFT"; data: ProductItem; label: string };
   isSecondary?: boolean;
@@ -395,12 +405,12 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
               <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Catalogue Highlights</h3>
             </div>
             <div className="space-y-3">
-              {p.description_points?.length ? p.description_points.map((pt, i) => (
+              {!isPlaceholderDescription(p.description_points) ? p.description_points?.map((pt, i) => (
                 <div key={i} className="flex gap-3 text-[11px] leading-relaxed text-gray-500 font-medium">
                   <span className="text-gray-900 font-bold shrink-0">0{i + 1}.</span>
                   <p>{pt}</p>
                 </div>
-              )) : <p className="text-[11px] text-gray-300 italic">No highlights provided.</p>}
+              )) : <p className="text-[11px] text-gray-400 font-medium">[No product details specified]</p>}
             </div>
           </div>
         </div>
@@ -790,11 +800,13 @@ const ManageProducts = () => {
         <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:bold;">${v.is_unlimited ? 'Unlimited' : v.stock}</td>
       </tr>`).join("");
 
-    const highlights = (product.description_points ?? []).map((pt, i) => `
-      <div style="display:flex;gap:10px;margin-bottom:8px;">
-        <span style="font-weight:bold;color:#111;min-width:24px;">0${i + 1}.</span>
-        <span style="color:#555;font-size:12px;line-height:1.6;">${pt}</span>
-      </div>`).join("");
+    const highlights = isPlaceholderDescription(product.description_points)
+      ? `<p style="color:#999;font-size:12px;">No product details specified.</p>`
+      : (product.description_points ?? []).map((pt, i) => `
+        <div style="display:flex;gap:10px;margin-bottom:8px;">
+          <span style="font-weight:bold;color:#111;min-width:24px;">0${i + 1}.</span>
+          <span style="color:#555;font-size:12px;line-height:1.6;">${pt}</span>
+        </div>`).join("");
 
     const formattedDateTime = new Date().toLocaleString('en-IN', {
       day: 'numeric',

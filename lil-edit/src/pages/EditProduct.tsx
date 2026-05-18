@@ -213,7 +213,7 @@ const mapFormDataToProduct = (formData: FormData, imagePreviews: string[], isSto
     originalPrice: Number(formData.originalPrice) || 0,
     tags: formData.tags,
     badges: formData.customBadges,
-    descriptionPoints: formData.descriptionPoints.length > 0 ? formData.descriptionPoints : ["No product details added yet."],
+    descriptionPoints: formData.descriptionPoints,
     fabric: formData.fabric || "Not specified",
     fit: formData.fit || "Not specified",
     occasion: formData.occasion || "General wear",
@@ -351,7 +351,7 @@ const EditProduct = () => {
           fit: product.fit || "",
           occasion: product.occasion || "",
           care: product.care_instructions || product.care || "",
-          descriptionPoints: product.description_points || [],
+          descriptionPoints: (product.description_points || []).filter((pt: string) => pt !== "No product details added yet."),
           selectedSizes: product.sizes || [],
           selectedColors: (variants || []).map((v: any) => ({
             name: v.color_name || "Color",
@@ -401,7 +401,7 @@ const EditProduct = () => {
             fit: product.fit || "",
             occasion: product.occasion || "",
             care: product.care_instructions || product.care || "",
-            descriptionPoints: product.description_points || [],
+            descriptionPoints: (product.description_points || []).filter((pt: string) => pt !== "No product details added yet."),
             selectedSizes: product.sizes || [],
             selectedColors: (variants || []).map((v: any) => ({
               name: v.color_name || "Color",
