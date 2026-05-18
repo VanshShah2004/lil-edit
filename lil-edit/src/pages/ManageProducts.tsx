@@ -53,6 +53,7 @@ interface ProductItem {
   status: "DRAFT" | "PUBLISHED";
   slug: string;
   created_at: string;
+  updated_at?: string;
   brand: string;
   fabric?: string;
   fit?: string;
@@ -419,6 +420,7 @@ interface GroupedProduct {
   price: number;
   image_url: string;
   created_at: string;
+  lastModified?: number;
 }
 
 const ManageProducts = () => {
@@ -521,7 +523,16 @@ const ManageProducts = () => {
       });
 
       const all: GroupedProduct[] = Array.from(groupedMap.values())
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        .map(p => {
+          const pubTime = p.published?.updated_at ? new Date(p.published.updated_at).getTime() : 0;
+          const draftTime = p.draft?.updated_at ? new Date(p.draft.updated_at).getTime() : 0;
+          const lastModified = Math.max(pubTime, draftTime) || new Date(p.created_at).getTime();
+          return {
+            ...p,
+            lastModified
+          };
+        })
+        .sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
 
       setProducts(all);
       

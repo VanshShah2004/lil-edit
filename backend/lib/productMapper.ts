@@ -86,6 +86,7 @@ export type ProductRowDraft = {
   is_bestseller: boolean;
   is_trending: boolean;
   is_unlimited: boolean;
+  updated_at?: string;
 };
 
 export type ProductRowPublished = ProductRowDraft & { status: "PUBLISHED" };
@@ -158,6 +159,7 @@ export function mapCurationPayloadToCatalog(data: CurationPayload): {
     is_bestseller: asBool(data.bestseller),
     is_trending: asBool(data.trending),
     is_unlimited,
+    updated_at: new Date().toISOString(),
   };
 
   const images: ImageRowInsert[] = [];

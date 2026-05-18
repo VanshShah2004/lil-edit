@@ -141,7 +141,7 @@ export async function fetchAllProducts() {
       product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
       product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
     `)
-    .order('created_at', { ascending: false });
+    .order('updated_at', { ascending: false });
     
   if (pubErr) throw pubErr;
 
@@ -153,7 +153,7 @@ export async function fetchAllProducts() {
       draft_product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
       draft_product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
     `)
-    .order('created_at', { ascending: false });
+    .order('updated_at', { ascending: false });
 
   if (draftErr) throw draftErr;
 
@@ -182,7 +182,7 @@ export async function fetchFilteredProducts(status: "ALL" | "PUBLISHED" | "DRAFT
         product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
         product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
       `)
-      .order('created_at', { ascending: false });
+      .order('updated_at', { ascending: false });
     
     if (limit) {
       query = query.limit(limit);
@@ -228,7 +228,7 @@ export async function fetchFilteredProducts(status: "ALL" | "PUBLISHED" | "DRAFT
         draft_product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
         draft_product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
       `)
-      .order('created_at', { ascending: false });
+      .order('updated_at', { ascending: false });
     
     if (limit) {
       query = query.limit(limit);
@@ -260,24 +260,24 @@ export async function fetchFilteredProducts(status: "ALL" | "PUBLISHED" | "DRAFT
     };
   } else {
     // status === "ALL"
-    // Fetch all lightweight base_skus and created_at to group and sort them progressively
+    // Fetch all lightweight base_skus and updated_at to group and sort them progressively
     const { data: pubSkus, error: pubSkuErr } = await sb
       .from("products")
-      .select("base_sku, created_at");
+      .select("base_sku, updated_at");
     if (pubSkuErr) throw pubSkuErr;
 
     const { data: draftSkus, error: draftSkuErr } = await sb
       .from("draft_products")
-      .select("base_sku, created_at");
+      .select("base_sku, updated_at");
     if (draftSkuErr) throw draftSkuErr;
 
     const skuMap = new Map<string, Date>();
     pubSkus?.forEach(p => {
-      skuMap.set(p.base_sku, new Date(p.created_at));
+      skuMap.set(p.base_sku, new Date(p.updated_at));
     });
     draftSkus?.forEach(d => {
       const current = skuMap.get(d.base_sku);
-      const dDate = new Date(d.created_at);
+      const dDate = new Date(d.updated_at);
       if (!current || dDate > current) {
         skuMap.set(d.base_sku, dDate);
       }
