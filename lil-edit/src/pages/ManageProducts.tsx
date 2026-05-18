@@ -22,6 +22,7 @@ import Footer from "@/components/layout/Footer";
 import { toast } from "sonner";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import logo from "@/assets/logo.png";
 
 interface ProductImage {
   id: string;
@@ -82,9 +83,9 @@ const hasPendingUpdates = (draft: any, published: any): boolean => {
 
   // 1. Basic Fields Comparison
   const basicFields = [
-    "title", "brand", "base_sku", "slug", "category", "category_slug", 
-    "gender", "price", "original_price", "fabric", "fit", "occasion", 
-    "care_instructions", "is_featured", "is_new_arrival", "is_bestseller", 
+    "title", "brand", "base_sku", "slug", "category", "category_slug",
+    "gender", "price", "original_price", "fabric", "fit", "occasion",
+    "care_instructions", "is_featured", "is_new_arrival", "is_bestseller",
     "is_trending", "is_unlimited"
   ];
   for (const field of basicFields) {
@@ -196,13 +197,12 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
         <div className="space-y-1">
           <div className="flex items-start justify-between gap-4">
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{p.title}</h2>
-            <Badge className={`${
-              version.type === "PUBLISHED" 
-                ? "bg-gray-900 text-white hover:bg-gray-900" 
-                : (isUpdate 
-                    ? "bg-amber-100 text-amber-700 hover:bg-amber-100" 
-                    : "bg-gray-200 text-gray-600 hover:bg-gray-200")
-            } border-none text-[10px] font-bold uppercase tracking-widest px-3 py-1 shrink-0 whitespace-nowrap`}>
+            <Badge className={`${version.type === "PUBLISHED"
+                ? "bg-gray-900 text-white hover:bg-gray-900"
+                : (isUpdate
+                  ? "bg-amber-100 text-amber-700 hover:bg-amber-100"
+                  : "bg-gray-200 text-gray-600 hover:bg-gray-200")
+              } border-none text-[10px] font-bold uppercase tracking-widest px-3 py-1 shrink-0 whitespace-nowrap`}>
               {version.label}
             </Badge>
           </div>
@@ -243,13 +243,12 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
               </button>
             </div>
             {version.type === "DRAFT" && (
-              <button 
-                onClick={() => onLaunch(p)} 
-                className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded font-bold text-[10px] uppercase tracking-widest transition-all shadow-lg ${
-                  isUpdate 
-                    ? "bg-[#4DB01E] text-white shadow-[#4DB01E]/20 hover:brightness-110" 
+              <button
+                onClick={() => onLaunch(p)}
+                className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded font-bold text-[10px] uppercase tracking-widest transition-all shadow-lg ${isUpdate
+                    ? "bg-[#4DB01E] text-white shadow-[#4DB01E]/20 hover:brightness-110"
                     : "bg-[#B19CD9] text-black shadow-[#B19CD9]/20 hover:brightness-105"
-                }`}
+                  }`}
               >
                 <Zap size={14} /> {isUpdate ? "Sync Updates to Live" : "Launch Product"}
               </button>
@@ -535,7 +534,7 @@ const ManageProducts = () => {
         .sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
 
       setProducts(all);
-      
+
       setHasMoreMap(prev => ({
         ...prev,
         [status]: !!data.hasMore
@@ -667,7 +666,7 @@ const ManageProducts = () => {
 
       setProducts(prev => {
         const nextList: GroupedProduct[] = [];
-        
+
         for (const p of prev) {
           if (p.base_sku === product.base_sku) {
             // Reconcile this group
@@ -797,15 +796,37 @@ const ManageProducts = () => {
         <span style="color:#555;font-size:12px;line-height:1.6;">${pt}</span>
       </div>`).join("");
 
+    const formattedDateTime = new Date().toLocaleString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8" />
         <title>Product Sheet — ${product.title}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
         <style>
+          @page {
+            size: auto;
+            margin: 0;
+          }
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #111; padding: 48px; font-size: 13px; line-height: 1.6; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #111;
+            padding: 1.5cm 2cm;
+            font-size: 13px;
+            line-height: 1.6;
+          }
           h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
           .label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #999; margin-bottom: 3px; }
           .value { font-size: 12px; font-weight: 700; color: #111; }
@@ -813,19 +834,48 @@ const ManageProducts = () => {
           .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px 32px; margin-bottom: 32px; }
           table { width: 100%; border-collapse: collapse; font-size: 12px; }
           th { background: #f8f8f8; padding: 8px 12px; text-align: left; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #999; }
+          .status-badge {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            display: inline-block;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
           .footer { margin-top: 40px; border-top: 1px solid #eee; padding-top: 12px; color: #bbb; font-size: 10px; display: flex; justify-content: space-between; }
-          @media print { body { padding: 32px; } img { break-inside: avoid; } }
+          @media print {
+            body { padding: 1.5cm 2cm; }
+            img { break-inside: avoid; }
+            th {
+              background: #f8f8f8 !important;
+              print-color-adjust: exact;
+              -webkit-print-color-adjust: exact;
+            }
+          }
         </style>
       </head>
       <body>
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:20px;margin-bottom:28px;">
-          <div>
-            <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#999;margin-bottom:6px;">Product Data Sheet</p>
-            <h1>${product.title}</h1>
+        <!-- Row 1: Left-aligned Logo & Title -->
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
+          <img src="${logo}" style="height:48px;width:auto;print-color-adjust:exact;-webkit-print-color-adjust:exact;" alt="The Lil Edit Logo" />
+          <span style="font-size:24px;font-weight:600;color:#111;font-family:'Playfair Display', Georgia, serif;letter-spacing:-0.2px;">The Lil Edit</span>
+        </div>
+
+        <!-- Row 2: Product Sheet Details & Status -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #111;padding-bottom:16px;margin-bottom:28px;">
+          <!-- Left: Title & Subtitle -->
+          <div style="text-align:left;">
+            <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#999;margin-bottom:4px;">Product Data Sheet</p>
+            <h1 style="margin:0;">${product.title}</h1>
           </div>
+          
+          <!-- Right: Status -->
           <div style="text-align:right;">
-            <div class="label">Status</div>
-            <span style="background:${product.status === 'PUBLISHED' ? '#111' : '#e0e0e0'};color:${product.status === 'PUBLISHED' ? '#fff' : '#555'};padding:3px 10px;border-radius:4px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;">${product.status}</span>
+            <div class="label" style="margin-bottom:6px;">Status</div>
+            <span class="status-badge" style="background:${product.status === 'PUBLISHED' ? '#111' : '#e0e0e0'};color:${product.status === 'PUBLISHED' ? '#fff' : '#555'};">${product.status}</span>
           </div>
         </div>
 
@@ -880,7 +930,7 @@ const ManageProducts = () => {
 
         <div class="footer">
           <span>The Lil Edit — Inventory Management</span>
-          <span>Generated: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+          <span>Generated: ${formattedDateTime}</span>
         </div>
       </body>
       </html>`;
@@ -924,7 +974,7 @@ const ManageProducts = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
                 <input
                   type="text"
-                  placeholder="Filter records..."
+                  placeholder="Search records..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-9 pr-4 py-2 text-xs border border-gray-200 rounded-md bg-gray-50/50 outline-none focus:border-gray-900 transition-all font-medium"
@@ -953,21 +1003,19 @@ const ManageProducts = () => {
             <div className="flex justify-between items-center mt-3 text-[9px] font-bold uppercase tracking-[0.1em] gap-4">
               <button
                 onClick={() => setShowAllMap(prev => ({ ...prev, [filterStatus]: false }))}
-                className={`flex-1 py-1.5 px-3 rounded transition-all text-center ${
-                  !showAllMap[filterStatus]
+                className={`flex-1 py-1.5 px-3 rounded transition-all text-center ${!showAllMap[filterStatus]
                     ? "bg-[#B19CD9] text-black font-black"
                     : "bg-gray-100 text-gray-400 hover:text-gray-600 border border-gray-200/50"
-                }`}
+                  }`}
               >
                 Top 10
               </button>
               <button
                 onClick={() => setShowAllMap(prev => ({ ...prev, [filterStatus]: true }))}
-                className={`flex-1 py-1.5 px-3 rounded transition-all text-center ${
-                  showAllMap[filterStatus]
+                className={`flex-1 py-1.5 px-3 rounded transition-all text-center ${showAllMap[filterStatus]
                     ? "bg-[#B19CD9] text-black font-black"
                     : "bg-gray-100 text-gray-400 hover:text-gray-600 border border-gray-200/50"
-                }`}
+                  }`}
               >
                 See All
               </button>
@@ -1048,10 +1096,10 @@ const ManageProducts = () => {
                 <div className="space-y-32">
                   {[
                     { type: "PUBLISHED" as const, data: selectedProduct.published, label: "Published Version" },
-                    { 
-                      type: "DRAFT" as const, 
-                      data: selectedProduct.draft, 
-                      label: (selectedProduct.published && hasPendingUpdates(selectedProduct.draft, selectedProduct.published)) ? "Updates To be Synced" : "Draft Version" 
+                    {
+                      type: "DRAFT" as const,
+                      data: selectedProduct.draft,
+                      label: (selectedProduct.published && hasPendingUpdates(selectedProduct.draft, selectedProduct.published)) ? "Updates To be Synced" : "Draft Version"
                     }
                   ].filter(v => v.data && (v.type !== "DRAFT" || !selectedProduct.published || hasPendingUpdates(selectedProduct.draft, selectedProduct.published))).map((version, idx) => (
                     <ProductVersionView
