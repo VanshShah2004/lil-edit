@@ -255,7 +255,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
               </button>
             )}
             <button onClick={() => onDelete(p)} className="w-full flex items-center justify-center gap-2 px-6 py-3 border border-red-200 text-red-500 rounded font-bold text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all">
-              <Trash2 size={14} /> Remove Version
+              <Trash2 size={14} /> Delete Version
             </button>
           </div>
         </div>
@@ -660,10 +660,84 @@ const ManageProducts = () => {
 
       toast.success("Product permanently deleted");
 
-      // Update local state
-      setProducts(prev => prev.filter(p => p.id !== product.id));
-      setSelectedProduct(null);
-      setIsMobileDetailView(false);
+      // 1. Reconcile the in-memory grouped products list
+      let updatedSelectedProduct: GroupedProduct | null = null;
+      let shouldSelectNext = false;
+      const isDeletedSelected = selectedProduct?.base_sku === product.base_sku;
+
+      setProducts(prev => {
+        const nextList: GroupedProduct[] = [];
+        
+        for (const p of prev) {
+          if (p.base_sku === product.base_sku) {
+            // Reconcile this group
+            const reconciled: GroupedProduct = { ...p };
+            if (product.status === "PUBLISHED") {
+              reconciled.published = undefined;
+            } else if (product.status === "DRAFT") {
+              reconciled.draft = undefined;
+            }
+
+            // If both versions are gone, remove the group
+            if (!reconciled.published && !reconciled.draft) {
+              if (isDeletedSelected) {
+                shouldSelectNext = true;
+              }
+              continue;
+            }
+
+            // Rebuild grouped metadata using the surviving version
+            const survivor = (reconciled.draft || reconciled.published)!;
+            reconciled.id = survivor.id;
+            reconciled.title = survivor.title;
+            reconciled.price = survivor.price;
+            reconciled.image_url = survivor.image_url ?? p.image_url;
+            reconciled.created_at = survivor.created_at;
+
+            const pubTime = reconciled.published?.updated_at ? new Date(reconciled.published.updated_at).getTime() : 0;
+            const draftTime = reconciled.draft?.updated_at ? new Date(reconciled.draft.updated_at).getTime() : 0;
+            reconciled.lastModified = Math.max(pubTime, draftTime) || new Date(reconciled.created_at).getTime();
+
+            nextList.push(reconciled);
+
+            // If this is the currently selected product, update it
+            if (isDeletedSelected) {
+              updatedSelectedProduct = reconciled;
+            }
+          } else {
+            nextList.push(p);
+          }
+        }
+
+        // If the entire group was removed and was selected, choose the next selection
+        if (shouldSelectNext) {
+          const currentIndex = prev.findIndex(p => p.base_sku === product.base_sku);
+          const nextAvailable = nextList[currentIndex] || nextList[currentIndex - 1] || null;
+          updatedSelectedProduct = nextAvailable;
+        }
+
+        return nextList;
+      });
+
+      // Update selection and active version states ONLY if the deleted product was currently selected
+      if (isDeletedSelected) {
+        if (updatedSelectedProduct) {
+          setSelectedProduct(updatedSelectedProduct);
+          if (updatedSelectedProduct.draft && updatedSelectedProduct.published) {
+            setActiveVersion(prev => {
+              if (product.status === prev) {
+                return prev === "DRAFT" ? "PUBLISHED" : "DRAFT";
+              }
+              return prev;
+            });
+          } else {
+            setActiveVersion(updatedSelectedProduct.draft ? "DRAFT" : "PUBLISHED");
+          }
+        } else {
+          setSelectedProduct(null);
+          setIsMobileDetailView(false);
+        }
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     }
