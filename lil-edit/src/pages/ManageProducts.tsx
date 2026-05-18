@@ -217,6 +217,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
             </Badge>
           </div>
           <p className="text-[11px] font-bold text-gray-400 font-mono tracking-widest uppercase">{p.base_sku}</p>
+          <p className="text-[11px] font-bold text-gray-400 font-mono tracking-widest lowercase">{p.slug}</p>
         </div>
 
         <div className="flex flex-col md:flex-row justify-between items-start gap-12">
