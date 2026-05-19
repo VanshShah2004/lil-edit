@@ -304,6 +304,8 @@ export default function ProductDetail() {
       <div className="page-container pt-1 pb-6 sm:pb-8 text-sm text-gray-500">
         <Link to="/" className="hover:text-slate-900 transition-colors">Home</Link>
         <ChevronRight className="inline w-4 h-4 mx-1" />
+        <Link to="/collections" className="hover:text-slate-900 transition-colors">Collections</Link>
+        <ChevronRight className="inline w-4 h-4 mx-1" />
         {showSkeleton ? (
           <>
             <span className="inline-block h-4 w-24 bg-gray-200 rounded animate-pulse align-middle" />
