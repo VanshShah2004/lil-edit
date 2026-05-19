@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useParams, Navigate, useNavigate } from "react-router-dom";
 import { ChevronRight, Heart, Star, StarHalf, BadgeCheck, ThumbsUp } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
@@ -10,6 +10,7 @@ import ProductPreviewView from "@/components/ProductPreviewView";
 import { Badge } from "@/components/ui/badge";
 import type { Product } from "@/types/product";
 import { getBackendBaseUrl } from "@/lib/backend";
+import { PdpClientPerf } from "@/lib/pdpClientPerf";
 
 import le0 from "@/assets/searchbar-frequent_searches/le-0.png";
 import le1 from "@/assets/searchbar-frequent_searches/le-1.png";
@@ -42,6 +43,30 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(!cached);  // skip spinner if cache hit
   const [error, setError] = useState<string | null>(null);
 
+  // ── Perf tracker — one instance per slug, stable across re-renders ────────
+  const perfRef     = useRef<PdpClientPerf | null>(null);
+  const lastSlugRef = useRef<string | undefined>(undefined);
+  if (!perfRef.current || lastSlugRef.current !== productSlug) {
+    perfRef.current   = new PdpClientPerf(productSlug ?? "unknown");
+    lastSlugRef.current = productSlug;
+  }
+  const perf = perfRef.current;
+
+  // Mark nav start once on mount (captures React bootstrap + effect scheduling)
+  useEffect(() => {
+    perf.mark("navStart");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productSlug]);
+
+  // Mark renderEnd after React commits the product state to the DOM
+  useLayoutEffect(() => {
+    if (product) {
+      perf.mark("renderEnd");
+      perf.log(!!cached);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product]);
+
   // Fetch product details — stale-while-revalidate pattern:
   // If cache hit → render immediately, fetch runs silently in background to refresh.
   // If cache miss → show spinner until first response.
@@ -55,17 +80,23 @@ export default function ProductDetail() {
     setError(null);
 
     const base = getBackendBaseUrl();
+
+    perf.mark("fetchStart");
     fetch(`${base}/api/products/detail?slug=${encodeURIComponent(productSlug)}&sku=${encodeURIComponent(skuId)}&category=${encodeURIComponent(categoryParam ?? "")}`)
       .then(async (res) => {
         if (cancelled) return;
+        perf.mark("fetchEnd");
         if (!res.ok) {
           const errMsg = await res.json().catch(() => ({}));
           throw new Error(errMsg.error || "Product not found");
         }
-        return res.json();
+        const data = await res.json();
+        perf.mark("parseEnd");
+        return data;
       })
       .then((data) => {
         if (cancelled || !data) return;
+        perf.mark("renderStart");
         // Update module cache
         productCache.set(productSlug, { product: data.product, recommended: data.recommended || [] });
         setProduct(data.product);

@@ -7,8 +7,10 @@ import {
   saveDraftToDatabase,
   deleteProductFromDatabase,
   fetchProductBySlugAndSku,
-  fetchRecommendedProducts
+  fetchRecommendedProducts,
+  type RecommendedTimingCallbacks
 } from "../lib/persistCatalog.js";
+import { PdpTimer } from "../lib/pdpPerfLogger.js";
 
 // ─── In-memory product detail cache (TTL = 5 min) ──────────────────────────
 const DETAIL_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -201,22 +203,43 @@ router.get("/detail", async (req: Request, res: Response) => {
     return;
   }
 
-  // ⚡ Cache hit — return immediately, no Supabase round-trip
+  // ── Start perf timer for this request ────────────────────────────────────
+  const timer = new PdpTimer(slug);
+
+  // ⚡ Cache lookup
   const cacheKey = slug;
+  timer.start("cache_lookup");
   const cached = getCached(cacheKey);
+  timer.end("cache_lookup");
+
   if (cached) {
+    timer.setCacheHit(true);
+    timer.log();
     res.json(cached);
     return;
   }
 
   try {
+    // Build timing callbacks so Q1 and Q2 inside fetchRecommendedProducts are timed separately
+    timer.start("db_rec_category");
+    const recTimingCallbacks: RecommendedTimingCallbacks = {
+      onCategoryQueryDone: () => timer.end("db_rec_category"),
+      onPadQueryDone:      () => timer.end("db_rec_pad"),
+    };
+
     // Fire product + recommendations in parallel — category from URL avoids a waterfall
+    timer.start("db_product");
+    timer.start("db_recommendations");
+    timer.start("db_rec_pad");  // pre-start so duration=0 if skipped (no onPadQueryDone call)
+
     const [product, recommendedList] = await Promise.all([
-      fetchProductBySlugAndSku(slug, sku),
-      fetchRecommendedProducts(slug, category || "")
+      fetchProductBySlugAndSku(slug, sku).finally(() => timer.end("db_product")),
+      fetchRecommendedProducts(slug, category || "", recTimingCallbacks)
+        .finally(() => timer.end("db_recommendations")),
     ]);
 
     if (!product) {
+      timer.log();
       res.status(404).json({ error: "Product not found." });
       return;
     }
@@ -224,12 +247,14 @@ router.get("/detail", async (req: Request, res: Response) => {
     // Strict URL validation checks
     // 1. Slug matches
     if (product.slug !== slug) {
+      timer.log();
       res.status(404).json({ error: "Slug mismatch." });
       return;
     }
 
     // 2. Category matches (if category is provided)
     if (category && product.category_slug !== category) {
+      timer.log();
       res.status(404).json({ error: "Category mismatch." });
       return;
     }
@@ -239,6 +264,7 @@ router.get("/detail", async (req: Request, res: Response) => {
     const hasVariantSkuMatch = product.product_variants?.some((v: any) => v.variant_sku === sku);
 
     if (!hasBaseSkuMatch && !hasVariantSkuMatch) {
+      timer.log();
       res.status(404).json({ error: "SKU does not belong to this product." });
       return;
     }
@@ -252,8 +278,12 @@ router.get("/detail", async (req: Request, res: Response) => {
     // 💾 Store in cache — subsequent hits return instantly
     setCached(cacheKey, responsePayload);
 
+    // ── Emit perf report to server log before sending ─────────────────────
+    timer.log();
+
     res.json(responsePayload);
   } catch (err) {
+    timer.log();
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });

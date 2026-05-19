@@ -367,10 +367,21 @@ export async function fetchProductBySlugAndSku(slug: string, sku: string) {
   return published;
 }
 
-export async function fetchRecommendedProducts(slug: string, categorySlug: string) {
+export interface RecommendedTimingCallbacks {
+  /** Called immediately after the category-filtered query completes. */
+  onCategoryQueryDone?: () => void;
+  /** Called immediately after the padding query completes (only fires when category had <5 results). */
+  onPadQueryDone?: () => void;
+}
+
+export async function fetchRecommendedProducts(
+  slug: string,
+  categorySlug: string,
+  timingCallbacks?: RecommendedTimingCallbacks
+) {
   const sb = requireAdmin();
-  
-  // Fetch up to 5 products in the same category (excluding current slug)
+
+  // Query 1: same-category products (excluding current product)
   const { data: recommended, error: recErr } = await sb
     .from("products")
     .select(`
@@ -382,11 +393,12 @@ export async function fetchRecommendedProducts(slug: string, categorySlug: strin
     .neq("slug", slug)
     .limit(5);
 
+  timingCallbacks?.onCategoryQueryDone?.();
   if (recErr) throw recErr;
 
   let list = recommended || [];
 
-  // Pad with other general published products if less than 5
+  // Query 2 (conditional): pad with general published products when category has < 5
   if (list.length < 5) {
     const { data: general, error: genErr } = await sb
       .from("products")
@@ -397,6 +409,8 @@ export async function fetchRecommendedProducts(slug: string, categorySlug: strin
       `)
       .neq("slug", slug)
       .limit(10);
+
+    timingCallbacks?.onPadQueryDone?.();
 
     if (!genErr && general) {
       const existingSlugs = new Set(list.map(p => p.slug));
