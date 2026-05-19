@@ -14,6 +14,29 @@ export interface ProductColor {
   images: ProductImage[];
 }
 
+export interface Review {
+  id: string;
+  user: string;
+  rating: number;
+  date: string;
+  title: string;
+  comment: string;
+  verified: boolean;
+  images?: string[];
+}
+
+export interface RatingDistribution {
+  stars: number;
+  count: number;
+}
+
+export interface ReviewsData {
+  averageRating: number;
+  totalReviews: number;
+  distribution: RatingDistribution[];
+  reviews: Review[];
+}
+
 export interface Product {
   title: string;
   slug: string;
@@ -39,4 +62,6 @@ export interface Product {
   bestseller: boolean;
   trending: boolean;
   isUnlimited?: boolean;
+  reviewsData: ReviewsData;
 }
+
