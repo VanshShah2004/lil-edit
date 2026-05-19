@@ -1,3 +1,4 @@
+import { performance } from "perf_hooks";
 import { supabaseAdmin } from "./supabase.js";
 import {
   mapCurationPayloadToCatalog,
@@ -14,6 +15,31 @@ function requireAdmin() {
   }
   return supabaseAdmin;
 }
+
+/**
+ * Manage Products list projection — all fields used by ManageProducts, ProductVersionView,
+ * hasPendingUpdates, handleLaunchProduct, and handleDownloadPdf.
+ * Excludes: total_stock, created_by, search_vector, and any other internal/audit columns.
+ */
+const MANAGE_PRODUCT_SELECT = `
+  id, title, slug, base_sku, brand, category, category_slug, gender,
+  price, original_price, fabric, fit, occasion, care_instructions,
+  description_points, sizes, tags, badges,
+  is_featured, is_new_arrival, is_bestseller, is_trending, is_unlimited,
+  created_at, updated_at,
+  product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
+  product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
+`.trim();
+
+const MANAGE_DRAFT_SELECT = `
+  id, title, slug, base_sku, brand, category, category_slug, gender,
+  price, original_price, fabric, fit, occasion, care_instructions,
+  description_points, sizes, tags, badges,
+  is_featured, is_new_arrival, is_bestseller, is_trending, is_unlimited,
+  created_at, updated_at,
+  draft_product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
+  draft_product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
+`.trim();
 
 /**
  * PDP detail query projection — only fields used by mapDatabaseProductToFrontend.
@@ -203,199 +229,202 @@ export async function launchProductToDatabase(data: CurationPayload): Promise<{ 
   return { publishedProductId: productId };
 }
 
+const IS_DEV = process.env.NODE_ENV !== "production";
+const fms = (n: number) => `${n.toFixed(1)}ms`;
+
 export async function fetchAllProducts() {
   const sb = requireAdmin();
-  
-  // Fetch published products
-  const { data: published, error: pubErr } = await sb
-    .from("products")
-    .select(`
-      *,
-      product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
-      product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
-    `)
-    .order('updated_at', { ascending: false });
-    
-  if (pubErr) throw pubErr;
+  const t0 = performance.now();
 
-  // Fetch draft products
-  const { data: drafts, error: draftErr } = await sb
-    .from("draft_products")
-    .select(`
-      *,
-      draft_product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
-      draft_product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
-    `)
-    .order('updated_at', { ascending: false });
+  const [
+    { data: published, error: pubErr },
+    { data: drafts,    error: draftErr },
+  ] = await Promise.all([
+    sb.from("products")      .select(MANAGE_PRODUCT_SELECT).order("updated_at", { ascending: false }),
+    sb.from("draft_products").select(MANAGE_DRAFT_SELECT)  .order("updated_at", { ascending: false }),
+  ]);
 
+  if (pubErr)   throw pubErr;
   if (draftErr) throw draftErr;
+
+  if (IS_DEV) {
+    const total = performance.now() - t0;
+    console.log(`
+  [Catalog] fetchAllProducts
+    • Round 1 (parallel): products + draft_products   ${fms(total)}
+    • Rows returned       published=${published?.length ?? 0}  drafts=${drafts?.length ?? 0}
+    • Total               ${fms(total)}
+  ────────────────────────────────────────────────`);
+  }
 
   return {
     published: published || [],
-    drafts: drafts || []
+    drafts:    drafts    || [],
   };
 }
 
 export async function fetchFilteredProducts(status: "ALL" | "PUBLISHED" | "DRAFT", limit?: number) {
   const sb = requireAdmin();
+  const t0 = performance.now();
+  const mode = limit ? `Top ${limit}` : "See All";
 
   if (status === "PUBLISHED") {
-    // 1. Get total count of published products
-    const { count, error: countErr } = await sb
-      .from("products")
-      .select("id", { count: "exact", head: true });
-    if (countErr) throw countErr;
-    const totalCount = count || 0;
-
-    // 2. Fetch limited published products
     let query = sb
       .from("products")
-      .select(`
-        *,
-        product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
-        product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
-      `)
-      .order('updated_at', { ascending: false });
-    
-    if (limit) {
-      query = query.limit(limit);
-    }
-    const { data: published, error: pubErr } = await query;
-    if (pubErr) throw pubErr;
+      .select(MANAGE_PRODUCT_SELECT, { count: "exact" })
+      .order("updated_at", { ascending: false });
 
-    // 3. Fetch matching drafts for the returned products to support status badges and side-by-side comparison
+    if (limit) query = query.limit(limit);
+
+    const t1 = performance.now();
+    const { data: published, count, error: pubErr } = await query;
+    if (pubErr) throw pubErr;
+    const t2 = performance.now();
+
+    const totalCount = count ?? 0;
+
     let drafts: any[] = [];
+    let t3 = t2;
     if (published && published.length > 0) {
-      const skus = published.map(p => p.base_sku);
+      const skus = published.map((p) => p.base_sku);
       const { data: draftData, error: draftErr } = await sb
         .from("draft_products")
-        .select(`
-          *,
-          draft_product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
-          draft_product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
-        `)
+        .select(MANAGE_DRAFT_SELECT)
         .in("base_sku", skus);
       if (draftErr) throw draftErr;
       drafts = draftData || [];
+      t3 = performance.now();
+    }
+
+    if (IS_DEV) {
+      console.log(`
+  [Catalog] PUBLISHED / ${mode}
+    • Round 1 (count + data): products               ${fms(t2 - t1)}
+    • Round 2 (matching drafts):                     ${drafts.length ? fms(t3 - t2) : "skipped (no published rows)"}
+    • Rows returned  published=${published?.length ?? 0}  drafts=${drafts.length}  total=${totalCount}  hasMore=${limit ? totalCount > limit : false}
+    • Total                                          ${fms(t3 - t0)}
+  ────────────────────────────────────────────────`);
     }
 
     return {
       published: published || [],
-      drafts: drafts,
+      drafts,
       totalCount,
-      hasMore: limit ? totalCount > limit : false
+      hasMore: limit ? totalCount > limit : false,
     };
-  } else if (status === "DRAFT") {
-    // 1. Get total count of draft products
-    const { count, error: countErr } = await sb
-      .from("draft_products")
-      .select("id", { count: "exact", head: true });
-    if (countErr) throw countErr;
-    const totalCount = count || 0;
 
-    // 2. Fetch limited draft products
+  } else if (status === "DRAFT") {
     let query = sb
       .from("draft_products")
-      .select(`
-        *,
-        draft_product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
-        draft_product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
-      `)
-      .order('updated_at', { ascending: false });
-    
-    if (limit) {
-      query = query.limit(limit);
-    }
-    const { data: drafts, error: draftErr } = await query;
-    if (draftErr) throw draftErr;
+      .select(MANAGE_DRAFT_SELECT, { count: "exact" })
+      .order("updated_at", { ascending: false });
 
-    // 3. Fetch matching published for the returned drafts to support status badges and side-by-side comparison
+    if (limit) query = query.limit(limit);
+
+    const t1 = performance.now();
+    const { data: drafts, count, error: draftErr } = await query;
+    if (draftErr) throw draftErr;
+    const t2 = performance.now();
+
+    const totalCount = count ?? 0;
+
     let published: any[] = [];
+    let t3 = t2;
     if (drafts && drafts.length > 0) {
-      const skus = drafts.map(d => d.base_sku);
+      const skus = drafts.map((d) => d.base_sku);
       const { data: pubData, error: pubErr } = await sb
         .from("products")
-        .select(`
-          *,
-          product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
-          product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
-        `)
+        .select(MANAGE_PRODUCT_SELECT)
         .in("base_sku", skus);
       if (pubErr) throw pubErr;
       published = pubData || [];
+      t3 = performance.now();
+    }
+
+    if (IS_DEV) {
+      console.log(`
+  [Catalog] DRAFT / ${mode}
+    • Round 1 (count + data): draft_products         ${fms(t2 - t1)}
+    • Round 2 (matching published):                  ${published.length ? fms(t3 - t2) : "skipped (no draft rows)"}
+    • Rows returned  drafts=${drafts?.length ?? 0}  published=${published.length}  total=${totalCount}  hasMore=${limit ? totalCount > limit : false}
+    • Total                                          ${fms(t3 - t0)}
+  ────────────────────────────────────────────────`);
     }
 
     return {
-      published: published,
+      published,
       drafts: drafts || [],
       totalCount,
-      hasMore: limit ? totalCount > limit : false
+      hasMore: limit ? totalCount > limit : false,
     };
-  } else {
-    // status === "ALL"
-    // Fetch all lightweight base_skus and updated_at to group and sort them progressively
-    const { data: pubSkus, error: pubSkuErr } = await sb
-      .from("products")
-      .select("base_sku, updated_at");
-    if (pubSkuErr) throw pubSkuErr;
 
-    const { data: draftSkus, error: draftSkuErr } = await sb
-      .from("draft_products")
-      .select("base_sku, updated_at");
+  } else {
+    // ALL — Round 1: lightweight SKU+timestamp rows in parallel
+    const t1 = performance.now();
+    const [
+      { data: pubSkus,   error: pubSkuErr   },
+      { data: draftSkus, error: draftSkuErr },
+    ] = await Promise.all([
+      sb.from("products")      .select("base_sku, updated_at"),
+      sb.from("draft_products").select("base_sku, updated_at"),
+    ]);
+    const t2 = performance.now();
+
+    if (pubSkuErr)   throw pubSkuErr;
     if (draftSkuErr) throw draftSkuErr;
 
     const skuMap = new Map<string, Date>();
-    pubSkus?.forEach(p => {
-      skuMap.set(p.base_sku, new Date(p.updated_at));
-    });
-    draftSkus?.forEach(d => {
-      const current = skuMap.get(d.base_sku);
+    pubSkus?.forEach((p) => skuMap.set(p.base_sku, new Date(p.updated_at)));
+    draftSkus?.forEach((d) => {
       const dDate = new Date(d.updated_at);
-      if (!current || dDate > current) {
-        skuMap.set(d.base_sku, dDate);
-      }
+      const cur = skuMap.get(d.base_sku);
+      if (!cur || dDate > cur) skuMap.set(d.base_sku, dDate);
     });
 
     const sortedSkus = Array.from(skuMap.entries())
       .sort((a, b) => b[1].getTime() - a[1].getTime())
-      .map(entry => entry[0]);
+      .map(([sku]) => sku);
 
     const totalCount = sortedSkus.length;
     const slicedSkus = limit ? sortedSkus.slice(0, limit) : sortedSkus;
-    const hasMore = limit ? totalCount > limit : false;
 
     let published: any[] = [];
-    let drafts: any[] = [];
+    let drafts:    any[] = [];
+    let t3 = t2;
 
     if (slicedSkus.length > 0) {
-      const { data: pubData, error: pubErr } = await sb
-        .from("products")
-        .select(`
-          *,
-          product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
-          product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
-        `)
-        .in("base_sku", slicedSkus);
-      if (pubErr) throw pubErr;
-      published = pubData || [];
+      // Round 2: full rows in parallel
+      const [
+        { data: pubData,   error: pubErr   },
+        { data: draftData, error: draftErr },
+      ] = await Promise.all([
+        sb.from("products")      .select(MANAGE_PRODUCT_SELECT).in("base_sku", slicedSkus),
+        sb.from("draft_products").select(MANAGE_DRAFT_SELECT)  .in("base_sku", slicedSkus),
+      ]);
+      t3 = performance.now();
 
-      const { data: draftData, error: draftErr } = await sb
-        .from("draft_products")
-        .select(`
-          *,
-          draft_product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
-          draft_product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
-        `)
-        .in("base_sku", slicedSkus);
+      if (pubErr)   throw pubErr;
       if (draftErr) throw draftErr;
-      drafts = draftData || [];
+
+      published = pubData   || [];
+      drafts    = draftData || [];
+    }
+
+    if (IS_DEV) {
+      console.log(`
+  [Catalog] ALL / ${mode}
+    • Round 1 (parallel SKU scan): products + draft_products   ${fms(t2 - t1)}
+    • Round 2 (parallel full fetch): ${slicedSkus.length} SKUs              ${slicedSkus.length ? fms(t3 - t2) : "skipped (empty catalog)"}
+    • Rows returned  published=${published.length}  drafts=${drafts.length}  total=${totalCount}  hasMore=${limit ? totalCount > limit : false}
+    • Total                                                    ${fms(t3 - t0)}
+  ────────────────────────────────────────────────`);
     }
 
     return {
       published,
       drafts,
       totalCount,
-      hasMore
+      hasMore: limit ? totalCount > limit : false,
     };
   }
 }
@@ -498,7 +527,7 @@ export async function fetchRecommendedProducts(
       `)
       .neq("slug", slug)
       .order("updated_at", { ascending: false })
-      .limit(10);
+      .limit(5);
 
     timingCallbacks?.onPadQueryDone?.();
 
