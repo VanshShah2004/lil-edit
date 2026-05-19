@@ -69,13 +69,20 @@ export class PdpTimer {
     const dbRecCategory    = this.duration("db_rec_category");
     const dbRecPad         = this.duration("db_rec_pad");       // may be 0 if category had 5+
     const dbRecommendation = this.duration("db_recommendations"); // overall wall-time
-    const dbTotal          = dbProduct + dbRecommendation;       // parallel, so wall-time >= either
-    const processing       = Math.max(0, totalBackend - dbTotal - cacheLookup);
+    const processing       = Math.max(0, totalBackend - dbProduct - cacheLookup);
+
+    // Determine if this is a product detail or recommendation request
+    const isRecommendation = this.slug.startsWith("rec:");
+    const isReviews = this.slug.startsWith("reviews:");
+    const displaySlug = isRecommendation
+      ? this.slug.substring(4)
+      : isReviews
+        ? this.slug.substring(8)
+        : this.slug;
 
     // ── Identify slowest stage ───────────────────────────────────────────────
     const stages: [string, number][] = [
       ["Product DB Query",          dbProduct],
-      ["Recommendation DB Query",   dbRecommendation],
       ["Backend Processing",        processing],
     ];
     if (cacheLookup > 0) stages.push(["Cache Lookup", cacheLookup]);
@@ -87,24 +94,63 @@ export class PdpTimer {
     const row    = (label: string, val: string) =>
       `  │  ${(label + " :").padEnd(27)} ${val}`;
 
-    const skipped = dbRecPad === 0
-      ? "skipped (5+ results in category)"
-      : `${fmtMs(dbRecPad)}  ← ⚠ padding query — category has <5 products`;
-
-    console.log(`
+    if (isReviews) {
+      const dbReviews = this.duration("db_reviews");
+      console.log(`
   ┌${line}┐
-  │  [PDP PERFORMANCE]${" ".repeat(44)}│
-${row("  Product", pad48(this.slug))}│
+  │  [REVIEWS LAZY-LOAD]${" ".repeat(42)}│
+${row("  Product", pad48(displaySlug))}│
+${row("  Status", "Background fetch (non-blocking)              ")}│
+  └${line}┘
+
+  DB Fetch:
+    • Title lookup             : ${fmtMs(dbReviews)}
+
+  Backend:
+    • Processing Time          : ${fmtMs(processing)}
+    • Total Time               : ${fmtMs(totalBackend)}
+  ────────────────────────────────────────────────────────────────
+`);
+    } else if (isRecommendation) {
+      // Recommendations endpoint log (lazy-loaded separately)
+      const skipped = dbRecPad === 0
+        ? "skipped (5+ results in category)"
+        : `${fmtMs(dbRecPad)}  ← padding query`;
+
+      console.log(`
+  ┌${line}┐
+  │  [RECOMMENDATIONS LAZY-LOAD]${" ".repeat(34)}│
+${row("  Product", pad48(displaySlug))}│
+${row("  Status", "Background fetch via requestIdleCallback  ")}│
+  └${line}┘
+
+  DB Fetch:
+    • Category Query Q1        : ${fmtMs(dbRecCategory)}  (same-category recommendations)
+    • Padding Query Q2         : ${skipped}
+    • Total DB Time            : ${fmtMs(dbRecCategory + dbRecPad)}
+
+  Backend:
+    • Processing Time          : ${fmtMs(processing)}  (serialization + mapping)
+    • Total Time               : ${fmtMs(totalBackend)}
+
+  ⚡ Slowest Stage             : ${slowestName} (${fmtMs(slowestMs)})
+  ────────────────────────────────────────────────────────────────
+`);
+    } else {
+      // Product detail endpoint log (critical path - no recommendations)
+      console.log(`
+  ┌${line}┐
+  │  [PDP PERFORMANCE] ⚡ CRITICAL PATH (NO RECOMMENDATIONS)${" ".repeat(6)}│
+${row("  Product", pad48(displaySlug))}│
 ${row("  Cache", this.cacheHit
       ? "HIT  ✓ — served from memory, no DB round-trip  "
       : "MISS ✗ — cold DB fetch                         ")}│
   └${line}┘
 
   DB Fetch:
-    • Product Query            : ${fmtMs(dbProduct)}
-    • Recommendation Q1        : ${fmtMs(dbRecCategory)}  (same-category filter)
-    • Recommendation Q2        : ${skipped}
-    • Total DB Time            : ${fmtMs(dbTotal)}  ${dbProduct > dbRecommendation ? "(product query was slower)" : "(recommendation query was slower)"}
+    • Product Query            : ${fmtMs(dbProduct)}  ⚡ Only essential product data
+    • Recommendations          : ✓ Lazy-loaded via /api/products/recommendations
+    • Reviews                  : ✓ Lazy-loaded via /api/products/reviews
 
   Backend:
     • Cache Lookup             : ${fmtMs(cacheLookup)}
@@ -114,6 +160,8 @@ ${row("  Cache", this.cacheHit
   ⚡ Slowest Stage             : ${slowestName} (${fmtMs(slowestMs)})
   ────────────────────────────────────────────────────────────────
   Frontend timings are logged separately in the browser console.
+  Lazy endpoints: /api/products/recommendations  /api/products/reviews
 `);
+    }
   }
 }

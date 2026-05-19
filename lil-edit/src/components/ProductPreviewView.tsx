@@ -8,6 +8,8 @@ import {
   type CarouselApi
 } from "@/components/ui/carousel";
 import { Badge } from "@/components/ui/badge";
+import ProductGalleryImage from "@/components/ProductGalleryImage";
+import { preconnectProductImageOrigin } from "@/lib/productImage";
 import type { Product } from "@/types/product";
 
 interface ProductPreviewViewProps {
@@ -32,6 +34,10 @@ const ProductPreviewView = ({
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [viewerApi, setViewerApi] = useState<CarouselApi>();
   const thumbnailStripRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    return preconnectProductImageOrigin();
+  }, []);
 
   useLayoutEffect(() => {
     if (!api) return;
@@ -174,7 +180,13 @@ const ProductPreviewView = ({
                     activeImage === idx ? "border-[#0F766E]" : "border-gray-200"
                   }`}
                 >
-                  <img src={img} alt={`${product.title} thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                  <ProductGalleryImage
+                    src={img}
+                    alt={`${product.title} thumbnail ${idx + 1}`}
+                    variant="thumbnail"
+                    lazy={idx !== activeImage}
+                    className="w-full h-full object-cover"
+                  />
                 </button>
               ))}
             </div>
@@ -200,9 +212,12 @@ const ProductPreviewView = ({
                       {images.map((img, idx) => (
                         <CarouselItem key={idx} className="pl-0 basis-full h-full">
                           <div className="w-full h-full overflow-hidden">
-                            <img
+                            <ProductGalleryImage
                               src={img}
                               alt={`${product.title} ${idx + 1}`}
+                              variant={idx === 0 ? "hero" : "carousel"}
+                              priority={idx === 0}
+                              lazy={idx !== 0 && idx !== activeImage}
                               className={`w-full h-full object-cover select-none transition-transform duration-500 hover:scale-105 ${!previewMode ? "cursor-zoom-in" : ""}`}
                               draggable={false}
                               onClick={() => {
@@ -420,9 +435,12 @@ const ProductPreviewView = ({
               <CarouselContent className="h-full ml-0 items-center">
                 {images.map((img, idx) => (
                   <CarouselItem key={idx} className="pl-0 basis-full h-full flex items-center justify-center">
-                    <img
+                    <ProductGalleryImage
                       src={img}
                       alt={`Preview ${idx + 1}`}
+                      variant="fullscreen"
+                      priority={idx === activeImage}
+                      lazy={idx !== activeImage}
                       className="max-h-full max-w-full object-contain select-none cursor-zoom-out hover:scale-[1.01] transition-transform duration-500 px-2 sm:px-4"
                       draggable={false}
                       onClick={() => setIsViewerOpen(false)}
@@ -467,9 +485,11 @@ const ProductPreviewView = ({
                     }`}
                   style={{ opacity: activeImage === idx ? 1 : 0.6 }}
                 >
-                  <img
+                  <ProductGalleryImage
                     src={img}
                     alt={`Thumbnail ${idx + 1}`}
+                    variant="thumbnail"
+                    lazy
                     className="w-full h-full object-cover pointer-events-none hover:opacity-100 transition-opacity"
                   />
                 </button>

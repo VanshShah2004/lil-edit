@@ -576,7 +576,7 @@ const WishlistPage = () => {
                     </button>
                     <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                       <Link
-                        to={`/collections/${p.categorySlug}/product/${p.slug}+${p.sku || 'LIL-12345'}`}
+                        to={`/collections/${p.categorySlug}/product/${p.slug}$${p.sku || "LIL-12345"}`}
                         className="w-full py-1.5 bg-white/90 backdrop-blur text-gray-900 rounded-lg font-medium text-[10px] md:text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm block text-center"
                       >
                         View Details

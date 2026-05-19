@@ -7,6 +7,7 @@ import {
   saveDraftToDatabase,
   deleteProductFromDatabase,
   fetchProductBySlugAndSku,
+  fetchProductTitleBySlug,
   fetchRecommendedProducts,
   type RecommendedTimingCallbacks
 } from "../lib/persistCatalog.js";
@@ -71,10 +72,61 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
-// Helper to map DB catalog schema to frontend Product schema
+/** Mock reviews payload — served from /api/products/reviews, not the PDP critical path. */
+function buildMockReviewsData(productTitle: string) {
+  return {
+    averageRating: 4.8,
+    totalReviews: 124,
+    distribution: [
+      { stars: 5, count: 98 },
+      { stars: 4, count: 18 },
+      { stars: 3, count: 5 },
+      { stars: 2, count: 2 },
+      { stars: 1, count: 1 },
+    ],
+    reviews: [
+      {
+        id: "rev-1",
+        user: "Priya S.",
+        rating: 5,
+        date: "12 Oct 2023",
+        title: `Absolutely gorgeous ${productTitle}!`,
+        comment:
+          "Highly recommend this! The fabric is so premium and my daughter loved it. Worth every rupee!",
+        verified: true,
+      },
+      {
+        id: "rev-2",
+        user: "Neha Verma",
+        rating: 4,
+        date: "05 Nov 2023",
+        title: "Beautiful style and rich look",
+        comment:
+          "Precisely as shown in the pictures. The fit was a tiny bit loose but we managed perfectly. Very elegant.",
+        verified: true,
+      },
+      {
+        id: "rev-3",
+        user: "Anjali K.",
+        rating: 5,
+        date: "28 Nov 2023",
+        title: "Perfect purchase",
+        comment:
+          "Excellent craftsmanship. The material is soft and highly comfortable for kids. Five stars!",
+        verified: true,
+      },
+    ],
+  };
+}
+
+// Helper to map DB catalog schema to frontend Product schema (no reviews — lazy-loaded separately)
 function mapDatabaseProductToFrontend(dbProduct: any, isDraft: boolean) {
-  const images = isDraft ? (dbProduct.draft_product_images || []) : (dbProduct.product_images || []);
-  const variants = isDraft ? (dbProduct.draft_product_variants || []) : (dbProduct.product_variants || []);
+  const images = (isDraft ? (dbProduct.draft_product_images || []) : (dbProduct.product_images || []))
+    .slice()
+    .sort((a: { sort_order?: number }, b: { sort_order?: number }) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const variants = (isDraft ? (dbProduct.draft_product_variants || []) : (dbProduct.product_variants || []))
+    .slice()
+    .sort((a: { sort_order?: number }, b: { sort_order?: number }) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
   const mappedImages = images.map((img: any) => ({
     id: String(img.id),
@@ -104,48 +156,6 @@ function mapDatabaseProductToFrontend(dbProduct: any, isDraft: boolean) {
     };
   });
 
-  // Dynamic high-fidelity customer feedback generator
-  const reviewsData = {
-    averageRating: 4.8,
-    totalReviews: 124,
-    distribution: [
-      { stars: 5, count: 98 },
-      { stars: 4, count: 18 },
-      { stars: 3, count: 5 },
-      { stars: 2, count: 2 },
-      { stars: 1, count: 1 },
-    ],
-    reviews: [
-      {
-        id: "rev-1",
-        user: "Priya S.",
-        rating: 5,
-        date: "12 Oct 2023",
-        title: `Absolutely gorgeous ${dbProduct.title}!`,
-        comment: `Highly recommend this! The fabric is so premium and my daughter loved it. Worth every rupee!`,
-        verified: true
-      },
-      {
-        id: "rev-2",
-        user: "Neha Verma",
-        rating: 4,
-        date: "05 Nov 2023",
-        title: "Beautiful style and rich look",
-        comment: `Precisely as shown in the pictures. The fit was a tiny bit loose but we managed perfectly. Very elegant.`,
-        verified: true,
-      },
-      {
-        id: "rev-3",
-        user: "Anjali K.",
-        rating: 5,
-        date: "28 Nov 2023",
-        title: "Perfect purchase",
-        comment: `Excellent craftsmanship. The material is soft and highly comfortable for kids. Five stars!`,
-        verified: true
-      }
-    ]
-  };
-
   return {
     title: dbProduct.title,
     slug: dbProduct.slug,
@@ -171,7 +181,6 @@ function mapDatabaseProductToFrontend(dbProduct: any, isDraft: boolean) {
     bestseller: !!dbProduct.is_bestseller,
     trending: !!dbProduct.is_trending,
     isUnlimited: !!dbProduct.is_unlimited,
-    reviewsData
   };
 }
 
@@ -192,7 +201,8 @@ function mapDatabaseToRecommended(dbProd: any) {
   };
 }
 
-// GET /api/products/detail — Fetches catalog product by slug and variant SKU with checks
+// GET /api/products/detail — Fetches catalog product by slug and variant SKU (no recommendations)
+// ⚡ Critical path: Returns core product data immediately without waiting for recommendation queries
 router.get("/detail", async (req: Request, res: Response) => {
   const slug = req.query.slug as string;
   const sku = req.query.sku as string;
@@ -220,23 +230,10 @@ router.get("/detail", async (req: Request, res: Response) => {
   }
 
   try {
-    // Build timing callbacks so Q1 and Q2 inside fetchRecommendedProducts are timed separately
-    timer.start("db_rec_category");
-    const recTimingCallbacks: RecommendedTimingCallbacks = {
-      onCategoryQueryDone: () => timer.end("db_rec_category"),
-      onPadQueryDone:      () => timer.end("db_rec_pad"),
-    };
-
-    // Fire product + recommendations in parallel — category from URL avoids a waterfall
+    // Fetch ONLY product — recommendations are lazy-loaded separately (non-blocking)
     timer.start("db_product");
-    timer.start("db_recommendations");
-    timer.start("db_rec_pad");  // pre-start so duration=0 if skipped (no onPadQueryDone call)
-
-    const [product, recommendedList] = await Promise.all([
-      fetchProductBySlugAndSku(slug, sku).finally(() => timer.end("db_product")),
-      fetchRecommendedProducts(slug, category || "", recTimingCallbacks)
-        .finally(() => timer.end("db_recommendations")),
-    ]);
+    const product = await fetchProductBySlugAndSku(slug, sku);
+    timer.end("db_product");
 
     if (!product) {
       timer.log();
@@ -269,11 +266,9 @@ router.get("/detail", async (req: Request, res: Response) => {
       return;
     }
 
-    // Map both in one pass — no extra await
+    // Map product only — no recommendations in critical path
     const mappedProduct = mapDatabaseProductToFrontend(product, false);
-    const mappedRecommended = (recommendedList || []).map(mapDatabaseToRecommended);
-
-    const responsePayload = { product: mappedProduct, recommended: mappedRecommended };
+    const responsePayload = { product: mappedProduct };
 
     // 💾 Store in cache — subsequent hits return instantly
     setCached(cacheKey, responsePayload);
@@ -285,6 +280,78 @@ router.get("/detail", async (req: Request, res: Response) => {
   } catch (err) {
     timer.log();
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// GET /api/products/reviews — Lazy-load customer reviews (non-blocking)
+router.get("/reviews", async (req: Request, res: Response) => {
+  const slug = req.query.slug as string;
+
+  if (!slug) {
+    res.status(400).json({ error: "slug parameter is required." });
+    return;
+  }
+
+  try {
+    const timer = new PdpTimer(`reviews:${slug}`);
+    timer.start("db_reviews");
+    const title = await fetchProductTitleBySlug(slug);
+    timer.end("db_reviews");
+
+    if (!title) {
+      timer.log();
+      res.status(404).json({ error: "Product not found." });
+      return;
+    }
+
+    const reviewsData = buildMockReviewsData(title);
+    timer.log();
+    res.json({ reviewsData });
+  } catch (err) {
+    console.error(
+      "[Reviews] Error fetching reviews:",
+      err instanceof Error ? err.message : String(err)
+    );
+    res.status(200).json({ reviewsData: null, error: "Failed to load reviews" });
+  }
+});
+
+// GET /api/products/recommendations — Lazy-load recommendations (non-blocking)
+// ⚡ Separate from critical path: Can fail without breaking the PDP
+router.get("/recommendations", async (req: Request, res: Response) => {
+  const slug = req.query.slug as string;
+  const category = req.query.category as string;
+
+  if (!slug) {
+    res.status(400).json({ error: "slug parameter is required." });
+    return;
+  }
+
+  try {
+    // ── Start perf timer for recommendations request ────────────────────
+    const timer = new PdpTimer(`rec:${slug}`);
+
+    timer.start("db_rec_category");
+    const recTimingCallbacks: RecommendedTimingCallbacks = {
+      onCategoryQueryDone: () => timer.end("db_rec_category"),
+      onPadQueryDone:      () => timer.end("db_rec_pad"),
+    };
+
+    timer.start("db_recommendations");
+    const recommendedList = await fetchRecommendedProducts(slug, category || "", recTimingCallbacks);
+    timer.end("db_recommendations");
+
+    // Map recommended products
+    const mappedRecommended = (recommendedList || []).map(mapDatabaseToRecommended);
+
+    // ── Emit perf report to server log ──────────────────────────────────
+    timer.log();
+
+    res.json({ recommended: mappedRecommended });
+  } catch (err) {
+    // Graceful degradation: Return empty recommendations rather than failing the request
+    console.error("[Recommendations] Error fetching recommendations:", err instanceof Error ? err.message : String(err));
+    res.status(200).json({ recommended: [], error: "Failed to load recommendations" });
   }
 });
 
@@ -334,7 +401,7 @@ router.post("/preview", async (req: Request, res: Response) => {
       } else {
         const { publishedProductId } = await launchProductToDatabase(data);
         // Bust the detail cache so admins see fresh data immediately
-        invalidateDetailCache(data.slug ?? "");
+        invalidateDetailCache(String(data.slug ?? ""));
         database = { ok: true, publishedProductId };
       }
     } catch (err) {

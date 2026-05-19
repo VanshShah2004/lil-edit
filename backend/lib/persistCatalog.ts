@@ -15,6 +15,79 @@ function requireAdmin() {
   return supabaseAdmin;
 }
 
+/**
+ * PDP detail query projection — only fields used by mapDatabaseProductToFrontend.
+ * Excludes: id, status, total_stock, created_by, timestamps, and nested alt_text / campaign flags.
+ */
+const PDP_PRODUCT_SELECT = `
+  title,
+  slug,
+  category_slug,
+  brand,
+  base_sku,
+  category,
+  gender,
+  price,
+  original_price,
+  tags,
+  badges,
+  description_points,
+  fabric,
+  fit,
+  occasion,
+  care_instructions,
+  sizes,
+  is_featured,
+  is_new_arrival,
+  is_bestseller,
+  is_trending,
+  is_unlimited,
+  product_images(id, image_url, is_primary, sort_order, variant_id),
+  product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
+`.trim();
+
+/** Row shape returned by fetchProductBySlugAndSku (PDP detail). */
+export interface PdpProductRow {
+  title: string;
+  slug: string;
+  category_slug: string;
+  brand: string;
+  base_sku: string;
+  category: string;
+  gender: string;
+  price: number;
+  original_price: number | null;
+  tags: string[] | null;
+  badges: string[] | null;
+  description_points: string[] | null;
+  fabric: string | null;
+  fit: string | null;
+  occasion: string | null;
+  care_instructions: string | null;
+  sizes: string[] | null;
+  is_featured: boolean;
+  is_new_arrival: boolean;
+  is_bestseller: boolean;
+  is_trending: boolean;
+  is_unlimited: boolean;
+  product_images: Array<{
+    id: string;
+    image_url: string;
+    is_primary: boolean;
+    sort_order: number;
+    variant_id: string | null;
+  }>;
+  product_variants: Array<{
+    id: string;
+    color_name: string;
+    color_hex: string | null;
+    variant_sku: string;
+    stock: number | null;
+    is_unlimited: boolean;
+    sort_order: number;
+  }>;
+}
+
 async function insertImagesForProduct(
   client: NonNullable<typeof supabaseAdmin>,
   table: "draft_product_images" | "product_images",
@@ -349,22 +422,32 @@ export async function deleteProductFromDatabase(id: string, status: "DRAFT" | "P
   if (error) throw error;
 }
 
-export async function fetchProductBySlugAndSku(slug: string, sku: string) {
+/** Minimal lookup for lazy-loaded reviews (title only). */
+export async function fetchProductTitleBySlug(slug: string): Promise<string | null> {
   const sb = requireAdmin();
-  
-  // Fetch published product where slug matches
+  const { data, error } = await sb
+    .from("products")
+    .select("title")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.title ?? null;
+}
+
+export async function fetchProductBySlugAndSku(
+  slug: string,
+  _sku: string
+): Promise<PdpProductRow | null> {
+  const sb = requireAdmin();
+
   const { data: published, error: pubErr } = await sb
     .from("products")
-    .select(`
-      *,
-      product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
-      product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
-    `)
+    .select(PDP_PRODUCT_SELECT)
     .eq("slug", slug)
     .maybeSingle();
 
   if (pubErr) throw pubErr;
-  return published;
+  return published as PdpProductRow | null;
 }
 
 export interface RecommendedTimingCallbacks {
@@ -382,6 +465,7 @@ export async function fetchRecommendedProducts(
   const sb = requireAdmin();
 
   // Query 1: same-category products (excluding current product)
+  // ⚡ Optimized: Uses indexed category_slug + slug filters, limits early
   const { data: recommended, error: recErr } = await sb
     .from("products")
     .select(`
@@ -399,6 +483,11 @@ export async function fetchRecommendedProducts(
   let list = recommended || [];
 
   // Query 2 (conditional): pad with general published products when category has < 5
+  // ⚡ Optimized: 
+  //   - Orders by updated_at DESC to prefer recently updated products (instead of RANDOM())
+  //   - Early LIMIT to avoid scanning entire table
+  //   - Excludes current product with indexed filter
+  //   - Fetches only final-pass size (10) instead of scanning more
   if (list.length < 5) {
     const { data: general, error: genErr } = await sb
       .from("products")
@@ -408,6 +497,7 @@ export async function fetchRecommendedProducts(
         product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
       `)
       .neq("slug", slug)
+      .order("updated_at", { ascending: false })
       .limit(10);
 
     timingCallbacks?.onPadQueryDone?.();

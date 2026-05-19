@@ -62,6 +62,7 @@ export interface Product {
   bestseller: boolean;
   trending: boolean;
   isUnlimited?: boolean;
-  reviewsData: ReviewsData;
+  /** Loaded separately via GET /api/products/reviews on PDP */
+  reviewsData?: ReviewsData;
 }
 

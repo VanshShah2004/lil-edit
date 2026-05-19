@@ -95,7 +95,12 @@ export class PdpClientPerf {
     );
 
     console.log(
-      "%cBackend timings are in the server terminal (Node.js stdout).",
+      "%c💡 ℹ️ Reviews and recommendations are lazy-loaded separately (non-blocking).",
+      "color:#10B981;font-style:italic"
+    );
+
+    console.log(
+      "%cBackend timings are in the server terminal (Node.js stdout). Recommendations fetched via /api/products/recommendations",
       "color:#94A3B8;font-style:italic"
     );
 

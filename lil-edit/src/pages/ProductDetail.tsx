@@ -1,15 +1,18 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Link, useParams, Navigate, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { ChevronRight, Heart, Star, StarHalf, BadgeCheck, ThumbsUp } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 import product_images from "@/assets/products";
+import ProductDetailSkeleton from "@/components/ProductDetailSkeleton";
 import ProductPreviewView from "@/components/ProductPreviewView";
 import { Badge } from "@/components/ui/badge";
-import type { Product } from "@/types/product";
+import type { Product, ReviewsData } from "@/types/product";
 import { getBackendBaseUrl } from "@/lib/backend";
+import { buildPdpPath } from "@/lib/pdpUrl";
+import { getOptimizedUrlForVariant } from "@/lib/productImage";
 import { PdpClientPerf } from "@/lib/pdpClientPerf";
 
 import le0 from "@/assets/searchbar-frequent_searches/le-0.png";
@@ -24,8 +27,19 @@ const LAVENDER = "#B19CD9";
 const TEAL = "#0B5B55";
 
 // ⚡ Module-level product cache — persists across route changes within the session.
-// Key = product slug. All variant SKUs of the same product share one entry.
-const productCache = new Map<string, { product: Product; recommended: any[] }>();
+// Key = product slug. Recommendations cached separately with their own TTL.
+const productCache = new Map<string, { product: Product; cachedAt: number }>();
+const recommendationCache = new Map<string, { recommended: any[]; cachedAt: number }>();
+const reviewsCache = new Map<string, { reviewsData: ReviewsData; cachedAt: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function scheduleIdleTask(task: () => void): void {
+  if ("requestIdleCallback" in window) {
+    requestIdleCallback(task, { timeout: 2000 });
+  } else {
+    setTimeout(task, 100);
+  }
+}
 
 // Dynamic details page architecture
 export default function ProductDetail() {
@@ -37,11 +51,27 @@ export default function ProductDetail() {
   const [productSlug, skuId] = productPath?.split('$') ?? [undefined, undefined];
 
   // Seed state from module cache immediately — renders in one frame if visited before
-  const cached = productSlug ? productCache.get(productSlug) : undefined;
-  const [product, setProduct] = useState<Product | null>(cached?.product ?? null);
-  const [recommendedProducts, setRecommendedProducts] = useState<any[]>(cached?.recommended ?? []);
-  const [loading, setLoading] = useState(!cached);  // skip spinner if cache hit
+  const productCached = productSlug ? productCache.get(productSlug) : undefined;
+  const recCached = productSlug ? recommendationCache.get(productSlug) : undefined;
+  const reviewsCached = productSlug ? reviewsCache.get(productSlug) : undefined;
+
+  // Check if caches are still valid (not expired)
+  const isProductCacheFresh = productCached && (Date.now() - productCached.cachedAt < CACHE_TTL_MS);
+  const isRecCacheFresh = recCached && (Date.now() - recCached.cachedAt < CACHE_TTL_MS);
+  const isReviewsCacheFresh = reviewsCached && (Date.now() - reviewsCached.cachedAt < CACHE_TTL_MS);
+
+  const [product, setProduct] = useState<Product | null>(isProductCacheFresh ? productCached.product : null);
+  const [recommendedProducts, setRecommendedProducts] = useState<any[]>(isRecCacheFresh ? recCached.recommended : []);
+  const [reviewsData, setReviewsData] = useState<ReviewsData | null>(
+    isReviewsCacheFresh ? reviewsCached.reviewsData : null
+  );
+  const [loading, setLoading] = useState(!isProductCacheFresh);  // skip spinner if product cache hit
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [recommendationsError, setRecommendationsError] = useState<string | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const lazyLoadSlugRef = useRef<string | undefined>(undefined);
 
   // ── Perf tracker — one instance per slug, stable across re-renders ────────
   const perfRef     = useRef<PdpClientPerf | null>(null);
@@ -62,21 +92,23 @@ export default function ProductDetail() {
   useLayoutEffect(() => {
     if (product) {
       perf.mark("renderEnd");
-      perf.log(!!cached);
+      perf.log(!!isProductCacheFresh);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product]);
 
-  // Fetch product details — stale-while-revalidate pattern:
-  // If cache hit → render immediately, fetch runs silently in background to refresh.
-  // If cache miss → show spinner until first response.
+  // ⚡ CRITICAL PATH: Fetch product details ONLY (non-blocking)
+  // Uses stale-while-revalidate pattern:
+  // - If cache hit → render immediately, fetch runs silently in background to refresh
+  // - If cache miss → show spinner until first response
+  // Recommendations are loaded separately via requestIdleCallback (non-blocking)
   useEffect(() => {
     if (!productSlug || !skuId) return;
 
     let cancelled = false;
 
     // Only show spinner on a true cold miss
-    if (!productCache.has(productSlug)) setLoading(true);
+    if (!isProductCacheFresh) setLoading(true);
     setError(null);
 
     const base = getBackendBaseUrl();
@@ -97,16 +129,15 @@ export default function ProductDetail() {
       .then((data) => {
         if (cancelled || !data) return;
         perf.mark("renderStart");
-        // Update module cache
-        productCache.set(productSlug, { product: data.product, recommended: data.recommended || [] });
+        // Update module cache with product data only
+        productCache.set(productSlug, { product: data.product, cachedAt: Date.now() });
         setProduct(data.product);
-        setRecommendedProducts(data.recommended || []);
       })
       .catch((err) => {
         if (cancelled) return;
         console.error("[ProductDetail] Error:", err);
         // Only show error if we have nothing cached to show
-        if (!productCache.has(productSlug)) {
+        if (!isProductCacheFresh) {
           setError(err instanceof Error ? err.message : "Failed to load product details");
           setProduct(null);
         }
@@ -116,21 +147,124 @@ export default function ProductDetail() {
       });
 
     return () => { cancelled = true; };
-  }, [productSlug, skuId, categoryParam]);
+    // SKU in URL is for display/validation only — same product slug = same payload (no refetch on color change)
+  }, [productSlug, categoryParam, isProductCacheFresh]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white pt-[calc(var(--navbar-height)+20px)]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto" />
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Loading Product Details...</p>
-        </div>
-      </div>
-    );
-  }
+  // Canonicalize base-SKU URLs to primary variant SKU without remounting or refetching
+  useEffect(() => {
+    if (!product || !skuId || !productSlug || !categoryParam) return;
+    if (skuId !== product.sku) return;
+    const primary = product.colors?.[0];
+    if (!primary || primary.sku === skuId) return;
+    navigate(buildPdpPath(categoryParam, productSlug, primary.sku), { replace: true });
+  }, [product, skuId, productSlug, categoryParam, navigate]);
 
-  // Graceful failure for missing or validation-failed products
-  if (error || !product) {
+  // Reset lazy-load state when navigating to a different product
+  useEffect(() => {
+    if (lazyLoadSlugRef.current === productSlug) return;
+    lazyLoadSlugRef.current = productSlug;
+    setReviewsData(isReviewsCacheFresh && reviewsCached ? reviewsCached.reviewsData : null);
+    setRecommendedProducts(isRecCacheFresh && recCached ? recCached.recommended : []);
+    setReviewsLoading(false);
+    setReviewsError(null);
+    setRecommendationsLoading(false);
+    setRecommendationsError(null);
+  }, [productSlug, isReviewsCacheFresh, reviewsCached, isRecCacheFresh, recCached]);
+
+  // ⚡ LAZY LOAD: Reviews + recommendations after product renders (non-blocking)
+  useEffect(() => {
+    if (!product || !productSlug) return;
+
+    const base = getBackendBaseUrl();
+    let cancelled = false;
+
+    const fetchReviews = () => {
+      if (isReviewsCacheFresh && reviewsCached) {
+        setReviewsData(reviewsCached.reviewsData);
+        return;
+      }
+      setReviewsLoading(true);
+      setReviewsError(null);
+      fetch(`${base}/api/products/reviews?slug=${encodeURIComponent(productSlug)}`)
+        .then(async (res) => {
+          if (!res.ok) {
+            const errMsg = await res.json().catch(() => ({}));
+            throw new Error(errMsg.error || "Failed to load reviews");
+          }
+          return res.json();
+        })
+        .then((data) => {
+          if (cancelled || !data?.reviewsData) return;
+          reviewsCache.set(productSlug, { reviewsData: data.reviewsData, cachedAt: Date.now() });
+          setReviewsData(data.reviewsData);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          console.warn("[ProductDetail] Reviews error:", err instanceof Error ? err.message : String(err));
+          setReviewsError(err instanceof Error ? err.message : "Failed to load reviews");
+        })
+        .finally(() => {
+          if (!cancelled) setReviewsLoading(false);
+        });
+    };
+
+    const fetchRecommendations = () => {
+      if (isRecCacheFresh && recCached) {
+        setRecommendedProducts(recCached.recommended);
+        return;
+      }
+      setRecommendationsLoading(true);
+      setRecommendationsError(null);
+      fetch(
+        `${base}/api/products/recommendations?slug=${encodeURIComponent(productSlug)}&category=${encodeURIComponent(product.categorySlug)}`
+      )
+        .then(async (res) => {
+          if (!res.ok) {
+            const errMsg = await res.json().catch(() => ({}));
+            throw new Error(errMsg.error || "Failed to load recommendations");
+          }
+          return res.json();
+        })
+        .then((data) => {
+          if (cancelled) return;
+          recommendationCache.set(productSlug, {
+            recommended: data.recommended || [],
+            cachedAt: Date.now(),
+          });
+          setRecommendedProducts(data.recommended || []);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          console.warn(
+            "[ProductDetail] Recommendations error:",
+            err instanceof Error ? err.message : String(err)
+          );
+          setRecommendationsError(
+            err instanceof Error ? err.message : "Failed to load recommendations"
+          );
+          setRecommendedProducts([]);
+        })
+        .finally(() => {
+          if (!cancelled) setRecommendationsLoading(false);
+        });
+    };
+
+    scheduleIdleTask(() => {
+      if (!cancelled) {
+        fetchReviews();
+        fetchRecommendations();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [product, productSlug, isReviewsCacheFresh, reviewsCached, isRecCacheFresh, recCached]);
+
+  const showSkeleton = loading && !product;
+  const showNotFound = !loading && (error || !product);
+
+  if (showNotFound) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-center p-4 bg-white pt-[calc(var(--navbar-height)+20px)]">
         <h2 className="text-2xl font-bold mb-4 text-slate-900">Product Not Found</h2>
@@ -148,40 +282,17 @@ export default function ProductDetail() {
     );
   }
 
-  // Determine if it's a full color SKU or just base SKU
-  // Full color SKU format: EDIT-ETHNIC-102-WHT
-  // Base SKU format: EDIT-ETHNIC-102
   let selectedColorName: string | undefined;
-  let isValidSku = false;
-
-  if (skuId && product.colors) {
-    // Check if it matches a color SKU exactly
-    const matchingColorBySku = product.colors.find(c => c.sku === skuId);
-    if (matchingColorBySku) {
-      // Full color SKU provided
-      selectedColorName = matchingColorBySku.name;
-      isValidSku = true;
-    } else if (skuId === product.sku) {
-      // Only base SKU provided - use primary color
-      selectedColorName = product.colors[0]?.name;
-      isValidSku = true;
-    }
+  if (product && skuId && product.colors?.length) {
+    const matchingColor = product.colors.find((c) => c.sku === skuId);
+    selectedColorName = matchingColor?.name ?? product.colors[0]?.name;
   }
 
-  // Sku redirect to variant SKU if only base SKU is specified
-  if (skuId === product.sku && selectedColorName && product.colors) {
-    const primaryColor = product.colors.find(c => c.name === selectedColorName);
-    if (primaryColor) {
-      return <Navigate to={`/collections/${categoryParam}/product/${productSlug}$${primaryColor.sku}`} replace />;
-    }
-  }
-
-  // Handle color change - update URL when color is selected
   const handleColorChange = (colorName: string) => {
-    if (!product.colors) return;
-    const selectedColor = product.colors.find(c => c.name === colorName);
+    if (!product?.colors || !categoryParam || !productSlug) return;
+    const selectedColor = product.colors.find((c) => c.name === colorName);
     if (selectedColor) {
-      navigate(`/collections/${categoryParam}/product/${productSlug}$${selectedColor.sku}`, { replace: false });
+      navigate(buildPdpPath(categoryParam, productSlug, selectedColor.sku), { replace: false });
     }
   };
 
@@ -193,18 +304,52 @@ export default function ProductDetail() {
       <div className="page-container pt-1 pb-6 sm:pb-8 text-sm text-gray-500">
         <Link to="/" className="hover:text-slate-900 transition-colors">Home</Link>
         <ChevronRight className="inline w-4 h-4 mx-1" />
-        <Link to={`/collections/${product.categorySlug}`} className="hover:text-slate-900 transition-colors">
-          {product.category}
-        </Link>
-        <ChevronRight className="inline w-4 h-4 mx-1" />
-        <span className="text-gray-800 font-medium">{product.title}</span>
+        {showSkeleton ? (
+          <>
+            <span className="inline-block h-4 w-24 bg-gray-200 rounded animate-pulse align-middle" />
+            <ChevronRight className="inline w-4 h-4 mx-1" />
+            <span className="inline-block h-4 w-40 bg-gray-200 rounded animate-pulse align-middle" />
+          </>
+        ) : (
+          <>
+            <Link to={`/collections/${product!.categorySlug}`} className="hover:text-slate-900 transition-colors">
+              {product!.category}
+            </Link>
+            <ChevronRight className="inline w-4 h-4 mx-1" />
+            <span className="text-gray-800 font-medium">{product!.title}</span>
+          </>
+        )}
       </div>
 
       <main className="page-container w-full pb-[calc(env(safe-area-inset-bottom)+2rem)] sm:pb-[calc(env(safe-area-inset-bottom)+2rem)] md:pb-6">
-        <ProductPreviewView product={product} initialColorName={selectedColorName} onColorChange={handleColorChange} />
+        {showSkeleton ? (
+          <ProductDetailSkeleton />
+        ) : (
+        <ProductPreviewView product={product!} initialColorName={selectedColorName} onColorChange={handleColorChange} />
+        )}
 
-        {/* Reviews & Ratings - Full Width Section */}
+        {!showSkeleton && (
+        <>
+        {/* Reviews & Ratings — lazy-loaded (not on PDP critical path) */}
         <section className="mt-16 sm:mt-24 pt-12 border-t border-gray-100">
+          {reviewsLoading && !reviewsData && (
+            <div className="flex flex-col md:flex-row gap-12 animate-pulse" aria-hidden>
+              <div className="w-full md:w-1/3 h-80 rounded-3xl bg-gray-100" />
+              <div className="w-full md:w-2/3 space-y-6">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-40 rounded-[2rem] bg-gray-100" />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!reviewsLoading && !reviewsData && reviewsError && (
+            <p className="text-center text-gray-400 text-sm py-8">
+              Customer reviews are temporarily unavailable.
+            </p>
+          )}
+
+          {reviewsData && (
           <div className="flex flex-col md:flex-row gap-12">
             {/* Left Column: Summary */}
             <div className="w-full md:w-1/3">
@@ -218,7 +363,7 @@ export default function ProductDetail() {
                     style={{ backgroundColor: TEAL }}
                   >
                     <Star size={12} fill="currentColor" />
-                    {product.reviewsData.averageRating}
+                    {reviewsData.averageRating}
                   </span>
                 </div>
 
@@ -240,11 +385,11 @@ export default function ProductDetail() {
                       className="text-6xl font-extrabold mb-3 tracking-tighter"
                       style={{ color: TEAL }}
                     >
-                      {product.reviewsData.averageRating}
+                      {reviewsData.averageRating}
                     </div>
                     <div className="flex gap-1 mb-3">
                       {[...Array(5)].map((_, i) => {
-                        const rating = product.reviewsData.averageRating;
+                        const rating = reviewsData.averageRating;
                         if (i < Math.floor(rating)) {
                           return <Star key={i} size={22} fill="#F59E0B" stroke="#F59E0B" className="drop-shadow-sm" />;
                         } else if (i === Math.floor(rating) && rating % 1 >= 0.5) {
@@ -255,12 +400,12 @@ export default function ProductDetail() {
                       })}
                     </div>
                     <p className="text-gray-500 font-medium mb-8">
-                      Based on {product.reviewsData.totalReviews} reviews
+                      Based on {reviewsData.totalReviews} reviews
                     </p>
 
                     <div className="w-full space-y-3">
-                      {product.reviewsData.distribution.map((item: any) => {
-                        const pct = product.reviewsData.totalReviews > 0 ? Math.round((item.count / product.reviewsData.totalReviews) * 100) : 0;
+                      {reviewsData.distribution.map((item: any) => {
+                        const pct = reviewsData.totalReviews > 0 ? Math.round((item.count / reviewsData.totalReviews) * 100) : 0;
                         return (
                           <div key={item.stars} className="flex items-center gap-4 group">
                             <div className="w-12 shrink-0 flex items-center gap-1.5 text-sm font-bold text-slate-600">
@@ -312,7 +457,7 @@ export default function ProductDetail() {
               </div>
 
               <div className="space-y-6">
-                {product.reviewsData.reviews.map((review: any) => (
+                {reviewsData.reviews.map((review: any) => (
                   <div
                     key={review.id}
                     className="relative p-6 sm:p-8 rounded-[2rem] border border-gray-100 bg-white hover:shadow-xl hover:shadow-slate-200/50 hover:border-teal-100/50 transition-all duration-500 group"
@@ -390,10 +535,11 @@ export default function ProductDetail() {
                 onClick={() => alert("Pagination functionality coming soon!")}
                 className="w-full mt-10 py-5 rounded-2xl text-sm font-bold text-teal-700 bg-teal-50 border border-teal-100 hover:bg-teal-100 hover:border-teal-200 transition-all duration-300 uppercase tracking-[0.2em] shadow-sm"
               >
-                View All {product.reviewsData.totalReviews} Reviews
+                View All {reviewsData.totalReviews} Reviews
               </button>
             </div>
           </div>
+          )}
         </section>
 
         {/* YOU MAY ALSO LIKE SECTION */}
@@ -411,6 +557,26 @@ export default function ProductDetail() {
           </div>
 
           <div className="flex sm:grid overflow-x-auto sm:overflow-visible flex-nowrap sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 no-scrollbar snap-x snap-mandatory px-1 sm:px-0">
+            {/* Loading Skeleton */}
+            {recommendationsLoading && recommendedProducts.length === 0 && (
+              <>
+                {[...Array(5)].map((_, idx) => (
+                  <div
+                    key={`skeleton-${idx}`}
+                    className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border shrink-0 snap-start w-[240px] sm:w-auto animate-pulse"
+                  >
+                    <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5 bg-gray-200" />
+                    <div className="px-1 pb-0.5 space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-3/4" />
+                      <div className="h-3 bg-gray-200 rounded w-1/2" />
+                      <div className="h-3 bg-gray-200 rounded w-1/3" />
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Loaded Recommendations */}
             {recommendedProducts.map((item) => (
               <div
                 key={item.slug}
@@ -418,17 +584,18 @@ export default function ProductDetail() {
               >
                 <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5">
                   <img
-                    src={item.image}
+                    src={getOptimizedUrlForVariant(item.image, "thumbnail")}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
+                    decoding="async"
                   />
                   <button className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-teal-600 transition-all">
                     <Heart className="w-3.5 h-3.5" />
                   </button>
                   <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                     <Link
-                      to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}
+                      to={buildPdpPath(item.categorySlug, item.slug, item.sku)}
                       className="w-full py-1.5 bg-white/90 backdrop-blur text-slate-900 rounded-lg font-medium text-[10px] md:text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm block text-center"
                     >
                       View Details
@@ -465,8 +632,24 @@ export default function ProductDetail() {
                 </div>
               </div>
             ))}
+
+            {/* Empty State */}
+            {!recommendationsLoading && recommendedProducts.length === 0 && !recommendationsError && (
+              <div className="col-span-full text-center py-8 text-gray-500">
+                <p>No recommendations available at this time</p>
+              </div>
+            )}
+
+            {/* Error State (but PDP still works) */}
+            {recommendationsError && recommendedProducts.length === 0 && (
+              <div className="col-span-full text-center py-8">
+                <p className="text-gray-400 text-sm">Unable to load recommendations, but your product is ready!</p>
+              </div>
+            )}
           </div>
         </section>
+        </>
+        )}
 
       </main>
 
