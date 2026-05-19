@@ -2,7 +2,7 @@
   "name": "backend",
   "version": "1.0.0",
   "main": "index.js",
-  "type":"module",
+  "type": "module",
   "scripts": {
     "start": "tsx server.ts",
     "dev": "tsx watch server.ts"
@@ -16,6 +16,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
+    "ioredis": "^5.10.1",
     "resend": "^6.10.0"
   },
   "devDependencies": {

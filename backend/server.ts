@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import authRouter from "./routes/auth.js";
 import productsRouter from "./routes/products.js";
 import skuRouter from "./routes/sku.js";
+import { warmupRedis } from "./lib/redis.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, ".env") });
@@ -42,4 +43,5 @@ app.get("/", (_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`API listening on http://localhost:${PORT}`);
+  void warmupRedis();
 });

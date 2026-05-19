@@ -23,6 +23,7 @@ export class PdpTimer {
   private requestStart: number;
   private marks = new Map<string, Mark>();
   private cacheHit = false;
+  private redisHit = false;
 
   constructor(slug: string) {
     this.slug = slug;
@@ -54,6 +55,11 @@ export class PdpTimer {
     this.cacheHit = hit;
   }
 
+  /** Mark whether the cache hit came from Redis (L2) vs in-memory (L1). */
+  setRedisHit(hit: boolean): void {
+    this.redisHit = hit;
+  }
+
   /** Total ms elapsed since the request was received. */
   totalMs(): number {
     return performance.now() - this.requestStart;
@@ -65,6 +71,7 @@ export class PdpTimer {
 
     const totalBackend     = this.totalMs();
     const cacheLookup      = this.duration("cache_lookup");
+    const redisLookup      = this.duration("redis_lookup");
     const dbProduct        = this.duration("db_product");
     const dbRecCategory    = this.duration("db_rec_category");
     const dbRecPad         = this.duration("db_rec_pad");       // may be 0 if category had 5+
@@ -138,14 +145,21 @@ ${row("  Status", "Background fetch via requestIdleCallback  ")}│
 `);
     } else {
       // Product detail endpoint log (critical path - no recommendations)
+      const cacheLabel = this.cacheHit
+        ? this.redisHit
+          ? "HIT  ✓ — L2 Redis hit, no DB round-trip       "
+          : "HIT  ✓ — L1 memory hit, no DB round-trip      "
+        : "MISS ✗ — cold DB fetch                         ";
       console.log(`
   ┌${line}┐
   │  [PDP PERFORMANCE] ⚡ CRITICAL PATH (NO RECOMMENDATIONS)${" ".repeat(6)}│
 ${row("  Product", pad48(displaySlug))}│
-${row("  Cache", this.cacheHit
-      ? "HIT  ✓ — served from memory, no DB round-trip  "
-      : "MISS ✗ — cold DB fetch                         ")}│
+${row("  Cache", cacheLabel)}│
   └${line}┘
+
+  Cache:
+    • L1 Lookup (memory)       : ${fmtMs(cacheLookup)}
+    • L2 Lookup (Redis)        : ${redisLookup > 0 ? fmtMs(redisLookup) : "skipped (L1 hit)"}
 
   DB Fetch:
     • Product Query            : ${fmtMs(dbProduct)}  ⚡ Only essential product data
@@ -153,7 +167,6 @@ ${row("  Cache", this.cacheHit
     • Reviews                  : ✓ Lazy-loaded via /api/products/reviews
 
   Backend:
-    • Cache Lookup             : ${fmtMs(cacheLookup)}
     • Processing Time          : ${fmtMs(processing)}  (serialization + mapping + validation)
     • Total Backend Time       : ${fmtMs(totalBackend)}
 

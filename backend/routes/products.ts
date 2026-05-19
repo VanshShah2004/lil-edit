@@ -12,24 +12,37 @@ import {
   type RecommendedTimingCallbacks
 } from "../lib/persistCatalog.js";
 import { PdpTimer } from "../lib/pdpPerfLogger.js";
+import {
+  redisGet,
+  redisSet,
+  redisDel,
+  redisKey,
+  PRODUCT_TTL_S,
+  REC_TTL_S,
+} from "../lib/redis.js";
 
-// ─── In-memory product detail cache (TTL = 5 min) ──────────────────────────
+// ─── In-process L1 cache (warm between requests on same dyno) ───────────────
+// Redis is L2. On a cache miss we check Redis first, then Supabase.
 const DETAIL_CACHE_TTL_MS = 5 * 60 * 1000;
 interface CacheEntry { payload: object; expiresAt: number; }
 const detailCache = new Map<string, CacheEntry>();
 
-function getCached(key: string): object | null {
+function getL1(key: string): object | null {
   const entry = detailCache.get(key);
   if (!entry) return null;
   if (Date.now() > entry.expiresAt) { detailCache.delete(key); return null; }
   return entry.payload;
 }
-function setCached(key: string, payload: object) {
+function setL1(key: string, payload: object) {
   detailCache.set(key, { payload, expiresAt: Date.now() + DETAIL_CACHE_TTL_MS });
 }
-// Invalidate on launch so a re-published product is never stale
-export function invalidateDetailCache(slug: string) { detailCache.delete(slug); }
-// ───────────────────────────────────────────────────────────────────────────
+
+// Bust both L1 and Redis on publish/update
+export async function invalidateDetailCache(slug: string): Promise<void> {
+  detailCache.delete(slug);
+  await redisDel(redisKey("pdp", slug), redisKey("rec", slug));
+}
+// ────────────────────────────────────────────────────────────────────────────
 
 const router = Router();
 
@@ -216,16 +229,29 @@ router.get("/detail", async (req: Request, res: Response) => {
   // ── Start perf timer for this request ────────────────────────────────────
   const timer = new PdpTimer(slug);
 
-  // ⚡ Cache lookup
-  const cacheKey = slug;
+  // ⚡ L1: in-process memory cache
   timer.start("cache_lookup");
-  const cached = getCached(cacheKey);
+  const l1Hit = getL1(slug);
   timer.end("cache_lookup");
 
-  if (cached) {
+  if (l1Hit) {
     timer.setCacheHit(true);
     timer.log();
-    res.json(cached);
+    res.json(l1Hit);
+    return;
+  }
+
+  // ⚡ L2: Redis cache
+  timer.start("redis_lookup");
+  const l2Hit = await redisGet<object>(redisKey("pdp", slug));
+  timer.end("redis_lookup");
+
+  if (l2Hit) {
+    timer.setCacheHit(true);
+    timer.setRedisHit(true);
+    timer.log();
+    setL1(slug, l2Hit); // warm L1 from Redis
+    res.json(l2Hit);
     return;
   }
 
@@ -270,8 +296,9 @@ router.get("/detail", async (req: Request, res: Response) => {
     const mappedProduct = mapDatabaseProductToFrontend(product, false);
     const responsePayload = { product: mappedProduct };
 
-    // 💾 Store in cache — subsequent hits return instantly
-    setCached(cacheKey, responsePayload);
+    // 💾 Store in L1 + L2
+    setL1(slug, responsePayload);
+    void redisSet(redisKey("pdp", slug), responsePayload, PRODUCT_TTL_S);
 
     // ── Emit perf report to server log before sending ─────────────────────
     timer.log();
@@ -331,6 +358,18 @@ router.get("/recommendations", async (req: Request, res: Response) => {
     // ── Start perf timer for recommendations request ────────────────────
     const timer = new PdpTimer(`rec:${slug}`);
 
+    // ⚡ Redis cache for recommendations (longer TTL — change less often)
+    timer.start("redis_lookup");
+    const cachedRec = await redisGet<{ recommended: object[] }>(redisKey("rec", slug));
+    timer.end("redis_lookup");
+
+    if (cachedRec) {
+      timer.setCacheHit(true);
+      timer.log();
+      res.json(cachedRec);
+      return;
+    }
+
     timer.start("db_rec_category");
     const recTimingCallbacks: RecommendedTimingCallbacks = {
       onCategoryQueryDone: () => timer.end("db_rec_category"),
@@ -341,13 +380,15 @@ router.get("/recommendations", async (req: Request, res: Response) => {
     const recommendedList = await fetchRecommendedProducts(slug, category || "", recTimingCallbacks);
     timer.end("db_recommendations");
 
-    // Map recommended products
     const mappedRecommended = (recommendedList || []).map(mapDatabaseToRecommended);
+    const recPayload = { recommended: mappedRecommended };
+
+    void redisSet(redisKey("rec", slug), recPayload, REC_TTL_S);
 
     // ── Emit perf report to server log ──────────────────────────────────
     timer.log();
 
-    res.json({ recommended: mappedRecommended });
+    res.json(recPayload);
   } catch (err) {
     // Graceful degradation: Return empty recommendations rather than failing the request
     console.error("[Recommendations] Error fetching recommendations:", err instanceof Error ? err.message : String(err));
@@ -400,8 +441,8 @@ router.post("/preview", async (req: Request, res: Response) => {
         database = { ok: true, draftProductId };
       } else {
         const { publishedProductId } = await launchProductToDatabase(data);
-        // Bust the detail cache so admins see fresh data immediately
-        invalidateDetailCache(String(data.slug ?? ""));
+        // Bust L1 + Redis so admins see fresh data immediately
+        void invalidateDetailCache(String(data.slug ?? ""));
         database = { ok: true, publishedProductId };
       }
     } catch (err) {
