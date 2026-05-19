@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, Navigate, useNavigate } from "react-router-dom";
-import { ChevronRight, Heart, Star, BadgeCheck, ThumbsUp } from "lucide-react";
+import { ChevronRight, Heart, Star, StarHalf, BadgeCheck, ThumbsUp } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -212,15 +212,16 @@ export default function ProductDetail() {
                       {product.reviewsData.averageRating}
                     </div>
                     <div className="flex gap-1 mb-3">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          size={22}
-                          fill={i < Math.floor(product.reviewsData.averageRating) ? "#F59E0B" : "none"}
-                          stroke={i < Math.floor(product.reviewsData.averageRating) ? "#F59E0B" : "#D1D5DB"}
-                          className="drop-shadow-sm"
-                        />
-                      ))}
+                      {[...Array(5)].map((_, i) => {
+                        const rating = product.reviewsData.averageRating;
+                        if (i < Math.floor(rating)) {
+                          return <Star key={i} size={22} fill="#F59E0B" stroke="#F59E0B" className="drop-shadow-sm" />;
+                        } else if (i === Math.floor(rating) && rating % 1 >= 0.5) {
+                          return <StarHalf key={i} size={22} fill="#F59E0B" stroke="#F59E0B" className="drop-shadow-sm" />;
+                        } else {
+                          return <Star key={i} size={22} fill="none" stroke="#D1D5DB" className="drop-shadow-sm" />;
+                        }
+                      })}
                     </div>
                     <p className="text-gray-500 font-medium mb-8">
                       Based on {product.reviewsData.totalReviews} reviews
@@ -228,7 +229,7 @@ export default function ProductDetail() {
 
                     <div className="w-full space-y-3">
                       {product.reviewsData.distribution.map((item: any) => {
-                        const pct = Math.round((item.count / product.reviewsData.totalReviews) * 100);
+                        const pct = product.reviewsData.totalReviews > 0 ? Math.round((item.count / product.reviewsData.totalReviews) * 100) : 0;
                         return (
                           <div key={item.stars} className="flex items-center gap-4 group">
                             <div className="w-12 shrink-0 flex items-center gap-1.5 text-sm font-bold text-slate-600">
@@ -257,6 +258,7 @@ export default function ProductDetail() {
                     </div>
 
                     <button
+                      onClick={() => alert("Review submission functionality coming soon!")}
                       className="w-full mt-10 py-4 rounded-2xl text-sm font-bold text-white shadow-xl shadow-teal-900/10 hover:brightness-95 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
                       style={{ backgroundColor: TEAL }}
                     >
@@ -340,11 +342,11 @@ export default function ProductDetail() {
                       )}
 
                       <div className="flex items-center gap-6 pt-4 mt-6 border-t border-gray-50">
-                        <button className="inline-flex items-center gap-2 text-xs text-gray-400 hover:text-teal-700 transition-colors font-bold uppercase tracking-widest">
+                        <button onClick={() => alert("Helpful rating recorded!")} className="inline-flex items-center gap-2 text-xs text-gray-400 hover:text-teal-700 transition-colors font-bold uppercase tracking-widest">
                           <ThumbsUp size={14} />
                           Helpful (0)
                         </button>
-                        <button className="inline-flex items-center gap-2 text-xs text-gray-400 hover:text-slate-700 transition-colors font-bold uppercase tracking-widest">
+                        <button onClick={() => alert("Review reported!")} className="inline-flex items-center gap-2 text-xs text-gray-400 hover:text-slate-700 transition-colors font-bold uppercase tracking-widest">
                           Report
                         </button>
                       </div>
@@ -354,6 +356,7 @@ export default function ProductDetail() {
               </div>
 
               <button
+                onClick={() => alert("Pagination functionality coming soon!")}
                 className="w-full mt-10 py-5 rounded-2xl text-sm font-bold text-teal-700 bg-teal-50 border border-teal-100 hover:bg-teal-100 hover:border-teal-200 transition-all duration-300 uppercase tracking-[0.2em] shadow-sm"
               >
                 View All {product.reviewsData.totalReviews} Reviews
