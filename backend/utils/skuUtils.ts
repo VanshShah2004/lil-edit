@@ -25,8 +25,6 @@ export const generateGenderCode = (gender: string): string => {
     "Boys": "BOY",
     "Girls": "GIRL",
     "Unisex": "UNI",
-    "Men": "MEN",
-    "Women": "WOMEN"
   };
   return map[gender] || "GEN";
 };

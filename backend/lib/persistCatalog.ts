@@ -691,9 +691,8 @@ export async function fetchProductTitleBySlug(slug: string): Promise<string | nu
   return data?.title ?? null;
 }
 
-export async function fetchProductBySlugAndSku(
-  slug: string,
-  _sku: string
+export async function fetchProductBySlug(
+  slug: string
 ): Promise<PdpProductRow | null> {
   const sb = requireAdmin();
 

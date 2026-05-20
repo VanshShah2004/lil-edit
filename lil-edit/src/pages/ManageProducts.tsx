@@ -607,7 +607,7 @@ const ManageProducts = () => {
             const elapsed = Math.round(performance.now() - fetchT0);
             clog(`[FRONTEND] RESPONSE LIST → ${elapsed}ms key=${key} rows=${data.products?.length ?? 0} [${listApiSource}]`);
             listCache.set(key, { data, timestamp: Date.now() });
-            clog(`[CACHE] LIST → STORED key=${key} (TTL 60s)`);
+            clog(`[CACHE] LIST → STORED key=${key} (TTL 600s)`);
             traceSteps.push(
               "Frontend Cache → MISS",
               `API → FETCHED (${elapsed}ms) [${listApiSource}]`,

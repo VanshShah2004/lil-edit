@@ -9,7 +9,7 @@ import {
   launchProductToDatabase,
   saveDraftToDatabase,
   deleteProductFromDatabase,
-  fetchProductBySlugAndSku,
+  fetchProductBySlug,
   fetchProductTitleBySlug,
   fetchRecommendedProducts,
   type RecommendedTimingCallbacks
@@ -292,7 +292,7 @@ router.get("/detail", async (req: Request, res: Response) => {
   try {
     // Fetch ONLY product — recommendations are lazy-loaded separately (non-blocking)
     timer.start("db_product");
-    const product = await fetchProductBySlugAndSku(slug, sku);
+    const product = await fetchProductBySlug(slug);
     timer.end("db_product");
 
     if (!product) {
