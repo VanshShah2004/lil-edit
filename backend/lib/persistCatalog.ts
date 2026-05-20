@@ -41,6 +41,17 @@ const MANAGE_DRAFT_SELECT = `
   draft_product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
 `.trim();
 
+/** Thin list projection — scalar fields + primary image only. No variants or all images. */
+const THIN_PRODUCT_SELECT = `
+  id, title, base_sku, price, created_at, updated_at,
+  product_images(image_url, is_primary)
+`.trim();
+
+const THIN_DRAFT_SELECT = `
+  id, title, base_sku, price, created_at, updated_at,
+  draft_product_images(image_url, is_primary)
+`.trim();
+
 /**
  * PDP detail query projection — only fields used by mapDatabaseProductToFrontend.
  * Excludes: id, status, total_stock, created_by, timestamps, and nested alt_text / campaign flags.
@@ -112,6 +123,29 @@ export interface PdpProductRow {
     is_unlimited: boolean;
     sort_order: number;
   }>;
+}
+
+export interface ThinProductRow {
+  base_sku: string;
+  title: string;
+  price: number;
+  created_at: string;
+  updated_at: string;
+  primary_image_url: string | null;
+  has_pending_updates: boolean;
+  is_published: boolean;
+  has_draft: boolean;
+}
+
+export interface ThinListResult {
+  products: ThinProductRow[];
+  totalCount: number;
+  hasMore: boolean;
+}
+
+export interface ProductDetailResult {
+  published: any | null;
+  draft: any | null;
 }
 
 async function insertImagesForProduct(
@@ -429,6 +463,123 @@ export async function fetchFilteredProducts(status: "ALL" | "PUBLISHED" | "DRAFT
   }
 }
 
+
+/**
+ * Thin catalog list — no variants, no full image arrays.
+ * Returns one row per unique base_sku with has_pending_updates computed from timestamps.
+ */
+export async function fetchThinProductList(
+  status: "ALL" | "PUBLISHED" | "DRAFT" = "ALL",
+  limit?: number
+): Promise<ThinListResult> {
+  const sb = requireAdmin();
+  const t0 = performance.now();
+
+  const [
+    { data: published, error: pubErr },
+    { data: drafts,    error: draftErr },
+  ] = await Promise.all([
+    sb.from("products")      .select(THIN_PRODUCT_SELECT).order("updated_at", { ascending: false }),
+    sb.from("draft_products").select(THIN_DRAFT_SELECT)  .order("updated_at", { ascending: false }),
+  ]);
+
+  if (pubErr)   throw pubErr;
+  if (draftErr) throw draftErr;
+
+  const map = new Map<string, ThinProductRow>();
+
+  for (const p of published ?? []) {
+    const imgs = ((p.product_images ?? []) as Array<{ image_url: string; is_primary: boolean }>);
+    const primaryImg = imgs.find(i => i.is_primary)?.image_url ?? imgs[0]?.image_url ?? null;
+    map.set(p.base_sku as string, {
+      base_sku:            p.base_sku   as string,
+      title:               p.title      as string,
+      price:               p.price      as number,
+      created_at:          p.created_at as string,
+      updated_at:          p.updated_at as string,
+      primary_image_url:   primaryImg,
+      has_pending_updates: false,
+      is_published:        true,
+      has_draft:           false,
+    });
+  }
+
+  for (const d of drafts ?? []) {
+    const existing = map.get(d.base_sku as string);
+    const dUpdatedAt = new Date(d.updated_at as string).getTime();
+
+    if (existing) {
+      existing.has_draft = true;
+      existing.has_pending_updates = dUpdatedAt > new Date(existing.updated_at).getTime();
+    } else {
+      const imgs = ((d.draft_product_images ?? []) as Array<{ image_url: string; is_primary: boolean }>);
+      const primaryImg = imgs.find(i => i.is_primary)?.image_url ?? imgs[0]?.image_url ?? null;
+      map.set(d.base_sku as string, {
+        base_sku:            d.base_sku   as string,
+        title:               d.title      as string,
+        price:               d.price      as number,
+        created_at:          d.created_at as string,
+        updated_at:          d.updated_at as string,
+        primary_image_url:   primaryImg,
+        has_pending_updates: false,
+        is_published:        false,
+        has_draft:           true,
+      });
+    }
+  }
+
+  let rows = Array.from(map.values());
+
+  if (status === "PUBLISHED") {
+    rows = rows.filter(r => r.is_published);
+  } else if (status === "DRAFT") {
+    rows = rows.filter(r => r.has_draft);
+  }
+
+  rows.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+
+  const totalCount = rows.length;
+  const hasMore    = limit ? totalCount > limit : false;
+  if (limit) rows  = rows.slice(0, limit);
+
+  if (IS_DEV) {
+    const total = performance.now() - t0;
+    console.log(`
+[Catalog] fetchThinProductList (${status}${limit ? ` / Top ${limit}` : ""})
+  • published=${published?.length ?? 0}  drafts=${drafts?.length ?? 0}  merged=${totalCount}  returned=${rows.length}
+  • Total: ${fms(total)}
+────────────────────────────────────────────────`);
+  }
+
+  return { products: rows, totalCount, hasMore };
+}
+
+/**
+ * Full product detail for a single base_sku — both published and draft versions.
+ * Used for lazy on-demand hydration when a catalog row is clicked.
+ */
+export async function fetchProductDetailBySku(baseSku: string): Promise<ProductDetailResult> {
+  const sb = requireAdmin();
+  const t0 = performance.now();
+
+  const [
+    { data: published, error: pubErr },
+    { data: draft,     error: draftErr },
+  ] = await Promise.all([
+    sb.from("products")      .select(MANAGE_PRODUCT_SELECT).eq("base_sku", baseSku).maybeSingle(),
+    sb.from("draft_products").select(MANAGE_DRAFT_SELECT)  .eq("base_sku", baseSku).maybeSingle(),
+  ]);
+
+  if (pubErr)   throw pubErr;
+  if (draftErr) throw draftErr;
+
+  if (IS_DEV) {
+    const total = performance.now() - t0;
+    console.log(`[Catalog] fetchProductDetailBySku(${baseSku})  ${fms(total)}`);
+  }
+
+  return { published: published ?? null, draft: draft ?? null };
+}
 
 export function isSupabaseCatalogConfigured(): boolean {
   return supabaseAdmin !== null;

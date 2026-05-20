@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -422,14 +422,20 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
 
 interface GroupedProduct {
   base_sku: string;
-  published?: ProductItem;
-  draft?: ProductItem;
-  // Metadata for the list view (prefers published data)
-  id: string;
   title: string;
   price: number;
-  image_url: string;
   created_at: string;
+  updated_at: string;
+  image_url: string | null;
+  has_pending_updates: boolean;
+  is_published: boolean;
+  has_draft: boolean;
+  // Hydrated after on-demand detail fetch
+  published?: ProductItem;
+  draft?: ProductItem;
+  detailLoaded?: boolean;
+  // legacy compat
+  id?: string;
   lastModified?: number;
 }
 
@@ -439,6 +445,8 @@ const ManageProducts = () => {
   const [products, setProducts] = useState<GroupedProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<GroupedProduct | null>(null);
   const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const detailCacheRef = useRef<Map<string, { published?: ProductItem; draft?: ProductItem }>>(new Map());
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"ALL" | "DRAFT" | "PUBLISHED">("ALL");
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
@@ -466,6 +474,60 @@ const ManageProducts = () => {
     DRAFT: false
   });
 
+  const fetchDetailForGroup = async (group: GroupedProduct) => {
+    const cached = detailCacheRef.current.get(group.base_sku);
+    if (cached) {
+      setProducts(prev => prev.map(p =>
+        p.base_sku === group.base_sku ? { ...p, ...cached, detailLoaded: true } : p
+      ));
+      setSelectedProduct(prev =>
+        prev?.base_sku === group.base_sku ? { ...prev, ...cached, detailLoaded: true } : prev
+      );
+      return;
+    }
+
+    setDetailLoading(true);
+    try {
+      const base = getBackendBaseUrl();
+      const res = await fetch(`${base}/api/products/catalog-detail?sku=${encodeURIComponent(group.base_sku)}`);
+      if (!res.ok) throw new Error("Failed to fetch product detail");
+      const data = await res.json();
+
+      const published: ProductItem | undefined = data.published
+        ? {
+            ...data.published,
+            status: "PUBLISHED" as const,
+            image_url: data.published.product_images?.find((i: ProductImage) => !i.variant_id)?.image_url
+              ?? data.published.product_images?.[0]?.image_url,
+          }
+        : undefined;
+
+      const draft: ProductItem | undefined = data.draft
+        ? {
+            ...data.draft,
+            status: "DRAFT" as const,
+            image_url: data.draft.draft_product_images?.find((i: ProductImage) => !i.variant_id)?.image_url
+              ?? data.draft.draft_product_images?.[0]?.image_url,
+          }
+        : undefined;
+
+      const detail = { published, draft };
+      detailCacheRef.current.set(group.base_sku, detail);
+
+      setProducts(prev => prev.map(p =>
+        p.base_sku === group.base_sku ? { ...p, ...detail, detailLoaded: true } : p
+      ));
+      setSelectedProduct(prev =>
+        prev?.base_sku === group.base_sku ? { ...prev, ...detail, detailLoaded: true } : prev
+      );
+    } catch (err) {
+      console.error("Error fetching product detail:", err);
+      toast.error("Failed to load product detail");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   const fetchProducts = async (
     status: "ALL" | "PUBLISHED" | "DRAFT",
     showAll: boolean
@@ -475,87 +537,40 @@ const ManageProducts = () => {
       const base = getBackendBaseUrl();
       const params = new URLSearchParams();
       params.append("status", status);
-      if (!showAll) {
-        params.append("limit", "10");
-      }
+      if (!showAll) params.append("limit", "10");
 
-      const res = await fetch(`${base}/api/products?${params.toString()}`);
+      const res = await fetch(`${base}/api/products/catalog-list?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch products");
       const data = await res.json();
 
-      const publishedSource = data.products?.published || data.published || [];
-      const draftsSource = data.products?.drafts || data.drafts || [];
-
-      const published = publishedSource.map((p: any) => ({
-        ...p,
-        status: "PUBLISHED" as const,
-        image_url: p.product_images?.find((i: ProductImage) => !i.variant_id)?.image_url
-          ?? p.product_images?.[0]?.image_url
-      })) ?? [];
-
-      const drafts = draftsSource.map((d: any) => ({
-        ...d,
-        status: "DRAFT" as const,
-        image_url: d.draft_product_images?.find((i: ProductImage) => !i.variant_id)?.image_url
-          ?? d.draft_product_images?.[0]?.image_url
-      })) ?? [];
-
-      // Grouping logic (preserves base_sku grouped versions)
-      const groupedMap = new Map<string, GroupedProduct>();
-
-      published.forEach((p: ProductItem) => {
-        groupedMap.set(p.base_sku, {
-          base_sku: p.base_sku,
-          published: p,
-          id: p.id,
-          title: p.title,
-          price: p.price,
-          image_url: p.image_url ?? "",
-          created_at: p.created_at
-        });
+      // Hydrate from detail cache if already loaded
+      const rows: GroupedProduct[] = (data.products ?? []).map((p: any) => {
+        const cached = detailCacheRef.current.get(p.base_sku);
+        return {
+          base_sku:            p.base_sku,
+          title:               p.title,
+          price:               p.price,
+          created_at:          p.created_at,
+          updated_at:          p.updated_at,
+          image_url:           p.primary_image_url ?? null,
+          has_pending_updates: !!p.has_pending_updates,
+          is_published:        !!p.is_published,
+          has_draft:           !!p.has_draft,
+          id:                  p.base_sku,
+          ...(cached ? { ...cached, detailLoaded: true } : {}),
+        };
       });
 
-      drafts.forEach((d: ProductItem) => {
-        const existing = groupedMap.get(d.base_sku);
-        if (existing) {
-          existing.draft = d;
-        } else {
-          groupedMap.set(d.base_sku, {
-            base_sku: d.base_sku,
-            draft: d,
-            id: d.id,
-            title: d.title,
-            price: d.price,
-            image_url: d.image_url ?? "",
-            created_at: d.created_at
-          });
-        }
-      });
+      setProducts(rows);
 
-      const all: GroupedProduct[] = Array.from(groupedMap.values())
-        .map(p => {
-          const pubTime = p.published?.updated_at ? new Date(p.published.updated_at).getTime() : 0;
-          const draftTime = p.draft?.updated_at ? new Date(p.draft.updated_at).getTime() : 0;
-          const lastModified = Math.max(pubTime, draftTime) || new Date(p.created_at).getTime();
-          return {
-            ...p,
-            lastModified
-          };
-        })
-        .sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
+      setHasMoreMap(prev => ({ ...prev, [status]: !!data.hasMore }));
 
-      setProducts(all);
-
-      setHasMoreMap(prev => ({
-        ...prev,
-        [status]: !!data.hasMore
-      }));
-
-      if (all.length > 0) {
-        const selectionExists = all.some(p => p.base_sku === selectedProduct?.base_sku);
-        if (!selectedProduct || !selectionExists) {
-          setSelectedProduct(all[0]);
-          setActiveVersion(all[0].draft ? "DRAFT" : "PUBLISHED");
+      if (rows.length > 0) {
+        const selectionExists = rows.some(p => p.base_sku === selectedProduct?.base_sku);
+        const target = (!selectedProduct || !selectionExists) ? rows[0] : rows.find(p => p.base_sku === selectedProduct.base_sku)!;
+        setSelectedProduct(target);
+        if (!target.detailLoaded) {
+          void fetchDetailForGroup(target);
         }
       } else {
         setSelectedProduct(null);
@@ -580,8 +595,11 @@ const ManageProducts = () => {
 
   const handleProductSelect = (product: GroupedProduct) => {
     setSelectedProduct(product);
-    setActiveVersion(product.draft ? "DRAFT" : "PUBLISHED");
+    setActiveVersion(product.has_draft && !product.is_published ? "DRAFT" : "PUBLISHED");
     setIsMobileDetailView(true);
+    if (!product.detailLoaded) {
+      void fetchDetailForGroup(product);
+    }
   };
 
   const handleEditProduct = (product: ProductItem) => {
@@ -647,7 +665,8 @@ const ManageProducts = () => {
 
       toast.success(`"${product.title}" has been successfully launched!`);
 
-      // Refresh the product list and selection
+      // Bust detail cache so fresh data is fetched after refresh
+      detailCacheRef.current.delete(product.base_sku);
       await fetchProducts(filterStatus, showAllMap[filterStatus]);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
@@ -670,7 +689,7 @@ const ManageProducts = () => {
 
       toast.success("Product permanently deleted");
 
-      // 1. Reconcile the in-memory grouped products list
+      // 1. Reconcile the in-memory grouped products list using thin-list flags
       let updatedSelectedProduct: GroupedProduct | null = null;
       let shouldSelectNext = false;
       const isDeletedSelected = selectedProduct?.base_sku === product.base_sku;
@@ -680,69 +699,56 @@ const ManageProducts = () => {
 
         for (const p of prev) {
           if (p.base_sku === product.base_sku) {
-            // Reconcile this group
             const reconciled: GroupedProduct = { ...p };
+
             if (product.status === "PUBLISHED") {
-              reconciled.published = undefined;
+              reconciled.published        = undefined;
+              reconciled.is_published     = false;
+              reconciled.has_pending_updates = false;
             } else if (product.status === "DRAFT") {
-              reconciled.draft = undefined;
+              reconciled.draft            = undefined;
+              reconciled.has_draft        = false;
+              reconciled.has_pending_updates = false;
             }
 
             // If both versions are gone, remove the group
-            if (!reconciled.published && !reconciled.draft) {
-              if (isDeletedSelected) {
-                shouldSelectNext = true;
-              }
+            if (!reconciled.is_published && !reconciled.has_draft) {
+              if (isDeletedSelected) shouldSelectNext = true;
               continue;
             }
 
-            // Rebuild grouped metadata using the surviving version
-            const survivor = (reconciled.draft || reconciled.published)!;
-            reconciled.id = survivor.id;
-            reconciled.title = survivor.title;
-            reconciled.price = survivor.price;
-            reconciled.image_url = survivor.image_url ?? p.image_url;
-            reconciled.created_at = survivor.created_at;
+            // Invalidate detail cache — version set has changed
+            detailCacheRef.current.delete(p.base_sku);
+            reconciled.detailLoaded = false;
 
-            const pubTime = reconciled.published?.updated_at ? new Date(reconciled.published.updated_at).getTime() : 0;
-            const draftTime = reconciled.draft?.updated_at ? new Date(reconciled.draft.updated_at).getTime() : 0;
-            reconciled.lastModified = Math.max(pubTime, draftTime) || new Date(reconciled.created_at).getTime();
+            // Update display image from surviving detail if available
+            if (product.status === "PUBLISHED" && reconciled.draft) {
+              reconciled.image_url = reconciled.draft.image_url ?? p.image_url;
+              reconciled.title     = reconciled.draft.title ?? p.title;
+              reconciled.price     = reconciled.draft.price ?? p.price;
+            }
 
             nextList.push(reconciled);
-
-            // If this is the currently selected product, update it
-            if (isDeletedSelected) {
-              updatedSelectedProduct = reconciled;
-            }
+            if (isDeletedSelected) updatedSelectedProduct = reconciled;
           } else {
             nextList.push(p);
           }
         }
 
-        // If the entire group was removed and was selected, choose the next selection
         if (shouldSelectNext) {
           const currentIndex = prev.findIndex(p => p.base_sku === product.base_sku);
-          const nextAvailable = nextList[currentIndex] || nextList[currentIndex - 1] || null;
-          updatedSelectedProduct = nextAvailable;
+          updatedSelectedProduct = nextList[currentIndex] || nextList[currentIndex - 1] || null;
         }
 
         return nextList;
       });
 
-      // Update selection and active version states ONLY if the deleted product was currently selected
+      // Update selection ONLY if the deleted product was currently selected
       if (isDeletedSelected) {
         if (updatedSelectedProduct) {
           setSelectedProduct(updatedSelectedProduct);
-          if (updatedSelectedProduct.draft && updatedSelectedProduct.published) {
-            setActiveVersion(prev => {
-              if (product.status === prev) {
-                return prev === "DRAFT" ? "PUBLISHED" : "DRAFT";
-              }
-              return prev;
-            });
-          } else {
-            setActiveVersion(updatedSelectedProduct.draft ? "DRAFT" : "PUBLISHED");
-          }
+          setActiveVersion(updatedSelectedProduct.has_draft && !updatedSelectedProduct.is_published ? "DRAFT" : "PUBLISHED");
+          void fetchDetailForGroup(updatedSelectedProduct);
         } else {
           setSelectedProduct(null);
           setIsMobileDetailView(false);
@@ -1059,7 +1065,7 @@ const ManageProducts = () => {
                           <h3 className={`text-xs font-bold truncate leading-tight ${selectedProduct?.base_sku === p.base_sku ? "text-gray-900" : "text-gray-600"}`}>{p.title}</h3>
                           <span className="text-[9px] text-gray-400 font-mono font-medium block mt-0.5">{p.base_sku}</span>
                         </div>
-                        {p.published ? (
+                        {p.is_published ? (
                           <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-gray-900 text-white whitespace-nowrap uppercase">Published</span>
                         ) : (
                           <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 whitespace-nowrap uppercase">Draft</span>
@@ -1068,7 +1074,7 @@ const ManageProducts = () => {
                       <div className="flex items-end justify-between mt-2">
                         <p className="text-[10px] font-bold text-gray-900">₹{p.price.toLocaleString()}</p>
                         <div className="flex flex-col items-end gap-1">
-                          {p.published && p.draft && hasPendingUpdates(p.draft, p.published) && (
+                          {p.has_pending_updates && (
                             <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 whitespace-nowrap uppercase">Updates To be Synced</span>
                           )}
                         </div>
@@ -1090,8 +1096,8 @@ const ManageProducts = () => {
               <ArrowLeft size={16} /> Back to Catalog
             </button>
             <div className="flex gap-2">
-              {selectedProduct?.published && <Badge variant="outline" className="text-[7px] font-bold uppercase">Live</Badge>}
-              {selectedProduct?.draft && (!selectedProduct.published || hasPendingUpdates(selectedProduct.draft, selectedProduct.published)) && (
+              {selectedProduct?.is_published && <Badge variant="outline" className="text-[7px] font-bold uppercase">Live</Badge>}
+              {selectedProduct?.has_draft && (!selectedProduct.is_published || selectedProduct.has_pending_updates) && (
                 <Badge variant="outline" className="text-[7px] font-bold uppercase bg-amber-50 text-amber-600 border-amber-100">Sync</Badge>
               )}
             </div>
@@ -1106,27 +1112,48 @@ const ManageProducts = () => {
                 exit={{ opacity: 0 }}
                 className="px-8 pt-2 pb-16 lg:px-16 lg:pt-4 lg:pb-20 max-w-5xl mx-auto"
               >
-                <div className="space-y-32">
-                  {[
-                    { type: "PUBLISHED" as const, data: selectedProduct.published, label: "Published Version" },
-                    {
-                      type: "DRAFT" as const,
-                      data: selectedProduct.draft,
-                      label: (selectedProduct.published && hasPendingUpdates(selectedProduct.draft, selectedProduct.published)) ? "Updates To be Synced" : "Draft Version"
-                    }
-                  ].filter(v => v.data && (v.type !== "DRAFT" || !selectedProduct.published || hasPendingUpdates(selectedProduct.draft, selectedProduct.published))).map((version, idx) => (
-                    <ProductVersionView
-                      key={version.type}
-                      version={version as any}
-                      isSecondary={idx > 0}
-                      isUpdate={!!selectedProduct.published && hasPendingUpdates(selectedProduct.draft, selectedProduct.published)}
-                      onEdit={handleEditProduct}
-                      onLaunch={handleLaunchProduct}
-                      onDelete={handleDeleteProduct}
-                      onDownloadPdf={handleDownloadPdf}
-                    />
-                  ))}
-                </div>
+                {!selectedProduct.detailLoaded ? (
+                  <div className="animate-pulse space-y-10 pt-6">
+                    <div className="space-y-3">
+                      <div className="h-7 bg-gray-100 rounded w-1/2" />
+                      <div className="h-3 bg-gray-100 rounded w-1/3" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
+                      <div className="md:col-span-4">
+                        <div className="aspect-[3/4] bg-gray-100 rounded" />
+                      </div>
+                      <div className="md:col-span-8 space-y-6 pt-2">
+                        {[...Array(6)].map((_, i) => (
+                          <div key={i} className="h-4 bg-gray-100 rounded" style={{ width: `${70 - i * 8}%` }} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-32">
+                    {[
+                      { type: "PUBLISHED" as const, data: selectedProduct.published, label: "Published Version" },
+                      {
+                        type: "DRAFT" as const,
+                        data: selectedProduct.draft,
+                        label: selectedProduct.has_pending_updates ? "Updates To be Synced" : "Draft Version",
+                      },
+                    ]
+                      .filter(v => v.data && (v.type !== "DRAFT" || !selectedProduct.is_published || selectedProduct.has_pending_updates))
+                      .map((version, idx) => (
+                        <ProductVersionView
+                          key={version.type}
+                          version={version as any}
+                          isSecondary={idx > 0}
+                          isUpdate={selectedProduct.is_published && selectedProduct.has_pending_updates}
+                          onEdit={handleEditProduct}
+                          onLaunch={handleLaunchProduct}
+                          onDelete={handleDeleteProduct}
+                          onDownloadPdf={handleDownloadPdf}
+                        />
+                      ))}
+                  </div>
+                )}
               </motion.div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center p-20 text-center opacity-30">

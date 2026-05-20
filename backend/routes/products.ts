@@ -2,6 +2,8 @@ import { Router, type Request, type Response } from "express";
 import {
   fetchAllProducts,
   fetchFilteredProducts,
+  fetchThinProductList,
+  fetchProductDetailBySku,
   isSupabaseCatalogConfigured,
   launchProductToDatabase,
   saveDraftToDatabase,
@@ -487,6 +489,39 @@ router.get("/preview", (_req: Request, res: Response) => {
   }
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.json(payload);
+});
+
+// GET /api/products/catalog-list — Thin initial list (scalars + primary image, no variants)
+router.get("/catalog-list", async (req: Request, res: Response) => {
+  try {
+    const status = (req.query.status as "ALL" | "PUBLISHED" | "DRAFT" | undefined) ?? "ALL";
+    const limitQuery = req.query.limit as string | undefined;
+    const limit = limitQuery ? parseInt(limitQuery, 10) : undefined;
+
+    const result = await fetchThinProductList(status, limit);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// GET /api/products/catalog-detail?sku=<base_sku> — Full detail for one product (lazy)
+router.get("/catalog-detail", async (req: Request, res: Response) => {
+  const sku = req.query.sku as string;
+  if (!sku) {
+    res.status(400).json({ error: "sku parameter is required." });
+    return;
+  }
+
+  try {
+    const { published, draft } = await fetchProductDetailBySku(sku);
+    res.json({
+      published: published ? { ...published, status: "PUBLISHED" } : null,
+      draft:     draft     ? { ...draft,      status: "DRAFT"      } : null,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 // DELETE /api/products/:id?status=DRAFT|PUBLISHED
