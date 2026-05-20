@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { invalidateAfterMutation } from "@/lib/catalogCache";
+import { buildPayloadFromForm } from "@/lib/buildProductPayload";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -113,35 +114,6 @@ const HEX_TO_NAME = Object.fromEntries(
   Object.entries(COLOR_MAP).map(([name, hex]) => [hex.toUpperCase(), name])
 );
 
-/** Payload shape stored by `backend/routes/products.ts` (raw JSON). */
-function buildCurationPayload(formData: FormData, imagePreviews: string[], isStockUnlimited: boolean): Record<string, unknown> {
-  return {
-    name: formData.name,
-    isStockUnlimited,
-    brand: formData.brand,
-    sku: formData.sku,
-    slug: formData.slug,
-    categorySlug: formData.categorySlug,
-    category: formData.category,
-    gender: formData.gender,
-    price: formData.price,
-    originalPrice: formData.originalPrice,
-    fabric: formData.fabric,
-    fit: formData.fit,
-    occasion: formData.occasion,
-    care_instructions: formData.care_instructions,
-    descriptionPoints: formData.descriptionPoints,
-    tags: formData.tags,
-    selectedSizes: formData.selectedSizes,
-    selectedColors: formData.selectedColors,
-    customBadges: formData.customBadges,
-    featured: formData.featured,
-    newArrival: formData.newArrival,
-    bestseller: formData.bestseller,
-    trending: formData.trending,
-    imagePreviews,
-  };
-}
 
 type PersistDatabaseResult =
   | { ok: true; draftProductId?: string; publishedProductId?: string }
@@ -155,7 +127,7 @@ async function sendCurationToBackend(
   isStockUnlimited: boolean
 ): Promise<{ database?: PersistDatabaseResult }> {
   const base = getBackendBaseUrl();
-  const body = { status, ...buildCurationPayload(formData, imagePreviews, isStockUnlimited) };
+  const body = { status, ...buildPayloadFromForm(formData, imagePreviews, isStockUnlimited) };
   const res = await fetch(`${base}/api/products/preview`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

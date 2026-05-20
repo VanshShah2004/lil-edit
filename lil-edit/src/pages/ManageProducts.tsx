@@ -15,6 +15,7 @@ import {
   Zap
 } from "lucide-react";
 import { getBackendBaseUrl } from "@/lib/backend";
+import { buildPayloadFromProduct } from "@/lib/buildProductPayload";
 import UserNavbar from "@/components/home/UserNavbar";
 import Navbar from "@/components/layout/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -685,42 +686,9 @@ const ManageProducts = () => {
       const images = product.status === "DRAFT" ? product.draft_product_images : product.product_images;
       const variants = product.status === "DRAFT" ? product.draft_product_variants : product.product_variants;
 
-      // Construct payload compatible with backend/lib/persistCatalog.ts
       const payload = {
         status: "PUBLISHED",
-        name: product.title || "Untitled Product",
-        brand: product.brand || "The Lil Edit",
-        sku: product.base_sku || "SKU-UNKNOWN",
-        slug: product.slug || "",
-        categorySlug: product.category_slug || "",
-        category: product.category || "General",
-        gender: product.gender || "Unisex",
-        price: String(product.price ?? 0),
-        originalPrice: String(product.original_price ?? ""),
-        fabric: product.fabric || "",
-        fit: product.fit || "",
-        occasion: product.occasion || "",
-        care_instructions: product.care_instructions || "",
-        descriptionPoints: product.description_points || [],
-        tags: product.tags || [],
-        selectedSizes: product.sizes || [],
-        customBadges: product.badges || [],
-        featured: !!product.is_featured,
-        newArrival: !!product.is_new_arrival,
-        bestseller: !!product.is_bestseller,
-        trending: !!product.is_trending,
-        isStockUnlimited: !!product.is_unlimited,
-        // Global images (no variant_id)
-        imagePreviews: images?.filter(img => !img.variant_id).map(img => img.image_url) || [],
-        // Map variants and their specific images
-        selectedColors: variants?.map(v => ({
-          name: v.color_name || "Color",
-          hex: v.color_hex || "#cccccc",
-          sku: v.variant_sku || "",
-          stock: v.is_unlimited ? null : Number(v.stock ?? 0),
-          isUnlimited: !!v.is_unlimited,
-          images: images?.filter(img => img.variant_id === v.id).map(img => img.image_url) || []
-        })) || []
+        ...buildPayloadFromProduct(product, images || [], variants || []),
       };
 
       const res = await fetch(`${base}/api/products/preview`, {

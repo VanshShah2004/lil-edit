@@ -75,7 +75,7 @@ const PDP_PRODUCT_SELECT = `
   product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
 `.trim();
 
-/** Row shape returned by fetchProductBySlugAndSku (PDP detail). */
+/** Row shape returned by fetchProductBySlug (PDP detail). */
 export interface PdpProductRow {
   title: string;
   slug: string;
