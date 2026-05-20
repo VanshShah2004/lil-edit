@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -460,7 +460,6 @@ const ManageProducts = () => {
   const [products, setProducts] = useState<GroupedProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<GroupedProduct | null>(null);
   const [loading, setLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"ALL" | "DRAFT" | "PUBLISHED">("ALL");
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
@@ -512,7 +511,6 @@ const ManageProducts = () => {
     if (existing) {
       clog(`[CACHE] DETAIL → USING IN-FLIGHT REQUEST sku=${sku}`);
       const waitT0 = performance.now();
-      setDetailLoading(true);
       try {
         const detail = await existing;
         const waited = Math.round(performance.now() - waitT0);
@@ -525,8 +523,6 @@ const ManageProducts = () => {
         ]);
       } catch {
         // error already surfaced by the original in-flight caller
-      } finally {
-        setDetailLoading(false);
       }
       return;
     }
@@ -550,7 +546,6 @@ const ManageProducts = () => {
     })();
 
     detailInFlight.set(sku, fetchPromise);
-    setDetailLoading(true);
 
     try {
       const detail = await fetchPromise;
@@ -567,7 +562,6 @@ const ManageProducts = () => {
       toast.error("Failed to load product detail");
     } finally {
       detailInFlight.delete(sku);
-      setDetailLoading(false);
     }
   };
 
@@ -1061,10 +1055,13 @@ const ManageProducts = () => {
     setTimeout(() => { win.print(); }, 600);
   };
 
-  const filteredProducts = products.filter(p => {
-    return p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.base_sku.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+  const filteredProducts = useMemo(() =>
+    products.filter(p =>
+      p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.base_sku.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
+    [products, searchTerm]
+  );
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 

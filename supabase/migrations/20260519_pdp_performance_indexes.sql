@@ -150,10 +150,13 @@ CREATE INDEX IF NOT EXISTS idx_draft_product_images_product_id
 -- =============================================================================
 -- REDUNDANCY CHECK
 -- =============================================================================
--- base_sku UNIQUE constraint:  already added by 20240515_sku_counters.sql via
---   ALTER TABLE products ADD CONSTRAINT unique_product_sku UNIQUE (base_sku).
---   A UNIQUE constraint implicitly creates a B-Tree index.  We do NOT add
---   another index on base_sku.
+-- base_sku UNIQUE constraints:  already added by 20240515_sku_counters.sql via
+--   ALTER TABLE products       ADD CONSTRAINT unique_product_sku       UNIQUE (base_sku)
+--   ALTER TABLE draft_products ADD CONSTRAINT unique_draft_product_sku UNIQUE (base_sku)
+--   A UNIQUE constraint implicitly creates a B-Tree index on both tables.
+--   Queries using .eq("base_sku", sku) or .in("base_sku", skus) on either
+--   table (fetchProductDetailBySku, fetchFilteredProducts ALL mode) already
+--   benefit from these indexes.  We do NOT add duplicate indexes.
 --
 -- products.id (PRIMARY KEY):  Supabase creates a B-Tree index automatically.
 --   Not duplicated here.
