@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invalidateAfterMutation } from "@/lib/catalogCache";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -750,6 +751,7 @@ const EditProduct = () => {
         toast.warning(database.reason);
       } else {
         toast.success("Changes saved to drafts!");
+        invalidateAfterMutation(formData.sku || undefined);
         setInitialState({
           formData: JSON.parse(JSON.stringify(updatedFormData)),
           globalImages: [...imagePreviews],

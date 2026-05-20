@@ -362,28 +362,11 @@ interface GroupedProduct {
 }
 
 // ─── Module-level in-memory caches (survive re-renders and remounts) ─────────
-
-const LIST_TTL_MS   = 10 * 60_000; // 10 min — matches CATALOG_LIST_TTL_S on backend
-const DETAIL_TTL_MS = 2 * 60_000; // 2 min
-
-interface ListCacheEntry   { data: any; timestamp: number; }
-interface DetailCacheEntry {
-  data: { published?: ProductItem; draft?: ProductItem };
-  timestamp: number;
-}
-
-const listCache      = new Map<string, ListCacheEntry>();
-const detailCache    = new Map<string, DetailCacheEntry>();
-const listInFlight   = new Map<string, Promise<any>>();
-const detailInFlight = new Map<string, Promise<{ published?: ProductItem; draft?: ProductItem }>>();
-
-function listCacheKey(status: string, showAll: boolean): string {
-  return `${status}_${showAll ? "ALL" : "10"}`;
-}
-
-function isExpired(timestamp: number, ttlMs: number): boolean {
-  return Date.now() - timestamp > ttlMs;
-}
+import {
+  LIST_TTL_MS, DETAIL_TTL_MS,
+  listCache, detailCache, listInFlight, detailInFlight,
+  listCacheKey, isExpired, invalidateAfterMutation,
+} from "@/lib/catalogCache";
 
 /** Dev-only — set VITE_DEBUG_CACHE=true to enable in production builds */
 const DEBUG_CACHE = import.meta.env.DEV || import.meta.env.VITE_DEBUG_CACHE === "true";
@@ -754,11 +737,28 @@ const ManageProducts = () => {
 
       toast.success(`"${product.title}" has been successfully launched!`);
 
+      // Optimistic update — reflect launched state immediately, no re-fetch or spinner
+      const optimisticPublished: ProductItem = { ...product, status: "PUBLISHED" as const };
+      const applyLaunch = (p: GroupedProduct): GroupedProduct =>
+        p.base_sku === product.base_sku
+          ? { ...p, is_published: true, has_draft: false, has_pending_updates: false,
+              published: optimisticPublished, draft: undefined, detailLoaded: true }
+          : p;
+      setProducts(prev => {
+        const mapped = prev.map(applyLaunch);
+        const idx = mapped.findIndex(p => p.base_sku === product.base_sku);
+        if (idx <= 0) return mapped;
+        return [mapped[idx], ...mapped.slice(0, idx), ...mapped.slice(idx + 1)];
+      });
+      setSelectedProduct(prev => prev ? applyLaunch(prev) : prev);
+
       // Bust caches — product status changed, stale data must not be served
       clog(`[CACHE] INVALIDATE → launch sku=${product.base_sku} (frontend: list cleared + detail evicted)`);
-      detailCache.delete(product.base_sku);
-      listCache.clear();
-      await fetchProducts(filterStatus, showAllMap[filterStatus]);
+      invalidateAfterMutation(product.base_sku);
+
+      // Silent background refresh — backend created a new published row with a new ID;
+      // applyDetail will overwrite the optimistic object with the canonical one once resolved
+      void fetchDetailForGroup({ base_sku: product.base_sku } as GroupedProduct);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     }
@@ -811,8 +811,7 @@ const ManageProducts = () => {
 
             // Bust caches — version set has changed
             clog(`[CACHE] INVALIDATE → delete sku=${p.base_sku} status=${product.status} (frontend: list cleared + detail evicted)`);
-            detailCache.delete(p.base_sku);
-            listCache.clear();
+            invalidateAfterMutation(p.base_sku);
             reconciled.detailLoaded = false;
 
             // Update display image from surviving detail if available

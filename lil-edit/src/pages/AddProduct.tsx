@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invalidateAfterMutation } from "@/lib/catalogCache";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -531,6 +532,7 @@ const AddProduct = () => {
         toast.warning(database.reason);
       } else {
         toast.success("Draft saved to Supabase (draft tables).");
+        invalidateAfterMutation(formData.sku || undefined);
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not reach the backend. Is it running on port 5000?");

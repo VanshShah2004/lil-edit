@@ -445,9 +445,13 @@ function buildPublicPayload(): Record<string, unknown> | null {
 
 // POST /api/products/preview — Curation Studio + optional Supabase persistence
 router.post("/preview", async (req: Request, res: Response) => {
+  const t0 = performance.now();
   const { status, ...data } = req.body as { status: string; [key: string]: unknown };
 
   const normalized: "DRAFT" | "PUBLISHED" = status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
+  const sku  = String(data.sku  ?? "UNKNOWN");
+  const name = String(data.name ?? "Untitled");
+  const slug = String(data.slug ?? "");
 
   lastProduct = {
     status: normalized,
@@ -455,10 +459,7 @@ router.post("/preview", async (req: Request, res: Response) => {
     data,
   };
 
-  console.log(
-    `\n[Products] Received ${lastProduct.status}: "${(data as { name?: string }).name ?? "Untitled"}"\n`
-  );
-  console.log("[Products] payload body:", JSON.stringify(data, null, 2));
+  if (IS_DEV) console.log(`[API] ${normalized} REQUEST RECEIVED → sku=${sku} name="${name}"`);
 
   const previewPath = "/api/products/preview";
   const payload = buildPublicPayload();
@@ -471,18 +472,23 @@ router.post("/preview", async (req: Request, res: Response) => {
   if (isSupabaseCatalogConfigured()) {
     try {
       if (normalized === "DRAFT") {
+        if (IS_DEV) console.log(`[DB] DRAFT → saveDraftToDatabase sku=${sku}`);
         const { draftProductId } = await saveDraftToDatabase(data);
         database = { ok: true, draftProductId };
+        if (IS_DEV) console.log(`[API] DRAFT RESPONSE → ${Math.round(performance.now() - t0)}ms sku=${sku} draftId=${draftProductId}`);
       } else {
+        if (IS_DEV) console.log(`[DB] LAUNCH → launchProductToDatabase sku=${sku}`);
         const { publishedProductId } = await launchProductToDatabase(data);
         // Bust PDP L1 + PDP Redis + catalog Redis so all caches reflect new state
-        void invalidateDetailCache(String(data.slug ?? ""));
-        void invalidateCatalogCaches(String(data.sku ?? ""));
+        void invalidateDetailCache(slug);
+        void invalidateCatalogCaches(sku);
+        if (IS_DEV) console.log(`[REDIS] LAUNCH → INVALIDATE pdp=${slug} catalog-detail=${sku} catalog-list=all`);
         database = { ok: true, publishedProductId };
+        if (IS_DEV) console.log(`[API] LAUNCH RESPONSE → ${Math.round(performance.now() - t0)}ms sku=${sku} publishedId=${publishedProductId}`);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error("[Products] Supabase persist failed:", message);
+      console.error(`[API] ${normalized} FAILED → ${Math.round(performance.now() - t0)}ms sku=${sku} error="${message}"`);
       database = { ok: false, error: message };
       res.status(500).json({
         ok: false,
@@ -500,6 +506,7 @@ router.post("/preview", async (req: Request, res: Response) => {
       reason:
         "Set SUPABASE_SERVICE_ROLE_KEY (or VITE_SUPABASE_SERVICE_KEY) in backend/.env to persist drafts and launches.",
     };
+    if (IS_DEV) console.log(`[API] ${normalized} SKIPPED → Supabase not configured`);
   }
 
   res.json({
