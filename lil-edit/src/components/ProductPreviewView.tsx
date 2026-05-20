@@ -384,7 +384,7 @@ const ProductPreviewView = ({
               </div>
               <div className="p-3 rounded-xl bg-[#F9F8FA] border border-border/30">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Care</p>
-                <p className="text-xs font-medium">{product.care}</p>
+                <p className="text-xs font-medium">{product.care_instructions}</p>
               </div>
             </div>
 

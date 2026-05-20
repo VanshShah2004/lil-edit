@@ -61,7 +61,7 @@ interface FormData {
   fabric: string;
   fit: string;
   occasion: string;
-  care: string;
+  care_instructions: string;
   descriptionPoints: string[];
   selectedSizes: string[];
   selectedColors: {
@@ -129,7 +129,7 @@ function buildCurationPayload(formData: FormData, imagePreviews: string[], isSto
     fabric: formData.fabric,
     fit: formData.fit,
     occasion: formData.occasion,
-    care: formData.care,
+    care_instructions: formData.care_instructions,
     descriptionPoints: formData.descriptionPoints,
     tags: formData.tags,
     selectedSizes: formData.selectedSizes,
@@ -218,7 +218,7 @@ const mapFormDataToProduct = (formData: FormData, imagePreviews: string[], isSto
     fabric: formData.fabric || "Not specified",
     fit: formData.fit || "Not specified",
     occasion: formData.occasion || "General wear",
-    care: formData.care || "Not specified",
+    care_instructions: formData.care_instructions || "Not specified",
     images: productImages,
     sizes: formData.selectedSizes.length > 0 ? formData.selectedSizes : ["Free Size"],
     colors: colors.length > 0 ? colors : [],
@@ -255,7 +255,7 @@ const AddProduct = () => {
     fabric: "",
     fit: "",
     occasion: "",
-    care: "",
+    care_instructions: "",
     descriptionPoints: [],
     selectedSizes: [],
     selectedColors: [],
@@ -746,8 +746,8 @@ const AddProduct = () => {
                       </label>
                       <input
                         type="text"
-                        name="care"
-                        value={formData.care}
+                        name="care_instructions"
+                        value={formData.care_instructions}
                         onChange={handleInputChange}
                         placeholder="e.g. Dry Clean Only"
                         className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"

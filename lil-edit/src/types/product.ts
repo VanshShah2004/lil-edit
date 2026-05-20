@@ -53,7 +53,7 @@ export interface Product {
   fabric: string;
   fit: string;
   occasion: string;
-  care: string;
+  care_instructions: string;
   sizes: string[];
   images: ProductImage[];
   colors: ProductColor[];

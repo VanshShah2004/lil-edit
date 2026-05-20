@@ -91,26 +91,15 @@ router.get("/", async (req: Request, res: Response) => {
       res.json({
         published: data.published,
         drafts: data.drafts,
-        products: {
-          published: data.published,
-          drafts: data.drafts
-        },
         totalCount: data.totalCount,
-        total: data.totalCount,
         hasMore: data.hasMore
       });
     } else {
-      // Default fallback (backward compatible with no query parameters)
       const data = await fetchAllProducts();
       res.json({
         published: data.published,
         drafts: data.drafts,
-        products: {
-          published: data.published,
-          drafts: data.drafts
-        },
         totalCount: data.published.length + data.drafts.length,
-        total: data.published.length + data.drafts.length,
         hasMore: false
       });
     }
@@ -219,7 +208,7 @@ function mapDatabaseProductToFrontend(dbProduct: any, isDraft: boolean) {
     fabric: dbProduct.fabric || "",
     fit: dbProduct.fit || "",
     occasion: dbProduct.occasion || "",
-    care: dbProduct.care_instructions || "",
+    care_instructions: dbProduct.care_instructions || "",
     sizes: dbProduct.sizes || [],
     images: globalImages.length > 0 ? globalImages : mappedImages,
     colors: colors,

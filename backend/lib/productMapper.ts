@@ -143,7 +143,7 @@ export function mapCurationPayloadToCatalog(data: CurationPayload): {
     fabric: asString(data.fabric).trim() || null,
     fit: asString(data.fit).trim() || null,
     occasion: asString(data.occasion).trim() || null,
-    care_instructions: asString(data.care).trim() || null,
+    care_instructions: asString(data.care_instructions).trim() || null,
     description_points: asStringArray(data.descriptionPoints),
     sizes:
       asStringArray(data.selectedSizes).length > 0

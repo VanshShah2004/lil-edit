@@ -59,7 +59,6 @@ interface ProductItem {
   fabric?: string;
   fit?: string;
   occasion?: string;
-  care?: string;
   care_instructions?: string;
   description_points?: string[];
   gender?: string;
@@ -253,7 +252,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
                 { label: "Fabrication", value: p.fabric || "N/A" },
                 { label: "Silhouette", value: p.fit || "N/A" },
                 { label: "Occasion", value: p.occasion || "N/A" },
-                { label: "Maintenance", value: p.care_instructions || p.care || "N/A" }
+                { label: "Maintenance", value: p.care_instructions || "N/A" }
               ].map((item, i) => (
                 <div key={i} className="space-y-1">
                   <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{item.label}</p>
@@ -701,7 +700,7 @@ const ManageProducts = () => {
         fabric: product.fabric || "",
         fit: product.fit || "",
         occasion: product.occasion || "",
-        care: product.care_instructions || product.care || "",
+        care_instructions: product.care_instructions || "",
         descriptionPoints: product.description_points || [],
         tags: product.tags || [],
         selectedSizes: product.sizes || [],
@@ -993,7 +992,7 @@ const ManageProducts = () => {
           <div><div class="label">Fabrication</div><div class="value">${product.fabric ?? 'N/A'}</div></div>
           <div><div class="label">Silhouette</div><div class="value">${product.fit ?? 'N/A'}</div></div>
           <div><div class="label">Occasion</div><div class="value">${product.occasion ?? 'N/A'}</div></div>
-          <div><div class="label">Maintenance</div><div class="value">${product.care_instructions ?? product.care ?? 'N/A'}</div></div>
+          <div><div class="label">Maintenance</div><div class="value">${product.care_instructions ?? 'N/A'}</div></div>
         </div>
 
         <div class="grid">
@@ -1011,7 +1010,7 @@ const ManageProducts = () => {
             </div>
           </div>
           <div><div class="label">Occasion</div><div class="value">${product.occasion ?? 'N/A'}</div></div>
-          <div><div class="label">Maintenance</div><div class="value">${product.care_instructions ?? product.care ?? 'N/A'}</div></div>
+          <div><div class="label">Maintenance</div><div class="value">${product.care_instructions ?? 'N/A'}</div></div>
         </div>
 
         ${variants.length > 0 ? `

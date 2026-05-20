@@ -709,15 +709,16 @@ export async function fetchRecommendedProducts(
 ) {
   const sb = requireAdmin();
 
+  const REC_SELECT = `
+    title, slug, category_slug, price, original_price, base_sku, tags,
+    product_images(image_url, is_primary)
+  `;
+
   // Query 1: same-category products (excluding current product)
   // ⚡ Optimized: Uses indexed category_slug + slug filters, limits early
   const { data: recommended, error: recErr } = await sb
     .from("products")
-    .select(`
-      *,
-      product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
-      product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
-    `)
+    .select(REC_SELECT)
     .eq("category_slug", categorySlug)
     .neq("slug", slug)
     .limit(5);
@@ -737,11 +738,7 @@ export async function fetchRecommendedProducts(
     timingCallbacks?.onPadQueryStart?.();
     const { data: general, error: genErr } = await sb
       .from("products")
-      .select(`
-        *,
-        product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
-        product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
-      `)
+      .select(REC_SELECT)
       .neq("slug", slug)
       .order("updated_at", { ascending: false })
       .limit(5);
