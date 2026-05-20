@@ -169,7 +169,7 @@ async function insertImagesForProduct(
   });
 
   const { error } = await client.from(table).insert(rows);
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 async function insertVariantsAndMap(
@@ -192,7 +192,7 @@ async function insertVariantsAndMap(
   }));
 
   const { data, error } = await client.from(table).insert(rows).select("id, color_name");
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   for (const row of data ?? []) {
     map.set(row.color_name as string, row.id as string);
   }
@@ -240,7 +240,7 @@ export async function launchProductToDatabase(data: CurationPayload): Promise<{ 
     p_images:   images,
   });
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return { publishedProductId: publishedProductId as string };
 }
 
@@ -663,7 +663,7 @@ export async function deleteProductFromDatabase(id: string, status: "DRAFT" | "P
     p_status: status,
   });
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
 }
 
 /** Minimal lookup for lazy-loaded reviews (title only). */
@@ -674,7 +674,7 @@ export async function fetchProductTitleBySlug(slug: string): Promise<string | nu
     .select("title")
     .eq("slug", slug)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data?.title ?? null;
 }
 

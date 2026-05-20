@@ -698,8 +698,8 @@ const ManageProducts = () => {
       });
 
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Failed to launch product");
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || errData.database?.error || "Failed to launch product");
       }
 
       toast.success(`"${product.title}" has been successfully launched!`);
