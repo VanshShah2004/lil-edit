@@ -78,84 +78,6 @@ interface ProductItem {
   is_unlimited?: boolean;
 }
 
-const hasPendingUpdates = (draft: any, published: any): boolean => {
-  if (!draft || !published) return false;
-
-  // 1. Basic Fields Comparison
-  const basicFields = [
-    "title", "brand", "base_sku", "slug", "category", "category_slug",
-    "gender", "price", "original_price", "fabric", "fit", "occasion",
-    "care_instructions", "is_featured", "is_new_arrival", "is_bestseller",
-    "is_trending", "is_unlimited"
-  ];
-  for (const field of basicFields) {
-    if (draft[field] !== published[field]) return true;
-  }
-
-  // 2. Arrays Comparison
-  const arrayFields = ["description_points", "sizes", "tags", "badges"];
-  for (const field of arrayFields) {
-    const arr1 = Array.isArray(draft[field]) ? draft[field] : [];
-    const arr2 = Array.isArray(published[field]) ? published[field] : [];
-    if (arr1.length !== arr2.length || JSON.stringify([...arr1].sort()) !== JSON.stringify([...arr2].sort())) {
-      return true;
-    }
-  }
-
-  // 3. Variants Comparison
-  const dVars = draft.draft_product_variants || [];
-  const pVars = published.product_variants || [];
-  if (dVars.length !== pVars.length) return true;
-
-  const dVarsMapped = dVars.map((v: any) => ({
-    color_name: v.color_name,
-    color_hex: v.color_hex,
-    variant_sku: v.variant_sku,
-    stock: v.is_unlimited ? null : v.stock,
-    is_unlimited: !!v.is_unlimited
-  })).sort((a: any, b: any) => a.variant_sku.localeCompare(b.variant_sku));
-
-  const pVarsMapped = pVars.map((v: any) => ({
-    color_name: v.color_name,
-    color_hex: v.color_hex,
-    variant_sku: v.variant_sku,
-    stock: v.is_unlimited ? null : v.stock,
-    is_unlimited: !!v.is_unlimited
-  })).sort((a: any, b: any) => a.variant_sku.localeCompare(b.variant_sku));
-
-  if (JSON.stringify(dVarsMapped) !== JSON.stringify(pVarsMapped)) return true;
-
-  // 4. Images Comparison
-  const dImgs = draft.draft_product_images || [];
-  const pImgs = published.product_images || [];
-  if (dImgs.length !== pImgs.length) return true;
-
-  const dImgsMapped = dImgs.map((img: any) => {
-    const vColor = img.variant_id ? dVars.find((v: any) => v.id === img.variant_id)?.color_name : null;
-    return {
-      image_url: img.image_url,
-      alt_text: img.alt_text || "",
-      is_primary: !!img.is_primary,
-      sort_order: img.sort_order || 0,
-      color: vColor
-    };
-  }).sort((a: any, b: any) => a.image_url.localeCompare(b.image_url));
-
-  const pImgsMapped = pImgs.map((img: any) => {
-    const vColor = img.variant_id ? pVars.find((v: any) => v.id === img.variant_id)?.color_name : null;
-    return {
-      image_url: img.image_url,
-      alt_text: img.alt_text || "",
-      is_primary: !!img.is_primary,
-      sort_order: img.sort_order || 0,
-      color: vColor
-    };
-  }).sort((a: any, b: any) => a.image_url.localeCompare(b.image_url));
-
-  if (JSON.stringify(dImgsMapped) !== JSON.stringify(pImgsMapped)) return true;
-
-  return false;
-};
 
 const isPlaceholderDescription = (pts?: string[]) => {
   if (!pts || pts.length === 0) return true;
@@ -474,6 +396,62 @@ function traceFlow(type: "LIST" | "DETAIL", steps: string[]): void {
   console.log(`[TRACE] ${type} FLOW:\n${steps.map(s => `  ${s}`).join("\n")}`);
 }
 
+function mapDetailResponse(data: any): { published?: ProductItem; draft?: ProductItem } {
+  const published: ProductItem | undefined = data.published
+    ? {
+        ...data.published,
+        status: "PUBLISHED" as const,
+        image_url: data.published.product_images?.find((i: ProductImage) => !i.variant_id)?.image_url
+          ?? data.published.product_images?.[0]?.image_url,
+      }
+    : undefined;
+  const draft: ProductItem | undefined = data.draft
+    ? {
+        ...data.draft,
+        status: "DRAFT" as const,
+        image_url: data.draft.draft_product_images?.find((i: ProductImage) => !i.variant_id)?.image_url
+          ?? data.draft.draft_product_images?.[0]?.image_url,
+      }
+    : undefined;
+  return { published, draft };
+}
+
+function prefetchDetailForSku(sku: string): void {
+  if (detailInFlight.has(sku)) return;
+  const entry = detailCache.get(sku);
+  if (entry && !isExpired(entry.timestamp, DETAIL_TTL_MS)) return;
+
+  clog(`[CACHE] DETAIL → PREFETCH sku=${sku}`);
+  const p = fetch(`${getBackendBaseUrl()}/api/products/catalog-detail?sku=${encodeURIComponent(sku)}`)
+    .then(res => { if (!res.ok) throw new Error("prefetch failed"); return res.json(); })
+    .then(data => mapDetailResponse(data));
+
+  detailInFlight.set(sku, p);
+  p.then(detail => {
+    detailCache.set(sku, { data: detail, timestamp: Date.now() });
+    clog(`[CACHE] DETAIL → PREFETCH STORED sku=${sku}`);
+  }).catch(() => {}).finally(() => detailInFlight.delete(sku));
+}
+
+function prefetchList(status: "ALL" | "PUBLISHED" | "DRAFT", showAll: boolean): void {
+  const key = listCacheKey(status, showAll);
+  if (listInFlight.has(key)) return;
+  const entry = listCache.get(key);
+  if (entry && !isExpired(entry.timestamp, LIST_TTL_MS)) return;
+
+  clog(`[CACHE] LIST → PREFETCH key=${key}`);
+  const params = new URLSearchParams({ status });
+  if (!showAll) params.append("limit", "10");
+  const p = fetch(`${getBackendBaseUrl()}/api/products/catalog-list?${params}`)
+    .then(res => { if (!res.ok) throw new Error("prefetch failed"); return res.json(); });
+
+  listInFlight.set(key, p);
+  p.then(data => {
+    listCache.set(key, { data, timestamp: Date.now() });
+    clog(`[CACHE] LIST → PREFETCH STORED key=${key}`);
+  }).catch(() => {}).finally(() => listInFlight.delete(key));
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ManageProducts = () => {
@@ -486,10 +464,6 @@ const ManageProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"ALL" | "DRAFT" | "PUBLISHED">("ALL");
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
-  const [activeImage, setActiveImage] = useState<string | null>(null);
-  const [activeImageTab, setActiveImageTab] = useState<string>("Global");
-  const [activeVersion, setActiveVersion] = useState<"PUBLISHED" | "DRAFT">("PUBLISHED");
-
   const [showAllMap, setShowAllMap] = useState<{
     ALL: boolean;
     PUBLISHED: boolean;
@@ -572,26 +546,7 @@ const ManageProducts = () => {
       const data = await res.json();
       fetchElapsed = Math.round(performance.now() - t0);
       clog(`[FRONTEND] RESPONSE DETAIL → ${fetchElapsed}ms sku=${sku} [${detailApiSource}]`);
-
-      const published: ProductItem | undefined = data.published
-        ? {
-            ...data.published,
-            status: "PUBLISHED" as const,
-            image_url: data.published.product_images?.find((i: ProductImage) => !i.variant_id)?.image_url
-              ?? data.published.product_images?.[0]?.image_url,
-          }
-        : undefined;
-
-      const draft: ProductItem | undefined = data.draft
-        ? {
-            ...data.draft,
-            status: "DRAFT" as const,
-            image_url: data.draft.draft_product_images?.find((i: ProductImage) => !i.variant_id)?.image_url
-              ?? data.draft.draft_product_images?.[0]?.image_url,
-          }
-        : undefined;
-
-      return { published, draft };
+      return mapDetailResponse(data);
     })();
 
     detailInFlight.set(sku, fetchPromise);
@@ -734,15 +689,8 @@ const ManageProducts = () => {
     fetchProducts(filterStatus, showAllMap[filterStatus]);
   }, [filterStatus, showAllMap[filterStatus]]);
 
-  // Reset image studio state when product changes
-  useEffect(() => {
-    if (!selectedProduct) return;
-    setActiveImageTab("Global");
-  }, [selectedProduct?.base_sku]);
-
   const handleProductSelect = (product: GroupedProduct) => {
     setSelectedProduct(product);
-    setActiveVersion(product.has_draft && !product.is_published ? "DRAFT" : "PUBLISHED");
     setIsMobileDetailView(true);
     if (!product.detailLoaded) {
       void fetchDetailForGroup(product);
@@ -899,7 +847,6 @@ const ManageProducts = () => {
       if (isDeletedSelected) {
         if (updatedSelectedProduct) {
           setSelectedProduct(updatedSelectedProduct);
-          setActiveVersion(updatedSelectedProduct.has_draft && !updatedSelectedProduct.is_published ? "DRAFT" : "PUBLISHED");
           void fetchDetailForGroup(updatedSelectedProduct);
         } else {
           setSelectedProduct(null);
@@ -1164,6 +1111,7 @@ const ManageProducts = () => {
                 <button
                   key={status}
                   onClick={() => setFilterStatus(status)}
+                  onMouseEnter={() => prefetchList(status, showAllMap[status])}
                   className={`flex-1 py-1.5 rounded text-[9px] font-bold uppercase tracking-wider transition-all ${filterStatus === status ? "bg-white text-gray-900 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-600"}`}
                 >
                   {status}
@@ -1174,6 +1122,7 @@ const ManageProducts = () => {
             <div className="flex justify-between items-center mt-3 text-[9px] font-bold uppercase tracking-[0.1em] gap-4">
               <button
                 onClick={() => setShowAllMap(prev => ({ ...prev, [filterStatus]: false }))}
+                onMouseEnter={() => prefetchList(filterStatus, false)}
                 className={`flex-1 py-1.5 px-3 rounded transition-all text-center ${!showAllMap[filterStatus]
                     ? "bg-[#B19CD9] text-black font-black"
                     : "bg-gray-100 text-gray-400 hover:text-gray-600 border border-gray-200/50"
@@ -1183,6 +1132,7 @@ const ManageProducts = () => {
               </button>
               <button
                 onClick={() => setShowAllMap(prev => ({ ...prev, [filterStatus]: true }))}
+                onMouseEnter={() => prefetchList(filterStatus, true)}
                 className={`flex-1 py-1.5 px-3 rounded transition-all text-center ${showAllMap[filterStatus]
                     ? "bg-[#B19CD9] text-black font-black"
                     : "bg-gray-100 text-gray-400 hover:text-gray-600 border border-gray-200/50"
@@ -1202,6 +1152,7 @@ const ManageProducts = () => {
                   <button
                     key={p.base_sku}
                     onClick={() => handleProductSelect(p)}
+                    onMouseEnter={() => prefetchDetailForSku(p.base_sku)}
                     className={`w-full text-left px-6 py-4 transition-all flex gap-4 border-b border-black/20 ${selectedProduct?.base_sku === p.base_sku ? "bg-gray-50 border-r-4 border-r-gray-900" : "hover:bg-gray-50/50"}`}
                   >
                     <div className="w-10 h-12 bg-gray-100 rounded border border-gray-200 flex-shrink-0 overflow-hidden relative">
