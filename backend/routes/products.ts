@@ -407,6 +407,7 @@ router.get("/recommendations", async (req: Request, res: Response) => {
     timer.start("db_rec_category");
     const recTimingCallbacks: RecommendedTimingCallbacks = {
       onCategoryQueryDone: () => timer.end("db_rec_category"),
+      onPadQueryStart:     () => timer.start("db_rec_pad"),
       onPadQueryDone:      () => timer.end("db_rec_pad"),
     };
 

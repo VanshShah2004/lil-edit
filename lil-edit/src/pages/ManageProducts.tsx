@@ -781,68 +781,59 @@ const ManageProducts = () => {
 
       toast.success("Product permanently deleted");
 
-      // 1. Reconcile the in-memory grouped products list using thin-list flags
-      let updatedSelectedProduct: GroupedProduct | null = null;
-      let shouldSelectNext = false;
       const isDeletedSelected = selectedProduct?.base_sku === product.base_sku;
 
-      setProducts(prev => {
-        const nextList: GroupedProduct[] = [];
+      // Compute next list as a pure value from the current snapshot — no
+      // side-effects inside the updater, safe under React StrictMode double-invoke.
+      const nextList: GroupedProduct[] = [];
+      let survivingGroup: GroupedProduct | null = null;
+      const deletedIndex = products.findIndex(p => p.base_sku === product.base_sku);
 
-        for (const p of prev) {
-          if (p.base_sku === product.base_sku) {
-            const reconciled: GroupedProduct = { ...p };
+      for (const p of products) {
+        if (p.base_sku === product.base_sku) {
+          const reconciled: GroupedProduct = { ...p };
 
-            if (product.status === "PUBLISHED") {
-              reconciled.published        = undefined;
-              reconciled.is_published     = false;
-              reconciled.has_pending_updates = false;
-            } else if (product.status === "DRAFT") {
-              reconciled.draft            = undefined;
-              reconciled.has_draft        = false;
-              reconciled.has_pending_updates = false;
-            }
-
-            // If both versions are gone, remove the group
-            if (!reconciled.is_published && !reconciled.has_draft) {
-              if (isDeletedSelected) shouldSelectNext = true;
-              continue;
-            }
-
-            // Bust caches — version set has changed
-            clog(`[CACHE] INVALIDATE → delete sku=${p.base_sku} status=${product.status} (frontend: list cleared + detail evicted)`);
-            invalidateAfterMutation(p.base_sku);
-            reconciled.detailLoaded = false;
-
-            // Update display image from surviving detail if available
-            if (product.status === "PUBLISHED" && reconciled.draft) {
-              reconciled.image_url = reconciled.draft.image_url ?? p.image_url;
-              reconciled.title     = reconciled.draft.title ?? p.title;
-              reconciled.price     = reconciled.draft.price ?? p.price;
-            }
-
-            nextList.push(reconciled);
-            if (isDeletedSelected) updatedSelectedProduct = reconciled;
-          } else {
-            nextList.push(p);
+          if (product.status === "PUBLISHED") {
+            reconciled.published           = undefined;
+            reconciled.is_published        = false;
+            reconciled.has_pending_updates = false;
+          } else if (product.status === "DRAFT") {
+            reconciled.draft               = undefined;
+            reconciled.has_draft           = false;
+            reconciled.has_pending_updates = false;
           }
-        }
 
-        if (shouldSelectNext) {
-          const currentIndex = prev.findIndex(p => p.base_sku === product.base_sku);
-          updatedSelectedProduct = nextList[currentIndex] || nextList[currentIndex - 1] || null;
-        }
+          // If both versions are gone, drop the group entirely
+          if (!reconciled.is_published && !reconciled.has_draft) continue;
 
-        return nextList;
-      });
+          clog(`[CACHE] INVALIDATE → delete sku=${p.base_sku} status=${product.status} (frontend: list cleared + detail evicted)`);
+          invalidateAfterMutation(p.base_sku);
+          reconciled.detailLoaded = false;
 
-      // Update selection ONLY if the deleted product was currently selected
-      if (isDeletedSelected) {
-        if (updatedSelectedProduct) {
-          setSelectedProduct(updatedSelectedProduct);
-          void fetchDetailForGroup(updatedSelectedProduct);
+          if (product.status === "PUBLISHED" && reconciled.draft) {
+            reconciled.image_url = reconciled.draft.image_url ?? p.image_url;
+            reconciled.title     = reconciled.draft.title     ?? p.title;
+            reconciled.price     = reconciled.draft.price     ?? p.price;
+          }
+
+          nextList.push(reconciled);
+          if (isDeletedSelected) survivingGroup = reconciled;
         } else {
-          setSelectedProduct(null);
+          nextList.push(p);
+        }
+      }
+
+      // If the group was fully removed, fall back to the nearest neighbor
+      const newSelection: GroupedProduct | null = survivingGroup
+        ?? (isDeletedSelected ? (nextList[deletedIndex] ?? nextList[deletedIndex - 1] ?? null) : null);
+
+      setProducts(nextList);
+
+      if (isDeletedSelected) {
+        setSelectedProduct(newSelection);
+        if (newSelection) {
+          void fetchDetailForGroup(newSelection);
+        } else {
           setIsMobileDetailView(false);
         }
       }

@@ -227,32 +227,21 @@ export async function saveDraftToDatabase(data: CurationPayload): Promise<{ draf
 
 /**
  * Remove draft + published rows for slug, then insert published catalog from payload.
- * (Launch / re-launch after edits.)
+ * Runs inside a single Postgres transaction via RPC — if the insert fails the
+ * preceding deletes are rolled back automatically, so the product is never lost.
  */
 export async function launchProductToDatabase(data: CurationPayload): Promise<{ publishedProductId: string }> {
   const sb = requireAdmin();
   const { productPublished, variants, images } = mapCurationPayloadToCatalog(data);
-  const slug = productPublished.slug;
 
-  const { error: delPub } = await sb.from("products").delete().eq("slug", slug);
-  if (delPub) throw delPub;
+  const { data: publishedProductId, error } = await sb.rpc("launch_product_atomic", {
+    p_product:  productPublished,
+    p_variants: variants,
+    p_images:   images,
+  });
 
-  const { error: delDraft } = await sb.from("draft_products").delete().eq("slug", slug);
-  if (delDraft) throw delDraft;
-
-  const { data: prod, error: insErr } = await sb
-    .from("products")
-    .insert(productPublished)
-    .select("id")
-    .single();
-
-  if (insErr) throw insErr;
-  const productId = prod.id as string;
-
-  const variantMap = await insertVariantsAndMap(sb, "product_variants", productId, variants);
-  await insertImagesForProduct(sb, "product_images", productId, variantMap, images);
-
-  return { publishedProductId: productId };
+  if (error) throw error;
+  return { publishedProductId: publishedProductId as string };
 }
 
 const IS_DEV = process.env.NODE_ENV !== "production";
@@ -662,20 +651,18 @@ export function isSupabaseCatalogConfigured(): boolean {
   return supabaseAdmin !== null;
 }
 
+/**
+ * Delete a product and all its children atomically via RPC.
+ * Runs inside a single Postgres transaction — no orphaned rows on partial failure.
+ */
 export async function deleteProductFromDatabase(id: string, status: "DRAFT" | "PUBLISHED"): Promise<void> {
   const sb = requireAdmin();
-  
-  const isDraft = status === "DRAFT";
-  const table = isDraft ? "draft_products" : "products";
-  const imageTable = isDraft ? "draft_product_images" : "product_images";
-  const variantTable = isDraft ? "draft_product_variants" : "product_variants";
 
-  // Manually delete children first in case ON DELETE CASCADE is not configured
-  await sb.from(imageTable).delete().eq("product_id", id);
-  await sb.from(variantTable).delete().eq("product_id", id);
-  
-  // Delete the parent record
-  const { error } = await sb.from(table).delete().eq("id", id);
+  const { error } = await sb.rpc("delete_product_atomic", {
+    p_id:     id,
+    p_status: status,
+  });
+
   if (error) throw error;
 }
 
@@ -709,6 +696,8 @@ export async function fetchProductBySlug(
 export interface RecommendedTimingCallbacks {
   /** Called immediately after the category-filtered query completes. */
   onCategoryQueryDone?: () => void;
+  /** Called immediately before the padding query starts (only fires when category had <5 results). */
+  onPadQueryStart?: () => void;
   /** Called immediately after the padding query completes (only fires when category had <5 results). */
   onPadQueryDone?: () => void;
 }
@@ -745,6 +734,7 @@ export async function fetchRecommendedProducts(
   //   - Excludes current product with indexed filter
   //   - Fetches only final-pass size (10) instead of scanning more
   if (list.length < 5) {
+    timingCallbacks?.onPadQueryStart?.();
     const { data: general, error: genErr } = await sb
       .from("products")
       .select(`
