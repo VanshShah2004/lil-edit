@@ -780,6 +780,7 @@ const EditProduct = () => {
         toast.warning(database.reason);
       } else {
         toast.success(`"${formData.name}" has been updated and launched!`);
+        invalidateAfterMutation(formData.sku || undefined);
         setTimeout(() => {
           navigate("/admin/manage-products");
         }, 1500);

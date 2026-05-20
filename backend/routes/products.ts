@@ -474,6 +474,8 @@ router.post("/preview", async (req: Request, res: Response) => {
       if (normalized === "DRAFT") {
         if (IS_DEV) console.log(`[DB] DRAFT → saveDraftToDatabase sku=${sku}`);
         const { draftProductId } = await saveDraftToDatabase(data);
+        void invalidateCatalogCaches(sku);
+        if (IS_DEV) console.log(`[REDIS] DRAFT → INVALIDATE catalog-detail=${sku} catalog-list=all`);
         database = { ok: true, draftProductId };
         if (IS_DEV) console.log(`[API] DRAFT RESPONSE → ${Math.round(performance.now() - t0)}ms sku=${sku} draftId=${draftProductId}`);
       } else {

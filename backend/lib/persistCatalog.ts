@@ -539,8 +539,10 @@ export async function fetchThinProductList(
     const dUpdatedAt = new Date(d.updated_at as string).getTime();
 
     if (existing) {
+      const isPending = dUpdatedAt > new Date(existing.updated_at).getTime();
       existing.has_draft           = true;
-      existing.has_pending_updates = dUpdatedAt > new Date(existing.updated_at).getTime();
+      existing.has_pending_updates = isPending;
+      if (isPending) existing.updated_at = d.updated_at as string;
     } else {
       map.set(d.base_sku as string, {
         base_sku:            d.base_sku   as string,
