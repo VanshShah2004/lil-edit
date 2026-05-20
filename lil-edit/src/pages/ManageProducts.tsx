@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -439,6 +439,43 @@ interface GroupedProduct {
   lastModified?: number;
 }
 
+// ─── Module-level in-memory caches (survive re-renders and remounts) ─────────
+
+const LIST_TTL_MS   = 10 * 60_000; // 10 min — matches CATALOG_LIST_TTL_S on backend
+const DETAIL_TTL_MS = 2 * 60_000; // 2 min
+
+interface ListCacheEntry   { data: any; timestamp: number; }
+interface DetailCacheEntry {
+  data: { published?: ProductItem; draft?: ProductItem };
+  timestamp: number;
+}
+
+const listCache      = new Map<string, ListCacheEntry>();
+const detailCache    = new Map<string, DetailCacheEntry>();
+const listInFlight   = new Map<string, Promise<any>>();
+const detailInFlight = new Map<string, Promise<{ published?: ProductItem; draft?: ProductItem }>>();
+
+function listCacheKey(status: string, showAll: boolean): string {
+  return `${status}_${showAll ? "ALL" : "10"}`;
+}
+
+function isExpired(timestamp: number, ttlMs: number): boolean {
+  return Date.now() - timestamp > ttlMs;
+}
+
+/** Dev-only — set VITE_DEBUG_CACHE=true to enable in production builds */
+const DEBUG_CACHE = import.meta.env.DEV || import.meta.env.VITE_DEBUG_CACHE === "true";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function clog(...args: any[]): void { if (DEBUG_CACHE) console.log(...args); }
+
+function traceFlow(type: "LIST" | "DETAIL", steps: string[]): void {
+  if (!DEBUG_CACHE) return;
+  console.log(`[TRACE] ${type} FLOW:\n${steps.map(s => `  ${s}`).join("\n")}`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 const ManageProducts = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -446,7 +483,6 @@ const ManageProducts = () => {
   const [selectedProduct, setSelectedProduct] = useState<GroupedProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
-  const detailCacheRef = useRef<Map<string, { published?: ProductItem; draft?: ProductItem }>>(new Map());
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"ALL" | "DRAFT" | "PUBLISHED">("ALL");
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
@@ -474,24 +510,68 @@ const ManageProducts = () => {
     DRAFT: false
   });
 
+  const applyDetail = (sku: string, detail: { published?: ProductItem; draft?: ProductItem }) => {
+    setProducts(prev => prev.map(p =>
+      p.base_sku === sku ? { ...p, ...detail, detailLoaded: true } : p
+    ));
+    setSelectedProduct(prev =>
+      prev?.base_sku === sku ? { ...prev, ...detail, detailLoaded: true } : prev
+    );
+  };
+
   const fetchDetailForGroup = async (group: GroupedProduct) => {
-    const cached = detailCacheRef.current.get(group.base_sku);
-    if (cached) {
-      setProducts(prev => prev.map(p =>
-        p.base_sku === group.base_sku ? { ...p, ...cached, detailLoaded: true } : p
-      ));
-      setSelectedProduct(prev =>
-        prev?.base_sku === group.base_sku ? { ...prev, ...cached, detailLoaded: true } : prev
-      );
+    const sku = group.base_sku;
+
+    // ① Module-level cache hit (with TTL check)
+    const entry = detailCache.get(sku);
+    if (entry && !isExpired(entry.timestamp, DETAIL_TTL_MS)) {
+      const age = Math.round((Date.now() - entry.timestamp) / 1000);
+      clog(`[CACHE] DETAIL → HIT (memory) sku=${sku} age=${age}s`);
+      applyDetail(sku, entry.data);
+      traceFlow("DETAIL", ["Frontend Cache → HIT", "No API call"]);
+      return;
+    }
+    if (entry) clog(`[CACHE] DETAIL → EXPIRED sku=${sku}`);
+
+    // ② In-flight dedup — await the existing promise instead of starting a new fetch
+    const existing = detailInFlight.get(sku);
+    if (existing) {
+      clog(`[CACHE] DETAIL → USING IN-FLIGHT REQUEST sku=${sku}`);
+      const waitT0 = performance.now();
+      setDetailLoading(true);
+      try {
+        const detail = await existing;
+        const waited = Math.round(performance.now() - waitT0);
+        clog(`[CACHE] DETAIL → IN-FLIGHT RESOLVED sku=${sku} waited=${waited}ms`);
+        applyDetail(sku, detail);
+        traceFlow("DETAIL", [
+          "Frontend Cache → MISS",
+          `In-Flight Dedup → JOINED (waited ${waited}ms)`,
+          "No duplicate API call",
+        ]);
+      } catch {
+        // error already surfaced by the original in-flight caller
+      } finally {
+        setDetailLoading(false);
+      }
       return;
     }
 
-    setDetailLoading(true);
-    try {
+    // ③ Fresh fetch — pure data promise stored in detailInFlight for dedup
+    clog(`[CACHE] DETAIL → MISS sku=${sku}`);
+
+    let fetchElapsed = 0;
+    let detailApiSource = "DB"; // overwritten from X-Cache response header
+    const fetchPromise = (async (): Promise<{ published?: ProductItem; draft?: ProductItem }> => {
       const base = getBackendBaseUrl();
-      const res = await fetch(`${base}/api/products/catalog-detail?sku=${encodeURIComponent(group.base_sku)}`);
+      clog(`[FRONTEND] FETCH DETAIL → sku=${sku}`);
+      const t0 = performance.now();
+      const res = await fetch(`${base}/api/products/catalog-detail?sku=${encodeURIComponent(sku)}`);
+      detailApiSource = res.headers.get("X-Cache") === "HIT" ? "Redis" : "DB";
       if (!res.ok) throw new Error("Failed to fetch product detail");
       const data = await res.json();
+      fetchElapsed = Math.round(performance.now() - t0);
+      clog(`[FRONTEND] RESPONSE DETAIL → ${fetchElapsed}ms sku=${sku} [${detailApiSource}]`);
 
       const published: ProductItem | undefined = data.published
         ? {
@@ -511,19 +591,27 @@ const ManageProducts = () => {
           }
         : undefined;
 
-      const detail = { published, draft };
-      detailCacheRef.current.set(group.base_sku, detail);
+      return { published, draft };
+    })();
 
-      setProducts(prev => prev.map(p =>
-        p.base_sku === group.base_sku ? { ...p, ...detail, detailLoaded: true } : p
-      ));
-      setSelectedProduct(prev =>
-        prev?.base_sku === group.base_sku ? { ...prev, ...detail, detailLoaded: true } : prev
-      );
+    detailInFlight.set(sku, fetchPromise);
+    setDetailLoading(true);
+
+    try {
+      const detail = await fetchPromise;
+      detailCache.set(sku, { data: detail, timestamp: Date.now() });
+      clog(`[CACHE] DETAIL → STORED sku=${sku} (TTL 2min)`);
+      applyDetail(sku, detail);
+      traceFlow("DETAIL", [
+        "Frontend Cache → MISS",
+        `API → FETCHED (${fetchElapsed}ms) [${detailApiSource}]`,
+        "Response cached (TTL 2min)",
+      ]);
     } catch (err) {
       console.error("Error fetching product detail:", err);
       toast.error("Failed to load product detail");
     } finally {
+      detailInFlight.delete(sku);
       setDetailLoading(false);
     }
   };
@@ -533,19 +621,76 @@ const ManageProducts = () => {
     showAll: boolean
   ) => {
     setLoading(true);
+    const key = listCacheKey(status, showAll);
+    const traceSteps: string[] = [];
+
     try {
-      const base = getBackendBaseUrl();
-      const params = new URLSearchParams();
-      params.append("status", status);
-      if (!showAll) params.append("limit", "10");
+      let data: any;
 
-      const res = await fetch(`${base}/api/products/catalog-list?${params.toString()}`);
-      if (!res.ok) throw new Error("Failed to fetch products");
-      const data = await res.json();
+      // ① Module-level list cache hit
+      const listEntry = listCache.get(key);
+      if (listEntry && !isExpired(listEntry.timestamp, LIST_TTL_MS)) {
+        const age = Math.round((Date.now() - listEntry.timestamp) / 1000);
+        clog(`[CACHE] LIST → HIT (memory) key=${key} age=${age}s`);
+        data = listEntry.data;
+        traceSteps.push("Frontend Cache → HIT", "No API call");
+      } else {
+        if (listEntry) clog(`[CACHE] LIST → EXPIRED key=${key}`);
 
-      // Hydrate from detail cache if already loaded
+        // ② In-flight dedup — join an existing request for the same key
+        const existing = listInFlight.get(key);
+        if (existing) {
+          clog(`[CACHE] LIST → USING IN-FLIGHT REQUEST key=${key}`);
+          const waitT0 = performance.now();
+          data = await existing;
+          const waited = Math.round(performance.now() - waitT0);
+          clog(`[CACHE] LIST → IN-FLIGHT RESOLVED key=${key} waited=${waited}ms`);
+          traceSteps.push(
+            "Frontend Cache → MISS",
+            `In-Flight Dedup → JOINED (waited ${waited}ms)`,
+            "No duplicate API call",
+          );
+        } else {
+          // ③ Fresh fetch
+          clog(`[CACHE] LIST → MISS key=${key}`);
+          const base = getBackendBaseUrl();
+          const params = new URLSearchParams();
+          params.append("status", status);
+          if (!showAll) params.append("limit", "10");
+
+          clog(`[FRONTEND] FETCH LIST → status=${status} limit=${showAll ? "ALL" : "10"}`);
+          const fetchT0 = performance.now();
+
+          let listApiSource = "DB"; // overwritten from X-Cache response header
+          const fetchPromise = fetch(`${base}/api/products/catalog-list?${params.toString()}`)
+            .then(res => {
+              listApiSource = res.headers.get("X-Cache") === "HIT" ? "Redis" : "DB";
+              if (!res.ok) throw new Error("Failed to fetch products");
+              return res.json();
+            });
+
+          listInFlight.set(key, fetchPromise);
+          try {
+            data = await fetchPromise;
+            const elapsed = Math.round(performance.now() - fetchT0);
+            clog(`[FRONTEND] RESPONSE LIST → ${elapsed}ms key=${key} rows=${data.products?.length ?? 0} [${listApiSource}]`);
+            listCache.set(key, { data, timestamp: Date.now() });
+            clog(`[CACHE] LIST → STORED key=${key} (TTL 60s)`);
+            traceSteps.push(
+              "Frontend Cache → MISS",
+              `API → FETCHED (${elapsed}ms) [${listApiSource}]`,
+              "Response cached (TTL 60s)",
+            );
+          } finally {
+            listInFlight.delete(key);
+          }
+        }
+      }
+
+      // Hydrate thin rows from module-level detail cache (TTL-checked)
       const rows: GroupedProduct[] = (data.products ?? []).map((p: any) => {
-        const cached = detailCacheRef.current.get(p.base_sku);
+        const dEntry = detailCache.get(p.base_sku);
+        const cached = dEntry && !isExpired(dEntry.timestamp, DETAIL_TTL_MS) ? dEntry.data : null;
         return {
           base_sku:            p.base_sku,
           title:               p.title,
@@ -562,12 +707,13 @@ const ManageProducts = () => {
       });
 
       setProducts(rows);
-
       setHasMoreMap(prev => ({ ...prev, [status]: !!data.hasMore }));
 
       if (rows.length > 0) {
         const selectionExists = rows.some(p => p.base_sku === selectedProduct?.base_sku);
-        const target = (!selectedProduct || !selectionExists) ? rows[0] : rows.find(p => p.base_sku === selectedProduct.base_sku)!;
+        const target = (!selectedProduct || !selectionExists)
+          ? rows[0]
+          : rows.find(p => p.base_sku === selectedProduct.base_sku)!;
         setSelectedProduct(target);
         if (!target.detailLoaded) {
           void fetchDetailForGroup(target);
@@ -575,6 +721,7 @@ const ManageProducts = () => {
       } else {
         setSelectedProduct(null);
       }
+      traceFlow("LIST", traceSteps);
     } catch (err) {
       console.error("Error fetching products:", err);
       toast.error("Failed to load catalog");
@@ -665,8 +812,10 @@ const ManageProducts = () => {
 
       toast.success(`"${product.title}" has been successfully launched!`);
 
-      // Bust detail cache so fresh data is fetched after refresh
-      detailCacheRef.current.delete(product.base_sku);
+      // Bust caches — product status changed, stale data must not be served
+      clog(`[CACHE] INVALIDATE → launch sku=${product.base_sku} (frontend: list cleared + detail evicted)`);
+      detailCache.delete(product.base_sku);
+      listCache.clear();
       await fetchProducts(filterStatus, showAllMap[filterStatus]);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
@@ -678,9 +827,10 @@ const ManageProducts = () => {
 
     try {
       const base = getBackendBaseUrl();
-      const res = await fetch(`${base}/api/products/${product.id}?status=${product.status}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `${base}/api/products/${product.id}?status=${product.status}&base_sku=${encodeURIComponent(product.base_sku)}`,
+        { method: "DELETE" }
+      );
 
       if (!res.ok) {
         const data = await res.json();
@@ -717,8 +867,10 @@ const ManageProducts = () => {
               continue;
             }
 
-            // Invalidate detail cache — version set has changed
-            detailCacheRef.current.delete(p.base_sku);
+            // Bust caches — version set has changed
+            clog(`[CACHE] INVALIDATE → delete sku=${p.base_sku} status=${product.status} (frontend: list cleared + detail evicted)`);
+            detailCache.delete(p.base_sku);
+            listCache.clear();
             reconciled.detailLoaded = false;
 
             // Update display image from surviving detail if available

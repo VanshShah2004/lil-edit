@@ -1,3 +1,4 @@
+import { performance } from "perf_hooks";
 import { Router, type Request, type Response } from "express";
 import {
   fetchAllProducts,
@@ -21,7 +22,11 @@ import {
   redisKey,
   PRODUCT_TTL_S,
   REC_TTL_S,
+  CATALOG_LIST_TTL_S,
+  CATALOG_DETAIL_TTL_S,
 } from "../lib/redis.js";
+
+const IS_DEV = process.env.NODE_ENV !== "production";
 
 // ─── In-process L1 cache (warm between requests on same dyno) ───────────────
 // Redis is L2. On a cache miss we check Redis first, then Supabase.
@@ -44,6 +49,33 @@ export async function invalidateDetailCache(slug: string): Promise<void> {
   detailCache.delete(slug);
   await redisDel(redisKey("pdp", slug), redisKey("rec", slug));
 }
+
+// ─── Catalog Redis key helpers ────────────────────────────────────────────────
+function catalogListKey(status: string, limit: number | undefined): string {
+  return redisKey("catalog-list", `${status}:${limit ?? "ALL"}`);
+}
+
+function catalogDetailKey(baseSku: string): string {
+  return redisKey("catalog-detail", baseSku);
+}
+
+/** All possible catalog-list cache permutations (3 statuses × 2 page sizes). */
+const CATALOG_LIST_ALL_KEYS = (["ALL", "PUBLISHED", "DRAFT"] as const).flatMap(s =>
+  [10 as number | undefined, undefined].map(l => catalogListKey(s, l))
+);
+
+/** Bust catalog Redis caches after any mutation (launch or delete). */
+async function invalidateCatalogCaches(baseSku?: string): Promise<void> {
+  const keys = baseSku
+    ? [...CATALOG_LIST_ALL_KEYS, catalogDetailKey(baseSku)]
+    : CATALOG_LIST_ALL_KEYS;
+  await redisDel(...keys);
+  if (IS_DEV) {
+    console.log(`[Redis] INVALIDATE catalog list (${CATALOG_LIST_ALL_KEYS.length} keys)${baseSku ? ` + detail sku=${baseSku}` : ""}`);
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ────────────────────────────────────────────────────────────────────────────
 
 const router = Router();
@@ -443,8 +475,9 @@ router.post("/preview", async (req: Request, res: Response) => {
         database = { ok: true, draftProductId };
       } else {
         const { publishedProductId } = await launchProductToDatabase(data);
-        // Bust L1 + Redis so admins see fresh data immediately
+        // Bust PDP L1 + PDP Redis + catalog Redis so all caches reflect new state
         void invalidateDetailCache(String(data.slug ?? ""));
+        void invalidateCatalogCaches(String(data.sku ?? ""));
         database = { ok: true, publishedProductId };
       }
     } catch (err) {
@@ -493,12 +526,42 @@ router.get("/preview", (_req: Request, res: Response) => {
 
 // GET /api/products/catalog-list — Thin initial list (scalars + primary image, no variants)
 router.get("/catalog-list", async (req: Request, res: Response) => {
+  const t0 = performance.now();
   try {
     const status = (req.query.status as "ALL" | "PUBLISHED" | "DRAFT" | undefined) ?? "ALL";
     const limitQuery = req.query.limit as string | undefined;
     const limit = limitQuery ? parseInt(limitQuery, 10) : undefined;
+    const rKey = catalogListKey(status, limit);
+
+    if (IS_DEV) console.log(`[API] LIST REQUEST RECEIVED → status=${status} limit=${limit ?? "ALL"}`);
+
+    // ── L2: Redis cache ──────────────────────────────────────────────────────
+    const cached = await redisGet<object>(rKey);
+    if (cached) {
+      if (IS_DEV) {
+        console.log(`[REDIS] LIST → HIT key=${rKey}`);
+        console.log(`[TRACE] LIST FLOW:\n  Redis → HIT\n  No DB query`);
+        console.log(`[API] LIST RESPONSE → ${Math.round(performance.now() - t0)}ms (Redis hit)`);
+      }
+      res.setHeader("X-Cache", "HIT");
+      res.json(cached);
+      return;
+    }
+    if (IS_DEV) console.log(`[REDIS] LIST → MISS key=${rKey}`);
+    // ────────────────────────────────────────────────────────────────────────
 
     const result = await fetchThinProductList(status, limit);
+
+    // Store in Redis for cross-session reuse
+    void redisSet(rKey, result, CATALOG_LIST_TTL_S);
+
+    if (IS_DEV) {
+      console.log(`[REDIS] LIST → STORED key=${rKey} TTL=${CATALOG_LIST_TTL_S}s`);
+      console.log(`[TRACE] LIST FLOW:\n  Redis → MISS\n  DB → HIT\n  Response cached (TTL ${CATALOG_LIST_TTL_S}s)`);
+      console.log(`[API] LIST RESPONSE → ${Math.round(performance.now() - t0)}ms rows=${result.products.length} hasMore=${result.hasMore}`);
+    }
+
+    res.setHeader("X-Cache", "MISS");
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -507,27 +570,59 @@ router.get("/catalog-list", async (req: Request, res: Response) => {
 
 // GET /api/products/catalog-detail?sku=<base_sku> — Full detail for one product (lazy)
 router.get("/catalog-detail", async (req: Request, res: Response) => {
+  const t0 = performance.now();
   const sku = req.query.sku as string;
   if (!sku) {
     res.status(400).json({ error: "sku parameter is required." });
     return;
   }
 
+  const rKey = catalogDetailKey(sku);
+  if (IS_DEV) console.log(`[API] DETAIL REQUEST RECEIVED → sku=${sku}`);
+
   try {
+    // ── L2: Redis cache ──────────────────────────────────────────────────────
+    const cached = await redisGet<object>(rKey);
+    if (cached) {
+      if (IS_DEV) {
+        console.log(`[REDIS] DETAIL → HIT key=${rKey}`);
+        console.log(`[TRACE] DETAIL FLOW:\n  Redis → HIT\n  No DB query`);
+        console.log(`[API] DETAIL RESPONSE → ${Math.round(performance.now() - t0)}ms sku=${sku} (Redis hit)`);
+      }
+      res.setHeader("X-Cache", "HIT");
+      res.json(cached);
+      return;
+    }
+    if (IS_DEV) console.log(`[REDIS] DETAIL → MISS key=${rKey}`);
+    // ────────────────────────────────────────────────────────────────────────
+
     const { published, draft } = await fetchProductDetailBySku(sku);
-    res.json({
+    const payload = {
       published: published ? { ...published, status: "PUBLISHED" } : null,
       draft:     draft     ? { ...draft,      status: "DRAFT"      } : null,
-    });
+    };
+
+    // Store in Redis for cross-session reuse
+    void redisSet(rKey, payload, CATALOG_DETAIL_TTL_S);
+
+    if (IS_DEV) {
+      console.log(`[REDIS] DETAIL → STORED key=${rKey} TTL=${CATALOG_DETAIL_TTL_S}s`);
+      console.log(`[TRACE] DETAIL FLOW:\n  Redis → MISS\n  DB → HIT\n  Response cached (TTL ${CATALOG_DETAIL_TTL_S}s)`);
+      console.log(`[API] DETAIL RESPONSE → ${Math.round(performance.now() - t0)}ms sku=${sku} published=${!!published} draft=${!!draft}`);
+    }
+
+    res.setHeader("X-Cache", "MISS");
+    res.json(payload);
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 
-// DELETE /api/products/:id?status=DRAFT|PUBLISHED
+// DELETE /api/products/:id?status=DRAFT|PUBLISHED&base_sku=<sku>
 router.delete("/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
-  const status = req.query.status as string;
+  const status  = req.query.status   as string;
+  const baseSku = req.query.base_sku as string | undefined;
 
   if (status !== "DRAFT" && status !== "PUBLISHED") {
     res.status(400).json({ error: "Invalid or missing status query parameter. Must be DRAFT or PUBLISHED." });
@@ -541,6 +636,8 @@ router.delete("/:id", async (req: Request, res: Response) => {
 
   try {
     await deleteProductFromDatabase(id as string, status as "DRAFT" | "PUBLISHED");
+    // Bust catalog Redis caches so the deleted version is not served again
+    void invalidateCatalogCaches(baseSku);
     res.json({ success: true, message: `Successfully deleted ${status} product ${id}.` });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

@@ -7,6 +7,7 @@ import authRouter from "./routes/auth.js";
 import productsRouter from "./routes/products.js";
 import skuRouter from "./routes/sku.js";
 import { warmupRedis } from "./lib/redis.js";
+import { supabaseAdmin, supabaseAnon } from "./lib/supabase.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, ".env") });
@@ -41,7 +42,23 @@ app.get("/", (_req, res) => {
 });
 
 
+const IS_DEV = process.env.NODE_ENV !== "production";
+const DB_KEEPALIVE_MS = 4 * 60 * 1000; // 4 min — Supabase idles after ~5 min
+
+function startDbKeepAlive(): void {
+  const client = supabaseAdmin ?? supabaseAnon;
+  setInterval(async () => {
+    try {
+      await client.from("products").select("id").limit(1);
+      if (IS_DEV) console.log("[DB] keep-alive ping ✓");
+    } catch (err) {
+      console.warn("[DB] keep-alive ping failed:", (err as Error).message);
+    }
+  }, DB_KEEPALIVE_MS);
+}
+
 app.listen(PORT, () => {
   console.log(`API listening on http://localhost:${PORT}`);
   void warmupRedis();
+  startDbKeepAlive();
 });

@@ -1,8 +1,10 @@
 import { Redis } from "ioredis";
 
 // TTLs (seconds)
-export const PRODUCT_TTL_S  = 5 * 60;        // 5 min — matches in-memory cache
-export const REC_TTL_S      = 10 * 60;       // 10 min — recommendations change less often
+export const PRODUCT_TTL_S        = 5 * 60;   // 5 min  — PDP product detail
+export const REC_TTL_S            = 10 * 60;  // 10 min — PDP recommendations
+export const CATALOG_LIST_TTL_S   = 10 * 60;  // 10 min — catalog thin list
+export const CATALOG_DETAIL_TTL_S = 2 * 60;   // 2 min  — catalog full detail per SKU
 
 type RedisClient = InstanceType<typeof Redis>;
 let client: RedisClient | null = null;
@@ -75,7 +77,10 @@ export async function redisDel(...keys: string[]): Promise<void> {
   }
 }
 
-export function redisKey(prefix: "pdp" | "rec", slug: string): string {
+export function redisKey(
+  prefix: "pdp" | "rec" | "catalog-list" | "catalog-detail",
+  slug: string
+): string {
   return `${prefix}:${slug}`;
 }
 

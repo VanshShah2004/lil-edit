@@ -41,16 +41,8 @@ const MANAGE_DRAFT_SELECT = `
   draft_product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
 `.trim();
 
-/** Thin list projection — scalar fields + primary image only. No variants or all images. */
-const THIN_PRODUCT_SELECT = `
-  id, title, base_sku, price, created_at, updated_at,
-  product_images(image_url, is_primary)
-`.trim();
-
-const THIN_DRAFT_SELECT = `
-  id, title, base_sku, price, created_at, updated_at,
-  draft_product_images(image_url, is_primary)
-`.trim();
+/** Round 1 of fetchThinProductList — scalars only, no image join. Used for both tables. */
+const THIN_SCALAR_SELECT = `id, title, base_sku, price, created_at, updated_at`;
 
 /**
  * PDP detail query projection — only fields used by mapDatabaseProductToFrontend.
@@ -464,6 +456,39 @@ export async function fetchFilteredProducts(status: "ALL" | "PUBLISHED" | "DRAFT
 }
 
 
+/** Internal merge row — carries DB IDs needed for Round 2 image lookup. */
+interface InternalThinRow {
+  base_sku:            string;
+  title:               string;
+  price:               number;
+  created_at:          string;
+  updated_at:          string;
+  is_published:        boolean;
+  has_draft:           boolean;
+  has_pending_updates: boolean;
+  published_id?:       string; // products.id  — populated when is_published
+  draft_id?:           string; // draft_products.id — populated when draft-only
+}
+
+/** Picks the primary-flagged image for each product_id; falls back to first image. */
+function buildPrimaryImageMap(
+  images: Array<{ product_id: string; image_url: string; is_primary: boolean }>
+): Map<string, string> {
+  const primary  = new Map<string, string>();
+  const fallback = new Map<string, string>();
+  for (const img of images) {
+    if (img.is_primary) {
+      primary.set(img.product_id, img.image_url);
+    } else if (!fallback.has(img.product_id)) {
+      fallback.set(img.product_id, img.image_url);
+    }
+  }
+  const result = new Map<string, string>();
+  for (const [id, url] of fallback) result.set(id, url);
+  for (const [id, url] of primary)  result.set(id, url); // primary wins
+  return result;
+}
+
 /**
  * Thin catalog list — no variants, no full image arrays.
  * Returns one row per unique base_sku with has_pending_updates computed from timestamps.
@@ -475,83 +500,130 @@ export async function fetchThinProductList(
   const sb = requireAdmin();
   const t0 = performance.now();
 
+  if (IS_DEV) console.log(`[DB] QUERY LIST → PostgreSQL round 1 scalars (status=${status}${limit ? ` limit=${limit}` : ""})`);
+
+  // ── Round 1: scalar fields only for ALL rows — no image join ─────────────
   const [
     { data: published, error: pubErr },
     { data: drafts,    error: draftErr },
   ] = await Promise.all([
-    sb.from("products")      .select(THIN_PRODUCT_SELECT).order("updated_at", { ascending: false }),
-    sb.from("draft_products").select(THIN_DRAFT_SELECT)  .order("updated_at", { ascending: false }),
+    sb.from("products")      .select(THIN_SCALAR_SELECT).order("updated_at", { ascending: false }),
+    sb.from("draft_products").select(THIN_SCALAR_SELECT).order("updated_at", { ascending: false }),
   ]);
 
   if (pubErr)   throw pubErr;
   if (draftErr) throw draftErr;
 
-  const map = new Map<string, ThinProductRow>();
+  const tR1 = performance.now();
+  if (IS_DEV) console.log(`[DB] LIST ROUND 1 → ${fms(tR1 - t0)} (${published?.length ?? 0} published, ${drafts?.length ?? 0} drafts)`);
+
+  // ── Merge by base_sku, compute has_pending_updates ───────────────────────
+  const map = new Map<string, InternalThinRow>();
 
   for (const p of published ?? []) {
-    const imgs = ((p.product_images ?? []) as Array<{ image_url: string; is_primary: boolean }>);
-    const primaryImg = imgs.find(i => i.is_primary)?.image_url ?? imgs[0]?.image_url ?? null;
     map.set(p.base_sku as string, {
       base_sku:            p.base_sku   as string,
       title:               p.title      as string,
       price:               p.price      as number,
       created_at:          p.created_at as string,
       updated_at:          p.updated_at as string,
-      primary_image_url:   primaryImg,
-      has_pending_updates: false,
       is_published:        true,
       has_draft:           false,
+      has_pending_updates: false,
+      published_id:        p.id         as string,
     });
   }
 
   for (const d of drafts ?? []) {
-    const existing = map.get(d.base_sku as string);
+    const existing  = map.get(d.base_sku as string);
     const dUpdatedAt = new Date(d.updated_at as string).getTime();
 
     if (existing) {
-      existing.has_draft = true;
+      existing.has_draft           = true;
       existing.has_pending_updates = dUpdatedAt > new Date(existing.updated_at).getTime();
     } else {
-      const imgs = ((d.draft_product_images ?? []) as Array<{ image_url: string; is_primary: boolean }>);
-      const primaryImg = imgs.find(i => i.is_primary)?.image_url ?? imgs[0]?.image_url ?? null;
       map.set(d.base_sku as string, {
         base_sku:            d.base_sku   as string,
         title:               d.title      as string,
         price:               d.price      as number,
         created_at:          d.created_at as string,
         updated_at:          d.updated_at as string,
-        primary_image_url:   primaryImg,
-        has_pending_updates: false,
         is_published:        false,
         has_draft:           true,
+        has_pending_updates: false,
+        draft_id:            d.id         as string,
       });
     }
   }
 
+  // ── Filter, sort, slice ───────────────────────────────────────────────────
   let rows = Array.from(map.values());
 
-  if (status === "PUBLISHED") {
-    rows = rows.filter(r => r.is_published);
-  } else if (status === "DRAFT") {
-    rows = rows.filter(r => r.has_draft);
-  }
+  if (status === "PUBLISHED") rows = rows.filter(r => r.is_published);
+  else if (status === "DRAFT") rows = rows.filter(r => r.has_draft);
 
   rows.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
   const totalCount = rows.length;
   const hasMore    = limit ? totalCount > limit : false;
-  if (limit) rows  = rows.slice(0, limit);
+  const sliced     = limit ? rows.slice(0, limit) : rows;
+
+  // ── Round 2: images only for the sliced rows ─────────────────────────────
+  const publishedIds  = sliced.filter(r => r.published_id).map(r => r.published_id!);
+  const draftOnlyIds  = sliced.filter(r => !r.is_published && r.draft_id).map(r => r.draft_id!);
+
+  if (IS_DEV) console.log(`[DB] LIST ROUND 2 → images for ${publishedIds.length} published + ${draftOnlyIds.length} draft-only rows`);
+
+  const [pubImgsRes, draftImgsRes] = await Promise.all([
+    publishedIds.length > 0
+      ? sb.from("product_images")
+          .select("product_id, image_url, is_primary")
+          .in("product_id", publishedIds)
+      : Promise.resolve({ data: [] as { product_id: string; image_url: string; is_primary: boolean }[], error: null }),
+    draftOnlyIds.length > 0
+      ? sb.from("draft_product_images")
+          .select("product_id, image_url, is_primary")
+          .in("product_id", draftOnlyIds)
+      : Promise.resolve({ data: [] as { product_id: string; image_url: string; is_primary: boolean }[], error: null }),
+  ]);
+
+  if (pubImgsRes.error)   throw pubImgsRes.error;
+  if (draftImgsRes.error) throw draftImgsRes.error;
+
+  const tR2 = performance.now();
+  if (IS_DEV) console.log(`[DB] LIST ROUND 2 → ${fms(tR2 - tR1)} (${pubImgsRes.data?.length ?? 0} pub images, ${draftImgsRes.data?.length ?? 0} draft images)`);
+
+  const pubImageMap   = buildPrimaryImageMap(pubImgsRes.data   ?? []);
+  const draftImageMap = buildPrimaryImageMap(draftImgsRes.data ?? []);
+
+  // ── Assemble final ThinProductRow[] ──────────────────────────────────────
+  const finalRows: ThinProductRow[] = sliced.map(r => ({
+    base_sku:            r.base_sku,
+    title:               r.title,
+    price:               r.price,
+    created_at:          r.created_at,
+    updated_at:          r.updated_at,
+    primary_image_url:   r.is_published
+      ? (pubImageMap.get(r.published_id!)   ?? null)
+      : (draftImageMap.get(r.draft_id!)     ?? null),
+    has_pending_updates: r.has_pending_updates,
+    is_published:        r.is_published,
+    has_draft:           r.has_draft,
+  }));
 
   if (IS_DEV) {
     const total = performance.now() - t0;
+    console.log(`[DB] LIST COMPLETE → ${fms(total)} (published=${published?.length ?? 0} drafts=${drafts?.length ?? 0} merged=${totalCount} returned=${finalRows.length})`);
     console.log(`
 [Catalog] fetchThinProductList (${status}${limit ? ` / Top ${limit}` : ""})
-  • published=${published?.length ?? 0}  drafts=${drafts?.length ?? 0}  merged=${totalCount}  returned=${rows.length}
-  • Total: ${fms(total)}
+  • published=${published?.length ?? 0}  drafts=${drafts?.length ?? 0}  merged=${totalCount}  returned=${finalRows.length}
+  • Round 1 (scalars): ${fms(tR1 - t0)}
+  • Round 2 (images):  ${fms(tR2 - tR1)}
+  • Total:             ${fms(total)}
 ────────────────────────────────────────────────`);
   }
 
-  return { products: rows, totalCount, hasMore };
+  return { products: finalRows, totalCount, hasMore };
 }
 
 /**
@@ -561,6 +633,8 @@ export async function fetchThinProductList(
 export async function fetchProductDetailBySku(baseSku: string): Promise<ProductDetailResult> {
   const sb = requireAdmin();
   const t0 = performance.now();
+
+  if (IS_DEV) console.log(`[DB] QUERY DETAIL → PostgreSQL sku=${baseSku}`);
 
   const [
     { data: published, error: pubErr },
@@ -575,6 +649,7 @@ export async function fetchProductDetailBySku(baseSku: string): Promise<ProductD
 
   if (IS_DEV) {
     const total = performance.now() - t0;
+    console.log(`[DB] DETAIL COMPLETE → ${fms(total)} sku=${baseSku} published=${!!published} draft=${!!draft}`);
     console.log(`[Catalog] fetchProductDetailBySku(${baseSku})  ${fms(total)}`);
   }
 
