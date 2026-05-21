@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import dotenv from "dotenv";
 import authRouter from "./routes/auth.js";
 import productsRouter from "./routes/products.js";
@@ -23,6 +24,7 @@ const origin =
 
 const PORT = Number(process.env.PORT) || 5000;
 
+app.use(compression());
 app.use(
   cors({
     origin,
