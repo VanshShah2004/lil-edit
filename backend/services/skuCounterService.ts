@@ -1,49 +1,43 @@
 import { supabaseAdmin } from "../lib/supabase.js";
 import { generateCategoryCode, generateGenderCode } from "../utils/skuUtils.js";
+import { type OpLogger } from "../lib/logger.js";
 
-/**
- * Service to handle SKU generation and counter management.
- */
 export class SKUCounterService {
   private static readonly SKU_PREFIX = "EDIT";
 
-  /**
-   * Generates the next available SKU for a given category and gender.
-   * This operation is atomic and reserves the number.
-   */
-  static async generateNextSKU(category: string, gender: string): Promise<string> {
+  static async generateNextSKU(
+    category: string,
+    gender: string,
+    log: OpLogger,
+  ): Promise<string> {
     if (!supabaseAdmin) {
       throw new Error("Supabase admin client not configured.");
     }
 
-    // 1. Generate codes first to use as keys in the database
     const catCode = generateCategoryCode(category);
     const genCode = generateGenderCode(gender);
+    log.step(`codes  category=${catCode}  gender=${genCode}`);
 
-    // 2. Get atomic incremented number from RPC using codes
+    log.step("DB RPC - increment_sku_counter");
     const { data: nextNumber, error } = await supabaseAdmin.rpc("increment_sku_counter", {
       p_category: catCode,
-      p_gender: genCode,
+      p_gender:   genCode,
     });
 
     if (error) {
-      console.error("[SKUCounterService] Error incrementing counter:", error);
       throw new Error(`Failed to generate SKU: ${error.message}`);
     }
 
-    // 3. Format the SKU
     const paddedNumber = String(nextNumber).padStart(4, "0");
-
-    return `${this.SKU_PREFIX}-${catCode}-${genCode}-${paddedNumber}`;
+    const sku          = `${this.SKU_PREFIX}-${catCode}-${genCode}-${paddedNumber}`;
+    log.step(`counter=${nextNumber}  formatted=${sku}`);
+    return sku;
   }
 
-  /**
-   * Validates if a manually provided SKU is unique across both draft and published products.
-   */
-  static async isSKUUnique(sku: string): Promise<boolean> {
+  static async isSKUUnique(sku: string, log: OpLogger): Promise<boolean> {
     if (!supabaseAdmin) return true;
 
-    // Check draft products
+    log.step(`DB check - draft_products  sku=${sku}`);
     const { data: draft, error: draftErr } = await supabaseAdmin
       .from("draft_products")
       .select("base_sku")
@@ -51,9 +45,12 @@ export class SKUCounterService {
       .maybeSingle();
 
     if (draftErr) throw draftErr;
-    if (draft) return false;
+    if (draft) {
+      log.step("sku already exists in draft_products");
+      return false;
+    }
 
-    // Check published products
+    log.step(`DB check - products  sku=${sku}`);
     const { data: pub, error: pubErr } = await supabaseAdmin
       .from("products")
       .select("base_sku")
@@ -61,8 +58,12 @@ export class SKUCounterService {
       .maybeSingle();
 
     if (pubErr) throw pubErr;
-    if (pub) return false;
+    if (pub) {
+      log.step("sku already exists in products");
+      return false;
+    }
 
+    log.step("sku is unique");
     return true;
   }
 }

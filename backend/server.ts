@@ -9,6 +9,7 @@ import productsRouter from "./routes/products.js";
 import skuRouter from "./routes/sku.js";
 import { warmupRedis } from "./lib/redis.js";
 import { supabaseAdmin, supabaseAnon } from "./lib/supabase.js";
+import { createLog } from "./lib/logger.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, ".env") });
@@ -25,42 +26,37 @@ const origin =
 const PORT = Number(process.env.PORT) || 5000;
 
 app.use(compression());
-app.use(
-  cors({
-    origin,
-    credentials: true,
-  })
-);
-
-// Large limit: Curation Studio sends base64 image data URLs in the payload.
+app.use(cors({ origin, credentials: true }));
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT ?? "50mb" }));
 
-app.use("/api/auth", authRouter);
+app.use("/api/auth",     authRouter);
 app.use("/api/products", productsRouter);
-app.use("/api/sku", skuRouter);
+app.use("/api/sku",      skuRouter);
 
 app.get("/", (_req, res) => {
   res.json({ ok: true, message: "new-ecomm backend" });
 });
 
-
-const IS_DEV = process.env.NODE_ENV !== "production";
 const DB_KEEPALIVE_MS = 4 * 60 * 1000; // 4 min — Supabase idles after ~5 min
 
 function startDbKeepAlive(): void {
   const client = supabaseAdmin ?? supabaseAnon;
   setInterval(async () => {
+    const log = createLog().start("DB KEEPALIVE");
     try {
       await client.from("products").select("id").limit(1);
-      if (IS_DEV) console.log("[DB] keep-alive ping ✓");
+      log.success("ping OK").end("DB KEEPALIVE");
     } catch (err) {
-      console.warn("[DB] keep-alive ping failed:", (err as Error).message);
+      log.error("ping failed", err).end("DB KEEPALIVE");
     }
   }, DB_KEEPALIVE_MS);
 }
 
 app.listen(PORT, () => {
-  console.log(`API listening on http://localhost:${PORT}`);
-  void warmupRedis();
+  console.log(`\nAPI listening on http://localhost:${PORT}`);
+
+  const log = createLog().start("REDIS WARMUP");
+  void warmupRedis(log).then(() => log.end("REDIS WARMUP"));
+
   startDbKeepAlive();
 });

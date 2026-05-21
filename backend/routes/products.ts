@@ -1,4 +1,3 @@
-import { performance } from "perf_hooks";
 import { Router, type Request, type Response } from "express";
 import {
   fetchAllProducts,
@@ -12,9 +11,7 @@ import {
   fetchProductBySlug,
   fetchProductTitleBySlug,
   fetchRecommendedProducts,
-  type RecommendedTimingCallbacks
 } from "../lib/persistCatalog.js";
-import { PdpTimer } from "../lib/pdpPerfLogger.js";
 import {
   redisGet,
   redisSet,
@@ -25,11 +22,9 @@ import {
   CATALOG_LIST_TTL_S,
   CATALOG_DETAIL_TTL_S,
 } from "../lib/redis.js";
+import { createLog, type OpLogger } from "../lib/logger.js";
 
-const IS_DEV = process.env.NODE_ENV !== "production";
-
-// ─── In-process L1 cache (warm between requests on same dyno) ───────────────
-// Redis is L2. On a cache miss we check Redis first, then Supabase.
+// ─── In-process L1 cache (PDP detail only) ───────────────────────────────────
 const DETAIL_CACHE_TTL_MS = 5 * 60 * 1000;
 interface CacheEntry { payload: object; expiresAt: number; }
 const detailCache = new Map<string, CacheEntry>();
@@ -44,10 +39,9 @@ function setL1(key: string, payload: object) {
   detailCache.set(key, { payload, expiresAt: Date.now() + DETAIL_CACHE_TTL_MS });
 }
 
-// Bust both L1 and Redis on publish/update
-export async function invalidateDetailCache(slug: string): Promise<void> {
+export async function invalidateDetailCache(slug: string, log: OpLogger): Promise<void> {
   detailCache.delete(slug);
-  await redisDel(redisKey("pdp", slug), redisKey("rec", slug));
+  await redisDel(log, redisKey("pdp", slug), redisKey("rec", slug));
 }
 
 // ─── Catalog Redis key helpers ────────────────────────────────────────────────
@@ -59,56 +53,59 @@ function catalogDetailKey(baseSku: string): string {
   return redisKey("catalog-detail", baseSku);
 }
 
-/** All possible catalog-list cache permutations (3 statuses × 2 page sizes). */
-const CATALOG_LIST_ALL_KEYS = (["ALL", "PUBLISHED", "DRAFT"] as const).flatMap(s =>
-  [10 as number | undefined, undefined].map(l => catalogListKey(s, l))
+const CATALOG_LIST_ALL_KEYS = (["ALL", "PUBLISHED", "DRAFT"] as const).flatMap((s) =>
+  [10 as number | undefined, undefined].map((l) => catalogListKey(s, l))
 );
 
-/** Bust catalog Redis caches after any mutation (launch or delete). */
-async function invalidateCatalogCaches(baseSku?: string): Promise<void> {
+async function invalidateCatalogCaches(log: OpLogger, baseSku?: string): Promise<void> {
   const keys = baseSku
     ? [...CATALOG_LIST_ALL_KEYS, catalogDetailKey(baseSku)]
     : CATALOG_LIST_ALL_KEYS;
-  await redisDel(...keys);
-  if (IS_DEV) {
-    console.log(`[Redis] INVALIDATE catalog list (${CATALOG_LIST_ALL_KEYS.length} keys)${baseSku ? ` + detail sku=${baseSku}` : ""}`);
-  }
+  log.step(`Invalidate - catalog caches  keys=${keys.length}${baseSku ? `  sku=${baseSku}` : ""}`);
+  await redisDel(log, ...keys);
 }
-// ─────────────────────────────────────────────────────────────────────────────
 
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 const router = Router();
 
+// ─── Legacy full-detail list ──────────────────────────────────────────────────
 router.get("/", async (req: Request, res: Response) => {
+  const log = createLog().start("PRODUCT LIST");
   try {
-    const status = req.query.status as "ALL" | "PUBLISHED" | "DRAFT" | undefined;
+    const status    = req.query.status as "ALL" | "PUBLISHED" | "DRAFT" | undefined;
     const limitQuery = req.query.limit as string | undefined;
-    const limit = limitQuery ? parseInt(limitQuery, 10) : undefined;
+    const limit     = limitQuery ? parseInt(limitQuery, 10) : undefined;
+    log.step(`status=${status ?? "ALL"}  limit=${limit ?? "ALL"}`);
 
     if (status) {
-      const data = await fetchFilteredProducts(status, limit);
+      const data = await fetchFilteredProducts(status, limit, log);
+      log.success(`returned published=${data.published.length}  drafts=${data.drafts.length}`);
+      log.end("PRODUCT LIST");
       res.json({
         published: data.published,
         drafts: data.drafts,
         totalCount: data.totalCount,
-        hasMore: data.hasMore
+        hasMore: data.hasMore,
       });
     } else {
-      const data = await fetchAllProducts();
+      const data = await fetchAllProducts(log);
+      log.success(`returned published=${data.published.length}  drafts=${data.drafts.length}`);
+      log.end("PRODUCT LIST");
       res.json({
         published: data.published,
         drafts: data.drafts,
         totalCount: data.published.length + data.drafts.length,
-        hasMore: false
+        hasMore: false,
       });
     }
   } catch (err) {
+    log.error("failed", err).end("PRODUCT LIST");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 
-/** Mock reviews payload — served from /api/products/reviews, not the PDP critical path. */
+// ─── Mock reviews payload ─────────────────────────────────────────────────────
 function buildMockReviewsData(productTitle: string) {
   return {
     averageRating: 4.8,
@@ -116,9 +113,9 @@ function buildMockReviewsData(productTitle: string) {
     distribution: [
       { stars: 5, count: 98 },
       { stars: 4, count: 18 },
-      { stars: 3, count: 5 },
-      { stars: 2, count: 2 },
-      { stars: 1, count: 1 },
+      { stars: 3, count: 5  },
+      { stars: 2, count: 2  },
+      { stars: 1, count: 1  },
     ],
     reviews: [
       {
@@ -127,8 +124,7 @@ function buildMockReviewsData(productTitle: string) {
         rating: 5,
         date: "12 Oct 2023",
         title: `Absolutely gorgeous ${productTitle}!`,
-        comment:
-          "Highly recommend this! The fabric is so premium and my daughter loved it. Worth every rupee!",
+        comment: "Highly recommend this! The fabric is so premium and my daughter loved it. Worth every rupee!",
         verified: true,
       },
       {
@@ -137,8 +133,7 @@ function buildMockReviewsData(productTitle: string) {
         rating: 4,
         date: "05 Nov 2023",
         title: "Beautiful style and rich look",
-        comment:
-          "Precisely as shown in the pictures. The fit was a tiny bit loose but we managed perfectly. Very elegant.",
+        comment: "Precisely as shown in the pictures. The fit was a tiny bit loose but we managed perfectly. Very elegant.",
         verified: true,
       },
       {
@@ -147,15 +142,14 @@ function buildMockReviewsData(productTitle: string) {
         rating: 5,
         date: "28 Nov 2023",
         title: "Perfect purchase",
-        comment:
-          "Excellent craftsmanship. The material is soft and highly comfortable for kids. Five stars!",
+        comment: "Excellent craftsmanship. The material is soft and highly comfortable for kids. Five stars!",
         verified: true,
       },
     ],
   };
 }
 
-// Helper to map DB catalog schema to frontend Product schema (no reviews — lazy-loaded separately)
+// ─── DB → frontend shape mappers ─────────────────────────────────────────────
 function mapDatabaseProductToFrontend(dbProduct: any, isDraft: boolean) {
   const images = (isDraft ? (dbProduct.draft_product_images || []) : (dbProduct.product_images || []))
     .slice()
@@ -168,7 +162,7 @@ function mapDatabaseProductToFrontend(dbProduct: any, isDraft: boolean) {
     id: String(img.id),
     url: img.image_url,
     isPrimary: !!img.is_primary,
-    sortOrder: img.sort_order
+    sortOrder: img.sort_order,
   }));
 
   const globalImages = mappedImages.filter((img: any) => {
@@ -181,14 +175,13 @@ function mapDatabaseProductToFrontend(dbProduct: any, isDraft: boolean) {
       const dbImg = images.find((i: any) => i.id === img.id);
       return dbImg && dbImg.variant_id === v.id;
     });
-
     return {
       name: v.color_name,
       hex: v.color_hex || "#cccccc",
       sku: v.variant_sku,
       stock: v.stock,
       isUnlimited: !!v.is_unlimited,
-      images: variantImages
+      images: variantImages,
     };
   });
 
@@ -211,7 +204,7 @@ function mapDatabaseProductToFrontend(dbProduct: any, isDraft: boolean) {
     care_instructions: dbProduct.care_instructions || "",
     sizes: dbProduct.sizes || [],
     images: globalImages.length > 0 ? globalImages : mappedImages,
-    colors: colors,
+    colors,
     featured: !!dbProduct.is_featured,
     newArrival: !!dbProduct.is_new_arrival,
     bestseller: !!dbProduct.is_bestseller,
@@ -220,11 +213,9 @@ function mapDatabaseProductToFrontend(dbProduct: any, isDraft: boolean) {
   };
 }
 
-// Helper to map DB catalog schema to recommended items format
 function mapDatabaseToRecommended(dbProd: any) {
-  const images = dbProd.product_images || [];
+  const images    = dbProd.product_images || [];
   const primaryImg = images.find((img: any) => img.is_primary)?.image_url || images[0]?.image_url || "";
-  
   return {
     title: dbProd.title,
     slug: dbProd.slug,
@@ -233,199 +224,169 @@ function mapDatabaseToRecommended(dbProd: any) {
     originalPrice: dbProd.original_price || dbProd.price,
     image: primaryImg,
     sku: dbProd.base_sku,
-    tags: dbProd.tags || []
+    tags: dbProd.tags || [],
   };
 }
 
-// GET /api/products/detail — Fetches catalog product by slug and variant SKU (no recommendations)
-// ⚡ Critical path: Returns core product data immediately without waiting for recommendation queries
+// ─── GET /api/products/detail — PDP critical path ────────────────────────────
 router.get("/detail", async (req: Request, res: Response) => {
-  const slug = req.query.slug as string;
-  const sku = req.query.sku as string;
+  const log   = createLog().start("PDP DETAIL");
+  const slug  = req.query.slug     as string;
+  const sku   = req.query.sku      as string;
   const category = req.query.category as string;
 
   if (!slug || !sku) {
+    log.warn("Missing slug or sku").end("PDP DETAIL");
     res.status(400).json({ error: "Slug and SKU parameters are required." });
     return;
   }
 
-  // ── Start perf timer for this request ────────────────────────────────────
-  const timer = new PdpTimer(slug);
+  log.step(`slug=${slug}  sku=${sku}  category=${category || "any"}`);
 
-  // ⚡ L1: in-process memory cache
-  timer.start("cache_lookup");
+  // L1 in-process cache
+  log.step("L1 cache - checking");
   const l1Hit = getL1(slug);
-  timer.end("cache_lookup");
-
   if (l1Hit) {
-    timer.setCacheHit(true);
-    timer.log();
+    log.success("L1 cache - HIT  served from memory").end("PDP DETAIL");
     res.json(l1Hit);
     return;
   }
+  log.step("L1 cache - MISS");
 
-  // ⚡ L2: Redis cache
-  timer.start("redis_lookup");
-  const l2Hit = await redisGet<object>(redisKey("pdp", slug));
-  timer.end("redis_lookup");
-
+  // L2 Redis cache
+  const l2Hit = await redisGet<object>(redisKey("pdp", slug), log);
   if (l2Hit) {
-    timer.setCacheHit(true);
-    timer.setRedisHit(true);
-    timer.log();
-    setL1(slug, l2Hit); // warm L1 from Redis
+    setL1(slug, l2Hit);
+    log.step("L1 cache - warmed from Redis");
+    log.success("L2 Redis - HIT  served from Redis").end("PDP DETAIL");
     res.json(l2Hit);
     return;
   }
 
   try {
-    // Fetch ONLY product — recommendations are lazy-loaded separately (non-blocking)
-    timer.start("db_product");
-    const product = await fetchProductBySlug(slug);
-    timer.end("db_product");
+    const product = await fetchProductBySlug(slug, log);
 
     if (!product) {
-      timer.log();
+      log.warn(`product not found  slug=${slug}`).end("PDP DETAIL");
       res.status(404).json({ error: "Product not found." });
       return;
     }
 
-    // Strict URL validation checks
-    // 1. Slug matches
+    // Validation
+    log.step("Validate - slug match");
     if (product.slug !== slug) {
-      timer.log();
+      log.warn(`slug mismatch  expected=${slug}  got=${product.slug}`).end("PDP DETAIL");
       res.status(404).json({ error: "Slug mismatch." });
       return;
     }
 
-    // 2. Category matches (if category is provided)
-    if (category && product.category_slug !== category) {
-      timer.log();
-      res.status(404).json({ error: "Category mismatch." });
-      return;
+    if (category) {
+      log.step("Validate - category match");
+      if (product.category_slug !== category) {
+        log.warn(`category mismatch  expected=${category}  got=${product.category_slug}`).end("PDP DETAIL");
+        res.status(404).json({ error: "Category mismatch." });
+        return;
+      }
     }
 
-    // 3. SKU belongs to the product (either base_sku or one of the variant_skus)
-    const hasBaseSkuMatch = product.base_sku === sku;
+    log.step("Validate - SKU belongs to product");
+    const hasBaseSkuMatch    = product.base_sku === sku;
     const hasVariantSkuMatch = product.product_variants?.some((v: any) => v.variant_sku === sku);
-
     if (!hasBaseSkuMatch && !hasVariantSkuMatch) {
-      timer.log();
+      log.warn(`SKU not found on product  sku=${sku}`).end("PDP DETAIL");
       res.status(404).json({ error: "SKU does not belong to this product." });
       return;
     }
 
-    // Map product only — no recommendations in critical path
-    const mappedProduct = mapDatabaseProductToFrontend(product, false);
+    const mappedProduct  = mapDatabaseProductToFrontend(product, false);
     const responsePayload = { product: mappedProduct };
 
-    // 💾 Store in L1 + L2
     setL1(slug, responsePayload);
-    void redisSet(redisKey("pdp", slug), responsePayload, PRODUCT_TTL_S);
+    log.step("L1 cache - stored");
+    void redisSet(redisKey("pdp", slug), responsePayload, PRODUCT_TTL_S, log);
 
-    // ── Emit perf report to server log before sending ─────────────────────
-    timer.log();
-
+    log.success(`served from DB  slug=${slug}`).end("PDP DETAIL");
     res.json(responsePayload);
   } catch (err) {
-    timer.log();
+    log.error("unhandled error", err).end("PDP DETAIL");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 
-// GET /api/products/reviews — Lazy-load customer reviews (non-blocking)
+// ─── GET /api/products/reviews — lazy-loaded reviews ─────────────────────────
 router.get("/reviews", async (req: Request, res: Response) => {
+  const log  = createLog().start("PDP REVIEWS");
   const slug = req.query.slug as string;
 
   if (!slug) {
+    log.warn("Missing slug").end("PDP REVIEWS");
     res.status(400).json({ error: "slug parameter is required." });
     return;
   }
 
-  try {
-    const timer = new PdpTimer(`reviews:${slug}`);
-    timer.start("db_reviews");
-    const title = await fetchProductTitleBySlug(slug);
-    timer.end("db_reviews");
+  log.step(`slug=${slug}`);
 
+  try {
+    const title = await fetchProductTitleBySlug(slug, log);
     if (!title) {
-      timer.log();
+      log.warn(`product not found  slug=${slug}`).end("PDP REVIEWS");
       res.status(404).json({ error: "Product not found." });
       return;
     }
 
     const reviewsData = buildMockReviewsData(title);
-    timer.log();
+    log.success(`mock reviews generated  title="${title}"`).end("PDP REVIEWS");
     res.json({ reviewsData });
   } catch (err) {
-    console.error(
-      "[Reviews] Error fetching reviews:",
-      err instanceof Error ? err.message : String(err)
-    );
+    log.error("failed", err);
     res.status(200).json({ reviewsData: null, error: "Failed to load reviews" });
+    log.end("PDP REVIEWS");
   }
 });
 
-// GET /api/products/recommendations — Lazy-load recommendations (non-blocking)
-// ⚡ Separate from critical path: Can fail without breaking the PDP
+// ─── GET /api/products/recommendations — lazy-loaded recommendations ──────────
 router.get("/recommendations", async (req: Request, res: Response) => {
-  const slug = req.query.slug as string;
+  const log      = createLog().start("PDP RECOMMENDATIONS");
+  const slug     = req.query.slug     as string;
   const category = req.query.category as string;
 
   if (!slug) {
+    log.warn("Missing slug").end("PDP RECOMMENDATIONS");
     res.status(400).json({ error: "slug parameter is required." });
     return;
   }
 
+  log.step(`slug=${slug}  category=${category || "any"}`);
+
   try {
-    // ── Start perf timer for recommendations request ────────────────────
-    const timer = new PdpTimer(`rec:${slug}`);
-
-    // ⚡ Redis cache for recommendations (longer TTL — change less often)
-    timer.start("redis_lookup");
-    const cachedRec = await redisGet<{ recommended: object[] }>(redisKey("rec", slug));
-    timer.end("redis_lookup");
-
+    const cachedRec = await redisGet<{ recommended: object[] }>(redisKey("rec", slug), log);
     if (cachedRec) {
-      timer.setCacheHit(true);
-      timer.log();
+      log.success("L2 Redis - HIT  served from cache").end("PDP RECOMMENDATIONS");
       res.json(cachedRec);
       return;
     }
 
-    timer.start("db_rec_category");
-    const recTimingCallbacks: RecommendedTimingCallbacks = {
-      onCategoryQueryDone: () => timer.end("db_rec_category"),
-      onPadQueryStart:     () => timer.start("db_rec_pad"),
-      onPadQueryDone:      () => timer.end("db_rec_pad"),
-    };
-
-    timer.start("db_recommendations");
-    const recommendedList = await fetchRecommendedProducts(slug, category || "", recTimingCallbacks);
-    timer.end("db_recommendations");
-
+    const recommendedList  = await fetchRecommendedProducts(slug, category || "", log);
     const mappedRecommended = (recommendedList || []).map(mapDatabaseToRecommended);
-    const recPayload = { recommended: mappedRecommended };
+    const recPayload        = { recommended: mappedRecommended };
 
-    void redisSet(redisKey("rec", slug), recPayload, REC_TTL_S);
+    void redisSet(redisKey("rec", slug), recPayload, REC_TTL_S, log);
 
-    // ── Emit perf report to server log ──────────────────────────────────
-    timer.log();
-
+    log.success(`${mappedRecommended.length} recommendations returned`).end("PDP RECOMMENDATIONS");
     res.json(recPayload);
   } catch (err) {
-    // Graceful degradation: Return empty recommendations rather than failing the request
-    console.error("[Recommendations] Error fetching recommendations:", err instanceof Error ? err.message : String(err));
+    log.error("failed — returning empty recommendations", err);
     res.status(200).json({ recommended: [], error: "Failed to load recommendations" });
+    log.end("PDP RECOMMENDATIONS");
   }
 });
 
+// ─── POST /api/products/preview — draft save or product launch ────────────────
 interface StoredProduct {
   status: "DRAFT" | "PUBLISHED";
   receivedAt: string;
   data: Record<string, unknown>;
 }
-
 let lastProduct: StoredProduct | null = null;
 
 function buildPublicPayload(): Record<string, unknown> | null {
@@ -433,26 +394,21 @@ function buildPublicPayload(): Record<string, unknown> | null {
   return { status: lastProduct.status, receivedAt: lastProduct.receivedAt, ...lastProduct.data };
 }
 
-// POST /api/products/preview — Curation Studio + optional Supabase persistence
 router.post("/preview", async (req: Request, res: Response) => {
-  const t0 = performance.now();
   const { status, ...data } = req.body as { status: string; [key: string]: unknown };
-
   const normalized: "DRAFT" | "PUBLISHED" = status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
   const sku  = String(data.sku  ?? "UNKNOWN");
   const name = String(data.name ?? "Untitled");
   const slug = String(data.slug ?? "");
 
-  lastProduct = {
-    status: normalized,
-    receivedAt: new Date().toISOString(),
-    data,
-  };
+  const opName = normalized === "DRAFT" ? "DRAFT SAVE" : "PRODUCT LAUNCH";
+  const log    = createLog().start(opName);
+  log.step(`sku=${sku}  name="${name}"  slug=${slug}`);
 
-  if (IS_DEV) console.log(`[API] ${normalized} REQUEST RECEIVED → sku=${sku} name="${name}"`);
+  lastProduct = { status: normalized, receivedAt: new Date().toISOString(), data };
 
   const previewPath = "/api/products/preview";
-  const payload = buildPublicPayload();
+  const payload     = buildPublicPayload();
 
   let database:
     | { ok: true; draftProductId?: string; publishedProductId?: string }
@@ -462,164 +418,118 @@ router.post("/preview", async (req: Request, res: Response) => {
   if (isSupabaseCatalogConfigured()) {
     try {
       if (normalized === "DRAFT") {
-        if (IS_DEV) console.log(`[DB] DRAFT → saveDraftToDatabase sku=${sku}`);
-        const { draftProductId } = await saveDraftToDatabase(data);
-        void invalidateCatalogCaches(sku);
-        if (IS_DEV) console.log(`[REDIS] DRAFT → INVALIDATE catalog-detail=${sku} catalog-list=all`);
+        const { draftProductId } = await saveDraftToDatabase(data, log);
+        void invalidateCatalogCaches(log, sku);
         database = { ok: true, draftProductId };
-        if (IS_DEV) console.log(`[API] DRAFT RESPONSE → ${Math.round(performance.now() - t0)}ms sku=${sku} draftId=${draftProductId}`);
+        log.success(`draft saved  draftId=${draftProductId}`);
       } else {
-        if (IS_DEV) console.log(`[DB] LAUNCH → launchProductToDatabase sku=${sku}`);
-        const { publishedProductId } = await launchProductToDatabase(data);
-        // Bust PDP L1 + PDP Redis + catalog Redis so all caches reflect new state
-        void invalidateDetailCache(slug);
-        void invalidateCatalogCaches(sku);
-        if (IS_DEV) console.log(`[REDIS] LAUNCH → INVALIDATE pdp=${slug} catalog-detail=${sku} catalog-list=all`);
+        const { publishedProductId } = await launchProductToDatabase(data, log);
+        void invalidateDetailCache(slug, log);
+        void invalidateCatalogCaches(log, sku);
         database = { ok: true, publishedProductId };
-        if (IS_DEV) console.log(`[API] LAUNCH RESPONSE → ${Math.round(performance.now() - t0)}ms sku=${sku} publishedId=${publishedProductId}`);
+        log.success(`product launched  publishedId=${publishedProductId}`);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`[API] ${normalized} FAILED → ${Math.round(performance.now() - t0)}ms sku=${sku} error="${message}"`);
-      database = { ok: false, error: message };
-      res.status(500).json({
-        ok: false,
-        status: normalized,
-        previewPath,
-        payload,
-        database,
-      });
+      log.error("persistence failed", err).end(opName);
+      database = { ok: false, error: err instanceof Error ? err.message : String(err) };
+      res.status(500).json({ ok: false, status: normalized, previewPath, payload, database });
       return;
     }
   } else {
+    log.warn("Supabase not configured — persistence skipped");
     database = {
       ok: false,
       skipped: true,
-      reason:
-        "Set SUPABASE_SERVICE_ROLE_KEY (or VITE_SUPABASE_SERVICE_KEY) in backend/.env to persist drafts and launches.",
+      reason: "Set SUPABASE_SERVICE_ROLE_KEY (or VITE_SUPABASE_SERVICE_KEY) in backend/.env to persist drafts and launches.",
     };
-    if (IS_DEV) console.log(`[API] ${normalized} SKIPPED → Supabase not configured`);
   }
 
-  res.json({
-    ok: true,
-    status: lastProduct.status,
-    previewPath,
-    payload,
-    database,
-  });
+  log.end(opName);
+  res.json({ ok: true, status: lastProduct!.status, previewPath, payload, database });
 });
 
 router.get("/preview", (_req: Request, res: Response) => {
   const payload = buildPublicPayload();
   if (!payload) {
-    res.json({
-      message:
-        "No product received yet. Use Save Draft or Launch Product in the Curation Studio first.",
-    });
+    res.json({ message: "No product received yet. Use Save Draft or Launch Product in the Curation Studio first." });
     return;
   }
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.json(payload);
 });
 
-// GET /api/products/catalog-list — Thin initial list (scalars + primary image, no variants)
+// ─── GET /api/products/catalog-list — thin initial list ──────────────────────
 router.get("/catalog-list", async (req: Request, res: Response) => {
-  const t0 = performance.now();
+  const log    = createLog().start("CATALOG LIST");
+  const status = (req.query.status as "ALL" | "PUBLISHED" | "DRAFT" | undefined) ?? "ALL";
+  const limitQuery = req.query.limit as string | undefined;
+  const limit  = limitQuery ? parseInt(limitQuery, 10) : undefined;
+  const rKey   = catalogListKey(status, limit);
+
+  log.step(`status=${status}  limit=${limit ?? "ALL"}  key=${rKey}`);
+
   try {
-    const status = (req.query.status as "ALL" | "PUBLISHED" | "DRAFT" | undefined) ?? "ALL";
-    const limitQuery = req.query.limit as string | undefined;
-    const limit = limitQuery ? parseInt(limitQuery, 10) : undefined;
-    const rKey = catalogListKey(status, limit);
-
-    if (IS_DEV) console.log(`[API] LIST REQUEST RECEIVED → status=${status} limit=${limit ?? "ALL"}`);
-
-    // ── L2: Redis cache ──────────────────────────────────────────────────────
-    const cached = await redisGet<object>(rKey);
+    const cached = await redisGet<object>(rKey, log);
     if (cached) {
-      if (IS_DEV) {
-        console.log(`[REDIS] LIST → HIT key=${rKey}`);
-        console.log(`[TRACE] LIST FLOW:\n  Redis → HIT\n  No DB query`);
-        console.log(`[API] LIST RESPONSE → ${Math.round(performance.now() - t0)}ms (Redis hit)`);
-      }
+      log.success("L2 Redis - HIT  served from cache").end("CATALOG LIST");
       res.setHeader("X-Cache", "HIT");
       res.json(cached);
       return;
     }
-    if (IS_DEV) console.log(`[REDIS] LIST → MISS key=${rKey}`);
-    // ────────────────────────────────────────────────────────────────────────
 
-    const result = await fetchThinProductList(status, limit);
+    const result = await fetchThinProductList(status, limit, log);
+    void redisSet(rKey, result, CATALOG_LIST_TTL_S, log);
 
-    // Store in Redis for cross-session reuse
-    void redisSet(rKey, result, CATALOG_LIST_TTL_S);
-
-    if (IS_DEV) {
-      console.log(`[REDIS] LIST → STORED key=${rKey} TTL=${CATALOG_LIST_TTL_S}s`);
-      console.log(`[TRACE] LIST FLOW:\n  Redis → MISS\n  DB → HIT\n  Response cached (TTL ${CATALOG_LIST_TTL_S}s)`);
-      console.log(`[API] LIST RESPONSE → ${Math.round(performance.now() - t0)}ms rows=${result.products.length} hasMore=${result.hasMore}`);
-    }
-
+    log.end("CATALOG LIST");
     res.setHeader("X-Cache", "MISS");
     res.json(result);
   } catch (err) {
+    log.error("failed", err).end("CATALOG LIST");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 
-// GET /api/products/catalog-detail?sku=<base_sku> — Full detail for one product (lazy)
+// ─── GET /api/products/catalog-detail — full detail per SKU (lazy) ────────────
 router.get("/catalog-detail", async (req: Request, res: Response) => {
-  const t0 = performance.now();
   const sku = req.query.sku as string;
   if (!sku) {
     res.status(400).json({ error: "sku parameter is required." });
     return;
   }
 
+  const log  = createLog().start("CATALOG DETAIL");
   const rKey = catalogDetailKey(sku);
-  if (IS_DEV) console.log(`[API] DETAIL REQUEST RECEIVED → sku=${sku}`);
+  log.step(`sku=${sku}  key=${rKey}`);
 
   try {
-    // ── L2: Redis cache ──────────────────────────────────────────────────────
-    const cached = await redisGet<object>(rKey);
+    const cached = await redisGet<object>(rKey, log);
     if (cached) {
-      if (IS_DEV) {
-        console.log(`[REDIS] DETAIL → HIT key=${rKey}`);
-        console.log(`[TRACE] DETAIL FLOW:\n  Redis → HIT\n  No DB query`);
-        console.log(`[API] DETAIL RESPONSE → ${Math.round(performance.now() - t0)}ms sku=${sku} (Redis hit)`);
-      }
+      log.success("L2 Redis - HIT  served from cache").end("CATALOG DETAIL");
       res.setHeader("X-Cache", "HIT");
       res.json(cached);
       return;
     }
-    if (IS_DEV) console.log(`[REDIS] DETAIL → MISS key=${rKey}`);
-    // ────────────────────────────────────────────────────────────────────────
 
-    const { published, draft } = await fetchProductDetailBySku(sku);
+    const { published, draft } = await fetchProductDetailBySku(sku, log);
     const payload = {
       published: published ? { ...published, status: "PUBLISHED" } : null,
       draft:     draft     ? { ...draft,      status: "DRAFT"      } : null,
     };
 
-    // Store in Redis for cross-session reuse
-    void redisSet(rKey, payload, CATALOG_DETAIL_TTL_S);
+    void redisSet(rKey, payload, CATALOG_DETAIL_TTL_S, log);
 
-    if (IS_DEV) {
-      console.log(`[REDIS] DETAIL → STORED key=${rKey} TTL=${CATALOG_DETAIL_TTL_S}s`);
-      console.log(`[TRACE] DETAIL FLOW:\n  Redis → MISS\n  DB → HIT\n  Response cached (TTL ${CATALOG_DETAIL_TTL_S}s)`);
-      console.log(`[API] DETAIL RESPONSE → ${Math.round(performance.now() - t0)}ms sku=${sku} published=${!!published} draft=${!!draft}`);
-    }
-
+    log.success(`served from DB  published=${!!published}  draft=${!!draft}`).end("CATALOG DETAIL");
     res.setHeader("X-Cache", "MISS");
     res.json(payload);
   } catch (err) {
+    log.error("failed", err).end("CATALOG DETAIL");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 
-// DELETE /api/products/:id?status=DRAFT|PUBLISHED&base_sku=<sku>
+// ─── DELETE /api/products/:id ─────────────────────────────────────────────────
 router.delete("/:id", async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { id }  = req.params;
   const status  = req.query.status   as string;
   const baseSku = req.query.base_sku as string | undefined;
 
@@ -633,15 +543,17 @@ router.delete("/:id", async (req: Request, res: Response) => {
     return;
   }
 
+  const log = createLog().start("PRODUCT DELETE");
+  log.step(`id=${id}  status=${status}  sku=${baseSku ?? "unknown"}`);
+
   try {
-    await deleteProductFromDatabase(id as string, status as "DRAFT" | "PUBLISHED");
-    // Bust catalog Redis caches so the deleted version is not served again
-    void invalidateCatalogCaches(baseSku);
+    await deleteProductFromDatabase(id, status as "DRAFT" | "PUBLISHED", log);
+    void invalidateCatalogCaches(log, baseSku);
+    log.success(`deleted  id=${id}  status=${status}`).end("PRODUCT DELETE");
     res.json({ success: true, message: `Successfully deleted ${status} product ${id}.` });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`[Products] Delete failed for ${id}:`, message);
-    res.status(500).json({ error: message });
+    log.error("delete failed", err).end("PRODUCT DELETE");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 

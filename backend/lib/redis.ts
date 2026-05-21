@@ -1,4 +1,5 @@
 import { Redis } from "ioredis";
+import { createLog, type OpLogger } from "./logger.js";
 
 // TTLs (seconds)
 export const PRODUCT_TTL_S        = 5 * 60;   // 5 min  — PDP product detail
@@ -14,15 +15,15 @@ function createClient(): RedisClient | null {
   if (!url) return null;
 
   const redis = new Redis(url, {
-    maxRetriesPerRequest: 1,   // fail fast so we fall through to DB
+    maxRetriesPerRequest: 1,
     enableOfflineQueue: false,
     lazyConnect: true,
   });
 
   redis.on("error", (err: Error) => {
-    // Log once; don't crash the server
     if (process.env.NODE_ENV !== "test") {
-      console.warn("[Redis] connection error — falling back to DB:", err.message);
+      const log = createLog();
+      log.warn(`Redis connection error — falling back to DB : ${err.message}`);
     }
   });
 
@@ -30,71 +31,75 @@ function createClient(): RedisClient | null {
 }
 
 export function getRedis(): RedisClient | null {
-  if (client === null) {
-    client = createClient();
-  }
+  if (client === null) client = createClient();
   return client;
 }
 
-const DEV = process.env.NODE_ENV !== "production";
-
 /** Get a parsed JSON value from Redis. Returns null on miss or error. */
-export async function redisGet<T>(key: string): Promise<T | null> {
+export async function redisGet<T>(key: string, log: OpLogger): Promise<T | null> {
   try {
     const redis = getRedis();
     if (!redis) return null;
     const raw = await redis.get(key);
-    if (DEV) console.log(`[Redis] GET ${key} →`, raw ? "HIT" : "MISS");
-    if (!raw) return null;
-    return JSON.parse(raw) as T;
+    if (raw) {
+      log.step(`L2 Redis - HIT  key=${key}`);
+      return JSON.parse(raw) as T;
+    }
+    log.step(`L2 Redis - MISS  key=${key}`);
+    return null;
   } catch (err) {
-    if (DEV) console.warn(`[Redis] GET ${key} failed:`, (err as Error).message);
+    log.warn(`L2 Redis - GET failed  key=${key} : ${(err as Error).message}`);
     return null;
   }
 }
 
 /** Set a JSON value in Redis with a TTL in seconds. Silently ignores errors. */
-export async function redisSet(key: string, value: unknown, ttlSeconds: number): Promise<void> {
+export async function redisSet(
+  key: string,
+  value: unknown,
+  ttlSeconds: number,
+  log: OpLogger,
+): Promise<void> {
   try {
     const redis = getRedis();
     if (!redis) return;
     await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
-    if (DEV) console.log(`[Redis] SET ${key} (TTL ${ttlSeconds}s)`);
+    log.step(`L2 Redis - SET  key=${key}  TTL=${ttlSeconds}s`);
   } catch (err) {
-    if (DEV) console.warn(`[Redis] SET ${key} failed:`, (err as Error).message);
+    log.warn(`L2 Redis - SET failed  key=${key} : ${(err as Error).message}`);
   }
 }
 
-/** Delete one or more keys. Silently ignores errors. */
-export async function redisDel(...keys: string[]): Promise<void> {
+/** Delete one or more keys. log is first so rest-params spread stays clean. */
+export async function redisDel(log: OpLogger, ...keys: string[]): Promise<void> {
   try {
     const redis = getRedis();
     if (!redis) return;
     await redis.del(...keys);
-    if (DEV) console.log(`[Redis] DEL ${keys.join(", ")}`);
+    log.step(`L2 Redis - DEL  ${keys.length} key(s) : ${keys.join(", ")}`);
   } catch (err) {
-    if (DEV) console.warn(`[Redis] DEL ${keys.join(", ")} failed:`, (err as Error).message);
+    log.warn(`L2 Redis - DEL failed : ${(err as Error).message}`);
   }
 }
 
 export function redisKey(
   prefix: "pdp" | "rec" | "catalog-list" | "catalog-detail",
-  slug: string
+  slug: string,
 ): string {
   return `${prefix}:${slug}`;
 }
 
 /** Eagerly connect and verify Redis. Called once at server startup. */
-export async function warmupRedis(): Promise<void> {
+export async function warmupRedis(log: OpLogger): Promise<void> {
   const redis = getRedis();
   if (!redis) {
-    console.log("[Redis] REDIS_URL not set — L2 cache disabled, using L1 only.");
+    log.warn("REDIS_URL not set — L2 cache disabled, using DB directly");
     return;
   }
   try {
     await redis.connect();
-    console.log("[Redis] Connected ✓ — L2 cache active.");
+    log.success("Redis connected — L2 cache active");
   } catch (err) {
-    console.warn("[Redis] Connection failed — L2 cache disabled:", (err as Error).message);
+    log.error("Redis connection failed — L2 cache disabled", err);
   }
 }
