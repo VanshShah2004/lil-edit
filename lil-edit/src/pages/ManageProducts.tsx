@@ -89,6 +89,7 @@ const isPlaceholderDescription = (pts?: string[]) => {
   return false;
 };
 
+
 interface ProductVersionViewProps {
   version: { type: "PUBLISHED" | "DRAFT"; data: ProductItem; label: string };
   isSecondary?: boolean;
