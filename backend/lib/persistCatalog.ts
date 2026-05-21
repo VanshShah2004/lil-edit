@@ -41,8 +41,11 @@ const MANAGE_DRAFT_SELECT = `
   draft_product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
 `.trim();
 
-/** Round 1 of fetchThinProductList — scalars only, no image join. Used for both tables. */
-const THIN_SCALAR_SELECT = `id, title, base_sku, price, created_at, updated_at`;
+/** Round 1 scalars for products — includes the denormalized flag. */
+const THIN_PUBLISHED_SELECT = `id, title, base_sku, price, created_at, updated_at, has_pending_updates`;
+
+/** Round 1 scalars for draft_products — includes the denormalized flag. */
+const THIN_DRAFT_SELECT = `id, title, base_sku, price, created_at, updated_at, is_published`;
 
 /**
  * PDP detail query projection — only fields used by mapDatabaseProductToFrontend.
@@ -201,18 +204,30 @@ async function insertVariantsAndMap(
 
 /**
  * Replace draft row for this slug with payload (Curation Studio → draft_* tables).
+ * Sets is_published on the new draft row and has_pending_updates on the published
+ * counterpart so catalog list queries never need to cross-join for flag state.
  */
 export async function saveDraftToDatabase(data: CurationPayload): Promise<{ draftProductId: string }> {
   const sb = requireAdmin();
   const { productDraft, variants, images } = mapCurationPayloadToCatalog(data);
-  const slug = productDraft.slug;
+  const { slug, base_sku } = productDraft;
+
+  // Check whether a published version already exists for this SKU.
+  // Result drives both the is_published flag on the new draft row and
+  // the has_pending_updates flag on the published product.
+  const { data: pubRow } = await sb
+    .from("products")
+    .select("id")
+    .eq("base_sku", base_sku)
+    .maybeSingle();
+  const hasPublished = !!pubRow;
 
   const { error: delErr } = await sb.from("draft_products").delete().eq("slug", slug);
   if (delErr) throw delErr;
 
   const { data: prod, error: insErr } = await sb
     .from("draft_products")
-    .insert(productDraft)
+    .insert({ ...productDraft, is_published: hasPublished })
     .select("id")
     .single();
 
@@ -221,6 +236,12 @@ export async function saveDraftToDatabase(data: CurationPayload): Promise<{ draf
 
   const variantMap = await insertVariantsAndMap(sb, "draft_product_variants", productId, variants);
   await insertImagesForProduct(sb, "draft_product_images", productId, variantMap, images);
+
+  if (hasPublished) {
+    await sb.from("products")
+      .update({ has_pending_updates: true })
+      .eq("base_sku", base_sku);
+  }
 
   return { draftProductId: productId };
 }
@@ -480,7 +501,10 @@ function buildPrimaryImageMap(
 
 /**
  * Thin catalog list — no variants, no full image arrays.
- * Returns one row per unique base_sku with has_pending_updates computed from timestamps.
+ *
+ * PUBLISHED and DRAFT modes use a single-table path: flags are read directly
+ * from the denormalized columns (has_pending_updates / is_published) so no
+ * cross-table join is needed.  ALL mode still queries both tables and merges.
  */
 export async function fetchThinProductList(
   status: "ALL" | "PUBLISHED" | "DRAFT" = "ALL",
@@ -489,15 +513,129 @@ export async function fetchThinProductList(
   const sb = requireAdmin();
   const t0 = performance.now();
 
-  if (IS_DEV) console.log(`[DB] QUERY LIST → PostgreSQL round 1 scalars (status=${status}${limit ? ` limit=${limit}` : ""})`);
+  if (IS_DEV) console.log(`[DB] QUERY LIST → status=${status}${limit ? ` limit=${limit}` : ""}`);
 
-  // ── Round 1: scalar fields only for ALL rows — no image join ─────────────
+  // ── PUBLISHED: single-table path ─────────────────────────────────────────
+  if (status === "PUBLISHED") {
+    const { data: rows, error } = await sb
+      .from("products")
+      .select(THIN_PUBLISHED_SELECT)
+      .order("updated_at", { ascending: false });
+    if (error) throw error;
+
+    const tR1 = performance.now();
+    if (IS_DEV) console.log(`[DB] LIST ROUND 1 → ${fms(tR1 - t0)} (${rows?.length ?? 0} published)`);
+
+    const totalCount = rows?.length ?? 0;
+    const hasMore    = limit ? totalCount > limit : false;
+    const sliced     = limit ? (rows ?? []).slice(0, limit) : (rows ?? []);
+
+    const ids = sliced.map(r => r.id as string);
+    const { data: imgs, error: imgErr } = ids.length > 0
+      ? await sb.from("product_images")
+          .select("product_id, image_url, is_primary")
+          .in("product_id", ids)
+      : { data: [] as { product_id: string; image_url: string; is_primary: boolean }[], error: null };
+    if (imgErr) throw imgErr;
+
+    const tR2 = performance.now();
+    if (IS_DEV) console.log(`[DB] LIST ROUND 2 → ${fms(tR2 - tR1)} (${imgs?.length ?? 0} images)`);
+
+    const imageMap = buildPrimaryImageMap(imgs ?? []);
+    const finalRows: ThinProductRow[] = sliced.map(r => {
+      const hasPending = !!(r as any).has_pending_updates;
+      return {
+        base_sku:            r.base_sku   as string,
+        title:               r.title      as string,
+        price:               r.price      as number,
+        created_at:          r.created_at as string,
+        updated_at:          r.updated_at as string,
+        primary_image_url:   imageMap.get(r.id as string) ?? null,
+        has_pending_updates: hasPending,
+        is_published:        true,
+        has_draft:           hasPending,
+      };
+    });
+
+    if (IS_DEV) {
+      const total = performance.now() - t0;
+      console.log(`[DB] LIST COMPLETE → ${fms(total)} (returned=${finalRows.length} total=${totalCount})`);
+      console.log(`
+[Catalog] fetchThinProductList (PUBLISHED${limit ? ` / Top ${limit}` : ""})
+  • single-table path  rows=${totalCount}  returned=${finalRows.length}
+  • Round 1 (scalars): ${fms(tR1 - t0)}
+  • Round 2 (images):  ${fms(tR2 - tR1)}
+  • Total:             ${fms(total)}
+────────────────────────────────────────────────`);
+    }
+
+    return { products: finalRows, totalCount, hasMore };
+  }
+
+  // ── DRAFT: single-table path ──────────────────────────────────────────────
+  if (status === "DRAFT") {
+    const { data: rows, error } = await sb
+      .from("draft_products")
+      .select(THIN_DRAFT_SELECT)
+      .order("updated_at", { ascending: false });
+    if (error) throw error;
+
+    const tR1 = performance.now();
+    if (IS_DEV) console.log(`[DB] LIST ROUND 1 → ${fms(tR1 - t0)} (${rows?.length ?? 0} drafts)`);
+
+    const totalCount = rows?.length ?? 0;
+    const hasMore    = limit ? totalCount > limit : false;
+    const sliced     = limit ? (rows ?? []).slice(0, limit) : (rows ?? []);
+
+    const ids = sliced.map(r => r.id as string);
+    const { data: imgs, error: imgErr } = ids.length > 0
+      ? await sb.from("draft_product_images")
+          .select("product_id, image_url, is_primary")
+          .in("product_id", ids)
+      : { data: [] as { product_id: string; image_url: string; is_primary: boolean }[], error: null };
+    if (imgErr) throw imgErr;
+
+    const tR2 = performance.now();
+    if (IS_DEV) console.log(`[DB] LIST ROUND 2 → ${fms(tR2 - tR1)} (${imgs?.length ?? 0} images)`);
+
+    const imageMap = buildPrimaryImageMap(imgs ?? []);
+    const finalRows: ThinProductRow[] = sliced.map(r => {
+      const isPublished = !!(r as any).is_published;
+      return {
+        base_sku:            r.base_sku   as string,
+        title:               r.title      as string,
+        price:               r.price      as number,
+        created_at:          r.created_at as string,
+        updated_at:          r.updated_at as string,
+        primary_image_url:   imageMap.get(r.id as string) ?? null,
+        has_pending_updates: isPublished,
+        is_published:        isPublished,
+        has_draft:           true,
+      };
+    });
+
+    if (IS_DEV) {
+      const total = performance.now() - t0;
+      console.log(`[DB] LIST COMPLETE → ${fms(total)} (returned=${finalRows.length} total=${totalCount})`);
+      console.log(`
+[Catalog] fetchThinProductList (DRAFT${limit ? ` / Top ${limit}` : ""})
+  • single-table path  rows=${totalCount}  returned=${finalRows.length}
+  • Round 1 (scalars): ${fms(tR1 - t0)}
+  • Round 2 (images):  ${fms(tR2 - tR1)}
+  • Total:             ${fms(total)}
+────────────────────────────────────────────────`);
+    }
+
+    return { products: finalRows, totalCount, hasMore };
+  }
+
+  // ── ALL: dual-table path — flags read from columns, no timestamp comparison ─
   const [
     { data: published, error: pubErr },
     { data: drafts,    error: draftErr },
   ] = await Promise.all([
-    sb.from("products")      .select(THIN_SCALAR_SELECT).order("updated_at", { ascending: false }),
-    sb.from("draft_products").select(THIN_SCALAR_SELECT).order("updated_at", { ascending: false }),
+    sb.from("products")      .select(THIN_PUBLISHED_SELECT).order("updated_at", { ascending: false }),
+    sb.from("draft_products").select(THIN_DRAFT_SELECT)    .order("updated_at", { ascending: false }),
   ]);
 
   if (pubErr)   throw pubErr;
@@ -506,10 +644,11 @@ export async function fetchThinProductList(
   const tR1 = performance.now();
   if (IS_DEV) console.log(`[DB] LIST ROUND 1 → ${fms(tR1 - t0)} (${published?.length ?? 0} published, ${drafts?.length ?? 0} drafts)`);
 
-  // ── Merge by base_sku, compute has_pending_updates ───────────────────────
+  // ── Merge by base_sku ─────────────────────────────────────────────────────
   const map = new Map<string, InternalThinRow>();
 
   for (const p of published ?? []) {
+    const hasPending = !!(p as any).has_pending_updates;
     map.set(p.base_sku as string, {
       base_sku:            p.base_sku   as string,
       title:               p.title      as string,
@@ -517,21 +656,22 @@ export async function fetchThinProductList(
       created_at:          p.created_at as string,
       updated_at:          p.updated_at as string,
       is_published:        true,
-      has_draft:           false,
-      has_pending_updates: false,
+      has_draft:           hasPending,
+      has_pending_updates: hasPending,
       published_id:        p.id         as string,
     });
   }
 
   for (const d of drafts ?? []) {
-    const existing  = map.get(d.base_sku as string);
-    const dUpdatedAt = new Date(d.updated_at as string).getTime();
-
+    const existing = map.get(d.base_sku as string);
     if (existing) {
-      const isPending = dUpdatedAt > new Date(existing.updated_at).getTime();
+      // Published + draft pair — draft is always a pending update if it exists
       existing.has_draft           = true;
-      existing.has_pending_updates = isPending;
-      if (isPending) existing.updated_at = d.updated_at as string;
+      existing.has_pending_updates = true;
+      existing.draft_id            = d.id as string;
+      if (new Date(d.updated_at as string) > new Date(existing.updated_at)) {
+        existing.updated_at = d.updated_at as string;
+      }
     } else {
       map.set(d.base_sku as string, {
         base_sku:            d.base_sku   as string,
@@ -547,21 +687,17 @@ export async function fetchThinProductList(
     }
   }
 
-  // ── Filter, sort, slice ───────────────────────────────────────────────────
-  let rows = Array.from(map.values());
-
-  if (status === "PUBLISHED") rows = rows.filter(r => r.is_published);
-  else if (status === "DRAFT") rows = rows.filter(r => r.has_draft);
-
-  rows.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  // ── Sort and slice ────────────────────────────────────────────────────────
+  const rows = Array.from(map.values())
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
   const totalCount = rows.length;
   const hasMore    = limit ? totalCount > limit : false;
   const sliced     = limit ? rows.slice(0, limit) : rows;
 
-  // ── Round 2: images only for the sliced rows ─────────────────────────────
-  const publishedIds  = sliced.filter(r => r.published_id).map(r => r.published_id!);
-  const draftOnlyIds  = sliced.filter(r => !r.is_published && r.draft_id).map(r => r.draft_id!);
+  // ── Round 2: images for sliced rows ──────────────────────────────────────
+  const publishedIds = sliced.filter(r => r.published_id).map(r => r.published_id!);
+  const draftOnlyIds = sliced.filter(r => !r.is_published && r.draft_id).map(r => r.draft_id!);
 
   if (IS_DEV) console.log(`[DB] LIST ROUND 2 → images for ${publishedIds.length} published + ${draftOnlyIds.length} draft-only rows`);
 
@@ -587,7 +723,6 @@ export async function fetchThinProductList(
   const pubImageMap   = buildPrimaryImageMap(pubImgsRes.data   ?? []);
   const draftImageMap = buildPrimaryImageMap(draftImgsRes.data ?? []);
 
-  // ── Assemble final ThinProductRow[] ──────────────────────────────────────
   const finalRows: ThinProductRow[] = sliced.map(r => ({
     base_sku:            r.base_sku,
     title:               r.title,
@@ -606,7 +741,7 @@ export async function fetchThinProductList(
     const total = performance.now() - t0;
     console.log(`[DB] LIST COMPLETE → ${fms(total)} (published=${published?.length ?? 0} drafts=${drafts?.length ?? 0} merged=${totalCount} returned=${finalRows.length})`);
     console.log(`
-[Catalog] fetchThinProductList (${status}${limit ? ` / Top ${limit}` : ""})
+[Catalog] fetchThinProductList (ALL${limit ? ` / Top ${limit}` : ""})
   • published=${published?.length ?? 0}  drafts=${drafts?.length ?? 0}  merged=${totalCount}  returned=${finalRows.length}
   • Round 1 (scalars): ${fms(tR1 - t0)}
   • Round 2 (images):  ${fms(tR2 - tR1)}
