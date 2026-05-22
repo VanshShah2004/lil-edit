@@ -23,6 +23,7 @@ import {
   CATALOG_DETAIL_TTL_S,
 } from "../lib/redis.js";
 import { createLog, type OpLogger } from "../lib/logger.js";
+import { supabaseAdmin } from "../lib/supabase.js";
 
 // ─── In-process L1 cache (PDP detail only) ───────────────────────────────────
 const DETAIL_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -68,6 +69,40 @@ async function invalidateCatalogCaches(log: OpLogger, baseSku?: string): Promise
 // ─────────────────────────────────────────────────────────────────────────────
 
 const router = Router();
+
+// ─── POST /upload-url — issue a signed Supabase Storage upload URL ────────────
+router.post("/upload-url", async (req: Request, res: Response) => {
+  if (!supabaseAdmin) {
+    res.status(503).json({ error: "Supabase service role not configured" });
+    return;
+  }
+
+  const { path } = req.body as { path?: string };
+  if (!path || typeof path !== "string") {
+    res.status(400).json({ error: "path is required" });
+    return;
+  }
+
+  // Allowlist: products/{sku}/{context}/{uuid}.jpg — no path traversal possible
+  if (!/^products\/[\w-]+\/[\w-]+\/[\w-]+\.jpg$/.test(path)) {
+    res.status(400).json({ error: "Invalid path format" });
+    return;
+  }
+
+  const { data, error } = await supabaseAdmin.storage
+    .from("product-images")
+    .createSignedUploadUrl(path);
+
+  if (error || !data) {
+    res.status(500).json({ error: error?.message ?? "Failed to create signed URL" });
+    return;
+  }
+
+  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "";
+  const publicUrl   = `${supabaseUrl}/storage/v1/object/public/product-images/${path}`;
+
+  res.json({ signedUrl: data.signedUrl, publicUrl });
+});
 
 // ─── Legacy full-detail list ──────────────────────────────────────────────────
 router.get("/", async (req: Request, res: Response) => {

@@ -433,18 +433,17 @@ export async function fetchThinProductList(
   if (status === "PUBLISHED") {
     log.step("Loading products table");
     const t1 = performance.now();
-    const { data: rows, error } = await sb
-      .from("products")
-      .select(THIN_PUBLISHED_SELECT)
-      .order("updated_at", { ascending: false });
+    const baseQ = sb.from("products").select(THIN_PUBLISHED_SELECT).order("updated_at", { ascending: false });
+    const { data: rows, error } = await (limit != null ? baseQ.limit(limit + 1) : baseQ);
     if (error) throw error;
 
     const tR1 = performance.now();
-    log.step(`products table loaded  ${fms(tR1 - t1)}  rows=${rows?.length ?? 0}`);
+    log.step(`products table loaded  ${fms(tR1 - t1)}  db_limit=${limit != null ? limit + 1 : "NONE"}  db_rows=${rows?.length ?? 0}`);
 
-    const totalCount = rows?.length ?? 0;
-    const hasMore    = limit ? totalCount > limit : false;
-    const sliced     = limit ? (rows ?? []).slice(0, limit) : (rows ?? []);
+    const hasMore    = limit != null ? (rows?.length ?? 0) > limit : false;
+    const sliced     = limit != null ? (rows ?? []).slice(0, limit) : (rows ?? []);
+    const totalCount = sliced.length;
+    log.step(`LIMIT check  requested=${limit ?? "ALL"}  db_returned=${rows?.length ?? 0}  serving=${sliced.length}  hasMore=${hasMore}`);
 
     const ids = sliced.map((r) => r.id as string);
     log.step(`Loading product_images table  ids=${ids.length}`);
@@ -483,18 +482,17 @@ export async function fetchThinProductList(
   if (status === "DRAFT") {
     log.step("Loading draft_products table");
     const t1 = performance.now();
-    const { data: rows, error } = await sb
-      .from("draft_products")
-      .select(THIN_DRAFT_SELECT)
-      .order("updated_at", { ascending: false });
+    const baseQ = sb.from("draft_products").select(THIN_DRAFT_SELECT).order("updated_at", { ascending: false });
+    const { data: rows, error } = await (limit != null ? baseQ.limit(limit + 1) : baseQ);
     if (error) throw error;
 
     const tR1 = performance.now();
-    log.step(`draft_products table loaded  ${fms(tR1 - t1)}  rows=${rows?.length ?? 0}`);
+    log.step(`draft_products table loaded  ${fms(tR1 - t1)}  db_limit=${limit != null ? limit + 1 : "NONE"}  db_rows=${rows?.length ?? 0}`);
 
-    const totalCount = rows?.length ?? 0;
-    const hasMore    = limit ? totalCount > limit : false;
-    const sliced     = limit ? (rows ?? []).slice(0, limit) : (rows ?? []);
+    const hasMore    = limit != null ? (rows?.length ?? 0) > limit : false;
+    const sliced     = limit != null ? (rows ?? []).slice(0, limit) : (rows ?? []);
+    const totalCount = sliced.length;
+    log.step(`LIMIT check  requested=${limit ?? "ALL"}  db_returned=${rows?.length ?? 0}  serving=${sliced.length}  hasMore=${hasMore}`);
 
     const ids = sliced.map((r) => r.id as string);
     log.step(`Loading draft_product_images table  ids=${ids.length}`);

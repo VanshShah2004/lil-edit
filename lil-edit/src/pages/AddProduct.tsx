@@ -28,6 +28,7 @@ import type { Product, ProductImage, ProductColor } from "@/types/product";
 import { generateBaseSku, generateColorSku } from "@/utils/sku";
 import { slugify } from "@/utils/slug";
 import { getBackendBaseUrl } from "@/lib/backend";
+import { uploadProductImage } from "@/lib/uploadImage";
 import { toast } from "sonner";
 
 const SIZES = [
@@ -246,6 +247,7 @@ const AddProduct = () => {
 
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [uploadingCount, setUploadingCount] = useState(0);
   const [savedPreviewProduct, setSavedPreviewProduct] = useState<Product | null>(null);
   const [previewActivated, setPreviewActivated] = useState(false);
   const [activeImageTab, setActiveImageTab] = useState<"Global" | string>("Global");
@@ -423,25 +425,36 @@ const AddProduct = () => {
   };
 
   const processFiles = (files: FileList, targetTab: "Global" | string) => {
-    const newFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
+    const newFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (newFiles.length === 0) return;
 
-    newFiles.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        if (targetTab === "Global") {
-          setImagePreviews((prev) => [...prev, result]);
-        } else {
-          setFormData(prev => ({
-            ...prev,
-            selectedColors: prev.selectedColors.map(c => 
-              c.name === targetTab ? { ...c, images: [...c.images, result] } : c
-            )
-          }));
+    setUploadingCount((prev) => prev + newFiles.length);
+
+    for (const file of newFiles) {
+      void (async () => {
+        try {
+          const url = await uploadProductImage(
+            file,
+            formData.sku || "temp",
+            targetTab === "Global" ? "global" : targetTab,
+          );
+          if (targetTab === "Global") {
+            setImagePreviews((prev) => [...prev, url]);
+          } else {
+            setFormData((prev) => ({
+              ...prev,
+              selectedColors: prev.selectedColors.map((c) =>
+                c.name === targetTab ? { ...c, images: [...c.images, url] } : c
+              ),
+            }));
+          }
+        } catch (err) {
+          toast.error(`Upload failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+        } finally {
+          setUploadingCount((prev) => prev - 1);
         }
-      };
-      reader.readAsDataURL(file);
-    });
+      })();
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -1309,10 +1322,18 @@ const AddProduct = () => {
                         </motion.div>
                       </motion.div>
 
+                      {/* Upload progress indicator */}
+                      {uploadingCount > 0 && (
+                        <div className="flex items-center gap-2 px-4 py-2 rounded bg-amber-50 border border-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-widest">
+                          <Loader className="w-3 h-3 animate-spin shrink-0" />
+                          Uploading {uploadingCount} image{uploadingCount > 1 ? "s" : ""} to CDN…
+                        </div>
+                      )}
+
                       {/* Studio Previews */}
                       {(() => {
-                        const currentImages = activeImageTab === "Global" 
-                          ? imagePreviews 
+                        const currentImages = activeImageTab === "Global"
+                          ? imagePreviews
                           : formData.selectedColors.find(c => c.name === activeImageTab)?.images || [];
                         
                         if (currentImages.length === 0) return null;
@@ -1472,7 +1493,7 @@ const AddProduct = () => {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleSaveDraft}
-                    disabled={isSaving}
+                    disabled={isSaving || uploadingCount > 0}
                     className="flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full border border-gray-200 text-gray-900 font-bold uppercase tracking-widest text-xs hover:bg-black hover:text-white hover:border-black active:bg-black active:text-white transition-all duration-300 disabled:opacity-50 group"
                   >
                     {isSaving ? (
@@ -1489,6 +1510,7 @@ const AddProduct = () => {
                     onClick={handlePublish}
                     disabled={
                       isPublishing ||
+                      uploadingCount > 0 ||
                       !formData.name ||
                       !formData.category ||
                       !formData.gender ||

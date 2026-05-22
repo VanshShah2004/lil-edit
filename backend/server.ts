@@ -52,11 +52,24 @@ function startDbKeepAlive(): void {
   }, DB_KEEPALIVE_MS);
 }
 
+async function warmupStorage(): Promise<void> {
+  if (!supabaseAdmin) return;
+  const log = createLog().start("STORAGE WARMUP");
+  const { error } = await supabaseAdmin.storage.createBucket("product-images", { public: true });
+  if (error && !error.message.toLowerCase().includes("already exists")) {
+    log.error(`bucket creation failed: ${error.message}`, error).end("STORAGE WARMUP");
+  } else {
+    log.success('bucket "product-images" ready').end("STORAGE WARMUP");
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`\nAPI listening on http://localhost:${PORT}`);
 
   const log = createLog().start("REDIS WARMUP");
   void warmupRedis(log).then(() => log.end("REDIS WARMUP"));
+
+  void warmupStorage();
 
   startDbKeepAlive();
 });
