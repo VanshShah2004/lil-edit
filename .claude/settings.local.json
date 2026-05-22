@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsx *)"
+      "Bash(npx tsx *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Vansh\\\\OneDrive\\\\Desktop\\\\new-ecomm\\\\lil-edit\\\\src\" -Recurse -File)",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ]
   }
 }

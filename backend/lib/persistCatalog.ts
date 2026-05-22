@@ -527,70 +527,32 @@ export async function fetchThinProductList(
     return { products: finalRows, totalCount, hasMore };
   }
 
-  // ── ALL: dual-table path ──────────────────────────────────────────────────
-  log.step("Loading products table + draft_products table (parallel)");
+  // ── ALL: single RPC round-trip (UNION query, sorted + limited in DB) ─────────
+  log.step(`source=RPC  fn=catalog_thin_list_all  p_limit=${limit != null ? limit + 1 : "NULL (no limit)"}`);
   const t1 = performance.now();
-  const [
-    { data: published, error: pubErr },
-    { data: drafts,    error: draftErr },
-  ] = await Promise.all([
-    sb.from("products")      .select(THIN_PUBLISHED_SELECT).order("updated_at", { ascending: false }),
-    sb.from("draft_products").select(THIN_DRAFT_SELECT)    .order("updated_at", { ascending: false }),
-  ]);
 
-  if (pubErr)   throw pubErr;
-  if (draftErr) throw draftErr;
+  const { data: rpcRows, error: rpcErr } = await sb
+    .rpc("catalog_thin_list_all", { p_limit: limit != null ? limit + 1 : null });
+  if (rpcErr) throw rpcErr;
 
   const tR1 = performance.now();
-  log.step(`tables loaded  ${fms(tR1 - t1)}  published=${published?.length ?? 0}  drafts=${drafts?.length ?? 0}`);
+  log.step(`RPC OK  ${fms(tR1 - t1)}  db_rows=${rpcRows?.length ?? 0}  (old path fetched ALL rows from 2 tables separately)`);
 
-  const map = new Map<string, InternalThinRow>();
-
-  for (const p of published ?? []) {
-    const hasPending = !!(p as any).has_pending_updates;
-    map.set(p.base_sku as string, {
-      base_sku:            p.base_sku   as string,
-      title:               p.title      as string,
-      price:               p.price      as number,
-      created_at:          p.created_at as string,
-      updated_at:          p.updated_at as string,
-      is_published:        true,
-      has_draft:           hasPending,
-      has_pending_updates: hasPending,
-      published_id:        p.id         as string,
-    });
-  }
-
-  for (const d of drafts ?? []) {
-    const existing = map.get(d.base_sku as string);
-    if (existing) {
-      existing.has_draft           = true;
-      existing.has_pending_updates = true;
-      existing.draft_id            = d.id as string;
-      if (new Date(d.updated_at as string) > new Date(existing.updated_at)) {
-        existing.updated_at = d.updated_at as string;
-      }
-    } else {
-      map.set(d.base_sku as string, {
-        base_sku:            d.base_sku   as string,
-        title:               d.title      as string,
-        price:               d.price      as number,
-        created_at:          d.created_at as string,
-        updated_at:          d.updated_at as string,
-        is_published:        false,
-        has_draft:           true,
-        has_pending_updates: false,
-        draft_id:            d.id         as string,
-      });
-    }
-  }
-
-  const rows = Array.from(map.values())
-    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-
-  const totalCount = rows.length;
-  const hasMore    = limit ? totalCount > limit : false;
-  const sliced     = limit ? rows.slice(0, limit) : rows;
+  const hasMore    = limit != null ? (rpcRows?.length ?? 0) > limit : false;
+  const sliced: InternalThinRow[] = (limit != null ? (rpcRows ?? []).slice(0, limit) : (rpcRows ?? [])).map((r: any) => ({
+    base_sku:            r.base_sku,
+    title:               r.title,
+    price:               r.price,
+    created_at:          r.created_at,
+    updated_at:          r.updated_at,
+    is_published:        r.is_published,
+    has_draft:           r.has_draft,
+    has_pending_updates: r.has_pending_updates,
+    published_id:        r.published_id ?? undefined,
+    draft_id:            r.draft_id     ?? undefined,
+  }));
+  const totalCount = sliced.length;
+  log.step(`LIMIT check  requested=${limit ?? "ALL"}  db_returned=${rpcRows?.length ?? 0}  serving=${sliced.length}  hasMore=${hasMore}`);
 
   const publishedIds = sliced.filter((r) => r.published_id).map((r) => r.published_id!);
   const draftOnlyIds = sliced.filter((r) => !r.is_published && r.draft_id).map((r) => r.draft_id!);
