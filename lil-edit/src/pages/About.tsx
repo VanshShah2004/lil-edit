@@ -8,8 +8,6 @@ import FeaturesBar from "@/components/landing/FeaturesBar";
 import CtaBanner from "@/components/landing/CtaBanner";
 import logo from "@/assets/logo.png";
 
-
-
 const About = () => {
   const { user, loading: authLoading } = useAuth();
 
