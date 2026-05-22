@@ -18,6 +18,13 @@ function createClient(): RedisClient | null {
     maxRetriesPerRequest: 1,
     enableOfflineQueue: false,
     lazyConnect: true,
+    // TCP-level keepalive — prevents OS from silently dropping idle sockets
+    keepAlive: 5000,
+    // Auto-reconnect on connection reset (Upstash drops idle connections)
+    reconnectOnError: (err) =>
+      ["ECONNRESET", "ETIMEDOUT", "ECONNREFUSED"].some((code) =>
+        err.message.includes(code)
+      ),
   });
 
   redis.on("error", (err: Error) => {
@@ -28,6 +35,31 @@ function createClient(): RedisClient | null {
   });
 
   return redis;
+}
+
+const REDIS_PING_INTERVAL_MS = 30_000; // 30s — Upstash drops connections on idle
+
+/**
+ * Sends a PING every 30 seconds to keep the Upstash TCP connection alive.
+ * Only logs on failure — no noise on success.
+ * Call once after warmupRedis() in server startup.
+ */
+export function startRedisKeepalive(): void {
+  const redis = getRedis();
+  if (!redis) return;
+
+  setInterval(async () => {
+    const log = createLog().start("REDIS KEEPALIVE");
+    try {
+      await redis.ping();
+      log.success("ping OK — connection alive").end("REDIS KEEPALIVE");
+    } catch (err) {
+      log.warn(`ping failed — connection may have dropped : ${(err as Error).message}`).end("REDIS KEEPALIVE");
+    }
+  }, REDIS_PING_INTERVAL_MS);
+
+  const log = createLog().start("REDIS KEEPALIVE");
+  log.success(`started — ping every ${REDIS_PING_INTERVAL_MS / 1000}s`).end("REDIS KEEPALIVE");
 }
 
 export function getRedis(): RedisClient | null {

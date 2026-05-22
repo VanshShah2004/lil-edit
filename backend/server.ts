@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 import authRouter from "./routes/auth.js";
 import productsRouter from "./routes/products.js";
 import skuRouter from "./routes/sku.js";
-import { warmupRedis } from "./lib/redis.js";
+import { warmupRedis, startRedisKeepalive } from "./lib/redis.js";
 import { supabaseAdmin, supabaseAnon } from "./lib/supabase.js";
 import { createLog } from "./lib/logger.js";
 
@@ -67,7 +67,10 @@ app.listen(PORT, () => {
   console.log(`\nAPI listening on http://localhost:${PORT}`);
 
   const log = createLog().start("REDIS WARMUP");
-  void warmupRedis(log).then(() => log.end("REDIS WARMUP"));
+  void warmupRedis(log).then(() => {
+    log.end("REDIS WARMUP");
+    startRedisKeepalive();
+  });
 
   void warmupStorage();
 
