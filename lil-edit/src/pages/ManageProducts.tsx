@@ -640,6 +640,7 @@ const ManageProducts = () => {
       });
 
       setProducts(rows);
+      clog(`[LIST] ${rows.length} cards rendered with text — image pixels loading lazily via browser`);
       setHasMoreMap(prev => ({ ...prev, [status]: !!data.hasMore }));
 
       if (rows.length > 0) {
@@ -1112,7 +1113,7 @@ const ManageProducts = () => {
                   >
                     <div className="w-10 h-12 bg-gray-100 rounded border border-gray-200 flex-shrink-0 overflow-hidden relative">
                       {p.image_url ? (
-                        <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" loading="lazy" />
+                        <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" loading="lazy" onLoad={() => clog(`[IMG] pixels loaded  sku=${p.base_sku}`)} />
                       ) : (
                         <ImageIcon className="w-4 h-4 text-gray-300 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                       )}
