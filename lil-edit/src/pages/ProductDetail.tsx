@@ -107,6 +107,7 @@ export default function ProductDetail() {
   const [reviewsError, setReviewsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const lazyLoadSlugRef = useRef<string | undefined>(undefined);
+  const cacheHitRef = useRef(!!isProductCacheFresh);
 
   // ── Perf tracker — one instance per slug, stable across re-renders ────────
   const perfRef     = useRef<PdpClientPerf | null>(null);
@@ -127,7 +128,7 @@ export default function ProductDetail() {
   useLayoutEffect(() => {
     if (product) {
       perf.mark("renderEnd");
-      perf.log(!!isProductCacheFresh);
+      perf.log(cacheHitRef.current);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product]);
@@ -140,16 +141,25 @@ export default function ProductDetail() {
   useEffect(() => {
     if (!productSlug || !skuId) return;
 
+    const controller = new AbortController();
     let cancelled = false;
 
-    // Only show spinner on a true cold miss
-    if (!isProductCacheFresh) setLoading(true);
+    // Snapshot cache at effect run time — keeps isProductCacheFresh out of deps (it changing after
+    // the first fetch set the cache was causing the double-fetch loop)
+    const cached = productCache.get(productSlug);
+    const cacheHit = !!cached && (Date.now() - cached.cachedAt < CACHE_TTL_MS);
+    cacheHitRef.current = cacheHit;
+
+    console.log(`[DepLoop] product effect RAN  slug=${productSlug}  cacheHit=${cacheHit}`);
+
+    if (!cacheHit) setLoading(true);
     setError(null);
 
     const base = getBackendBaseUrl();
 
+    console.log(`[AbortController] product fetch START  slug=${productSlug}`);
     perf.mark("fetchStart");
-    fetch(`${base}/api/products/detail?slug=${encodeURIComponent(productSlug)}&sku=${encodeURIComponent(skuId)}&category=${encodeURIComponent(categoryParam ?? "")}`)
+    fetch(`${base}/api/products/detail?slug=${encodeURIComponent(productSlug)}&sku=${encodeURIComponent(skuId)}&category=${encodeURIComponent(categoryParam ?? "")}`, { signal: controller.signal })
       .then(async (res) => {
         if (cancelled) return;
         perf.mark("fetchEnd");
@@ -169,10 +179,13 @@ export default function ProductDetail() {
         setProduct(data.product);
       })
       .catch((err) => {
+        if (err.name === 'AbortError') {
+          console.log(`[AbortController] product fetch ABORTED  slug=${productSlug}`);
+          return;
+        }
         if (cancelled) return;
         console.error("[ProductDetail] Error:", err);
-        // Only show error if we have nothing cached to show
-        if (!isProductCacheFresh) {
+        if (!cacheHit) {
           setError(err instanceof Error ? err.message : "Failed to load product details");
           setProduct(null);
         }
@@ -181,9 +194,13 @@ export default function ProductDetail() {
         if (!cancelled) setLoading(false);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      console.log(`[AbortController] product fetch CLEANUP  slug=${productSlug}  aborting=${!controller.signal.aborted}`);
+      cancelled = true;
+      controller.abort();
+    };
     // SKU in URL is for display/validation only — same product slug = same payload (no refetch on color change)
-  }, [productSlug, categoryParam, isProductCacheFresh]);
+  }, [productSlug, categoryParam]);
 
   // Canonicalize base-SKU URLs to primary variant SKU without remounting or refetching
   useEffect(() => {
@@ -198,29 +215,47 @@ export default function ProductDetail() {
   useEffect(() => {
     if (lazyLoadSlugRef.current === productSlug) return;
     lazyLoadSlugRef.current = productSlug;
-    setReviewsData(isReviewsCacheFresh && reviewsCached ? reviewsCached.reviewsData : null);
-    setRecommendedProducts(isRecCacheFresh && recCached ? recCached.recommended : []);
+
+    const revCached = productSlug ? reviewsCache.get(productSlug) : undefined;
+    const revFresh = !!revCached && (Date.now() - revCached.cachedAt < CACHE_TTL_MS);
+    const recCachedNow = productSlug ? recommendationCache.get(productSlug) : undefined;
+    const recFresh = !!recCachedNow && (Date.now() - recCachedNow.cachedAt < CACHE_TTL_MS);
+
+    setReviewsData(revFresh ? revCached!.reviewsData : null);
+    setRecommendedProducts(recFresh ? recCachedNow!.recommended : []);
     setReviewsLoading(false);
     setReviewsError(null);
     setRecommendationsLoading(false);
     setRecommendationsError(null);
-  }, [productSlug, isReviewsCacheFresh, reviewsCached, isRecCacheFresh, recCached]);
+  }, [productSlug]);
 
   // ⚡ LAZY LOAD: Reviews + recommendations after product renders (non-blocking)
   useEffect(() => {
     if (!product || !productSlug) return;
 
     const base = getBackendBaseUrl();
+    const reviewsController = new AbortController();
+    const recsController = new AbortController();
     let cancelled = false;
 
+    // Snapshot cache at effect run time — keeps cache-derived booleans out of deps
+    // (they changing after each fetch resolved was causing the lazy effect to loop)
+    const revCachedNow = reviewsCache.get(productSlug);
+    const isRevFresh = !!revCachedNow && (Date.now() - revCachedNow.cachedAt < CACHE_TTL_MS);
+    const recCachedNow = recommendationCache.get(productSlug);
+    const isRecFreshNow = !!recCachedNow && (Date.now() - recCachedNow.cachedAt < CACHE_TTL_MS);
+
+    console.log(`[DepLoop] lazy effect RAN  slug=${productSlug}  reviewsCacheHit=${isRevFresh}  recsCacheHit=${isRecFreshNow}`);
+
     const fetchReviews = () => {
-      if (isReviewsCacheFresh && reviewsCached) {
-        setReviewsData(reviewsCached.reviewsData);
+      if (isRevFresh && revCachedNow) {
+        setReviewsData(revCachedNow.reviewsData);
         return;
       }
       setReviewsLoading(true);
       setReviewsError(null);
-      fetch(`${base}/api/products/reviews?slug=${encodeURIComponent(productSlug)}`)
+      console.log(`[AbortController] reviews fetch START  slug=${productSlug}`);
+      fetch(`${base}/api/products/reviews?slug=${encodeURIComponent(productSlug)}`, { signal: reviewsController.signal })
         .then(async (res) => {
           if (!res.ok) {
             const errMsg = await res.json().catch(() => ({}));
@@ -234,6 +269,10 @@ export default function ProductDetail() {
           setReviewsData(data.reviewsData);
         })
         .catch((err) => {
+          if (err.name === 'AbortError') {
+            console.log(`[AbortController] reviews fetch ABORTED  slug=${productSlug}`);
+            return;
+          }
           if (cancelled) return;
           console.warn("[ProductDetail] Reviews error:", err instanceof Error ? err.message : String(err));
           setReviewsError(err instanceof Error ? err.message : "Failed to load reviews");
@@ -244,14 +283,16 @@ export default function ProductDetail() {
     };
 
     const fetchRecommendations = () => {
-      if (isRecCacheFresh && recCached) {
-        setRecommendedProducts(recCached.recommended);
+      if (isRecFreshNow && recCachedNow) {
+        setRecommendedProducts(recCachedNow.recommended);
         return;
       }
       setRecommendationsLoading(true);
       setRecommendationsError(null);
+      console.log(`[AbortController] recs fetch START  slug=${productSlug}`);
       fetch(
-        `${base}/api/products/recommendations?slug=${encodeURIComponent(productSlug)}&category=${encodeURIComponent(product.categorySlug)}`
+        `${base}/api/products/recommendations?slug=${encodeURIComponent(productSlug)}&category=${encodeURIComponent(product.categorySlug)}`,
+        { signal: recsController.signal }
       )
         .then(async (res) => {
           if (!res.ok) {
@@ -269,6 +310,10 @@ export default function ProductDetail() {
           setRecommendedProducts(data.recommended || []);
         })
         .catch((err) => {
+          if (err.name === 'AbortError') {
+            console.log(`[AbortController] recs fetch ABORTED  slug=${productSlug}`);
+            return;
+          }
           if (cancelled) return;
           console.warn(
             "[ProductDetail] Recommendations error:",
@@ -292,9 +337,12 @@ export default function ProductDetail() {
     });
 
     return () => {
+      console.log(`[AbortController] lazy fetch CLEANUP  slug=${productSlug}  aborting reviews=${!reviewsController.signal.aborted}  aborting recs=${!recsController.signal.aborted}`);
       cancelled = true;
+      reviewsController.abort();
+      recsController.abort();
     };
-  }, [product, productSlug, isReviewsCacheFresh, reviewsCached, isRecCacheFresh, recCached]);
+  }, [product, productSlug]);
 
   const showSkeleton = loading && !product;
   const showNotFound = !loading && (error || !product);
@@ -621,6 +669,7 @@ export default function ProductDetail() {
                 className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all shrink-0 snap-start w-[240px] sm:w-auto"
               >
                 <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5">
+                  {item.image && (
                   <img
                     src={getOptimizedUrlForVariant(item.image, "thumbnail")}
                     alt={item.title}
@@ -628,11 +677,12 @@ export default function ProductDetail() {
                     loading="lazy"
                     decoding="async"
                     onError={(e) => {
-                      if (item.image && e.currentTarget.src !== item.image) {
+                      if (e.currentTarget.src !== item.image) {
                         e.currentTarget.src = item.image;
                       }
                     }}
                   />
+                  )}
                   <button className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-teal-600 transition-all">
                     <Heart className="w-3.5 h-3.5" />
                   </button>
