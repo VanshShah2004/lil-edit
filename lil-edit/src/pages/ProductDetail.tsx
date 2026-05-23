@@ -591,6 +591,11 @@ export default function ProductDetail() {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
                     decoding="async"
+                    onError={(e) => {
+                      if (item.image && e.currentTarget.src !== item.image) {
+                        e.currentTarget.src = item.image;
+                      }
+                    }}
                   />
                   <button className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-teal-600 transition-all">
                     <Heart className="w-3.5 h-3.5" />
