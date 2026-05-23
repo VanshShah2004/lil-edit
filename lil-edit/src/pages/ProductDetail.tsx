@@ -33,6 +33,41 @@ const recommendationCache = new Map<string, { recommended: any[]; cachedAt: numb
 const reviewsCache = new Map<string, { reviewsData: ReviewsData; cachedAt: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+const prefetchInFlight = new Set<string>();
+
+function prefetchProductDetail(slug: string, sku: string, categorySlug: string): void {
+  if (!slug || !sku) return;
+  const cached = productCache.get(slug);
+  if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
+    console.log(`[Prefetch] SKIP  slug=${slug}  reason=cache_fresh`);
+    return;
+  }
+  if (prefetchInFlight.has(slug)) {
+    console.log(`[Prefetch] SKIP  slug=${slug}  reason=in_flight`);
+    return;
+  }
+  console.log(`[Prefetch] START  slug=${slug}  sku=${sku}`);
+  prefetchInFlight.add(slug);
+  const base = getBackendBaseUrl();
+  const t0 = performance.now();
+  fetch(`${base}/api/products/detail?slug=${encodeURIComponent(slug)}&sku=${encodeURIComponent(sku)}&category=${encodeURIComponent(categorySlug)}`)
+    .then(async (res) => {
+      if (!res.ok) {
+        console.warn(`[Prefetch] FAIL  slug=${slug}  status=${res.status}`);
+        return;
+      }
+      const data = await res.json();
+      if (data?.product) {
+        productCache.set(slug, { product: data.product, cachedAt: Date.now() });
+        console.log(`[Prefetch] DONE  slug=${slug}  ${Math.round(performance.now() - t0)}ms  cached=true`);
+      }
+    })
+    .catch((err) => {
+      console.warn(`[Prefetch] ERROR  slug=${slug}`, err);
+    })
+    .finally(() => { prefetchInFlight.delete(slug); });
+}
+
 function scheduleIdleTask(task: () => void): void {
   if ("requestIdleCallback" in window) {
     requestIdleCallback(task, { timeout: 2000 });
@@ -582,6 +617,7 @@ export default function ProductDetail() {
             {recommendedProducts.map((item) => (
               <div
                 key={item.slug}
+                onMouseEnter={() => prefetchProductDetail(item.slug, item.sku, item.categorySlug)}
                 className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all shrink-0 snap-start w-[240px] sm:w-auto"
               >
                 <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5">
