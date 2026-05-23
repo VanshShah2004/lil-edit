@@ -26,11 +26,54 @@ import le6 from "@/assets/searchbar-frequent_searches/le-6.png";
 const LAVENDER = "#B19CD9";
 const TEAL = "#0B5B55";
 
+// O(1) LRU cache backed by Map insertion order.
+// get() promotes the entry to most-recent; set() evicts the oldest when over cap.
+class LRUCache<V> {
+  private map = new Map<string, V>();
+  private readonly max: number;
+  private readonly name: string;
+
+  constructor(max: number, name: string) { this.max = max; this.name = name; }
+
+  // Full get: promotes to most-recent + logs. Use inside effects only.
+  get(key: string): V | undefined {
+    if (!this.map.has(key)) {
+      console.log(`[LRU] ${this.name} MISS  key=${key}  size=${this.map.size}/${this.max}`);
+      return undefined;
+    }
+    const val = this.map.get(key)!;
+    this.map.delete(key);
+    this.map.set(key, val); // re-insert at end = most recent
+    console.log(`[LRU] ${this.name} HIT   key=${key}  size=${this.map.size}/${this.max}`);
+    return val;
+  }
+
+  // Silent read-only peek — no LRU promotion, no log. Use during render.
+  peek(key: string): V | undefined {
+    return this.map.get(key);
+  }
+
+  set(key: string, value: V): void {
+    const isUpdate = this.map.has(key);
+    if (isUpdate) this.map.delete(key);
+    this.map.set(key, value);
+    if (this.map.size > this.max) {
+      const evicted = this.map.keys().next().value!;
+      this.map.delete(evicted);
+      console.log(`[LRU] ${this.name} EVICT key=${evicted}  (added=${key})  size=${this.map.size}/${this.max}`);
+    } else {
+      console.log(`[LRU] ${this.name} ${isUpdate ? "UPDATE" : "SET   "}  key=${key}  size=${this.map.size}/${this.max}`);
+    }
+  }
+
+  get size() { return this.map.size; }
+}
+
 // ⚡ Module-level product cache — persists across route changes within the session.
-// Key = product slug. Recommendations cached separately with their own TTL.
-const productCache = new Map<string, { product: Product; cachedAt: number }>();
-const recommendationCache = new Map<string, { recommended: any[]; cachedAt: number }>();
-const reviewsCache = new Map<string, { reviewsData: ReviewsData; cachedAt: number }>();
+// Key = product slug. Capped at 30 entries each; oldest slug evicted when exceeded.
+const productCache        = new LRUCache<{ product: Product;         cachedAt: number }>(30, "product");
+const recommendationCache = new LRUCache<{ recommended: any[];       cachedAt: number }>(30, "recs");
+const reviewsCache        = new LRUCache<{ reviewsData: ReviewsData; cachedAt: number }>(30, "reviews");
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 const prefetchInFlight = new Set<string>();
@@ -86,9 +129,10 @@ export default function ProductDetail() {
   const [productSlug, skuId] = productPath?.split('$') ?? [undefined, undefined];
 
   // Seed state from module cache immediately — renders in one frame if visited before
-  const productCached = productSlug ? productCache.get(productSlug) : undefined;
-  const recCached = productSlug ? recommendationCache.get(productSlug) : undefined;
-  const reviewsCached = productSlug ? reviewsCache.get(productSlug) : undefined;
+  // peek() — no LRU promotion, no log (runs on every render; get() is for effects only)
+  const productCached = productSlug ? productCache.peek(productSlug) : undefined;
+  const recCached = productSlug ? recommendationCache.peek(productSlug) : undefined;
+  const reviewsCached = productSlug ? reviewsCache.peek(productSlug) : undefined;
 
   // Check if caches are still valid (not expired)
   const isProductCacheFresh = productCached && (Date.now() - productCached.cachedAt < CACHE_TTL_MS);
