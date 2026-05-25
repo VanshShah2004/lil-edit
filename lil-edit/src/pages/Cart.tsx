@@ -3,10 +3,15 @@ import {
   ChevronRight,
   Eye,
   Heart,
+  Lock,
   Minus,
   Plus,
   ArrowRight,
   ShoppingCart,
+  Sparkles,
+  ShieldCheck,
+  Award,
+  Truck,
 } from "lucide-react";
 import { FaTrashAlt } from "react-icons/fa";
 
@@ -121,6 +126,11 @@ export default function Cart() {
     (sum, item) => sum + item.price * item.quantity,
     0
   );
+  const originalTotal = cartItems.reduce(
+    (sum, item) => sum + item.originalPrice * item.quantity,
+    0
+  );
+  const totalSavings = originalTotal - subtotal;
   const deliveryFee = subtotal > 0 && subtotal <= 5000 ? 199 : 0;
   const discount = 0;
   const total = subtotal + deliveryFee - discount;
@@ -357,7 +367,8 @@ export default function Cart() {
                         <Eye size={11} />
                         Quick View
                       </button>
-                      <span className="text-[10px] sm:text-xs text-gray-500 font-medium">
+                      <span className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-400 font-medium">
+                        <Truck size={11} className="text-[#0F766E] flex-shrink-0" />
                         Delivery by {deliveryStr}
                       </span>
                     </div>
@@ -365,10 +376,10 @@ export default function Cart() {
                     {/* DELETE */}
                     <button
                       onClick={() => void removeItem(item.id)}
-                      className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 text-gray-700 hover:text-red-600 transition-colors"
+                      className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 p-1.5 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
                       title="Remove item"
                     >
-                      <FaTrashAlt size={18} />
+                      <FaTrashAlt size={16} />
                     </button>
                   </CardContent>
                 </Card>
@@ -404,6 +415,18 @@ export default function Cart() {
                   <span className="text-gray-600">Subtotal</span>
                   <span className="font-medium">₹{subtotal}</span>
                 </div>
+                {totalSavings > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Without discount</span>
+                    <span className="line-through text-gray-400">₹{originalTotal}</span>
+                  </div>
+                )}
+                {totalSavings > 0 && (
+                  <div className="flex justify-between text-green-600 font-medium">
+                    <span>You save</span>
+                    <span>-₹{totalSavings}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Delivery</span>
                   <span className="font-medium">
@@ -418,38 +441,42 @@ export default function Cart() {
                 )}
               </div>
 
-              <div className="border-t pt-3 sm:pt-4 flex justify-between items-center">
+              <div className="border-t border-purple-300 pt-3 sm:pt-4 flex justify-between items-center">
                 <span className="text-base sm:text-lg font-semibold">Total</span>
                 <span className="text-xl sm:text-2xl font-bold text-[#0F766E]">
                   ₹{total}
                 </span>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <div className="flex flex-row gap-2">
                 <Input
-                  placeholder="Enter coupon"
-                  className="flex-1 h-10 sm:h-11 rounded-full text-sm"
+                  placeholder="Enter coupon code"
+                  className="flex-1 h-11 rounded-full text-sm"
                 />
-                <Button className="bg-white border border-gray-300 hover:bg-gray-50 text-[#0F766E] rounded-full px-4 sm:px-6 h-10 sm:h-11 text-sm sm:text-base font-medium">
+                <Button className="bg-[#0F766E] hover:bg-[#0C5D53] text-white rounded-full px-5 h-11 text-sm font-semibold shrink-0 transition-colors">
                   Apply
                 </Button>
               </div>
 
               <Button
-                className="w-full bg-[#0F766E] hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-full font-semibold text-sm sm:text-base transition-colors"
+                className="w-full bg-[#0F766E] hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-full font-semibold text-sm sm:text-base transition-colors flex items-center justify-center gap-2"
                 disabled={cartItems.length === 0}
               >
+                <Lock size={14} />
                 Secure Checkout
               </Button>
 
               <div className="grid grid-cols-3 gap-2 pt-1 sm:pt-2">
-                <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 text-center text-xs font-medium text-gray-700">
+                <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 flex flex-col items-center gap-1 text-xs font-medium text-gray-700">
+                  <Sparkles size={14} className="text-purple-500" />
                   Classy Styles
                 </div>
-                <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 text-center text-xs font-medium text-gray-700">
+                <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 flex flex-col items-center gap-1 text-xs font-medium text-gray-700">
+                  <ShieldCheck size={14} className="text-[#0F766E]" />
                   Safe Payments
                 </div>
-                <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 text-center text-xs font-medium text-gray-700">
+                <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 flex flex-col items-center gap-1 text-xs font-medium text-gray-700">
+                  <Award size={14} className="text-amber-500" />
                   Premium Quality
                 </div>
               </div>
