@@ -6,6 +6,7 @@ import {
   Minus,
   Plus,
   ArrowRight,
+  ShoppingCart,
 } from "lucide-react";
 import { FaTrashAlt } from "react-icons/fa";
 
@@ -247,10 +248,10 @@ export default function Cart() {
                         />
                       </div>
                       <button
-                        className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-md shadow-sm hover:bg-white transition"
-                        aria-label="Save to wishlist"
+                        className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white shadow-sm hover:bg-gray-50 transition"
+                        aria-label="Add to cart"
                       >
-                        <Heart size={14} className="text-gray-700" />
+                        <ShoppingCart size={14} className="text-purple-600" fill="currentColor" />
                       </button>
                     </div>
 
@@ -258,7 +259,7 @@ export default function Cart() {
                     <div className="flex-1 flex flex-col min-w-0 py-0">
                       <div className="pr-8 sm:pr-10 md:pr-12">
                         <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
-                          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 leading-tight line-clamp-2">
+                          <h2 className="text-2xl sm:text-2xl md:text-3xl font-bold text-gray-900 leading-tight line-clamp-2">
                             {item.title}
                           </h2>
                         </Link>
@@ -284,7 +285,7 @@ export default function Cart() {
                       <div className="flex flex-col mt-3">
                         {/* Color, Size */}
                         <div className="flex items-center gap-1.5 sm:gap-2">
-                          <div className="flex items-center gap-1.5 text-xs md:text-sm text-gray-600 font-medium">
+                          <div className="flex items-center gap-1.5 text-sm md:text-sm text-gray-600 font-medium">
                             {item.color.hex && (
                               <>
                                 <span
@@ -306,7 +307,7 @@ export default function Cart() {
                         {/* Quantity & Price */}
                         <div className="flex items-center justify-between gap-1.5 sm:gap-2 mt-1.5">
                           <div className="flex items-center gap-0.5 sm:gap-1">
-                            <span className="text-xs md:text-sm font-medium text-gray-600">
+                            <span className="text-sm font-medium text-gray-600">
                               Qty:
                             </span>
                             <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white">
@@ -319,7 +320,7 @@ export default function Cart() {
                                 <Minus size={11} className="sm:hidden" />
                                 <Minus size={10} className="hidden sm:block" />
                               </button>
-                              <span className="px-1 sm:px-1.5 md:px-2.5 text-xs md:text-sm font-semibold">
+                              <span className="px-1 sm:px-1.5 md:px-2.5 text-sm font-semibold">
                                 {item.quantity}
                               </span>
                               <button
@@ -352,7 +353,7 @@ export default function Cart() {
 
                     {/* Quick View + Delivery row */}
                     <div className="flex items-center justify-start gap-3 pr-7">
-                      <button className="w-24 sm:w-24 md:w-32 flex-shrink-0 flex items-center justify-center gap-1 px-3 py-1 rounded-sm bg-gray-300 hover:bg-[#0F766E] hover:text-white text-gray-700 text-[10px] font-medium transition-colors">
+                      <button className="w-24 sm:w-24 md:w-32 flex-shrink-0 flex items-center justify-center gap-1 px-3 py-1 rounded-sm bg-gray-200 hover:bg-[#0F766E] hover:text-white text-gray-500 text-[10px] font-medium transition-colors">
                         <Eye size={11} />
                         Quick View
                       </button>
@@ -393,7 +394,7 @@ export default function Cart() {
 
           {/* RIGHT SIDE — Order Summary */}
           <aside className="w-full lg:w-[34%] self-start lg:sticky lg:top-6">
-            <Card className="bg-purple-200/70 backdrop-blur-sm border border-purple-300 shadow-lg rounded-2xl lg:rounded-3xl p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-5">
+            <Card className="bg-purple-200 backdrop-blur-sm border border-purple-300 shadow-lg rounded-2xl lg:rounded-3xl p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-5">
               <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">
                 Order Summary
               </h3>
