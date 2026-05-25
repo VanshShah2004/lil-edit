@@ -297,7 +297,7 @@ export default function Cart() {
                         </div>
                       )}
 
-                      <div className="flex flex-col mt-3">
+                      <div className="flex flex-col mt-5">
                         {/* Color, Size */}
                         <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
                           {item.color.hex && (
@@ -310,7 +310,7 @@ export default function Cart() {
                             </span>
                           )}
                           {item.color.hex && item.size && (
-                            <span className="text-gray-400">·</span>
+                            <span className="text-3xl text-primary leading-none">·</span>
                           )}
                           {item.size && (
                             <span className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
