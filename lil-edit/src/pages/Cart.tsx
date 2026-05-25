@@ -125,6 +125,10 @@ export default function Cart() {
   const total = subtotal + deliveryFee - discount;
   const freeShippingRemaining = Math.max(0, 5000 - subtotal);
 
+  const deliveryDate = new Date();
+  deliveryDate.setDate(deliveryDate.getDate() + 3);
+  const deliveryStr = `${deliveryDate.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}, 6:00 PM`;
+
   const handleQuantityChange = (itemId: string, currentQty: number, delta: number) => {
     const next = Math.max(1, currentQty + delta);
     void updateQuantity(itemId, next);
@@ -226,7 +230,9 @@ export default function Cart() {
                   key={item.id}
                   className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[170px] sm:min-h-[150px] md:min-h-[170px]"
                 >
-                  <CardContent className="py-4 pr-4 pl-2 sm:p-3 md:p-4 flex flex-row gap-3 sm:gap-3 md:gap-4 h-full relative">
+                  <CardContent className="py-4 pr-4 pl-2 sm:p-3 md:p-4 flex flex-col gap-2 h-full relative">
+                    {/* IMAGE + DETAILS row */}
+                    <div className="flex flex-row gap-3 sm:gap-3 md:gap-4 flex-1">
                     {/* IMAGE */}
                     <div className="w-24 sm:w-24 md:w-32 flex-shrink-0 relative group">
                       <div className="aspect-[2/3] sm:aspect-[3/4] md:aspect-[4/5] overflow-hidden rounded-lg bg-gray-100">
@@ -245,12 +251,6 @@ export default function Cart() {
                         aria-label="Save to wishlist"
                       >
                         <Heart size={14} className="text-gray-700" />
-                      </button>
-                      <button
-                        className="mt-1.5 flex items-center justify-center gap-1 w-full py-1 rounded-sm bg-gray-300 hover:bg-[#0F766E] hover:text-white text-gray-700 text-[10px] font-medium transition-colors"
-                      >
-                        <Eye size={11} />
-                        Quick View
                       </button>
                     </div>
 
@@ -285,14 +285,16 @@ export default function Cart() {
                         {/* Color, Size */}
                         <div className="flex items-center gap-1.5 sm:gap-2">
                           {item.color.hex && (
-                            <button
-                              className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
-                              title={item.color.name || "Color"}
-                              style={{ backgroundColor: item.color.hex }}
-                            />
+                            <span className="flex items-center gap-1.5 text-[11px] md:text-xs font-semibold px-2 py-1 bg-white border border-gray-300 text-gray-600 rounded-md shadow-md whitespace-nowrap">
+                              <span
+                                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: item.color.hex }}
+                              />
+                              {item.color.name || "Color"}
+                            </span>
                           )}
                           {item.size && (
-                            <span className="text-xs md:text-sm font-medium px-2 md:px-2.5 py-0.5 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
+                            <span className="text-[11px] md:text-xs font-semibold px-2 py-1 bg-white border border-gray-300 text-gray-600 rounded-md shadow-md whitespace-nowrap">
                               Size: {item.size}
                             </span>
                           )}
@@ -342,6 +344,18 @@ export default function Cart() {
                           </div>
                         </div>
                       </div>
+                    </div>
+                    </div>{/* end image+details row */}
+
+                    {/* Quick View + Delivery row */}
+                    <div className="flex items-center justify-start gap-3 pr-7">
+                      <button className="w-24 sm:w-24 md:w-32 flex-shrink-0 flex items-center justify-center gap-1 px-3 py-1 rounded-sm bg-gray-300 hover:bg-[#0F766E] hover:text-white text-gray-700 text-[10px] font-medium transition-colors">
+                        <Eye size={11} />
+                        Quick View
+                      </button>
+                      <span className="text-[10px] sm:text-xs text-gray-500 font-medium">
+                        Delivery by {deliveryStr}
+                      </span>
                     </div>
 
                     {/* DELETE */}
