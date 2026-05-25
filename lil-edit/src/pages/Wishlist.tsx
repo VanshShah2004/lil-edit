@@ -273,7 +273,7 @@ const WishlistPage = () => {
                   <CardContent className="p-3 sm:p-4 md:p-5 flex flex-row gap-4 sm:gap-4 md:gap-5 h-full relative">
                     {/* IMAGE */}
                     <div className="w-24 sm:w-28 md:w-36 flex-shrink-0 relative group">
-                      <Link to={`/collections/${item.categorySlug}/product/${item.slug}`}>
+                      <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
                         <div className="aspect-[3/4] overflow-hidden rounded-lg bg-gray-100">
                           <img
                             src={item.image}
@@ -296,7 +296,7 @@ const WishlistPage = () => {
                     {/* DETAILS */}
                     <div className="flex-1 flex flex-col min-w-0 justify-between">
                       <div className="pr-8 sm:pr-10 md:pr-12">
-                        <Link to={`/collections/${item.categorySlug}/product/${item.slug}`}>
+                        <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
                           <h2 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 leading-tight line-clamp-2 hover:text-primary transition-colors">
                             {item.title}
                           </h2>

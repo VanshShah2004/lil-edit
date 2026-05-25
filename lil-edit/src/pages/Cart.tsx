@@ -228,17 +228,19 @@ export default function Cart() {
                   <CardContent className="p-2.5 sm:p-3 md:p-4 flex flex-row gap-2.5 sm:gap-3 md:gap-4 h-full relative">
                     {/* IMAGE */}
                     <div className="w-20 sm:w-24 md:w-32 flex-shrink-0 relative group">
-                      <div className="aspect-[3/4] sm:aspect-[3/4] md:aspect-[4/5] overflow-hidden rounded-lg bg-gray-100">
-                        <img
-                          src={item.image}
-                          alt={item.title}
-                          loading="lazy"
-                          onError={(e) => {
-                            e.currentTarget.src = "/fallback-product.webp";
-                          }}
-                          className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-                        />
-                      </div>
+                      <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
+                        <div className="aspect-[3/4] sm:aspect-[3/4] md:aspect-[4/5] overflow-hidden rounded-lg bg-gray-100">
+                          <img
+                            src={item.image}
+                            alt={item.title}
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.src = "/fallback-product.webp";
+                            }}
+                            className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                          />
+                        </div>
+                      </Link>
                       <button
                         className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-md shadow-sm hover:bg-white transition"
                         aria-label="Save to wishlist"
@@ -250,9 +252,11 @@ export default function Cart() {
                     {/* DETAILS */}
                     <div className="flex-1 flex flex-col min-w-0 justify-between py-0">
                       <div className="pr-8 sm:pr-10 md:pr-12">
-                        <h2 className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 leading-tight line-clamp-2">
-                          {item.title}
-                        </h2>
+                        <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
+                          <h2 className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 leading-tight line-clamp-2 hover:text-[#0F766E] transition-colors">
+                            {item.title}
+                          </h2>
+                        </Link>
                         <p className="text-xs md:text-sm text-[#0F766E] mt-0.5 md:mt-1 font-medium line-clamp-1">
                           {item.availability}
                         </p>
