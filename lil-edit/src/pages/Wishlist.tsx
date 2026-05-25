@@ -348,10 +348,9 @@ const WishlistPage = () => {
                               <span>{movingId === item.id ? "Moving…" : "Cart it"}</span>
                             </Button>
                             <Button
-                              onClick={() => void handleBuyNow(item.id)}
+                              onClick={() => {}}
                               size="sm"
-                              disabled={!item.inStock || movingId === item.id}
-                              className="h-9 sm:h-10 flex-1 bg-teal-600 hover:bg-teal-700 text-white rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center"
+                              className="h-9 sm:h-10 flex-1 bg-teal-600 hover:bg-teal-700 text-white rounded-full text-xs sm:text-sm font-bold shadow-sm whitespace-nowrap flex items-center justify-center"
                             >
                               Buy Now
                             </Button>
