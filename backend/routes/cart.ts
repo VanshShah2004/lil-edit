@@ -6,56 +6,13 @@ import { createLog } from "../lib/logger.js";
 const router = Router();
 const db = () => supabaseAdmin ?? supabaseAnon;
 
-// ���── Helper: log full Supabase error object ───────────────────────────────────
-function logSupabaseError(label: string, err: unknown) {
-  const e = err as Record<string, unknown> | null;
-  console.error(`[CART] ${label}`, {
-    message: (e as any)?.message,
-    code:    (e as any)?.code,
-    details: (e as any)?.details,
-    hint:    (e as any)?.hint,
-    raw:     JSON.stringify(e),
-  });
-}
-
-// ─── GET /api/cart/ping — no-auth diagnostic ──────────────────────────────────
-// Verifies the backend can query cart_items at all. Call from browser:
-// GET http://localhost:5000/api/cart/ping
-router.get("/ping", async (_req: Request, res: Response) => {
-  console.log("[CART PING] testing cart_items access");
-  console.log("[CART PING] using client:", supabaseAdmin ? "supabaseAdmin (service role)" : "supabaseAnon");
-
-  const { data, error } = await db()
-    .from("cart_items")
-    .select("id")
-    .limit(1);
-
-  if (error) {
-    logSupabaseError("ping failed", error);
-    res.status(500).json({
-      ok: false,
-      error: error.message,
-      code: (error as any).code,
-      hint: (error as any).hint,
-      details: (error as any).details,
-    });
-    return;
-  }
-
-  console.log("[CART PING] success — cart_items accessible, sample row count:", data?.length ?? 0);
-  res.json({ ok: true, rowsReturned: data?.length ?? 0 });
-});
-
 // ─── GET /api/cart ─────────────────────────────────────────────────────────────
 router.get("/", requireAuth, async (req: Request, res: Response) => {
   const log = createLog().start("CART GET");
   const userId = (req as AuthenticatedRequest).userId;
-  log.step(`user=${userId}`);
-  console.log(`[CART GET] user=${userId}  client=${supabaseAdmin ? "admin" : "anon"}`);
+  log.step(`user=${userId}  client=${supabaseAdmin ? "admin" : "anon"}`);
 
   try {
-    // 1. Fetch all cart rows for this user
-    console.log("[CART GET] querying cart_items...");
     const { data: cartRows, error: cartErr } = await db()
       .from("cart_items")
       .select("id, sku, size, quantity, product_slug, created_at")
@@ -63,16 +20,12 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
       .order("created_at", { ascending: false });
 
     if (cartErr) {
-      logSupabaseError("cart_items query failed", cartErr);
-      log.error("cart fetch failed", cartErr).end("CART GET");
-      res.status(500).json({
-        error: cartErr.message,
-        code: (cartErr as any).code,
-        hint: (cartErr as any).hint,
-      });
+      log.error(`cart_items query failed  code=${(cartErr as any).code}  hint=${(cartErr as any).hint}  msg=${cartErr.message}`, cartErr).end("CART GET");
+      res.status(500).json({ error: cartErr.message });
       return;
     }
-    console.log(`[CART GET] cart_items rows=${cartRows?.length ?? 0}`);
+
+    log.step(`cart_items rows=${cartRows?.length ?? 0}`);
 
     if (!cartRows || cartRows.length === 0) {
       log.success("empty cart").end("CART GET");
@@ -80,7 +33,6 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
-    // 2. Batch-fetch product data for all unique slugs
     const slugs = [...new Set(cartRows.map((r) => r.product_slug as string))];
     const { data: products, error: prodErr } = await db()
       .from("products")
@@ -101,11 +53,10 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
       (products ?? []).map((p: any) => [p.slug as string, p])
     );
 
-    // 3. Enrich each cart row with live product data
     const items = cartRows
       .map((row) => {
         const product = productMap.get(row.product_slug as string);
-        if (!product) return null; // product may have been deleted
+        if (!product) return null;
 
         const variants: any[] = [...(product.product_variants ?? [])].sort(
           (a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
@@ -188,13 +139,9 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
   const qty = Math.max(1, Math.floor(Number(quantity) || 1));
   const sizeVal = typeof size === "string" ? size.trim() : "";
 
-  log.step(`user=${userId}  slug=${product_slug}  sku=${sku}  size="${sizeVal}"  qty=${qty}`);
-  console.log(`[CART ADD] user=${userId}  slug=${product_slug}  sku=${sku}  size="${sizeVal}"  qty=${qty}`);
-  console.log(`[CART ADD] client=${supabaseAdmin ? "admin" : "anon"}`);
+  log.step(`user=${userId}  slug=${product_slug}  sku=${sku}  size="${sizeVal}"  qty=${qty}  client=${supabaseAdmin ? "admin" : "anon"}`);
 
   try {
-    // Validate product exists and SKU belongs to it
-    console.log("[CART ADD] validating product...");
     const { data: product, error: prodErr } = await db()
       .from("products")
       .select("base_sku, product_variants(variant_sku)")
@@ -202,34 +149,27 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       .maybeSingle();
 
     if (prodErr) {
-      logSupabaseError("product validation failed", prodErr);
-      log.error("product validation failed", prodErr).end("CART ADD");
-      res.status(500).json({
-        error: "Could not validate product",
-        code: (prodErr as any).code,
-        hint: (prodErr as any).hint,
-      });
+      log.error(`product validation failed  code=${(prodErr as any).code}  msg=${prodErr.message}`, prodErr).end("CART ADD");
+      res.status(500).json({ error: "Could not validate product" });
       return;
     }
-    console.log(`[CART ADD] product found=${!!product}`);
     if (!product) {
       log.warn(`product not found  slug=${product_slug}`).end("CART ADD");
       res.status(404).json({ error: "Product not found" });
       return;
     }
+    log.step(`product found  base_sku=${product.base_sku}`);
 
     const validSkus: string[] = [
       product.base_sku as string,
       ...((product.product_variants as any[] ?? []).map((v: any) => v.variant_sku as string)),
     ];
     if (!validSkus.includes(sku)) {
-      log.warn(`invalid sku=${sku} for slug=${product_slug}`).end("CART ADD");
+      log.warn(`sku not on product  sku=${sku}  valid=[${validSkus.join(",")}]`).end("CART ADD");
       res.status(400).json({ error: "SKU does not belong to this product" });
       return;
     }
 
-    // Check for existing row — if found, increment quantity
-    console.log("[CART ADD] checking for existing cart_items row...");
     const { data: existing, error: existErr } = await db()
       .from("cart_items")
       .select("id, quantity")
@@ -239,40 +179,28 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       .maybeSingle();
 
     if (existErr) {
-      logSupabaseError("existing row check failed", existErr);
-      log.error("existing row check failed", existErr).end("CART ADD");
-      res.status(500).json({
-        error: existErr.message,
-        code: (existErr as any).code,
-        hint: (existErr as any).hint,
-      });
+      log.error(`existing row check failed  code=${(existErr as any).code}  msg=${existErr.message}`, existErr).end("CART ADD");
+      res.status(500).json({ error: existErr.message });
       return;
     }
-    console.log(`[CART ADD] existing row found=${!!existing}`);
+    log.step(`existing row=${!!existing}`);
 
     if (existing) {
       const newQty = (existing.quantity as number) + qty;
-      console.log(`[CART ADD] incrementing id=${existing.id}  ${existing.quantity}→${newQty}`);
       const { error: updateErr } = await db()
         .from("cart_items")
         .update({ quantity: newQty, updated_at: new Date().toISOString() })
         .eq("id", existing.id);
 
       if (updateErr) {
-        logSupabaseError("increment failed", updateErr);
-        log.error("quantity increment failed", updateErr).end("CART ADD");
-        res.status(500).json({
-          error: updateErr.message,
-          code: (updateErr as any).code,
-          hint: (updateErr as any).hint,
-        });
+        log.error(`increment failed  code=${(updateErr as any).code}  msg=${updateErr.message}`, updateErr).end("CART ADD");
+        res.status(500).json({ error: updateErr.message });
         return;
       }
 
       log.success(`incremented  id=${existing.id}  qty=${existing.quantity}→${newQty}`).end("CART ADD");
       res.json({ ok: true, action: "incremented", cartItemId: existing.id, quantity: newQty });
     } else {
-      console.log("[CART ADD] inserting new row into cart_items...");
       const { data: inserted, error: insertErr } = await db()
         .from("cart_items")
         .insert({ user_id: userId, product_slug, sku, size: sizeVal, quantity: qty })
@@ -280,17 +208,11 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
         .single();
 
       if (insertErr) {
-        logSupabaseError("insert failed", insertErr);
-        log.error("insert failed", insertErr).end("CART ADD");
-        res.status(500).json({
-          error: insertErr.message,
-          code: (insertErr as any).code,
-          hint: (insertErr as any).hint,
-        });
+        log.error(`insert failed  code=${(insertErr as any).code}  msg=${insertErr.message}`, insertErr).end("CART ADD");
+        res.status(500).json({ error: insertErr.message });
         return;
       }
 
-      console.log(`[CART ADD] inserted id=${inserted.id}`);
       log.success(`inserted  id=${inserted.id}`).end("CART ADD");
       res.status(201).json({ ok: true, action: "added", cartItemId: inserted.id, quantity: qty });
     }
@@ -345,8 +267,7 @@ router.patch("/:id", requireAuth, async (req: Request, res: Response) => {
 });
 
 // ─── DELETE /api/cart/clear — remove all items (post-checkout) ─────────────────
-// IMPORTANT: this route must be registered BEFORE /:id so /clear is not
-// matched as an id parameter.
+// IMPORTANT: registered before /:id so "clear" is not matched as an id parameter.
 router.delete("/clear", requireAuth, async (req: Request, res: Response) => {
   const log = createLog().start("CART CLEAR");
   const userId = (req as AuthenticatedRequest).userId;
