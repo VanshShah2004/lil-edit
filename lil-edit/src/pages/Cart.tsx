@@ -281,7 +281,7 @@ export default function Cart() {
                         </div>
                       )}
 
-                      <div className="flex flex-col mt-auto pt-2 sm:pt-1">
+                      <div className="flex flex-col mt-3">
                         {/* Color, Size */}
                         <div className="flex items-center gap-1.5 sm:gap-2">
                           <div className="flex items-center gap-1.5 text-xs md:text-sm text-gray-600 font-medium">
@@ -304,7 +304,7 @@ export default function Cart() {
                         </div>
 
                         {/* Quantity & Price */}
-                        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+                        <div className="flex items-center justify-between gap-1.5 sm:gap-2 mt-1.5">
                           <div className="flex items-center gap-0.5 sm:gap-1">
                             <span className="text-xs md:text-sm font-medium text-gray-600">
                               Qty:
