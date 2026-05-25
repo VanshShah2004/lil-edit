@@ -114,7 +114,8 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       });
       try {
         await apiAdd(productSlug, sku);
-        refetchWishlist(); // replace placeholder with real DB row
+        toast.success("Added to wishlist!");
+        refetchWishlist();
       } catch (err) {
         setWishlistItems((prev) => prev.filter((i) => i.id !== tempId));
         toast.error(err instanceof Error ? err.message : "Could not add to wishlist");

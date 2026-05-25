@@ -14,6 +14,7 @@ import { getBackendBaseUrl } from "@/lib/backend";
 import { buildPdpPath } from "@/lib/pdpUrl";
 import { getOptimizedUrlForVariant } from "@/lib/productImage";
 import { PdpClientPerf } from "@/lib/pdpClientPerf";
+import { useWishlist } from "@/contexts/WishlistContext";
 
 import le0 from "@/assets/searchbar-frequent_searches/le-0.png";
 import le1 from "@/assets/searchbar-frequent_searches/le-1.png";
@@ -124,6 +125,7 @@ export default function ProductDetail() {
   const { category: categoryParam, productPath } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { isWishlisted, addToWishlist, removeFromWishlist, wishlistItems } = useWishlist();
 
   // Parse productSlug and skuId from combined parameter (separated by $)
   const [productSlug, skuId] = productPath?.split('$') ?? [undefined, undefined];
@@ -727,8 +729,28 @@ export default function ProductDetail() {
                     }}
                   />
                   )}
-                  <button className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-teal-600 transition-all">
-                    <Heart className="w-3.5 h-3.5" />
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      console.log("[rec-heart] clicked slug=", item.slug, "sku=", item.sku);
+                      const wishlisted = isWishlisted(item.slug, item.sku);
+                      if (wishlisted) {
+                        const entry = wishlistItems.find(
+                          (w) => w.productSlug === item.slug && w.sku === item.sku
+                        );
+                        if (entry) await removeFromWishlist(entry.id);
+                      } else {
+                        await addToWishlist(item.slug, item.sku);
+                      }
+                    }}
+                    title={isWishlisted(item.slug, item.sku) ? "Remove from wishlist" : "Add to wishlist"}
+                    className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center transition-all"
+                  >
+                    <Heart
+                      className={`w-3.5 h-3.5 ${isWishlisted(item.slug, item.sku) ? "text-primary" : "text-muted-foreground"}`}
+                      fill={isWishlisted(item.slug, item.sku) ? "currentColor" : "none"}
+                    />
                   </button>
                   <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                     <Link

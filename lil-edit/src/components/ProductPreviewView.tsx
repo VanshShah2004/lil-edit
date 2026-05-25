@@ -325,10 +325,13 @@ const ProductPreviewView = ({
             </div>
           )}
 
-          <div className="flex gap-4 mb-5 text-black">
+          <div className="flex gap-4 mb-5 text-black items-center">
             <button
+              type="button"
               disabled={previewMode || wishlistBusy}
-              onClick={async () => {
+              onClick={async (e) => {
+                e.stopPropagation();
+                console.log("[heart] clicked  slug=", product.slug, "sku=", currentSku, "previewMode=", previewMode, "wishlistBusy=", wishlistBusy);
                 if (previewMode) return;
                 setWishlistBusy(true);
                 try {
@@ -345,7 +348,7 @@ const ProductPreviewView = ({
                   setWishlistBusy(false);
                 }
               }}
-              className="transition-colors disabled:opacity-40"
+              className="p-1 -m-1 transition-colors disabled:opacity-40 cursor-pointer"
               title={isWishlisted(product.slug, currentSku) ? "Remove from wishlist" : "Add to wishlist"}
             >
               <Heart
