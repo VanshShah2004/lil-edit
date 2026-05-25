@@ -228,11 +228,11 @@ export default function Cart() {
               cartItems.map((item) => (
                 <Card
                   key={item.id}
-                  className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[170px] sm:min-h-[150px] md:min-h-[170px]"
+                  className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 sm:min-h-[150px] md:min-h-[170px]"
                 >
-                  <CardContent className="py-4 pr-4 pl-2 sm:p-3 md:p-4 flex flex-col gap-2 h-full relative">
+                  <CardContent className="py-4 pr-4 pl-2 sm:p-3 md:p-4 flex flex-col gap-2 relative">
                     {/* IMAGE + DETAILS row */}
-                    <div className="flex flex-row gap-3 sm:gap-3 md:gap-4 flex-1">
+                    <div className="flex flex-row gap-3 sm:gap-3 md:gap-4">
                     {/* IMAGE */}
                     <div className="w-24 sm:w-24 md:w-32 flex-shrink-0 relative group">
                       <div className="aspect-[2/3] sm:aspect-[3/4] md:aspect-[4/5] overflow-hidden rounded-lg bg-gray-100">
@@ -255,14 +255,14 @@ export default function Cart() {
                     </div>
 
                     {/* DETAILS */}
-                    <div className="flex-1 flex flex-col min-w-0 justify-between py-1 sm:py-0">
+                    <div className="flex-1 flex flex-col min-w-0 py-0">
                       <div className="pr-8 sm:pr-10 md:pr-12">
                         <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
-                          <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 leading-tight line-clamp-2 hover:text-[#0F766E] transition-colors">
+                          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 leading-tight line-clamp-2">
                             {item.title}
                           </h2>
                         </Link>
-                        <p className="text-xs md:text-sm text-[#0F766E] mt-1 md:mt-1 font-medium line-clamp-1">
+                        <p className="text-[10px] md:text-xs text-[#0F766E] font-medium line-clamp-1">
                           {item.availability}
                         </p>
                       </div>
@@ -284,26 +284,29 @@ export default function Cart() {
                       <div className="flex flex-col mt-auto pt-2 sm:pt-1">
                         {/* Color, Size */}
                         <div className="flex items-center gap-1.5 sm:gap-2">
-                          {item.color.hex && (
-                            <span className="flex items-center gap-1.5 text-[11px] md:text-xs font-semibold px-2 py-1 bg-white border border-gray-300 text-gray-600 rounded-md shadow-md whitespace-nowrap">
-                              <span
-                                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: item.color.hex }}
-                              />
-                              {item.color.name || "Color"}
-                            </span>
-                          )}
-                          {item.size && (
-                            <span className="text-[11px] md:text-xs font-semibold px-2 py-1 bg-white border border-gray-300 text-gray-600 rounded-md shadow-md whitespace-nowrap">
-                              Size: {item.size}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5 text-xs md:text-sm text-gray-600 font-medium">
+                            {item.color.hex && (
+                              <>
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                  style={{ backgroundColor: item.color.hex }}
+                                />
+                                <span>{item.color.name || "Color"}</span>
+                              </>
+                            )}
+                            {item.color.hex && item.size && (
+                              <span className="text-gray-400">·</span>
+                            )}
+                            {item.size && (
+                              <span>{item.size}</span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Quantity & Price */}
-                        <div className="flex items-center justify-between gap-1.5 sm:gap-2 mt-2 sm:mt-1">
+                        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                           <div className="flex items-center gap-0.5 sm:gap-1">
-                            <span className="text-xs font-medium text-gray-600">
+                            <span className="text-xs md:text-sm font-medium text-gray-600">
                               Qty:
                             </span>
                             <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white">
