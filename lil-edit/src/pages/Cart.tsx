@@ -183,7 +183,10 @@ export default function Cart() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">
-                  Shopping Bag
+                  <span className="inline-flex items-center gap-2 leading-none">
+                    Shopping Bag
+                    <ShoppingCart size={22} className="text-gray-900 translate-y-px" fill="currentColor" />
+                  </span>
                 </h1>
                 <p className="text-sm text-gray-500 mt-1">
                   {cartLoading
