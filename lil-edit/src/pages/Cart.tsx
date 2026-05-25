@@ -248,24 +248,26 @@ export default function Cart() {
                     {/* IMAGE + DETAILS row */}
                     <div className="flex flex-row gap-3 sm:gap-3 md:gap-4">
                     {/* IMAGE */}
-                    <div className="w-24 sm:w-24 md:w-32 flex-shrink-0 relative group">
-                      <div className="aspect-[2/3] sm:aspect-[3/4] md:aspect-[4/5] overflow-hidden rounded-lg bg-gray-100">
-                        <img
-                          src={item.image}
-                          alt={item.title}
-                          loading="lazy"
-                          onError={(e) => {
-                            e.currentTarget.src = "/fallback-product.webp";
-                          }}
-                          className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-                        />
+                    <div className="w-24 sm:w-24 md:w-32 flex-shrink-0 flex flex-col gap-1.5">
+                      <div className="relative group">
+                        <div className="aspect-[2/3] sm:aspect-[3/4] md:aspect-[4/5] overflow-hidden rounded-lg bg-gray-100">
+                          <img
+                            src={item.image}
+                            alt={item.title}
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.src = "/fallback-product.webp";
+                            }}
+                            className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                          />
+                        </div>
+                        <button
+                          className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white shadow-sm hover:bg-gray-50 transition"
+                          aria-label="Add to cart"
+                        >
+                          <ShoppingCart size={14} className="text-primary" fill="currentColor" />
+                        </button>
                       </div>
-                      <button
-                        className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white shadow-sm hover:bg-gray-50 transition"
-                        aria-label="Add to cart"
-                      >
-                        <ShoppingCart size={14} className="text-primary" fill="currentColor" />
-                      </button>
                     </div>
 
                     {/* DETAILS */}
@@ -276,8 +278,8 @@ export default function Cart() {
                             {item.title}
                           </h2>
                         </Link>
-                        <p className="text-[10px] md:text-xs text-[#0F766E] font-medium line-clamp-1">
-                          {item.availability}
+                        <p className="text-xs sm:text-sm mt-1 font-medium line-clamp-1" style={{ color: "#0F766E" }}>
+                          The Lil Edit · {item.availability || "In Stock"}
                         </p>
                       </div>
 
@@ -299,26 +301,26 @@ export default function Cart() {
                         {/* Color, Size */}
                         <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
                           {item.color.hex && (
-                            <button
-                              className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
-                              title={item.color.name}
-                              style={{ backgroundColor: item.color.hex }}
-                            />
-                          )}
-                          {item.color.name && (
-                            <span className="text-xs sm:text-sm font-medium px-2.5 sm:px-3 py-1 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
-                              {item.color.name}
+                            <span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
+                              <span
+                                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
+                                style={{ backgroundColor: item.color.hex }}
+                              />
+                              {item.color.name || "Color"}
                             </span>
                           )}
+                          {item.color.hex && item.size && (
+                            <span className="text-gray-400">·</span>
+                          )}
                           {item.size && (
-                            <span className="text-xs sm:text-sm font-medium px-2.5 sm:px-3 py-1 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
+                            <span className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
                               {item.size}
                             </span>
                           )}
                         </div>
 
                         {/* Quantity & Price */}
-                        <div className="flex items-center justify-between gap-1.5 sm:gap-2 mt-1.5">
+                        <div className="flex items-center justify-between gap-1.5 sm:gap-2 -mt-1">
                           <div className="flex items-center gap-0.5 sm:gap-1">
                             <span className="text-sm font-medium text-gray-600">
                               Qty:
@@ -360,13 +362,14 @@ export default function Cart() {
                             </span>
                           </div>
                         </div>
+
                       </div>
                     </div>
                     </div>{/* end image+details row */}
 
-                    {/* Quick View + Delivery row */}
-                    <div className="flex items-center justify-start gap-3 pr-7">
-                      <button className="w-24 sm:w-24 md:w-32 flex-shrink-0 flex items-center justify-center gap-1 px-3 py-1 rounded-sm bg-gray-200 hover:bg-[#0F766E] hover:text-white text-gray-500 text-[10px] font-medium transition-colors">
+                    {/* Quick View + Delivery — same line, aligned under image and details */}
+                    <div className="flex items-center gap-3 sm:gap-3 md:gap-4">
+                      <button className="w-24 sm:w-24 md:w-32 flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1 rounded-sm bg-gray-100 hover:bg-[#0F766E] hover:text-white text-gray-700 text-[10px] font-medium transition-colors">
                         <Eye size={11} />
                         Quick View
                       </button>
