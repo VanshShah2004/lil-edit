@@ -185,7 +185,7 @@ export default function Cart() {
                 <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">
                   <span className="inline-flex items-center gap-2 leading-none">
                     Shopping Bag
-                    <ShoppingCart size={22} className="text-gray-900 translate-y-px" fill="currentColor" />
+                    <ShoppingCart size={22} className="text-primary translate-y-px" fill="currentColor" />
                   </span>
                 </h1>
                 <p className="text-sm text-gray-500 mt-1">
@@ -264,7 +264,7 @@ export default function Cart() {
                         className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white shadow-sm hover:bg-gray-50 transition"
                         aria-label="Add to cart"
                       >
-                        <ShoppingCart size={14} className="text-purple-600" fill="currentColor" />
+                        <ShoppingCart size={14} className="text-primary" fill="currentColor" />
                       </button>
                     </div>
 

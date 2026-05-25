@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   ChevronRight,
   ShoppingBag,
   Heart,
   ArrowRight,
+  Sparkles,
+  ShieldCheck,
+  Award,
 } from "lucide-react";
 import { FaTrashAlt } from "react-icons/fa";
 
@@ -117,7 +120,6 @@ const WishlistPage = () => {
   const [movingId, setMovingId] = useState<string | null>(null);
   const [movingAll, setMovingAll] = useState(false);
   const { user, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
   const {
     wishlistItems,
     loading: wishlistLoading,
@@ -132,16 +134,6 @@ const WishlistPage = () => {
     setMovingId(id);
     try {
       await moveToCart(id);
-    } finally {
-      setMovingId(null);
-    }
-  };
-
-  const handleBuyNow = async (id: string) => {
-    setMovingId(id);
-    try {
-      await moveToCart(id);
-      navigate("/cart");
     } finally {
       setMovingId(null);
     }
@@ -198,7 +190,10 @@ const WishlistPage = () => {
             {/* Heading */}
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">Your Wishlist</h1>
+                <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 flex items-center gap-2">
+                  Your Wishlist
+                  <Heart className="w-6 h-6 sm:w-7 sm:h-7 text-primary" fill="hsl(268 45% 65%)" />
+                </h1>
                 <p className="text-sm text-gray-500 mt-1">{wishlistItems.length} items saved</p>
               </div>
             </div>
@@ -422,9 +417,18 @@ const WishlistPage = () => {
                 </Button>
               </Link>
               <div className="grid grid-cols-3 gap-2 pt-1 sm:pt-2">
-                <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 text-center text-xs font-medium text-gray-700">Classy Styles</div>
-                <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 text-center text-xs font-medium text-gray-700">Safe Payments</div>
-                <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 text-center text-xs font-medium text-gray-700">Premium Quality</div>
+                <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 flex flex-col items-center gap-1 text-xs font-medium text-gray-700">
+                  <Sparkles size={14} className="text-purple-500" />
+                  Classy Styles
+                </div>
+                <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 flex flex-col items-center gap-1 text-xs font-medium text-gray-700">
+                  <ShieldCheck size={14} className="text-[#0F766E]" />
+                  Safe Payments
+                </div>
+                <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 flex flex-col items-center gap-1 text-xs font-medium text-gray-700">
+                  <Award size={14} className="text-amber-500" />
+                  Premium Quality
+                </div>
               </div>
             </Card>
           </aside>
