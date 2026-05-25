@@ -1,4 +1,6 @@
 import { useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { Heart, Minus, Plus, Share2, ShoppingBag, Star, X, ChevronRight, ChevronLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -11,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import ProductGalleryImage from "@/components/ProductGalleryImage";
 import { preconnectProductImageOrigin } from "@/lib/productImage";
 import type { Product } from "@/types/product";
+import { useCart } from "@/contexts/CartContext";
+import { useWishlist } from "@/contexts/WishlistContext";
 
 interface ProductPreviewViewProps {
   product: Product;
@@ -34,6 +38,11 @@ const ProductPreviewView = ({
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [viewerApi, setViewerApi] = useState<CarouselApi>();
   const thumbnailStripRef = useRef<HTMLDivElement>(null);
+  const [cartBusy, setCartBusy] = useState(false);
+  const [wishlistBusy, setWishlistBusy] = useState(false);
+  const { addToCart } = useCart();
+  const { isWishlisted, addToWishlist, removeFromWishlist, wishlistItems } = useWishlist();
+  const navigate = useNavigate();
 
   useEffect(() => {
     return preconnectProductImageOrigin();
@@ -159,6 +168,45 @@ const ProductPreviewView = ({
 
   const stockStatus = getStockStatus();
 
+  const handleAddToCart = async () => {
+    if (previewMode) return;
+    if (!selectedSize && product.sizes.length > 0) {
+      toast.error("Please select a size before adding to cart");
+      return;
+    }
+    setCartBusy(true);
+    try {
+      await addToCart({
+        product_slug: product.slug,
+        sku: currentSku,
+        size: selectedSize ?? "",
+        quantity,
+      });
+    } finally {
+      setCartBusy(false);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (previewMode) return;
+    if (!selectedSize && product.sizes.length > 0) {
+      toast.error("Please select a size before buying");
+      return;
+    }
+    setCartBusy(true);
+    try {
+      await addToCart({
+        product_slug: product.slug,
+        sku: currentSku,
+        size: selectedSize ?? "",
+        quantity,
+      });
+      navigate("/cart");
+    } finally {
+      setCartBusy(false);
+    }
+  };
+
   return (
     <div className={`${compact ? "p-3" : "p-0"} ${mobileOnly ? "pt-3 px-3" : ""} bg-white`}>
       <div className={`flex ${compact || mobileOnly ? "flex-col gap-3" : "flex-col md:flex-row gap-4 md:gap-8 lg:gap-12"}`}>
@@ -278,7 +326,34 @@ const ProductPreviewView = ({
           )}
 
           <div className="flex gap-4 mb-5 text-black">
-            <Heart size={18} />
+            <button
+              disabled={previewMode || wishlistBusy}
+              onClick={async () => {
+                if (previewMode) return;
+                setWishlistBusy(true);
+                try {
+                  const wishlisted = isWishlisted(product.slug, currentSku);
+                  if (wishlisted) {
+                    const entry = wishlistItems.find(
+                      (i) => i.productSlug === product.slug && i.sku === currentSku
+                    );
+                    if (entry) await removeFromWishlist(entry.id);
+                  } else {
+                    await addToWishlist(product.slug, currentSku);
+                  }
+                } finally {
+                  setWishlistBusy(false);
+                }
+              }}
+              className="transition-colors disabled:opacity-40"
+              title={isWishlisted(product.slug, currentSku) ? "Remove from wishlist" : "Add to wishlist"}
+            >
+              <Heart
+                size={18}
+                className={isWishlisted(product.slug, currentSku) ? "text-primary" : "text-black"}
+                fill={isWishlisted(product.slug, currentSku) ? "currentColor" : "none"}
+              />
+            </button>
             <Share2 size={18} />
             <ShoppingBag size={18} />
             {!previewMode && <Star size={18} />}
@@ -360,10 +435,20 @@ const ProductPreviewView = ({
           </div>
 
           <div className="flex flex-col gap-3 mb-6">
-            <button className="w-full text-black py-3 rounded-full font-bold text-sm" style={{ backgroundColor: "#B19CD9" }}>
-              ADD TO CART
+            <button
+              onClick={() => void handleAddToCart()}
+              disabled={cartBusy || previewMode}
+              className="w-full text-black py-3 rounded-full font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
+              style={{ backgroundColor: "#B19CD9" }}
+            >
+              {cartBusy ? "Adding…" : "ADD TO CART"}
             </button>
-            <button className="w-full text-white py-3 rounded-full font-bold text-sm" style={{ backgroundColor: "#0B5B55" }}>
+            <button
+              onClick={() => void handleBuyNow()}
+              disabled={cartBusy || previewMode}
+              className="w-full text-white py-3 rounded-full font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
+              style={{ backgroundColor: "#0B5B55" }}
+            >
               BUY NOW
             </button>
           </div>

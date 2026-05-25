@@ -3,7 +3,10 @@
     "allow": [
       "Bash(npx tsx *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Vansh\\\\OneDrive\\\\Desktop\\\\new-ecomm\\\\lil-edit\\\\src\" -Recurse -File)",
-      "Bash(Select-Object -ExpandProperty FullName)"
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(xargs grep -l \"cart\\\\|Cart\\\\|wishlist\\\\|Wishlist\")",
+      "Bash(xargs grep -l \"useCart\\\\|useWishlist\\\\|CartContext\\\\|WishlistContext\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Vansh\\\\OneDrive\\\\Desktop\\\\new-ecomm\" -Recurse -Directory)"
     ]
   }
 }

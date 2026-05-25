@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
+  Heart,
   LayoutDashboard,
   LogOut,
   Package,
@@ -15,6 +16,8 @@ import {
   Plus,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
+import { useWishlist } from "@/contexts/WishlistContext";
 import logo from "@/assets/logo.png";
 import MegaMenu from "@/components/MegaMenu";
 import SearchPanel from "@/components/search/SearchPanel";
@@ -28,6 +31,8 @@ const UserNavbar = () => {
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const profileCloseTimeoutRef = useRef<number | null>(null);
   const { user, profile, signOut } = useAuth();
+  const { cartCount } = useCart();
+  const { wishlistCount } = useWishlist();
   const navigate = useNavigate();
   const location = useLocation();
   const hideMegaMenu = false;
@@ -140,8 +145,31 @@ const UserNavbar = () => {
             >
               <Search className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
-            <button className="h-10 w-10 sm:h-10 sm:w-10 md:h-9 md:w-9 rounded-full border border-border bg-background text-foreground hover:bg-secondary transition-colors relative flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => navigate("/wishlist")}
+              className="h-10 w-10 sm:h-10 sm:w-10 md:h-9 md:w-9 rounded-full border border-border bg-background text-foreground hover:bg-secondary transition-colors relative flex items-center justify-center"
+              aria-label={`Wishlist${wishlistCount > 0 ? ` (${wishlistCount} items)` : ""}`}
+            >
+              <Heart className="w-5 h-5" />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary text-white text-[10px] font-bold leading-none px-[3px]">
+                  {wishlistCount > 99 ? "99+" : wishlistCount}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/cart")}
+              className="h-10 w-10 sm:h-10 sm:w-10 md:h-9 md:w-9 rounded-full border border-border bg-background text-foreground hover:bg-secondary transition-colors relative flex items-center justify-center"
+              aria-label={`Cart${cartCount > 0 ? ` (${cartCount} items)` : ""}`}
+            >
               <ShoppingCart className="w-5 h-5" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[#0F766E] text-white text-[10px] font-bold leading-none px-[3px]">
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              )}
             </button>
 
             <div
