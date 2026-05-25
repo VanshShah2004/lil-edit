@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import {
   ChevronRight,
+  Eye,
   Heart,
   Minus,
   Plus,
@@ -223,47 +224,51 @@ export default function Cart() {
               cartItems.map((item) => (
                 <Card
                   key={item.id}
-                  className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[120px] sm:min-h-[140px] md:min-h-[160px]"
+                  className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[170px] sm:min-h-[150px] md:min-h-[170px]"
                 >
-                  <CardContent className="p-2.5 sm:p-3 md:p-4 flex flex-row gap-2.5 sm:gap-3 md:gap-4 h-full relative">
+                  <CardContent className="py-4 pr-4 pl-2 sm:p-3 md:p-4 flex flex-row gap-3 sm:gap-3 md:gap-4 h-full relative">
                     {/* IMAGE */}
-                    <div className="w-20 sm:w-24 md:w-32 flex-shrink-0 relative group">
-                      <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
-                        <div className="aspect-[3/4] sm:aspect-[3/4] md:aspect-[4/5] overflow-hidden rounded-lg bg-gray-100">
-                          <img
-                            src={item.image}
-                            alt={item.title}
-                            loading="lazy"
-                            onError={(e) => {
-                              e.currentTarget.src = "/fallback-product.webp";
-                            }}
-                            className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-                          />
-                        </div>
-                      </Link>
+                    <div className="w-24 sm:w-24 md:w-32 flex-shrink-0 relative group">
+                      <div className="aspect-[2/3] sm:aspect-[3/4] md:aspect-[4/5] overflow-hidden rounded-lg bg-gray-100">
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.src = "/fallback-product.webp";
+                          }}
+                          className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                        />
+                      </div>
                       <button
                         className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-md shadow-sm hover:bg-white transition"
                         aria-label="Save to wishlist"
                       >
                         <Heart size={14} className="text-gray-700" />
                       </button>
+                      <button
+                        className="mt-1.5 flex items-center justify-center gap-1 w-full py-1 rounded-sm bg-gray-300 hover:bg-[#0F766E] hover:text-white text-gray-700 text-[10px] font-medium transition-colors"
+                      >
+                        <Eye size={11} />
+                        Quick View
+                      </button>
                     </div>
 
                     {/* DETAILS */}
-                    <div className="flex-1 flex flex-col min-w-0 justify-between py-0">
+                    <div className="flex-1 flex flex-col min-w-0 justify-between py-1 sm:py-0">
                       <div className="pr-8 sm:pr-10 md:pr-12">
                         <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
-                          <h2 className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 leading-tight line-clamp-2 hover:text-[#0F766E] transition-colors">
+                          <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 leading-tight line-clamp-2 hover:text-[#0F766E] transition-colors">
                             {item.title}
                           </h2>
                         </Link>
-                        <p className="text-xs md:text-sm text-[#0F766E] mt-0.5 md:mt-1 font-medium line-clamp-1">
+                        <p className="text-xs md:text-sm text-[#0F766E] mt-1 md:mt-1 font-medium line-clamp-1">
                           {item.availability}
                         </p>
                       </div>
 
                       {item.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-1 sm:mt-1.5">
+                        <div className="flex flex-wrap gap-1.5 mt-2 sm:mt-1.5">
                           {item.tags.map((tag, idx) => (
                             <Badge
                               key={idx}
@@ -276,7 +281,7 @@ export default function Cart() {
                         </div>
                       )}
 
-                      <div className="flex flex-col mt-auto pt-1">
+                      <div className="flex flex-col mt-auto pt-2 sm:pt-1">
                         {/* Color, Size */}
                         <div className="flex items-center gap-1.5 sm:gap-2">
                           {item.color.hex && (
@@ -294,9 +299,9 @@ export default function Cart() {
                         </div>
 
                         {/* Quantity & Price */}
-                        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+                        <div className="flex items-center justify-between gap-1.5 sm:gap-2 mt-2 sm:mt-1">
                           <div className="flex items-center gap-0.5 sm:gap-1">
-                            <span className="text-xs font-medium text-gray-600 hidden sm:block">
+                            <span className="text-xs font-medium text-gray-600">
                               Qty:
                             </span>
                             <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white">
@@ -304,9 +309,9 @@ export default function Cart() {
                                 onClick={() =>
                                   handleQuantityChange(item.id, item.quantity, -1)
                                 }
-                                className="px-1 sm:px-1.5 md:px-2 py-0.5 md:py-1 hover:bg-gray-100 transition"
+                                className="px-2 sm:px-1.5 md:px-2 py-1 md:py-1 hover:bg-gray-100 transition"
                               >
-                                <Minus size={9} className="sm:hidden" />
+                                <Minus size={11} className="sm:hidden" />
                                 <Minus size={10} className="hidden sm:block" />
                               </button>
                               <span className="px-1 sm:px-1.5 md:px-2.5 text-xs md:text-sm font-semibold">
@@ -316,9 +321,9 @@ export default function Cart() {
                                 onClick={() =>
                                   handleQuantityChange(item.id, item.quantity, 1)
                                 }
-                                className="px-1 sm:px-1.5 md:px-2 py-0.5 md:py-1 hover:bg-gray-100 transition"
+                                className="px-2 sm:px-1.5 md:px-2 py-1 md:py-1 hover:bg-gray-100 transition"
                               >
-                                <Plus size={9} className="sm:hidden" />
+                                <Plus size={11} className="sm:hidden" />
                                 <Plus size={10} className="hidden sm:block" />
                               </button>
                             </div>
