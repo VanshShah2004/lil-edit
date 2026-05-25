@@ -185,7 +185,7 @@ export default function Cart() {
                 <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">
                   <span className="inline-flex items-center gap-2 leading-none">
                     Shopping Bag
-                    <ShoppingCart size={22} className="text-primary translate-y-px" fill="currentColor" />
+                    <ShoppingCart size={26} className="text-primary translate-y-px" fill="currentColor" />
                   </span>
                 </h1>
                 <p className="text-sm text-gray-500 mt-1">
@@ -297,24 +297,24 @@ export default function Cart() {
 
                       <div className="flex flex-col mt-3">
                         {/* Color, Size */}
-                        <div className="flex items-center gap-1.5 sm:gap-2">
-                          <div className="flex items-center gap-1.5 text-sm md:text-sm text-gray-600 font-medium">
-                            {item.color.hex && (
-                              <>
-                                <span
-                                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                                  style={{ backgroundColor: item.color.hex }}
-                                />
-                                <span>{item.color.name || "Color"}</span>
-                              </>
-                            )}
-                            {item.color.hex && item.size && (
-                              <span className="text-gray-400">·</span>
-                            )}
-                            {item.size && (
-                              <span>{item.size}</span>
-                            )}
-                          </div>
+                        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                          {item.color.hex && (
+                            <button
+                              className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
+                              title={item.color.name}
+                              style={{ backgroundColor: item.color.hex }}
+                            />
+                          )}
+                          {item.color.name && (
+                            <span className="text-xs sm:text-sm font-medium px-2.5 sm:px-3 py-1 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
+                              {item.color.name}
+                            </span>
+                          )}
+                          {item.size && (
+                            <span className="text-xs sm:text-sm font-medium px-2.5 sm:px-3 py-1 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
+                              {item.size}
+                            </span>
+                          )}
                         </div>
 
                         {/* Quantity & Price */}

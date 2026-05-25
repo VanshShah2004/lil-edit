@@ -6,7 +6,9 @@
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(xargs grep -l \"cart\\\\|Cart\\\\|wishlist\\\\|Wishlist\")",
       "Bash(xargs grep -l \"useCart\\\\|useWishlist\\\\|CartContext\\\\|WishlistContext\")",
-      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Vansh\\\\OneDrive\\\\Desktop\\\\new-ecomm\" -Recurse -Directory)"
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Vansh\\\\OneDrive\\\\Desktop\\\\new-ecomm\" -Recurse -Directory)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
