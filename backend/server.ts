@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import authRouter from "./routes/auth.js";
 import productsRouter from "./routes/products.js";
 import skuRouter from "./routes/sku.js";
+import cartRouter from "./routes/cart.js";
 import { warmupRedis, startRedisKeepalive } from "./lib/redis.js";
 import { supabaseAdmin, supabaseAnon } from "./lib/supabase.js";
 import { createLog } from "./lib/logger.js";
@@ -32,6 +33,7 @@ app.use(express.json({ limit: process.env.JSON_BODY_LIMIT ?? "50mb" }));
 app.use("/api/auth",     authRouter);
 app.use("/api/products", productsRouter);
 app.use("/api/sku",      skuRouter);
+app.use("/api/cart",     cartRouter);
 
 app.get("/", (_req, res) => {
   res.json({ ok: true, message: "new-ecomm backend" });
