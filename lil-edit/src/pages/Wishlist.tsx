@@ -34,6 +34,14 @@ import img4 from "@/assets/searchbar-frequent_searches/le-4.png";
 import img5 from "@/assets/searchbar-frequent_searches/le-5.png";
 import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
 
+const BADGE_PRIORITY = ["new arrival", "trending", "best seller", "featured"];
+const sortBadges = (badges: string[]) =>
+  [...badges].sort((a, b) => {
+    const ai = BADGE_PRIORITY.findIndex((p) => a.toLowerCase().includes(p));
+    const bi = BADGE_PRIORITY.findIndex((p) => b.toLowerCase().includes(p));
+    return (ai === -1 ? -1 : ai) - (bi === -1 ? -1 : bi);
+  });
+
 const recommendedProducts = [
   {
     id: "r1",
@@ -307,7 +315,7 @@ const WishlistPage = () => {
                         </div>
 
                         <div className="flex flex-wrap gap-1.5 mt-2 sm:mt-1.5 min-h-[24px]">
-                          {item.badges.slice(0, 2).map((tag, idx) => (
+                          {sortBadges(item.badges).slice(0, 2).map((tag, idx) => (
                             <Badge
                               key={idx}
                               variant="secondary"
