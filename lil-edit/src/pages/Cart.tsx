@@ -281,9 +281,9 @@ export default function Cart() {
                         </p>
                       </div>
 
-                      {item.tags.length > 0 && (
+                      {item.badges.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
-                          {item.tags.slice(0, 2).map((tag, idx) => (
+                          {item.badges.slice(0, 2).map((tag, idx) => (
                             <Badge
                               key={idx}
                               variant="secondary"

@@ -307,7 +307,7 @@ const WishlistPage = () => {
                         </div>
 
                         <div className="flex flex-wrap gap-1.5 mt-2 sm:mt-1.5 min-h-[24px]">
-                          {item.tags.slice(0, 2).map((tag, idx) => (
+                          {item.badges.slice(0, 2).map((tag, idx) => (
                             <Badge
                               key={idx}
                               variant="secondary"

@@ -15,6 +15,7 @@ export interface WishlistItem {
   color: { name: string; hex: string };
   inStock: boolean;
   tags: string[];
+  badges: string[];
   createdAt: string;
 }
 

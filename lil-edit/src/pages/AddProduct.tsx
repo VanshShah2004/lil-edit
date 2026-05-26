@@ -294,12 +294,15 @@ const AddProduct = () => {
   };
 
   const toggleSize = (size: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      selectedSizes: prev.selectedSizes.includes(size)
+    setFormData((prev) => {
+      const updated = prev.selectedSizes.includes(size)
         ? prev.selectedSizes.filter((s) => s !== size)
-        : [...prev.selectedSizes, size],
-    }));
+        : [...prev.selectedSizes, size];
+      return {
+        ...prev,
+        selectedSizes: updated.sort((a, b) => SIZES.indexOf(a) - SIZES.indexOf(b)),
+      };
+    });
   };
 
   const addColor = () => {

@@ -37,7 +37,7 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
     const { data: products, error: prodErr } = await db()
       .from("products")
       .select(`
-        title, slug, category_slug, price, original_price, tags, base_sku, is_unlimited,
+        title, slug, category_slug, price, original_price, tags, badges, base_sku, is_unlimited,
         product_images(id, image_url, is_primary, sort_order, variant_id),
         product_variants(id, variant_sku, color_name, color_hex, stock, is_unlimited, sort_order)
       `)
@@ -101,6 +101,7 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
           },
           availability,
           tags: (product.tags ?? []) as string[],
+          badges: (product.badges ?? []) as string[],
         };
       })
       .filter(Boolean);

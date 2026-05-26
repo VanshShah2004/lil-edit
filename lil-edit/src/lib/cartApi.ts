@@ -15,6 +15,7 @@ export interface CartItem {
   color: { name: string; hex: string };
   availability: string;
   tags: string[];
+  badges: string[];
 }
 
 export interface AddToCartPayload {
