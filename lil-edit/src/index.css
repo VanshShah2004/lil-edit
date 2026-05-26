@@ -61,6 +61,12 @@
       --brand-teal: 10 106 99;   /* slightly muted for wide-gamut displays */
     }
   }
+
+  @media (max-width: 639px) {
+    :root {
+      --brand-teal: 9 90 84;     /* #095A54 — darker on mobile to reduce glare */
+    }
+  }
 }
 
 @layer base {
