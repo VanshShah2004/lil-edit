@@ -53,6 +53,13 @@
     --sidebar-border: 272 12% 92%;
     --sidebar-ring: 268 24% 68%;
     --navbar-height: 64px;
+    --brand-teal: 15 118 110;    /* #0F766E */
+  }
+
+  @media (color-gamut: p3) {
+    :root {
+      --brand-teal: 10 106 99;   /* slightly muted for wide-gamut displays */
+    }
   }
 }
 

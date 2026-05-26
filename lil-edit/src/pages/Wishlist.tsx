@@ -302,7 +302,7 @@ const WishlistPage = () => {
                               {item.title}
                             </h2>
                           </Link>
-                          <p className="text-xs sm:text-sm mt-0.5 font-medium line-clamp-1" style={{ color: "#0F766E" }}>
+                          <p className="text-xs sm:text-sm mt-0.5 font-medium line-clamp-1 text-brand-teal">
                             {item.brand} · {item.inStock ? "In Stock" : "Out of Stock"}
                           </p>
                         </div>
@@ -335,7 +335,7 @@ const WishlistPage = () => {
                                 {item.color.name || "Color"}
                               </span>
                             )}
-                            <span className="text-lg sm:text-xl md:text-2xl font-bold shrink-0" style={{ color: "#0F766E" }}>
+                            <span className="text-lg sm:text-xl md:text-2xl font-bold shrink-0 text-brand-teal">
                               ₹{item.price}
                             </span>
                           </div>
@@ -351,7 +351,7 @@ const WishlistPage = () => {
 
                     {/* BOTTOM ROW: Quick View + Cart it + Buy Now */}
                     <div className="flex items-center gap-3 sm:gap-3 md:gap-4">
-                      <button className="w-28 sm:w-28 md:w-36 flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1 rounded-sm bg-gray-200 hover:bg-[#0F766E] hover:text-white text-gray-700 text-[10px] font-medium transition-colors">
+                      <button className="w-28 sm:w-28 md:w-36 flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1 rounded-sm bg-gray-200 hover:bg-brand-teal hover:text-white text-gray-700 text-[10px] font-medium transition-colors">
                         <Eye size={11} />
                         Quick View
                       </button>
@@ -360,7 +360,7 @@ const WishlistPage = () => {
                           onClick={() => void handleMoveToCart(item.id)}
                           size="sm"
                           disabled={!item.inStock || movingId === item.id}
-                          className="h-9 sm:h-10 flex-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center gap-1.5"
+                          className="h-9 sm:h-10 flex-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center gap-1.5"
                         >
                           <ShoppingBag className="w-3.5 h-3.5" />
                           <span>{movingId === item.id ? "Moving…" : "Cart it"}</span>
@@ -368,7 +368,8 @@ const WishlistPage = () => {
                         <Button
                           onClick={() => {}}
                           size="sm"
-                          className="h-9 sm:h-10 flex-1 bg-teal-600 hover:bg-teal-700 text-white rounded-full text-xs sm:text-sm font-bold shadow-sm whitespace-nowrap flex items-center justify-center"
+                          disabled={!item.inStock}
+                          className="h-9 sm:h-10 flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center"
                         >
                           Buy Now
                         </Button>
@@ -378,7 +379,7 @@ const WishlistPage = () => {
                     {/* SHARE + DELETE */}
                     <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 flex flex-row gap-1">
                       <button
-                        className="p-1.5 rounded-full text-gray-500 hover:text-[#0F766E] hover:bg-teal-50 transition-colors"
+                        className="p-1.5 rounded-full text-gray-500 hover:text-brand-teal hover:bg-teal-50 transition-colors"
                         title="Share"
                       >
                         <Share2 size={16} />
@@ -417,12 +418,12 @@ const WishlistPage = () => {
               </div>
               <div className="border-t pt-3 sm:pt-4 flex justify-between items-center">
                 <span className="text-base sm:text-lg font-semibold">Payable</span>
-                <span className="text-xl sm:text-2xl font-bold text-[#0F766E]">₹{totalValue}</span>
+                <span className="text-xl sm:text-2xl font-bold text-brand-teal">₹{totalValue}</span>
               </div>
               <Button
                 onClick={() => void handleMoveAllToCart()}
                 disabled={movingAll || inStockCount === 0}
-                className="w-full bg-[#0F766E] hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-full font-semibold text-sm sm:text-base transition-colors gap-2 disabled:opacity-50"
+                className="w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-full font-semibold text-sm sm:text-base transition-colors gap-2 disabled:opacity-50"
               >
                 <ShoppingBag className="w-4 h-4" />
                 {movingAll ? "Moving…" : "Move All to Cart"}
@@ -441,7 +442,7 @@ const WishlistPage = () => {
                   Classy Styles
                 </div>
                 <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 flex flex-col items-center gap-1 text-xs font-medium text-gray-700">
-                  <ShieldCheck size={14} className="text-[#0F766E]" />
+                  <ShieldCheck size={14} className="text-brand-teal" />
                   Safe Payments
                 </div>
                 <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 flex flex-col items-center gap-1 text-xs font-medium text-gray-700">
@@ -460,7 +461,7 @@ const WishlistPage = () => {
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">You May Also Like</h2>
               <Link
                 to="/"
-                className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 text-gray-900 hover:bg-[#0F766E] hover:text-white transition-all duration-300 shrink-0"
+                className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 text-gray-900 hover:bg-brand-teal hover:text-white transition-all duration-300 shrink-0"
               >
                 <ArrowRight className="w-6 h-6" />
               </Link>
@@ -484,7 +485,7 @@ const WishlistPage = () => {
                       />
                       <button
                         onClick={() => void addToWishlist(p.slug, p.sku)}
-                        className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-600 hover:text-[#0F766E] hover:bg-white transition-all shadow-sm"
+                        className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-600 hover:text-brand-teal hover:bg-white transition-all shadow-sm"
                         title={isWishlisted(p.slug, p.sku) ? "Already in wishlist" : "Add to wishlist"}
                       >
                         <Heart
@@ -495,7 +496,7 @@ const WishlistPage = () => {
                       <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                         <Link
                           to={`/collections/${p.categorySlug}/product/${p.slug}`}
-                          className="w-full py-1.5 bg-white/90 backdrop-blur text-gray-900 rounded-lg font-medium text-[10px] md:text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm block text-center"
+                          className="w-full py-1.5 bg-white/90 backdrop-blur text-gray-900 rounded-lg font-medium text-[10px] md:text-xs hover:bg-brand-teal hover:text-white transition-colors shadow-sm block text-center"
                         >
                           View Details
                         </Link>
@@ -503,7 +504,7 @@ const WishlistPage = () => {
                     </div>
                     <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
                       <h3 className="text-xs md:text-sm font-medium text-gray-900 leading-snug line-clamp-2">{p.title}</h3>
-                      <p className="text-xs font-semibold text-[#0F766E] shrink-0">₹{p.price}</p>
+                      <p className="text-xs font-semibold text-brand-teal shrink-0">₹{p.price}</p>
                     </div>
                   </div>
                 </CarouselItem>
