@@ -8,6 +8,8 @@ import {
   Sparkles,
   ShieldCheck,
   Award,
+  Share2,
+  Eye,
 } from "lucide-react";
 import { FaTrashAlt } from "react-icons/fa";
 
@@ -263,117 +265,131 @@ const WishlistPage = () => {
               filteredItems.map((item) => (
                 <Card
                   key={item.id}
-                  className="bg-white border border-gray-200 border-l-8 border-l-primary rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[200px] sm:min-h-[220px] md:min-h-[240px]"
+                  className="bg-white border border-gray-200 border-l-8 border-l-primary rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[175px] sm:min-h-[195px] md:min-h-[210px]"
                 >
-                  <CardContent className="p-3 sm:p-4 md:p-5 flex flex-row gap-4 sm:gap-4 md:gap-5 h-full relative">
-                    {/* IMAGE */}
-                    <div className="w-24 sm:w-28 md:w-36 flex-shrink-0 relative group">
-                      <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
-                        <div className="aspect-[3/4] overflow-hidden rounded-lg bg-gray-100">
-                          <img
-                            src={item.image}
-                            alt={item.title}
-                            loading="lazy"
-                            onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-                            className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-                          />
+                  <CardContent className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-2 relative">
+                    {/* IMAGE + DETAILS row */}
+                    <div className="flex flex-row gap-3 sm:gap-3 md:gap-4">
+                      {/* IMAGE */}
+                      <div className="w-24 sm:w-24 md:w-32 flex-shrink-0">
+                        <div className="relative group">
+                          <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
+                            <div className="aspect-[2/3] sm:aspect-[3/4] md:aspect-[4/5] overflow-hidden rounded-lg bg-gray-100">
+                              <img
+                                src={item.image}
+                                alt={item.title}
+                                loading="lazy"
+                                onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                                className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                              />
+                            </div>
+                          </Link>
+                          <button
+                            onClick={() => removeFromWishlist(item.id)}
+                            className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white shadow-sm hover:bg-gray-50 transition"
+                            title="Remove from wishlist"
+                          >
+                            <Heart size={14} className="text-primary" fill="hsl(268 45% 65%)" />
+                          </button>
                         </div>
-                      </Link>
-                      <button
-                        onClick={() => removeFromWishlist(item.id)}
-                        className="absolute top-2 right-2 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-md shadow-sm hover:bg-white transition"
-                        title="Remove from wishlist"
-                      >
-                        <Heart size={16} className="text-primary" fill="hsl(268 45% 65%)" />
-                      </button>
-                    </div>
-
-                    {/* DETAILS */}
-                    <div className="flex-1 flex flex-col min-w-0 justify-between">
-                      <div className="pr-8 sm:pr-10 md:pr-12">
-                        <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
-                          <h2 className="text-xl sm:text-xl md:text-2xl font-bold text-gray-900 leading-tight line-clamp-2 hover:text-primary transition-colors">
-                            {item.title}
-                          </h2>
-                        </Link>
-                        <p className="text-xs sm:text-sm mt-0.5 font-medium line-clamp-1" style={{ color: "#0F766E" }}>
-                          {item.brand} · {item.inStock ? "In Stock" : "Out of Stock"}
-                        </p>
                       </div>
 
-                      {item.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2 sm:mt-1.5">
-                          {item.tags.map((tag, idx) => (
-                            <Badge
-                              key={idx}
-                              variant="secondary"
-                              className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-[10px] sm:text-[11px] px-2 py-0.5 whitespace-nowrap rounded-md font-medium shadow-sm"
-                            >
-                              {tag}
-                            </Badge>
-                          ))}
+                      {/* DETAILS */}
+                      <div className="flex-1 flex flex-col min-w-0 py-0">
+                        <div className="pr-8 sm:pr-10 md:pr-12">
+                          <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
+                            <h2 className="text-xl sm:text-xl md:text-2xl font-bold text-gray-900 leading-tight line-clamp-2 hover:text-primary transition-colors">
+                              {item.title}
+                            </h2>
+                          </Link>
+                          <p className="text-xs sm:text-sm mt-0.5 font-medium line-clamp-1" style={{ color: "#0F766E" }}>
+                            {item.brand} · {item.inStock ? "In Stock" : "Out of Stock"}
+                          </p>
                         </div>
-                      )}
 
-                      <div className="flex flex-col gap-3 mt-auto pt-2">
-                        {/* Color */}
-                        {item.color.hex && (
-                          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-                            <button
-                              className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
-                              title={item.color.name}
-                              style={{ backgroundColor: item.color.hex }}
-                            />
-                            {item.color.name && (
-                              <span className="text-sm sm:text-base font-medium text-gray-700 whitespace-nowrap">
-                                {item.color.name}
-                              </span>
-                            )}
+                        {item.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-2 sm:mt-1.5">
+                            {item.tags.map((tag, idx) => (
+                              <Badge
+                                key={idx}
+                                variant="secondary"
+                                className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-[10px] sm:text-[11px] px-2 py-0.5 whitespace-nowrap rounded-md font-medium shadow-sm"
+                              >
+                                {tag}
+                              </Badge>
+                            ))}
                           </div>
                         )}
 
-                        {/* Actions & Price */}
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <div className="flex gap-2 sm:gap-2.5 flex-1 min-w-0">
-                            <Button
-                              onClick={() => void handleMoveToCart(item.id)}
-                              size="sm"
-                              disabled={!item.inStock || movingId === item.id}
-                              className="h-9 sm:h-10 flex-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center gap-1.5"
-                            >
-                              <ShoppingBag className="w-4 h-4" />
-                              <span>{movingId === item.id ? "Moving…" : "Cart it"}</span>
-                            </Button>
-                            <Button
-                              onClick={() => {}}
-                              size="sm"
-                              className="h-9 sm:h-10 flex-1 bg-teal-600 hover:bg-teal-700 text-white rounded-full text-xs sm:text-sm font-bold shadow-sm whitespace-nowrap flex items-center justify-center"
-                            >
-                              Buy Now
-                            </Button>
-                          </div>
-                          <div className="flex flex-col items-end gap-0.5 w-12 sm:w-14 shrink-0">
-                            <span className="text-base sm:text-lg md:text-xl font-bold text-primary">
-                              ₹{item.price}
-                            </span>
-                            {item.originalPrice > item.price && (
-                              <span className="text-xs sm:text-sm line-through text-gray-400">
-                                ₹{item.originalPrice}
+                        {/* Color + Price */}
+                        <div className="mt-auto">
+                          {/* Color | Final Price — always same row */}
+                          <div className="flex items-center justify-between gap-2">
+                            {item.color.hex && (
+                              <span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
+                                <span
+                                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
+                                  style={{ backgroundColor: item.color.hex }}
+                                />
+                                {item.color.name || "Color"}
                               </span>
                             )}
+                            <span className="text-sm sm:text-base md:text-lg font-bold shrink-0" style={{ color: "#0F766E" }}>
+                              ₹{item.price}
+                            </span>
                           </div>
+                          {/* Original Price — right-aligned below */}
+                          {item.originalPrice > item.price && (
+                            <div className="flex justify-end">
+                              <span className="text-xs line-through text-gray-400">₹{item.originalPrice}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    {/* DELETE */}
-                    <button
-                      onClick={() => removeFromWishlist(item.id)}
-                      className="absolute top-3 right-3 sm:top-4 sm:right-4 md:top-5 md:right-5 text-gray-700 hover:text-red-600 transition-colors"
-                      title="Remove from wishlist"
-                    >
-                      <FaTrashAlt size={20} />
-                    </button>
+                    {/* BOTTOM ROW: Quick View + Cart it + Buy Now */}
+                    <div className="flex items-center gap-3 sm:gap-3 md:gap-4">
+                      <button className="w-24 sm:w-24 md:w-32 flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1 rounded-sm bg-gray-100 hover:bg-[#0F766E] hover:text-white text-gray-700 text-[10px] font-medium transition-colors">
+                        <Eye size={11} />
+                        Quick View
+                      </button>
+                      <div className="flex gap-2 sm:gap-2.5 flex-1 min-w-0 pr-2 sm:pr-0">
+                        <Button
+                          onClick={() => void handleMoveToCart(item.id)}
+                          size="sm"
+                          disabled={!item.inStock || movingId === item.id}
+                          className="h-9 sm:h-10 flex-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center gap-1.5"
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                          <span>{movingId === item.id ? "Moving…" : "Cart it"}</span>
+                        </Button>
+                        <Button
+                          onClick={() => {}}
+                          size="sm"
+                          className="h-9 sm:h-10 flex-1 bg-teal-600 hover:bg-teal-700 text-white rounded-full text-xs sm:text-sm font-bold shadow-sm whitespace-nowrap flex items-center justify-center"
+                        >
+                          Buy Now
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* SHARE + DELETE */}
+                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 flex flex-row gap-1">
+                      <button
+                        className="p-1.5 rounded-full text-gray-500 hover:text-[#0F766E] hover:bg-teal-50 transition-colors"
+                        title="Share"
+                      >
+                        <Share2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => removeFromWishlist(item.id)}
+                        className="p-1.5 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title="Remove from wishlist"
+                      >
+                        <FaTrashAlt size={16} />
+                      </button>
+                    </div>
                   </CardContent>
                 </Card>
               ))

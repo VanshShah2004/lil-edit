@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Award,
   Truck,
+  Share2,
 } from "lucide-react";
 import { FaTrashAlt } from "react-icons/fa";
 
@@ -242,9 +243,9 @@ export default function Cart() {
               cartItems.map((item) => (
                 <Card
                   key={item.id}
-                  className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 sm:min-h-[150px] md:min-h-[170px]"
+                  className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[175px] sm:min-h-[195px] md:min-h-[210px]"
                 >
-                  <CardContent className="py-4 pr-4 pl-2 sm:p-3 md:p-4 flex flex-col gap-2 relative">
+                  <CardContent className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-1.5 relative">
                     {/* IMAGE + DETAILS row */}
                     <div className="flex flex-row gap-3 sm:gap-3 md:gap-4">
                     {/* IMAGE */}
@@ -298,71 +299,59 @@ export default function Cart() {
                       )}
 
                       <div className="flex flex-col mt-5">
-                        {/* Color, Size */}
-                        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
-                          {item.color.hex && (
-                            <span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
-                              <span
-                                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
-                                style={{ backgroundColor: item.color.hex }}
-                              />
-                              {item.color.name || "Color"}
-                            </span>
-                          )}
-                          {item.color.hex && item.size && (
-                            <span className="text-3xl text-primary leading-none">·</span>
-                          )}
-                          {item.size && (
-                            <span className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
-                              {item.size}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Quantity & Price */}
-                        <div className="flex items-center justify-between gap-1.5 sm:gap-2 -mt-1">
-                          <div className="flex items-center gap-0.5 sm:gap-1">
-                            <span className="text-sm font-medium text-gray-600">
-                              Qty:
-                            </span>
-                            <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white">
-                              <button
-                                onClick={() =>
-                                  handleQuantityChange(item.id, item.quantity, -1)
-                                }
-                                className="px-2 sm:px-1.5 md:px-2 py-1 md:py-1 hover:bg-gray-100 transition"
-                              >
-                                <Minus size={11} className="sm:hidden" />
-                                <Minus size={10} className="hidden sm:block" />
-                              </button>
-                              <span className="px-1 sm:px-1.5 md:px-2.5 text-sm font-semibold">
-                                {item.quantity}
+                        {/* Color + Size | Final Price — always same row */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 sm:gap-2.5">
+                            {item.color.hex && (
+                              <span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
+                                <span
+                                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
+                                  style={{ backgroundColor: item.color.hex }}
+                                />
+                                {item.color.name || "Color"}
                               </span>
-                              <button
-                                onClick={() =>
-                                  handleQuantityChange(item.id, item.quantity, 1)
-                                }
-                                className="px-2 sm:px-1.5 md:px-2 py-1 md:py-1 hover:bg-gray-100 transition"
-                              >
-                                <Plus size={11} className="sm:hidden" />
-                                <Plus size={10} className="hidden sm:block" />
-                              </button>
-                            </div>
+                            )}
+                            {item.color.hex && item.size && (
+                              <span className="text-3xl text-primary leading-none">·</span>
+                            )}
+                            {item.size && (
+                              <span className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
+                                {item.size}
+                              </span>
+                            )}
                           </div>
-
-                          <div className="flex flex-col items-end">
-                            <span
-                              className="text-sm sm:text-base md:text-lg font-bold"
-                              style={{ color: "#0F766E" }}
-                            >
-                              ₹{item.price * item.quantity}
-                            </span>
-                            <span className="text-xs line-through text-gray-400">
-                              ₹{item.originalPrice * item.quantity}
-                            </span>
-                          </div>
+                          <span className="text-sm sm:text-base md:text-lg font-bold shrink-0" style={{ color: "#0F766E" }}>
+                            ₹{item.price * item.quantity}
+                          </span>
+                        </div>
+                        {/* Original Price — right-aligned below */}
+                        <div className="flex justify-end">
+                          <span className="text-xs line-through text-gray-400">₹{item.originalPrice * item.quantity}</span>
                         </div>
 
+                        {/* Quantity */}
+                        <div className="flex items-center gap-0.5 sm:gap-1 mt-1">
+                          <span className="text-sm font-medium text-gray-600">Qty:</span>
+                          <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white">
+                            <button
+                              onClick={() => handleQuantityChange(item.id, item.quantity, -1)}
+                              className="px-2 sm:px-1.5 md:px-2 py-1 hover:bg-gray-100 transition"
+                            >
+                              <Minus size={11} className="sm:hidden" />
+                              <Minus size={10} className="hidden sm:block" />
+                            </button>
+                            <span className="px-1 sm:px-1.5 md:px-2.5 text-sm font-semibold">
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={() => handleQuantityChange(item.id, item.quantity, 1)}
+                              className="px-2 sm:px-1.5 md:px-2 py-1 hover:bg-gray-100 transition"
+                            >
+                              <Plus size={11} className="sm:hidden" />
+                              <Plus size={10} className="hidden sm:block" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     </div>{/* end image+details row */}
@@ -379,14 +368,22 @@ export default function Cart() {
                       </span>
                     </div>
 
-                    {/* DELETE */}
-                    <button
-                      onClick={() => void removeItem(item.id)}
-                      className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 p-1.5 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
-                      title="Remove item"
-                    >
-                      <FaTrashAlt size={16} />
-                    </button>
+                    {/* SHARE + DELETE */}
+                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 flex flex-row gap-1">
+                      <button
+                        className="p-1.5 rounded-full text-gray-500 hover:text-[#0F766E] hover:bg-teal-50 transition-colors"
+                        title="Share"
+                      >
+                        <Share2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => void removeItem(item.id)}
+                        className="p-1.5 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title="Remove item"
+                      >
+                        <FaTrashAlt size={16} />
+                      </button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
