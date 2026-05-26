@@ -197,9 +197,9 @@ const UserNavbar = () => {
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 type="button"
                 aria-label="Open profile menu"
-                className="h-11 w-11 sm:h-11 sm:w-11 md:h-10 md:w-10 rounded-full border-2 border-teal-600 bg-gradient-to-br from-[#F8FFFE] via-[#F1FEFB] to-[#E9FCF8] text-[#0F766E] shadow-[0_4px_14px_rgba(13,148,136,0.14)] p-[2px] flex items-center justify-center transition-all duration-200 hover:from-[#F2FFFD] hover:via-[#E9FCF8] hover:to-[#DEFAF4] hover:border-teal-600 hover:shadow-[0_8px_18px_rgba(13,148,136,0.22)] hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/45 focus-visible:ring-offset-1"
+                className="h-11 w-11 sm:h-11 sm:w-11 md:h-10 md:w-10 rounded-full border-2 border-teal-700 sm:border-teal-600 bg-gradient-to-br from-[#F8FFFE] via-[#F1FEFB] to-[#E9FCF8] text-[#0F766E] shadow-[0_4px_14px_rgba(13,148,136,0.14)] p-[2px] flex items-center justify-center transition-all duration-200 hover:from-[#F2FFFD] hover:via-[#E9FCF8] hover:to-[#DEFAF4] hover:border-teal-700 sm:hover:border-teal-600 hover:shadow-[0_8px_18px_rgba(13,148,136,0.22)] hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700/45 sm:focus-visible:ring-teal-600/45 focus-visible:ring-offset-1"
               >
-                <div className="px-0.5 py-[1px] text-[1.15rem] sm:text-[1.2rem] font-black font-display leading-none text-teal-600">
+                <div className="px-0.5 py-[1px] text-[1.15rem] sm:text-[1.2rem] font-black font-display leading-none text-teal-700 sm:text-teal-600">
                   {userInitial}
                 </div>
               </button>

@@ -80,13 +80,13 @@ const MegaMenu = () => {
                 type="button"
                 onMouseEnter={() => window.innerWidth >= 768 && setActiveMegaTab(item)}
                 onClick={() => setActiveMegaTab((prev) => (prev === item ? null : item))}
-                className={`px-[1.2vw] min-[450px]:px-2 sm:px-3 lg:px-4 py-1 text-[2.65vw] min-[450px]:text-[12px] sm:text-xs md:text-[11px] lg:text-[13px] font-bold tracking-tighter min-[450px]:tracking-tight sm:tracking-wide transition-colors ${activeMegaTab === item ? "text-teal-600" : "text-foreground hover:text-teal-600"
+                className={`px-[1.2vw] min-[450px]:px-2 sm:px-3 lg:px-4 py-1 text-[2.65vw] min-[450px]:text-[12px] sm:text-xs md:text-[11px] lg:text-[13px] font-bold tracking-tighter min-[450px]:tracking-tight sm:tracking-wide transition-colors ${activeMegaTab === item ? "text-teal-700 sm:text-teal-600" : "text-foreground hover:text-teal-700 sm:hover:text-teal-600"
                   }`}
               >
                 {item}
               </button>
               {index < megaMenuItems.length - 1 && (
-                <span className="px-[1vw] min-[450px]:px-2 sm:px-3 lg:px-4 text-[#9a65ad] font-bold select-none text-[2.65vw] min-[450px]:text-[12px] sm:text-xs md:text-[11px] lg:text-[13px]">
+                <span className="px-[1vw] min-[450px]:px-2 sm:px-3 lg:px-4 text-[#7A4A8C] sm:text-[#9a65ad] font-bold select-none text-[2.65vw] min-[450px]:text-[12px] sm:text-xs md:text-[11px] lg:text-[13px]">
                   |
                 </span>
               )}
@@ -101,7 +101,7 @@ const MegaMenu = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
               {(megaMenuContent[activeMegaTab] ?? []).map((section) => (
                 <div key={`section-${section.title}`} className="space-y-2.5">
-                  <h3 className="text-xs md:text-sm lg:text-base font-semibold tracking-[0.1em] lg:tracking-[0.12em] text-[#9a65ad]">
+                  <h3 className="text-xs md:text-sm lg:text-base font-semibold tracking-[0.1em] lg:tracking-[0.12em] text-[#7A4A8C] sm:text-[#9a65ad]">
                     {section.title}
                   </h3>
                   <ul className="space-y-1.5 md:space-y-2">
