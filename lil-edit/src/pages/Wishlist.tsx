@@ -265,7 +265,7 @@ const WishlistPage = () => {
               filteredItems.map((item) => (
                 <Card
                   key={item.id}
-                  className="bg-white border border-gray-200 border-l-8 border-l-primary rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[155px] sm:min-h-[175px] md:min-h-[190px]"
+                  className="bg-white border border-gray-200 border-l-8 border-l-primary rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[55px] sm:min-h-[75px] md:min-h-[90px]"
                 >
                   <CardContent className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-2.5 relative">
                     {/* IMAGE + DETAILS row */}
@@ -307,40 +307,41 @@ const WishlistPage = () => {
                           </p>
                         </div>
 
-                        {item.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-2 sm:mt-1.5">
-                            {item.tags.slice(0, 2).map((tag, idx) => (
-                              <Badge
-                                key={idx}
-                                variant="secondary"
-                                className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-xs sm:text-[11px] px-2 py-0.5 whitespace-nowrap rounded-md font-medium shadow-sm"
-                              >
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
+                        <div className="flex flex-wrap gap-1.5 mt-2 sm:mt-1.5 min-h-[24px]">
+                          {item.tags.slice(0, 2).map((tag, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="secondary"
+                              className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-xs sm:text-[11px] px-2 py-0.5 whitespace-nowrap rounded-md font-medium shadow-sm"
+                            >
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+
+                        {/* Spacer: pushes color to image bottom, min 10px gap */}
+                        <div className="flex-1 min-h-[10px]" />
 
                         {/* Color + Price */}
-                        <div className="mt-auto flex flex-col gap-0.5 pt-1">
+                        <div className="flex flex-col gap-0">
                           {/* Color | Final Price — always same row */}
                           <div className="flex items-center justify-between gap-2">
                             {item.color.hex && (
-                              <span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
+                              <span className="flex items-center gap-1.5 text-sm sm:text-base font-medium text-gray-700 whitespace-nowrap">
                                 <span
-                                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
+                                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
                                   style={{ backgroundColor: item.color.hex }}
                                 />
                                 {item.color.name || "Color"}
                               </span>
                             )}
-                            <span className="text-xl sm:text-2xl md:text-3xl font-bold shrink-0" style={{ color: "#0F766E" }}>
+                            <span className="text-lg sm:text-xl md:text-2xl font-bold shrink-0" style={{ color: "#0F766E" }}>
                               ₹{item.price}
                             </span>
                           </div>
                           {/* Original Price — right-aligned below */}
                           {item.originalPrice > item.price && (
-                            <div className="flex justify-end">
+                            <div className="flex justify-end -mt-1">
                               <span className="text-xs line-through text-gray-400">₹{item.originalPrice}</span>
                             </div>
                           )}

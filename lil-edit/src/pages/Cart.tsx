@@ -320,7 +320,7 @@ export default function Cart() {
                       </div>
 
                       {/* Qty + Final Price + Original Price */}
-                      <div className="flex flex-col gap-0.5">
+                      <div className="flex flex-col gap-0">
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white w-fit">
                             <button
@@ -341,11 +341,11 @@ export default function Cart() {
                               <Plus size={10} className="hidden sm:block" />
                             </button>
                           </div>
-                          <span className="text-xl sm:text-2xl md:text-3xl font-bold shrink-0" style={{ color: "#0F766E" }}>
+                          <span className="text-lg sm:text-xl md:text-2xl font-bold shrink-0" style={{ color: "#0F766E" }}>
                             ₹{item.price * item.quantity}
                           </span>
                         </div>
-                        <div className="flex justify-end">
+                        <div className="flex justify-end -mt-1">
                           <span className="text-xs line-through text-gray-400">₹{item.originalPrice * item.quantity}</span>
                         </div>
                       </div>
