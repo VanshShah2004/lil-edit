@@ -307,7 +307,7 @@ const WishlistPage = () => {
                             <Badge
                               key={idx}
                               variant="secondary"
-                              className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-[10px] sm:text-xs px-2.5 py-1 whitespace-nowrap rounded-md font-medium shadow-sm"
+                              className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-[10px] sm:text-[11px] px-2 py-0.5 whitespace-nowrap rounded-md font-medium shadow-sm"
                             >
                               {tag}
                             </Badge>
@@ -317,22 +317,24 @@ const WishlistPage = () => {
 
                       <div className="flex flex-col gap-3 mt-auto pt-2">
                         {/* Color */}
-                        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
-                          <button
-                            className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
-                            title={item.color.name}
-                            style={{ backgroundColor: item.color.hex }}
-                          />
-                          {item.color.name && (
-                            <span className="text-xs sm:text-sm font-medium px-2.5 sm:px-3 py-1 bg-gray-100 text-gray-700 rounded whitespace-nowrap">
-                              {item.color.name}
-                            </span>
-                          )}
-                        </div>
+                        {item.color.hex && (
+                          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                            <button
+                              className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
+                              title={item.color.name}
+                              style={{ backgroundColor: item.color.hex }}
+                            />
+                            {item.color.name && (
+                              <span className="text-sm sm:text-base font-medium text-gray-700 whitespace-nowrap">
+                                {item.color.name}
+                              </span>
+                            )}
+                          </div>
+                        )}
 
                         {/* Actions & Price */}
-                        <div className="flex items-center justify-between gap-2 sm:gap-3 flex-wrap">
-                          <div className="flex gap-2 sm:gap-2.5 flex-1">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="flex gap-2 sm:gap-2.5 flex-1 min-w-0">
                             <Button
                               onClick={() => void handleMoveToCart(item.id)}
                               size="sm"
@@ -350,7 +352,7 @@ const WishlistPage = () => {
                               Buy Now
                             </Button>
                           </div>
-                          <div className="flex flex-col items-end gap-0.5">
+                          <div className="flex flex-col items-end gap-0.5 w-12 sm:w-14 shrink-0">
                             <span className="text-base sm:text-lg md:text-xl font-bold text-primary">
                               ₹{item.price}
                             </span>
