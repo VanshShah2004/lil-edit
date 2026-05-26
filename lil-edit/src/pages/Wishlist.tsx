@@ -265,13 +265,13 @@ const WishlistPage = () => {
               filteredItems.map((item) => (
                 <Card
                   key={item.id}
-                  className="bg-white border border-gray-200 border-l-8 border-l-primary rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[175px] sm:min-h-[195px] md:min-h-[210px]"
+                  className="bg-white border border-gray-200 border-l-8 border-l-primary rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[155px] sm:min-h-[175px] md:min-h-[190px]"
                 >
                   <CardContent className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-2.5 relative">
                     {/* IMAGE + DETAILS row */}
                     <div className="flex flex-row gap-3 sm:gap-3 md:gap-4">
                       {/* IMAGE */}
-                      <div className="w-24 sm:w-24 md:w-32 flex-shrink-0">
+                      <div className="w-28 sm:w-28 md:w-36 flex-shrink-0">
                         <div className="relative group">
                           <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
                             <div className="aspect-[2/3] sm:aspect-[3/4] md:aspect-[4/5] overflow-hidden rounded-lg bg-gray-100">
@@ -309,7 +309,7 @@ const WishlistPage = () => {
 
                         {item.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1.5 mt-2 sm:mt-1.5">
-                            {item.tags.map((tag, idx) => (
+                            {item.tags.slice(0, 2).map((tag, idx) => (
                               <Badge
                                 key={idx}
                                 variant="secondary"
@@ -322,7 +322,7 @@ const WishlistPage = () => {
                         )}
 
                         {/* Color + Price */}
-                        <div className="mt-auto">
+                        <div className="mt-auto flex flex-col gap-0.5 pt-1">
                           {/* Color | Final Price — always same row */}
                           <div className="flex items-center justify-between gap-2">
                             {item.color.hex && (
@@ -334,7 +334,7 @@ const WishlistPage = () => {
                                 {item.color.name || "Color"}
                               </span>
                             )}
-                            <span className="text-sm sm:text-base md:text-lg font-bold shrink-0" style={{ color: "#0F766E" }}>
+                            <span className="text-xl sm:text-2xl md:text-3xl font-bold shrink-0" style={{ color: "#0F766E" }}>
                               ₹{item.price}
                             </span>
                           </div>
@@ -350,7 +350,7 @@ const WishlistPage = () => {
 
                     {/* BOTTOM ROW: Quick View + Cart it + Buy Now */}
                     <div className="flex items-center gap-3 sm:gap-3 md:gap-4">
-                      <button className="w-24 sm:w-24 md:w-32 flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1 rounded-sm bg-gray-100 hover:bg-[#0F766E] hover:text-white text-gray-700 text-[10px] font-medium transition-colors">
+                      <button className="w-28 sm:w-28 md:w-36 flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1 rounded-sm bg-gray-100 hover:bg-[#0F766E] hover:text-white text-gray-700 text-[10px] font-medium transition-colors">
                         <Eye size={11} />
                         Quick View
                       </button>

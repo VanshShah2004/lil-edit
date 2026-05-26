@@ -243,13 +243,13 @@ export default function Cart() {
               cartItems.map((item) => (
                 <Card
                   key={item.id}
-                  className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[175px] sm:min-h-[195px] md:min-h-[210px]"
+                  className="bg-white border border-gray-200 border-l-8 border-l-[#0F766E] rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[210px] sm:min-h-[230px] md:min-h-[250px]"
                 >
                   <CardContent className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-1.5 relative">
                     {/* IMAGE + DETAILS row */}
                     <div className="flex flex-row gap-3 sm:gap-3 md:gap-4">
                     {/* IMAGE */}
-                    <div className="w-24 sm:w-24 md:w-32 flex-shrink-0 flex flex-col gap-1.5">
+                    <div className="w-28 sm:w-28 md:w-36 flex-shrink-0 flex flex-col gap-1.5">
                       <div className="relative group">
                         <div className="aspect-[2/3] sm:aspect-[3/4] md:aspect-[4/5] overflow-hidden rounded-lg bg-gray-100">
                           <img
@@ -272,7 +272,7 @@ export default function Cart() {
                     </div>
 
                     {/* DETAILS */}
-                    <div className="flex-1 flex flex-col min-w-0 py-0">
+                    <div className="flex-1 flex flex-col min-w-0 py-0 gap-2">
                       <div className="pr-8 sm:pr-10 md:pr-12">
                         <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
                           <h2 className="text-xl sm:text-xl md:text-2xl font-bold text-gray-900 leading-tight line-clamp-2">
@@ -285,8 +285,8 @@ export default function Cart() {
                       </div>
 
                       {item.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2 sm:mt-1.5">
-                          {item.tags.map((tag, idx) => (
+                        <div className="flex flex-wrap gap-1.5">
+                          {item.tags.slice(0, 2).map((tag, idx) => (
                             <Badge
                               key={idx}
                               variant="secondary"
@@ -298,41 +298,31 @@ export default function Cart() {
                         </div>
                       )}
 
-                      <div className="flex flex-col mt-5">
-                        {/* Color + Size | Final Price — always same row */}
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 sm:gap-2.5">
-                            {item.color.hex && (
-                              <span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
-                                <span
-                                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
-                                  style={{ backgroundColor: item.color.hex }}
-                                />
-                                {item.color.name || "Color"}
-                              </span>
-                            )}
-                            {item.color.hex && item.size && (
-                              <span className="text-3xl text-primary leading-none">·</span>
-                            )}
-                            {item.size && (
-                              <span className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
-                                {item.size}
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-sm sm:text-base md:text-lg font-bold shrink-0" style={{ color: "#0F766E" }}>
-                            ₹{item.price * item.quantity}
+                      {/* Color + Size */}
+                      <div className="flex items-center gap-2 sm:gap-2.5 mt-1">
+                        {item.color.hex && (
+                          <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700 whitespace-nowrap">
+                            <span
+                              className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
+                              style={{ backgroundColor: item.color.hex }}
+                            />
+                            {item.color.name || "Color"}
                           </span>
-                        </div>
-                        {/* Original Price — right-aligned below */}
-                        <div className="flex justify-end">
-                          <span className="text-xs line-through text-gray-400">₹{item.originalPrice * item.quantity}</span>
-                        </div>
+                        )}
+                        {item.color.hex && item.size && (
+                          <span className="text-3xl text-primary leading-none">·</span>
+                        )}
+                        {item.size && (
+                          <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                            {item.size}
+                          </span>
+                        )}
+                      </div>
 
-                        {/* Quantity */}
-                        <div className="flex items-center gap-0.5 sm:gap-1 mt-1">
-                          <span className="text-sm font-medium text-gray-600">Qty:</span>
-                          <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white">
+                      {/* Qty + Final Price + Original Price */}
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white w-fit">
                             <button
                               onClick={() => handleQuantityChange(item.id, item.quantity, -1)}
                               className="px-2 sm:px-1.5 md:px-2 py-1 hover:bg-gray-100 transition"
@@ -351,6 +341,12 @@ export default function Cart() {
                               <Plus size={10} className="hidden sm:block" />
                             </button>
                           </div>
+                          <span className="text-xl sm:text-2xl md:text-3xl font-bold shrink-0" style={{ color: "#0F766E" }}>
+                            ₹{item.price * item.quantity}
+                          </span>
+                        </div>
+                        <div className="flex justify-end">
+                          <span className="text-xs line-through text-gray-400">₹{item.originalPrice * item.quantity}</span>
                         </div>
                       </div>
                     </div>
@@ -358,7 +354,7 @@ export default function Cart() {
 
                     {/* Quick View + Delivery — same line, aligned under image and details */}
                     <div className="flex items-center gap-3 sm:gap-3 md:gap-4">
-                      <button className="w-24 sm:w-24 md:w-32 flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1 rounded-sm bg-gray-100 hover:bg-[#0F766E] hover:text-white text-gray-700 text-[10px] font-medium transition-colors">
+                      <button className="w-28 sm:w-28 md:w-36 flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1 rounded-sm bg-gray-100 hover:bg-[#0F766E] hover:text-white text-gray-700 text-[10px] font-medium transition-colors">
                         <Eye size={11} />
                         Quick View
                       </button>
