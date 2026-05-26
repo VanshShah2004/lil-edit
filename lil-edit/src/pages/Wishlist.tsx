@@ -265,7 +265,7 @@ const WishlistPage = () => {
               filteredItems.map((item) => (
                 <Card
                   key={item.id}
-                  className="bg-white border border-gray-200 border-l-8 border-l-primary rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[55px] sm:min-h-[75px] md:min-h-[90px]"
+                  className="bg-white border border-gray-200 border-l-8 border-l-primary rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[160px] md:min-h-[140px]"
                 >
                   <CardContent className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-2.5 relative">
                     {/* IMAGE + DETAILS row */}
@@ -274,7 +274,7 @@ const WishlistPage = () => {
                       <div className="w-28 sm:w-28 md:w-36 flex-shrink-0 self-stretch">
                         <div className="relative group h-full">
                           <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`} className="block h-full">
-                            <div className="h-full min-h-[150px] sm:min-h-[165px] md:min-h-[185px] overflow-hidden rounded-lg bg-gray-100">
+                            <div className="h-full min-h-[125px] md:min-h-[105px] overflow-hidden rounded-lg bg-gray-100">
                               <img
                                 src={item.image}
                                 alt={item.title}

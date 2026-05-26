@@ -241,7 +241,7 @@ export default function Cart() {
               cartItems.map((item) => (
                 <Card
                   key={item.id}
-                  className="bg-white border border-gray-200 border-l-8 border-l-brand-teal rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[210px] sm:min-h-[230px] md:min-h-[250px]"
+                  className="bg-white border border-gray-200 border-l-8 border-l-brand-teal rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[160px] md:min-h-[140px]"
                 >
                   <CardContent className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-1.5 relative">
                     {/* IMAGE + DETAILS row */}
@@ -249,7 +249,7 @@ export default function Cart() {
                     {/* IMAGE */}
                     <div className="w-28 sm:w-28 md:w-36 flex-shrink-0 self-stretch">
                       <div className="relative group h-full">
-                        <div className="h-full min-h-[170px] sm:min-h-[185px] md:min-h-[205px] overflow-hidden rounded-lg bg-gray-100">
+                        <div className="h-full min-h-[125px] md:min-h-[105px] overflow-hidden rounded-lg bg-gray-100">
                           <img
                             src={item.image}
                             alt={item.title}
