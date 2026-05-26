@@ -292,17 +292,17 @@ const WishlistPage = () => {
                     <div className="flex-1 flex flex-col min-w-0 justify-between">
                       <div className="pr-8 sm:pr-10 md:pr-12">
                         <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
-                          <h2 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 leading-tight line-clamp-2 hover:text-primary transition-colors">
+                          <h2 className="text-xl sm:text-xl md:text-2xl font-bold text-gray-900 leading-tight line-clamp-2 hover:text-primary transition-colors">
                             {item.title}
                           </h2>
                         </Link>
-                        <p className="text-xs sm:text-sm md:text-base text-primary mt-1 md:mt-1.5 font-medium line-clamp-1">
-                          {item.brand} • {item.inStock ? "In Stock" : "Out of Stock"}
+                        <p className="text-xs sm:text-sm mt-0.5 font-medium line-clamp-1" style={{ color: "#0F766E" }}>
+                          {item.brand} · {item.inStock ? "In Stock" : "Out of Stock"}
                         </p>
                       </div>
 
                       {item.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2 sm:mt-2.5">
+                        <div className="flex flex-wrap gap-2 mt-2 sm:mt-1.5">
                           {item.tags.map((tag, idx) => (
                             <Badge
                               key={idx}
@@ -380,7 +380,7 @@ const WishlistPage = () => {
 
           {/* RIGHT SIDE — Summary sidebar */}
           <aside className="w-full lg:w-[34%] self-start lg:sticky lg:top-6">
-            <Card className="bg-purple-200 backdrop-blur-sm border border-purple-300 shadow-lg rounded-2xl lg:rounded-3xl p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-5">
+            <Card className="bg-[hsl(268_45%_87%)] backdrop-blur-sm border border-[hsl(268_45%_77%)] shadow-lg rounded-2xl lg:rounded-3xl p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-5">
               <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">Wishlist Summary</h3>
               <div className="space-y-3 sm:space-y-4 text-sm sm:text-base">
                 <div className="flex justify-between">
