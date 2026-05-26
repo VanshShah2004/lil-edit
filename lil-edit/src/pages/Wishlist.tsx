@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   Award,
   Share2,
-  Eye,
 } from "lucide-react";
 import { FaTrashAlt } from "react-icons/fa";
 
@@ -346,33 +345,27 @@ const WishlistPage = () => {
                             </div>
                           )}
                         </div>
-                      </div>
-                    </div>
 
-                    {/* BOTTOM ROW: Quick View + Cart it + Buy Now */}
-                    <div className="flex items-center gap-3 sm:gap-3 md:gap-4">
-                      <button className="w-28 sm:w-28 md:w-36 flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1 rounded-sm bg-gray-200 hover:bg-brand-teal hover:text-white text-gray-700 text-[10px] font-medium transition-colors">
-                        <Eye size={11} />
-                        Quick View
-                      </button>
-                      <div className="flex gap-2 sm:gap-2.5 flex-1 min-w-0">
-                        <Button
-                          onClick={() => void handleMoveToCart(item.id)}
-                          size="sm"
-                          disabled={!item.inStock || movingId === item.id}
-                          className="h-9 sm:h-10 flex-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center gap-1.5"
-                        >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>{movingId === item.id ? "Moving…" : "Cart it"}</span>
-                        </Button>
-                        <Button
-                          onClick={() => {}}
-                          size="sm"
-                          disabled={!item.inStock}
-                          className="h-9 sm:h-10 flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center"
-                        >
-                          Buy Now
-                        </Button>
+                        {/* Cart it + Buy Now */}
+                        <div className="flex gap-2 sm:gap-2.5 mt-2">
+                          <Button
+                            onClick={() => void handleMoveToCart(item.id)}
+                            size="sm"
+                            disabled={!item.inStock || movingId === item.id}
+                            className="h-9 sm:h-10 flex-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center gap-1.5"
+                          >
+                            <ShoppingBag className="w-3.5 h-3.5" />
+                            <span>{movingId === item.id ? "Moving…" : "Cart it"}</span>
+                          </Button>
+                          <Button
+                            onClick={() => {}}
+                            size="sm"
+                            disabled={!item.inStock}
+                            className="h-9 sm:h-10 flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center"
+                          >
+                            Buy Now
+                          </Button>
+                        </div>
                       </div>
                     </div>
 

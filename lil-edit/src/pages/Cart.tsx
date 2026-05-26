@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import {
   ChevronRight,
-  Eye,
   Heart,
   Lock,
   Minus,
@@ -347,20 +346,14 @@ export default function Cart() {
                           <span className="text-xs line-through text-gray-400">₹{item.originalPrice * item.quantity}</span>
                         </div>
                       </div>
-                    </div>
-                    </div>{/* end image+details row */}
 
-                    {/* Quick View + Delivery — same line, aligned under image and details */}
-                    <div className="flex items-center gap-3 sm:gap-3 md:gap-4">
-                      <button className="w-28 sm:w-28 md:w-36 flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1 rounded-sm bg-gray-200 hover:bg-brand-teal hover:text-white text-gray-700 text-[10px] font-medium transition-colors">
-                        <Eye size={11} />
-                        Quick View
-                      </button>
-                      <span className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-400 font-medium">
+                      {/* Delivery */}
+                      <span className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-400 font-medium mt-1">
                         <Truck size={11} className="text-brand-teal flex-shrink-0" />
                         Delivery by {deliveryStr}
                       </span>
                     </div>
+                    </div>{/* end image+details row */}
 
                     {/* DELETE */}
                     <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4">
