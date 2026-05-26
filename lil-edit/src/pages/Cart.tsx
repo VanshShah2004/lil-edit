@@ -38,13 +38,15 @@ import img5 from "@/assets/searchbar-frequent_searches/le-5.png";
 import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
 import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
 
-const BADGE_PRIORITY = ["new arrival", "trending", "best seller", "featured"];
-const sortBadges = (badges: string[]) =>
-  [...badges].sort((a, b) => {
-    const ai = BADGE_PRIORITY.findIndex((p) => a.toLowerCase().includes(p));
-    const bi = BADGE_PRIORITY.findIndex((p) => b.toLowerCase().includes(p));
+const BADGE_PRIORITY = ["newarrival", "trending", "bestseller", "featured"];
+const sortBadges = (badges: string[]) => {
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
+  return [...badges].sort((a, b) => {
+    const ai = BADGE_PRIORITY.findIndex((p) => norm(a).includes(p));
+    const bi = BADGE_PRIORITY.findIndex((p) => norm(b).includes(p));
     return (ai === -1 ? -1 : ai) - (bi === -1 ? -1 : bi);
   });
+};
 
 const recommendedProducts = [
   {
