@@ -267,7 +267,7 @@ const WishlistPage = () => {
                   key={item.id}
                   className="bg-white border border-gray-200 border-l-8 border-l-primary rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[175px] sm:min-h-[195px] md:min-h-[210px]"
                 >
-                  <CardContent className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-2 relative">
+                  <CardContent className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-2.5 relative">
                     {/* IMAGE + DETAILS row */}
                     <div className="flex flex-row gap-3 sm:gap-3 md:gap-4">
                       {/* IMAGE */}
@@ -313,7 +313,7 @@ const WishlistPage = () => {
                               <Badge
                                 key={idx}
                                 variant="secondary"
-                                className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-[10px] sm:text-[11px] px-2 py-0.5 whitespace-nowrap rounded-md font-medium shadow-sm"
+                                className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-xs sm:text-[11px] px-2 py-0.5 whitespace-nowrap rounded-md font-medium shadow-sm"
                               >
                                 {tag}
                               </Badge>
@@ -354,7 +354,7 @@ const WishlistPage = () => {
                         <Eye size={11} />
                         Quick View
                       </button>
-                      <div className="flex gap-2 sm:gap-2.5 flex-1 min-w-0 pr-2 sm:pr-0">
+                      <div className="flex gap-2 sm:gap-2.5 flex-1 min-w-0">
                         <Button
                           onClick={() => void handleMoveToCart(item.id)}
                           size="sm"
