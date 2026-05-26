@@ -297,7 +297,7 @@ const WishlistPage = () => {
                       <div className="flex-1 flex flex-col min-w-0 py-0">
                         <div className="pr-8 sm:pr-10 md:pr-12">
                           <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
-                            <h2 className="text-xl sm:text-xl md:text-2xl font-bold text-gray-900 leading-tight line-clamp-2 hover:text-primary transition-colors">
+                            <h2 className="text-xl sm:text-xl md:text-2xl font-bold text-gray-900 leading-tight line-clamp-2">
                               {item.title}
                             </h2>
                           </Link>

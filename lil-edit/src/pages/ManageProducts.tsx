@@ -315,9 +315,21 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
               <div className="space-y-2">
                 <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Badges</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {p.badges?.filter(b => b !== "Updates yet to be synced").length ? p.badges.filter(b => b !== "Updates yet to be synced").map(badge => (
-                    <Badge key={badge} variant="secondary" className="text-[9px] font-bold uppercase tracking-widest bg-gray-900 text-white border-none">{badge}</Badge>
-                  )) : <span className="text-[11px] font-bold text-gray-900">None</span>}
+                  {(() => {
+                    const systemBadges = [
+                      p.is_new_arrival && "New Arrival",
+                      p.is_featured && "Featured",
+                      p.is_bestseller && "Bestseller",
+                      p.is_trending && "Trending",
+                    ].filter(Boolean) as string[];
+                    const customBadges = (p.badges ?? []).filter(b => b !== "Updates yet to be synced");
+                    const allBadges = [...systemBadges, ...customBadges];
+                    return allBadges.length
+                      ? allBadges.map(badge => (
+                          <Badge key={badge} variant="secondary" className="text-[9px] font-bold uppercase tracking-widest bg-gray-900 text-white border-none">{badge}</Badge>
+                        ))
+                      : <span className="text-[11px] font-bold text-gray-900">None</span>;
+                  })()}
                 </div>
               </div>
             </div>

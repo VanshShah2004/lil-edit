@@ -10,6 +10,7 @@ const db = () => supabaseAdmin ?? supabaseAnon;
 
 const PRODUCT_SELECT = `
   title, slug, category_slug, brand, price, original_price, tags, badges, base_sku, is_unlimited,
+  is_featured, is_new_arrival, is_trending, is_bestseller,
   product_images(id, image_url, is_primary, sort_order, variant_id),
   product_variants(id, variant_sku, color_name, color_hex, stock, is_unlimited, sort_order)
 `.trim();
@@ -50,7 +51,13 @@ function enrichWishlistRow(row: any, product: any) {
     },
     inStock,
     tags: (product.tags ?? []) as string[],
-    badges: (product.badges ?? []) as string[],
+    badges: [
+      ...(product.badges ?? []),
+      ...(product.is_featured    ? ["Featured"]     : []),
+      ...(product.is_new_arrival ? ["New Arrival"]  : []),
+      ...(product.is_trending    ? ["Trending"]     : []),
+      ...(product.is_bestseller  ? ["Bestseller"]   : []),
+    ] as string[],
   };
 }
 
