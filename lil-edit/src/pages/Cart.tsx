@@ -159,11 +159,10 @@ export default function Cart() {
       {user ? <UserNavbar /> : <Navbar />}
 
       <main
-        style={{ paddingTop: "calc(var(--navbar-height) + 15px)" }}
-        className="flex-1 flex flex-col w-full"
+        className="flex-1 flex flex-col w-full pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)]"
       >
         {/* Breadcrumb */}
-        <div className="page-container px-4 sm:px-6 py-4">
+        <div className="page-container px-4 sm:px-6 pt-1 pb-6">
           <div className="flex flex-wrap items-center text-xs sm:text-sm text-gray-600 gap-y-2">
             <Link to="/" className="hover:underline">
               Home
@@ -354,7 +353,7 @@ export default function Cart() {
 
                     {/* Quick View + Delivery — same line, aligned under image and details */}
                     <div className="flex items-center gap-3 sm:gap-3 md:gap-4">
-                      <button className="w-28 sm:w-28 md:w-36 flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1 rounded-sm bg-gray-100 hover:bg-[#0F766E] hover:text-white text-gray-700 text-[10px] font-medium transition-colors">
+                      <button className="w-28 sm:w-28 md:w-36 flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1 rounded-sm bg-gray-200 hover:bg-[#0F766E] hover:text-white text-gray-700 text-[10px] font-medium transition-colors">
                         <Eye size={11} />
                         Quick View
                       </button>
