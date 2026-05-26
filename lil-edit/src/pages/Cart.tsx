@@ -12,7 +12,6 @@ import {
   ShieldCheck,
   Award,
   Truck,
-  Share2,
 } from "lucide-react";
 import { FaTrashAlt } from "react-icons/fa";
 
@@ -177,7 +176,7 @@ export default function Cart() {
         </div>
 
         {/* Main Content */}
-        <main className="page-container flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-10 pb-12 px-3 sm:px-6">
+        <main className="page-container flex-1 flex flex-col lg:flex-row gap-10 sm:gap-6 lg:gap-10 pb-12 px-3 sm:px-6">
           {/* LEFT SIDE */}
           <section className="flex-1 lg:w-[66%] space-y-4 sm:space-y-6">
             <div className="flex items-center justify-between">
@@ -363,14 +362,8 @@ export default function Cart() {
                       </span>
                     </div>
 
-                    {/* SHARE + DELETE */}
-                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 flex flex-row gap-1">
-                      <button
-                        className="p-1.5 rounded-full text-gray-500 hover:text-brand-teal hover:bg-teal-50 transition-colors"
-                        title="Share"
-                      >
-                        <Share2 size={16} />
-                      </button>
+                    {/* DELETE */}
+                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4">
                       <button
                         onClick={() => void removeItem(item.id)}
                         className="p-1.5 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"

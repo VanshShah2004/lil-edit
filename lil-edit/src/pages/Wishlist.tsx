@@ -186,7 +186,7 @@ const WishlistPage = () => {
         </div>
 
         {/* Main Content */}
-        <main className="page-container flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-10 pb-12 px-3 sm:px-6">
+        <main className="page-container flex-1 flex flex-col lg:flex-row gap-10 sm:gap-6 lg:gap-10 pb-12 px-3 sm:px-6">
           {/* LEFT SIDE */}
           <section className="flex-1 lg:w-[66%] space-y-4 sm:space-y-6">
             {/* Heading */}
