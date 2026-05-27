@@ -27,6 +27,18 @@ const sortBadges = (badges: string[]) => {
   });
 };
 
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== "undefined" && window.innerWidth >= 768
+  );
+  useEffect(() => {
+    const handler = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return isDesktop;
+}
+
 export type QuickViewProduct = {
   source: "cart" | "wishlist";
   id: string;
@@ -41,11 +53,9 @@ export type QuickViewProduct = {
   color: { name: string; hex: string };
   badges: string[];
   tags: string[];
-  // cart-specific
   quantity?: number;
   size?: string;
   availability?: string;
-  // wishlist-specific
   brand?: string;
   inStock?: boolean;
 };
@@ -63,13 +73,11 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
     useWishlist();
   const closeRef = useRef<HTMLButtonElement>(null);
   const dragControls = useDragControls();
+  const isDesktop = useIsDesktop();
   const [activeImg, setActiveImg] = useState(0);
   const [slideDir, setSlideDir] = useState<1 | -1>(1);
 
-  // Reset gallery when product changes
-  useEffect(() => {
-    setActiveImg(0);
-  }, [product?.id]);
+  useEffect(() => { setActiveImg(0); }, [product?.id]);
 
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
@@ -96,10 +104,7 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
     product.images && product.images.length > 0 ? product.images : [product.image];
   const total = allImages.length;
 
-  const goTo = (idx: number, dir: 1 | -1) => {
-    setSlideDir(dir);
-    setActiveImg(idx);
-  };
+  const goTo = (idx: number, dir: 1 | -1) => { setSlideDir(dir); setActiveImg(idx); };
   const prev = () => goTo((activeImg - 1 + total) % total, -1);
   const next = () => goTo((activeImg + 1) % total, 1);
 
@@ -142,6 +147,180 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
     void updateQuantity(product.id, Math.max(1, liveQty + delta));
   };
 
+  // ── Shared pieces ────────────────────────────────────────────────────────
+
+  const carousel = (heightClass: string, inlineHeight?: string) => (
+    <div
+      className={`relative rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 ${heightClass}`}
+      style={inlineHeight ? { height: inlineHeight } : undefined}
+    >
+      <AnimatePresence initial={false} custom={slideDir}>
+        <motion.img
+          key={activeImg}
+          custom={slideDir}
+          variants={{
+            enter: (dir: number) => ({ x: dir * 60, opacity: 0 }),
+            center: { x: 0, opacity: 1 },
+            exit: (dir: number) => ({ x: dir * -60, opacity: 0 }),
+          }}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          src={allImages[activeImg]}
+          alt={`${product.title} — image ${activeImg + 1}`}
+          onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+          className="absolute inset-0 w-full h-full object-cover object-center"
+        />
+      </AnimatePresence>
+      {total > 1 && (
+        <>
+          <button onClick={prev} className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors z-10" aria-label="Previous image">
+            <ChevronLeft size={16} />
+          </button>
+          <button onClick={next} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors z-10" aria-label="Next image">
+            <ChevronRight size={16} />
+          </button>
+          <span className="absolute top-2 right-2 bg-black/40 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full z-10">
+            {activeImg + 1} / {total}
+          </span>
+        </>
+      )}
+    </div>
+  );
+
+  const thumbs = () => (
+    <div className="flex gap-2 overflow-x-auto no-scrollbar flex-shrink-0">
+      {allImages.map((img, i) => (
+        <button
+          key={i}
+          onClick={() => goTo(i, i > activeImg ? 1 : -1)}
+          className={`flex-shrink-0 w-16 h-20 rounded-xl overflow-hidden border-2 transition-all duration-200 ${
+            activeImg === i
+              ? "border-brand-teal scale-105 shadow-md"
+              : "border-gray-200 hover:border-gray-400 opacity-70 hover:opacity-100"
+          }`}
+          aria-label={`View image ${i + 1}`}
+        >
+          <img src={img} alt={`${product.title} ${i + 1}`} onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }} className="w-full h-full object-cover object-center" />
+        </button>
+      ))}
+    </div>
+  );
+
+  const details = () => (
+    <div className="space-y-3">
+      {/* Price */}
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <span className="text-xl sm:text-2xl font-bold text-brand-teal">₹{product.price}</span>
+        {product.originalPrice > product.price && (
+          <>
+            <span className="text-sm line-through text-gray-400">₹{product.originalPrice}</span>
+            <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-200">{discount}% off</span>
+          </>
+        )}
+      </div>
+
+      {/* Stock + Color + Size */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${inStock ? "bg-green-500" : "bg-red-400"}`} />
+          <span className={`text-xs font-semibold ${inStock ? "text-green-700" : "text-red-500"}`}>
+            {inStock ? (product.source === "cart" ? product.availability || "In Stock" : "In Stock") : "Out of Stock"}
+          </span>
+        </div>
+        {product.color.hex && (
+          <>
+            <span className="text-gray-300">·</span>
+            <span className="flex items-center gap-1.5 text-xs font-medium text-gray-700">
+              <span className="w-4 h-4 rounded-full border border-gray-300 shadow-sm flex-shrink-0" style={{ backgroundColor: product.color.hex }} />
+              {product.color.name || "Color"}
+            </span>
+          </>
+        )}
+        {product.size && (
+          <>
+            <span className="text-gray-300">·</span>
+            <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded-full">Size: {product.size}</span>
+          </>
+        )}
+      </div>
+
+      {/* Badges */}
+      {product.badges.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {sortBadges(product.badges).map((tag, i) => (
+            <Badge key={i} variant="secondary" className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-[10px] sm:text-xs px-2 py-0.5 rounded-md font-medium shadow-sm">
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {/* Category / SKU */}
+      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] sm:text-xs text-gray-400">
+        <span>Category: <span className="text-gray-600 font-medium">{formattedCategory}</span></span>
+        <span>SKU: <span className="text-gray-600 font-medium font-mono">{product.sku}</span></span>
+      </div>
+
+      {/* Qty stepper — cart only */}
+      {product.source === "cart" && (
+        <div className="flex items-center gap-2.5">
+          <span className="text-xs sm:text-sm text-gray-600 font-medium">Qty:</span>
+          <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white w-fit">
+            <button onClick={() => handleQtyChange(-1)} className="px-2.5 py-1 hover:bg-gray-100 transition" aria-label="Decrease quantity"><Minus size={11} /></button>
+            <span className="px-3 text-sm font-semibold min-w-[2ch] text-center">{liveQty}</span>
+            <button onClick={() => handleQtyChange(1)} className="px-2.5 py-1 hover:bg-gray-100 transition" aria-label="Increase quantity"><Plus size={11} /></button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const ctaMobile = () => (
+    <div className="flex flex-row gap-2">
+      <Button variant="outline" onClick={handleViewFull} className="flex-1 h-10 border-gray-300 text-gray-700 hover:border-brand-teal hover:text-brand-teal rounded-full font-semibold text-xs sm:text-sm gap-1.5">
+        <ExternalLink size={13} /> View Full Product
+      </Button>
+      {product.source === "wishlist" && (
+        <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-semibold text-xs sm:text-sm gap-1.5 disabled:opacity-60">
+          <ShoppingBag size={13} /> Move to Cart
+        </Button>
+      )}
+      <Button disabled={!inStock} className="flex-1 h-10 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-xs sm:text-sm disabled:opacity-60">
+        Buy Now
+      </Button>
+      {product.source === "cart" && (
+        <button onClick={handleWishlistToggle} className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full border transition-colors ${wishlisted ? "border-primary/30 bg-primary/10 text-primary" : "border-gray-300 text-gray-500 hover:border-primary/50 hover:text-primary hover:bg-primary/5"}`} aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}>
+          <Heart size={15} fill={wishlisted ? "currentColor" : "none"} />
+        </button>
+      )}
+    </div>
+  );
+
+  const ctaDesktop = () => (
+    <div className="flex gap-2">
+      {product.source === "wishlist" && (
+        <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-semibold text-sm gap-1.5 disabled:opacity-60">
+          <ShoppingBag size={13} /> Move to Cart
+        </Button>
+      )}
+      <Button disabled={!inStock} className="flex-1 h-10 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-sm disabled:opacity-60">
+        Buy Now
+      </Button>
+      <Button variant="outline" onClick={handleViewFull} className="flex-1 h-10 border-gray-300 text-gray-700 hover:border-brand-teal hover:text-brand-teal rounded-full font-semibold text-sm gap-1.5">
+        <ExternalLink size={13} /> View Full Product
+      </Button>
+      {product.source === "cart" && (
+        <button onClick={handleWishlistToggle} className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full border transition-colors ${wishlisted ? "border-primary/30 bg-primary/10 text-primary" : "border-gray-300 text-gray-500 hover:border-primary/50 hover:text-primary hover:bg-primary/5"}`} aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}>
+          <Heart size={15} fill={wishlisted ? "currentColor" : "none"} />
+        </button>
+      )}
+    </div>
+  );
+
+  // ── Render ───────────────────────────────────────────────────────────────
+
   return (
     <AnimatePresence>
       {open && (
@@ -157,7 +336,7 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
             aria-hidden="true"
           />
 
-          {/* Drawer */}
+          {/* Drawer — always slides up from bottom */}
           <motion.div
             role="dialog"
             aria-modal="true"
@@ -175,7 +354,9 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 32, stiffness: 380, mass: 0.8 }}
-            className="fixed inset-x-0 bottom-0 z-[100] flex flex-col bg-white rounded-t-3xl shadow-2xl max-h-[65vh] outline-none"
+            className={`fixed inset-x-0 bottom-0 z-[100] flex flex-col bg-white rounded-t-3xl shadow-2xl outline-none overflow-hidden ${
+              isDesktop ? "max-h-[78vh]" : "max-h-[65vh]"
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Drag handle */}
@@ -187,10 +368,9 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
             </div>
 
             {/* Header */}
-            <div className="flex items-center justify-between px-4 sm:px-5 pt-1 pb-0 flex-shrink-0">
+            <div className={`flex items-center justify-between px-4 sm:px-5 md:px-6 flex-shrink-0 ${isDesktop ? "pt-1 pb-3 border-b border-gray-100" : "pt-1 pb-0"}`}>
               <span className="flex items-center gap-1.5 text-sm font-bold text-gray-900 opacity-65">
-                Quick View
-                <Eye size={15} />
+                Quick View <Eye size={15} />
               </span>
               <button
                 ref={closeRef}
@@ -202,257 +382,58 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
               </button>
             </div>
 
-            {/* ── Single scrollable region: image + thumbnails + details ── */}
-            <div className="flex-1 overflow-y-auto overscroll-contain">
+            {isDesktop ? (
+              /* ══ DESKTOP: single shared scroll, two columns side-by-side ══ */
+              <>
+                <div className="flex-1 overflow-y-auto overscroll-contain">
+                  <div className="flex flex-row">
 
-            {/* Title + brand — above image */}
-            <div className="px-4 sm:px-5 pt-0 pb-4">
-              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-snug">
-                {product.title}
-              </h2>
-              {product.brand && (
-                <p className="text-xs sm:text-sm text-brand-teal font-medium mt-0.5">
-                  {product.brand}
-                </p>
-              )}
-            </div>
+                    {/* Left: image + thumbnails */}
+                    <div className="w-[42%] flex-shrink-0 flex flex-col gap-2 p-4">
+                      {carousel("", "18rem")}
+                      {thumbs()}
+                    </div>
 
-            {/* Image carousel */}
-            <div className="px-3 sm:px-4">
-              {/* Main image with margin + rounded corners */}
-              <div className="relative h-[26rem] sm:h-[30rem] md:h-[32rem] rounded-2xl overflow-hidden bg-gray-100">
-                <AnimatePresence initial={false} custom={slideDir}>
-                  <motion.img
-                    key={activeImg}
-                    custom={slideDir}
-                    variants={{
-                      enter: (dir: number) => ({ x: dir * 60, opacity: 0 }),
-                      center: { x: 0, opacity: 1 },
-                      exit: (dir: number) => ({ x: dir * -60, opacity: 0 }),
-                    }}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={{ duration: 0.22, ease: "easeOut" }}
-                    src={allImages[activeImg]}
-                    alt={`${product.title} — image ${activeImg + 1}`}
-                    onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-                    className="absolute inset-0 w-full h-full object-cover object-center"
-                  />
-                </AnimatePresence>
-
-                {/* Prev / Next arrows */}
-                {total > 1 && (
-                  <>
-                    <button
-                      onClick={prev}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors z-10"
-                      aria-label="Previous image"
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-                    <button
-                      onClick={next}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors z-10"
-                      aria-label="Next image"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </>
-                )}
-
-                {/* Count badge */}
-                {total > 1 && (
-                  <span className="absolute top-2 right-2 bg-black/40 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full z-10">
-                    {activeImg + 1} / {total}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Thumbnail strip */}
-            <div className="px-3 sm:px-4 pt-2 pb-1">
-              <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                {allImages.map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => goTo(i, i > activeImg ? 1 : -1)}
-                    className={`flex-shrink-0 w-12 h-14 sm:w-14 sm:h-16 rounded-xl overflow-hidden border-2 transition-all duration-200 ${
-                      activeImg === i
-                        ? "border-brand-teal scale-105 shadow-md"
-                        : "border-gray-200 hover:border-gray-400 opacity-70 hover:opacity-100"
-                    }`}
-                    aria-label={`View image ${i + 1}`}
-                  >
-                    <img
-                      src={img}
-                      alt={`${product.title} ${i + 1}`}
-                      onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-                      className="w-full h-full object-cover object-center"
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Details */}
-            <div className="px-4 sm:px-5 pb-4 space-y-3">
-
-              {/* Price row */}
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="text-xl sm:text-2xl font-bold text-brand-teal">
-                  ₹{product.price}
-                </span>
-                {product.originalPrice > product.price && (
-                  <>
-                    <span className="text-sm line-through text-gray-400">
-                      ₹{product.originalPrice}
-                    </span>
-                    <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-200">
-                      {discount}% off
-                    </span>
-                  </>
-                )}
-              </div>
-
-              {/* Stock + Color + Size — single row */}
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${inStock ? "bg-green-500" : "bg-red-400"}`} />
-                  <span className={`text-xs font-semibold ${inStock ? "text-green-700" : "text-red-500"}`}>
-                    {inStock
-                      ? product.source === "cart"
-                        ? product.availability || "In Stock"
-                        : "In Stock"
-                      : "Out of Stock"}
-                  </span>
-                </div>
-
-                {product.color.hex && (
-                  <>
-                    <span className="text-gray-300">·</span>
-                    <span className="flex items-center gap-1.5 text-xs font-medium text-gray-700">
-                      <span
-                        className="w-4 h-4 rounded-full border border-gray-300 shadow-sm flex-shrink-0"
-                        style={{ backgroundColor: product.color.hex }}
-                      />
-                      {product.color.name || "Color"}
-                    </span>
-                  </>
-                )}
-
-                {product.size && (
-                  <>
-                    <span className="text-gray-300">·</span>
-                    <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded-full">
-                      Size: {product.size}
-                    </span>
-                  </>
-                )}
-              </div>
-
-              {/* Badges */}
-              {product.badges.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {sortBadges(product.badges).map((tag, i) => (
-                    <Badge
-                      key={i}
-                      variant="secondary"
-                      className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-[10px] sm:text-xs px-2 py-0.5 rounded-md font-medium shadow-sm"
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
-              {/* Category / SKU */}
-              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] sm:text-xs text-gray-400">
-                <span>
-                  Category:{" "}
-                  <span className="text-gray-600 font-medium">{formattedCategory}</span>
-                </span>
-                <span>
-                  SKU:{" "}
-                  <span className="text-gray-600 font-medium font-mono">{product.sku}</span>
-                </span>
-              </div>
-
-              {/* Quantity stepper — cart items only */}
-              {product.source === "cart" && (
-                <div className="flex items-center gap-2.5">
-                  <span className="text-xs sm:text-sm text-gray-600 font-medium">Qty:</span>
-                  <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white w-fit">
-                    <button
-                      onClick={() => handleQtyChange(-1)}
-                      className="px-2.5 py-1 hover:bg-gray-100 transition"
-                      aria-label="Decrease quantity"
-                    >
-                      <Minus size={11} />
-                    </button>
-                    <span className="px-3 text-sm font-semibold min-w-[2ch] text-center">
-                      {liveQty}
-                    </span>
-                    <button
-                      onClick={() => handleQtyChange(1)}
-                      className="px-2.5 py-1 hover:bg-gray-100 transition"
-                      aria-label="Increase quantity"
-                    >
-                      <Plus size={11} />
-                    </button>
+                    {/* Right: title + details */}
+                    <div className="flex-1 px-5 pt-4 pb-4 border-l border-gray-100 space-y-3">
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900 leading-snug">{product.title}</h2>
+                        {product.brand && (
+                          <p className="text-sm text-brand-teal font-medium mt-0.5">{product.brand}</p>
+                        )}
+                      </div>
+                      {details()}
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
 
-            </div>{/* end unified scrollable region */}
+                {/* Desktop CTA — sticky footer */}
+                <div className="flex-shrink-0 border-t border-gray-100 px-5 py-4 bg-white">
+                  {ctaDesktop()}
+                </div>
+              </>
+            ) : (
+              /* ══ MOBILE: single scrollable column ══ */
+              <>
+                <div className="flex-1 overflow-y-auto overscroll-contain">
+                  {/* Title + brand */}
+                  <div className="px-4 sm:px-5 pt-0 pb-4">
+                    <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-snug">{product.title}</h2>
+                    {product.brand && (
+                      <p className="text-xs sm:text-sm text-brand-teal font-medium mt-0.5">{product.brand}</p>
+                    )}
+                  </div>
+                  <div className="px-3 sm:px-4">{carousel("h-[26rem] sm:h-[30rem]")}</div>
+                  <div className="px-3 sm:px-4 pt-2 pb-1">{thumbs()}</div>
+                  <div className="px-4 sm:px-5 pb-4">{details()}</div>
+                </div>
 
-            {/* ── CTA footer ── */}
-            <div className="flex-shrink-0 border-t border-gray-100 px-4 sm:px-5 py-3 bg-white">
-              <div className="flex flex-row gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handleViewFull}
-                  className="flex-1 h-10 border-gray-300 text-gray-700 hover:border-brand-teal hover:text-brand-teal rounded-full font-semibold text-xs sm:text-sm gap-1.5"
-                >
-                  <ExternalLink size={13} />
-                  View Full Product
-                </Button>
-
-                {product.source === "wishlist" && (
-                  <Button
-                    onClick={() => void handleMoveToCart()}
-                    disabled={!inStock}
-                    className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-semibold text-xs sm:text-sm gap-1.5 disabled:opacity-60"
-                  >
-                    <ShoppingBag size={13} />
-                    Move to Cart
-                  </Button>
-                )}
-
-                <Button
-                  disabled={!inStock}
-                  className="flex-1 h-10 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-xs sm:text-sm disabled:opacity-60"
-                >
-                  Buy Now
-                </Button>
-
-                {/* Wishlist toggle — cart-source items only */}
-                {product.source === "cart" && (
-                  <button
-                    onClick={handleWishlistToggle}
-                    className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full border transition-colors ${
-                      wishlisted
-                        ? "border-primary/30 bg-primary/10 text-primary"
-                        : "border-gray-300 text-gray-500 hover:border-primary/50 hover:text-primary hover:bg-primary/5"
-                    }`}
-                    aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}
-                  >
-                    <Heart size={15} fill={wishlisted ? "currentColor" : "none"} />
-                  </button>
-                )}
-              </div>
-            </div>
+                {/* Mobile CTA footer */}
+                <div className="flex-shrink-0 border-t border-gray-100 px-4 sm:px-5 py-3 bg-white">
+                  {ctaMobile()}
+                </div>
+              </>
+            )}
           </motion.div>
         </>
       )}
