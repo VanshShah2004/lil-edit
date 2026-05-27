@@ -24,7 +24,12 @@ function enrichWishlistRow(row: any, product: any) {
   );
 
   const variant = variants.find((v: any) => v.variant_sku === row.sku) ?? null;
+  const variantImages = variant
+    ? images.filter((img: any) => img.variant_id === variant.id)
+    : [];
   const primaryImage =
+    variantImages.find((img: any) => !!img.is_primary)?.image_url ||
+    variantImages[0]?.image_url ||
     images.find((img: any) => !!img.is_primary)?.image_url ||
     images[0]?.image_url ||
     "";

@@ -355,7 +355,7 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 32, stiffness: 380, mass: 0.8 }}
             className={`fixed inset-x-0 bottom-0 z-[100] flex flex-col bg-white rounded-t-3xl shadow-2xl outline-none overflow-hidden ${
-              isDesktop ? "max-h-[78vh]" : "max-h-[65vh]"
+              isDesktop ? "max-h-[88vh]" : "max-h-[65vh]"
             }`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -390,7 +390,7 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
 
                     {/* Left: image + thumbnails */}
                     <div className="w-[42%] flex-shrink-0 flex flex-col gap-2 p-4">
-                      {carousel("", "18rem")}
+                      {carousel("", "26rem")}
                       {thumbs()}
                     </div>
 
