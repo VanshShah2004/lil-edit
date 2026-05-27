@@ -13,6 +13,7 @@ export interface CartItem {
   price: number;
   originalPrice: number;
   image: string;
+  images: string[];
   color: { name: string; hex: string };
   colors: { name: string; hex: string; sku: string }[];
   availability: string;

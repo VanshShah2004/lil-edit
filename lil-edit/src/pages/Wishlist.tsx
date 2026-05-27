@@ -176,6 +176,7 @@ const WishlistPage = () => {
       price: item.price,
       originalPrice: item.originalPrice,
       image: item.image,
+      images: item.images,
       color: item.color,
       badges: item.badges,
       tags: item.tags,

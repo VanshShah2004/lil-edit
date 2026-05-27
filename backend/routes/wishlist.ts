@@ -27,12 +27,18 @@ function enrichWishlistRow(row: any, product: any) {
   const variantImages = variant
     ? images.filter((img: any) => img.variant_id === variant.id)
     : [];
+  const globalImages = images.filter((img: any) => img.variant_id == null);
   const primaryImage =
     variantImages.find((img: any) => !!img.is_primary)?.image_url ||
     variantImages[0]?.image_url ||
     images.find((img: any) => !!img.is_primary)?.image_url ||
     images[0]?.image_url ||
     "";
+  const allImageUrls = [
+    ...variantImages.map((img: any) => img.image_url as string),
+    ...globalImages.map((img: any) => img.image_url as string),
+  ];
+  const uniqueImages = [...new Set(allImageUrls)].filter(Boolean);
 
   const isUnlimited: boolean = variant ? !!variant.is_unlimited : !!product.is_unlimited;
   const stock: number | null = isUnlimited ? null : (variant?.stock ?? 0);
@@ -50,6 +56,7 @@ function enrichWishlistRow(row: any, product: any) {
     price: product.price as number,
     originalPrice: (product.original_price ?? product.price) as number,
     image: primaryImage as string,
+    images: uniqueImages,
     color: {
       name: (variant?.color_name ?? "") as string,
       hex: (variant?.color_hex ?? "#cccccc") as string,

@@ -8,11 +8,9 @@ import {
   Heart,
   ExternalLink,
   Eye,
-  ChevronLeft,
-  ChevronRight,
   Share2,
 } from "lucide-react";
-import { motion, AnimatePresence, useDragControls } from "framer-motion";
+import { motion, AnimatePresence, useDragControls, useMotionValue, animate } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
@@ -74,6 +72,9 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
     useWishlist();
   const closeRef = useRef<HTMLButtonElement>(null);
   const dragControls = useDragControls();
+  const swipeStartX = useRef(0);
+  const swipeActive = useRef(false);
+  const dragX = useMotionValue(0);
   const isDesktop = useIsDesktop();
   const [activeImg, setActiveImg] = useState(0);
   const [slideDir, setSlideDir] = useState<1 | -1>(1);
@@ -151,43 +152,62 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
   // ── Shared pieces ────────────────────────────────────────────────────────
 
   const carousel = (heightClass: string, inlineHeight?: string) => (
-    <div
+    <motion.div
       className={`relative rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 ${heightClass}`}
-      style={inlineHeight ? { height: inlineHeight } : undefined}
+      style={{ ...(inlineHeight ? { height: inlineHeight } : {}), touchAction: "pan-y", x: dragX }}
+      onPointerDown={(e) => {
+        swipeStartX.current = e.clientX;
+        swipeActive.current = true;
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }}
+      onPointerMove={(e) => {
+        if (!swipeActive.current) return;
+        dragX.set(e.clientX - swipeStartX.current);
+      }}
+      onPointerUp={(e) => {
+        swipeActive.current = false;
+        const dx = e.clientX - swipeStartX.current;
+        if (dx < -40) {
+          dragX.set(0);
+          next();
+        } else if (dx > 40) {
+          dragX.set(0);
+          prev();
+        } else {
+          void animate(dragX, 0, { type: "spring", stiffness: 600, damping: 40 });
+        }
+      }}
+      onPointerCancel={() => {
+        swipeActive.current = false;
+        void animate(dragX, 0, { type: "spring", stiffness: 600, damping: 40 });
+      }}
     >
       <AnimatePresence initial={false} custom={slideDir}>
         <motion.img
           key={activeImg}
           custom={slideDir}
+          draggable={false}
           variants={{
-            enter: (dir: number) => ({ x: dir * 60, opacity: 0 }),
+            enter: (dir: number) => ({ x: dir * 280, opacity: 0 }),
             center: { x: 0, opacity: 1 },
-            exit: (dir: number) => ({ x: dir * -60, opacity: 0 }),
+            exit: (dir: number) => ({ x: dir * -280, opacity: 0 }),
           }}
           initial="enter"
           animate="center"
           exit="exit"
-          transition={{ duration: 0.22, ease: "easeOut" }}
+          transition={{ duration: 0.38, ease: [0.32, 0.72, 0, 1] }}
           src={allImages[activeImg]}
           alt={`${product.title} — image ${activeImg + 1}`}
           onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-          className="absolute inset-0 w-full h-full object-cover object-center"
+          className="absolute inset-0 w-full h-full object-cover object-center select-none"
         />
       </AnimatePresence>
       {total > 1 && (
-        <>
-          <button onClick={prev} className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors z-10" aria-label="Previous image">
-            <ChevronLeft size={16} />
-          </button>
-          <button onClick={next} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors z-10" aria-label="Next image">
-            <ChevronRight size={16} />
-          </button>
-          <span className="absolute top-2 right-2 bg-black/40 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full z-10">
-            {activeImg + 1} / {total}
-          </span>
-        </>
+        <span className="absolute top-2 right-2 bg-black/40 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full z-10">
+          {activeImg + 1} / {total}
+        </span>
       )}
-    </div>
+    </motion.div>
   );
 
   const thumbs = () => (

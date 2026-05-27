@@ -12,6 +12,7 @@ export interface WishlistItem {
   price: number;
   originalPrice: number;
   image: string;
+  images: string[];
   color: { name: string; hex: string };
   inStock: boolean;
   tags: string[];
