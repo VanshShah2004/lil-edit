@@ -72,7 +72,7 @@ const MegaMenu = () => {
       className="border-t border-border/60 bg-background w-full"
       onMouseLeave={() => window.innerWidth >= 768 && setActiveMegaTab(null)}
     >
-      <div className="container mx-auto px-1 sm:px-4 lg:px-8 py-3.5 md:py-0.5 lg:py-1">
+      <div className="container mx-auto px-1 sm:px-4 lg:px-8 pt-0 pb-1.5 md:py-0.5 lg:py-1">
         <div className="flex items-center justify-center whitespace-nowrap overflow-x-auto no-scrollbar pb-1">
           {megaMenuItems.map((item, index) => (
             <div key={`unified-${item}`} className={`flex items-center${index === 0 ? " pl-44" : ""}${index === megaMenuItems.length - 1 ? " pr-44" : ""}`}>
