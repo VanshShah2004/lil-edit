@@ -1,10 +1,14 @@
+import { performance } from "perf_hooks";
 import { Router, type Request, type Response } from "express";
 import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth.js";
-import { createLog } from "../lib/logger.js";
+import { createLog, fms } from "../lib/logger.js";
+import { redisGet, redisSet, redisDel, redisKey, WISHLIST_TTL_S, CART_TTL_S } from "../lib/redis.js";
 
 const router = Router();
 const db = () => supabaseAdmin ?? supabaseAnon;
+const wishlistKey = (userId: string) => redisKey("wishlist", userId);
+const cartKey     = (userId: string) => redisKey("cart",     userId);
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -119,11 +123,23 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
   log.step(`user=${userId}  client=${supabaseAdmin ? "admin" : "anon"}`);
 
   try {
+    // ── L2 Redis cache check ──────────────────────────────────────────────────
+    const cacheKey = wishlistKey(userId);
+    const cached = await redisGet<{ items: unknown[] }>(cacheKey, log);
+    if (cached) {
+      log.success(`cache HIT  items=${cached.items.length}  total=${fms(log.elapsed())}`).end("WISHLIST GET");
+      res.json(cached);
+      return;
+    }
+
+    // ── DB: wishlist_items ────────────────────────────────────────────────────
+    const t0Rows = performance.now();
     const { data: rows, error: rowErr } = await db()
       .from("wishlist_items")
       .select("id, sku, product_slug, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
+    log.step(`DB wishlist_items: ${fms(performance.now() - t0Rows)}  rows=${rows?.length ?? 0}`);
 
     if (rowErr) {
       log.error(`wishlist_items query failed  code=${(rowErr as any).code}  msg=${rowErr.message}`, rowErr).end("WISHLIST GET");
@@ -131,16 +147,17 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
-    log.step(`rows=${rows?.length ?? 0}`);
-
     if (!rows || rows.length === 0) {
-      log.success("empty wishlist").end("WISHLIST GET");
+      log.success(`empty wishlist  total=${fms(log.elapsed())}`).end("WISHLIST GET");
       res.json({ items: [] });
       return;
     }
 
+    // ── DB: products (with variants + images) ─────────────────────────────────
     const slugs = [...new Set(rows.map((r) => r.product_slug as string))];
+    const t0Products = performance.now();
     const { data: products, error: prodErr } = await batchFetchProducts(slugs);
+    log.step(`DB products: ${fms(performance.now() - t0Products)}  slugs=${slugs.length}  rows=${products?.length ?? 0}`);
 
     if (prodErr) {
       log.error(`product fetch failed  code=${(prodErr as any).code}  msg=${prodErr.message}`, prodErr).end("WISHLIST GET");
@@ -148,6 +165,8 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
+    // ── Item mapping ──────────────────────────────────────────────────────────
+    const t0Map = performance.now();
     const productMap = new Map<string, any>(
       (products ?? []).map((p: any) => [p.slug as string, p])
     );
@@ -159,9 +178,13 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
         return enrichWishlistRow(row, product);
       })
       .filter(Boolean);
+    log.step(`item mapping: ${fms(performance.now() - t0Map)}  items=${items.length}`);
 
-    log.success(`${items.length} items returned`).end("WISHLIST GET");
-    res.json({ items });
+    // ── Cache + respond ───────────────────────────────────────────────────────
+    const payload = { items };
+    await redisSet(cacheKey, payload, WISHLIST_TTL_S, log);
+    log.success(`cache MISS → SET  items=${items.length}  total=${fms(log.elapsed())}`).end("WISHLIST GET");
+    res.json(payload);
   } catch (err) {
     log.error("unhandled error", err).end("WISHLIST GET");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -193,11 +216,13 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
 
   try {
     // Validate product + SKU
+    const t0Validate = performance.now();
     const { data: product, error: prodErr } = await db()
       .from("products")
       .select("base_sku, product_variants(variant_sku)")
       .eq("slug", product_slug)
       .maybeSingle();
+    log.step(`DB product validate: ${fms(performance.now() - t0Validate)}`);
 
     if (prodErr) {
       log.error(`product validation failed  code=${(prodErr as any).code}`, prodErr).end("WISHLIST ADD");
@@ -221,11 +246,13 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     }
 
     // Insert — unique constraint handles duplicates gracefully
+    const t0Insert = performance.now();
     const { data: inserted, error: insertErr } = await db()
       .from("wishlist_items")
       .insert({ user_id: userId, product_slug, sku })
       .select("id")
       .maybeSingle();
+    log.step(`DB insert: ${fms(performance.now() - t0Insert)}`);
 
     if (insertErr) {
       // Unique constraint violation = already wishlisted
@@ -239,7 +266,8 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
-    log.success(`inserted  id=${inserted?.id}`).end("WISHLIST ADD");
+    await redisDel(log, wishlistKey(userId));
+    log.success(`inserted  id=${inserted?.id}  total=${fms(log.elapsed())}`).end("WISHLIST ADD");
     res.status(201).json({ ok: true, action: "added", wishlistItemId: inserted?.id });
   } catch (err) {
     log.error("unhandled error", err).end("WISHLIST ADD");
@@ -257,12 +285,14 @@ router.post("/move-to-cart/:id", requireAuth, async (req: Request, res: Response
 
   try {
     // Verify ownership + fetch the row
+    const t0Fetch = performance.now();
     const { data: row, error: rowErr } = await db()
       .from("wishlist_items")
       .select("id, product_slug, sku")
       .eq("id", id)
       .eq("user_id", userId)
       .maybeSingle();
+    log.step(`DB fetch row: ${fms(performance.now() - t0Fetch)}`);
 
     if (rowErr) {
       log.error(`row fetch failed  code=${(rowErr as any).code}`, rowErr).end("WISHLIST MOVE TO CART");
@@ -278,26 +308,29 @@ router.post("/move-to-cart/:id", requireAuth, async (req: Request, res: Response
     log.step(`moving slug=${row.product_slug}  sku=${row.sku}`);
 
     // Upsert into cart
+    const t0Cart = performance.now();
     const { error: cartErr, action } = await upsertCartItem(
       userId,
       row.product_slug as string,
       row.sku as string,
       1
     );
+    log.step(`DB cart upsert: ${fms(performance.now() - t0Cart)}  action=${action}`);
 
     if (cartErr) {
       log.error(`cart upsert failed  code=${(cartErr as any).code}  msg=${cartErr.message}`, cartErr).end("WISHLIST MOVE TO CART");
       res.status(500).json({ error: cartErr.message });
       return;
     }
-    log.step(`cart upsert action=${action}`);
 
     // Remove from wishlist
+    const t0Del = performance.now();
     const { error: delErr } = await db()
       .from("wishlist_items")
       .delete()
       .eq("id", id)
       .eq("user_id", userId);
+    log.step(`DB wishlist delete: ${fms(performance.now() - t0Del)}`);
 
     if (delErr) {
       log.error(`wishlist delete failed  code=${(delErr as any).code}`, delErr).end("WISHLIST MOVE TO CART");
@@ -305,7 +338,9 @@ router.post("/move-to-cart/:id", requireAuth, async (req: Request, res: Response
       return;
     }
 
-    log.success(`moved to cart  wishlist_id=${id}  cart_action=${action}`).end("WISHLIST MOVE TO CART");
+    // Invalidate both caches — wishlist shrank, cart grew
+    await redisDel(log, wishlistKey(userId), cartKey(userId));
+    log.success(`moved to cart  wishlist_id=${id}  cart_action=${action}  total=${fms(log.elapsed())}`).end("WISHLIST MOVE TO CART");
     res.json({ ok: true, action });
   } catch (err) {
     log.error("unhandled error", err).end("WISHLIST MOVE TO CART");
@@ -321,10 +356,12 @@ router.post("/move-all-to-cart", requireAuth, async (req: Request, res: Response
 
   try {
     // Fetch all wishlist rows
+    const t0Rows = performance.now();
     const { data: rows, error: rowErr } = await db()
       .from("wishlist_items")
       .select("id, product_slug, sku")
       .eq("user_id", userId);
+    log.step(`DB wishlist_items: ${fms(performance.now() - t0Rows)}  rows=${rows?.length ?? 0}`);
 
     if (rowErr) {
       log.error(`rows fetch failed  code=${(rowErr as any).code}`, rowErr).end("WISHLIST MOVE ALL TO CART");
@@ -333,14 +370,16 @@ router.post("/move-all-to-cart", requireAuth, async (req: Request, res: Response
     }
 
     if (!rows || rows.length === 0) {
-      log.success("wishlist empty — nothing to move").end("WISHLIST MOVE ALL TO CART");
+      log.success(`wishlist empty — nothing to move  total=${fms(log.elapsed())}`).end("WISHLIST MOVE ALL TO CART");
       res.json({ ok: true, moved: 0, skipped: 0 });
       return;
     }
 
     // Batch-fetch product data to check stock
     const slugs = [...new Set(rows.map((r) => r.product_slug as string))];
+    const t0Products = performance.now();
     const { data: products, error: prodErr } = await batchFetchProducts(slugs);
+    log.step(`DB products: ${fms(performance.now() - t0Products)}  slugs=${slugs.length}`);
 
     if (prodErr) {
       log.error(`product fetch failed  code=${(prodErr as any).code}`, prodErr).end("WISHLIST MOVE ALL TO CART");
@@ -384,11 +423,13 @@ router.post("/move-all-to-cart", requireAuth, async (req: Request, res: Response
 
     // Delete all successfully moved items from wishlist
     if (movedIds.length > 0) {
+      const t0Del = performance.now();
       const { error: delErr } = await db()
         .from("wishlist_items")
         .delete()
         .in("id", movedIds)
         .eq("user_id", userId);
+      log.step(`DB bulk delete: ${fms(performance.now() - t0Del)}  deleted=${movedIds.length}`);
 
       if (delErr) {
         log.error(`bulk wishlist delete failed  code=${(delErr as any).code}`, delErr).end("WISHLIST MOVE ALL TO CART");
@@ -397,7 +438,9 @@ router.post("/move-all-to-cart", requireAuth, async (req: Request, res: Response
       }
     }
 
-    log.success(`moved=${moved}  skipped=${skipped}`).end("WISHLIST MOVE ALL TO CART");
+    // Invalidate both caches — wishlist shrank, cart grew
+    await redisDel(log, wishlistKey(userId), cartKey(userId));
+    log.success(`moved=${moved}  skipped=${skipped}  total=${fms(log.elapsed())}`).end("WISHLIST MOVE ALL TO CART");
     res.json({ ok: true, moved, skipped });
   } catch (err) {
     log.error("unhandled error", err).end("WISHLIST MOVE ALL TO CART");
@@ -413,10 +456,12 @@ router.delete("/clear", requireAuth, async (req: Request, res: Response) => {
   log.step(`user=${userId}`);
 
   try {
+    const t0Write = performance.now();
     const { error } = await db()
       .from("wishlist_items")
       .delete()
       .eq("user_id", userId);
+    log.step(`DB delete all: ${fms(performance.now() - t0Write)}`);
 
     if (error) {
       log.error(`clear failed  code=${(error as any).code}  msg=${error.message}`, error).end("WISHLIST CLEAR");
@@ -424,7 +469,8 @@ router.delete("/clear", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
-    log.success("wishlist cleared").end("WISHLIST CLEAR");
+    await redisDel(log, wishlistKey(userId));
+    log.success(`wishlist cleared  total=${fms(log.elapsed())}`).end("WISHLIST CLEAR");
     res.json({ ok: true });
   } catch (err) {
     log.error("unhandled error", err).end("WISHLIST CLEAR");
@@ -440,6 +486,7 @@ router.delete("/:id", requireAuth, async (req: Request, res: Response) => {
   log.step(`user=${userId}  id=${id}`);
 
   try {
+    const t0Write = performance.now();
     const { data, error } = await db()
       .from("wishlist_items")
       .delete()
@@ -447,6 +494,7 @@ router.delete("/:id", requireAuth, async (req: Request, res: Response) => {
       .eq("user_id", userId)
       .select("id")
       .maybeSingle();
+    log.step(`DB delete item: ${fms(performance.now() - t0Write)}`);
 
     if (error) {
       log.error(`delete failed  code=${(error as any).code}  msg=${error.message}`, error).end("WISHLIST REMOVE");
@@ -459,7 +507,8 @@ router.delete("/:id", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
-    log.success(`removed  id=${id}`).end("WISHLIST REMOVE");
+    await redisDel(log, wishlistKey(userId));
+    log.success(`removed  id=${id}  total=${fms(log.elapsed())}`).end("WISHLIST REMOVE");
     res.json({ ok: true });
   } catch (err) {
     log.error("unhandled error", err).end("WISHLIST REMOVE");

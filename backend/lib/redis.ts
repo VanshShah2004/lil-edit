@@ -6,6 +6,8 @@ export const PRODUCT_TTL_S        = 5 * 60;   // 5 min  — PDP product detail
 export const REC_TTL_S            = 10 * 60;  // 10 min — PDP recommendations
 export const CATALOG_LIST_TTL_S   = 10 * 60;  // 10 min — catalog thin list
 export const CATALOG_DETAIL_TTL_S = 2 * 60;   // 2 min  — catalog full detail per SKU
+export const CART_TTL_S           = 60;        // 60s   — per-user cart; invalidated on every mutation
+export const WISHLIST_TTL_S       = 60;        // 60s   — per-user wishlist; invalidated on every mutation
 
 type RedisClient = InstanceType<typeof Redis>;
 let client: RedisClient | null = null;
@@ -115,7 +117,7 @@ export async function redisDel(log: OpLogger, ...keys: string[]): Promise<void> 
 }
 
 export function redisKey(
-  prefix: "pdp" | "rec" | "catalog-list" | "catalog-detail",
+  prefix: "pdp" | "rec" | "catalog-list" | "catalog-detail" | "cart" | "wishlist",
   slug: string,
 ): string {
   return `${prefix}:${slug}`;

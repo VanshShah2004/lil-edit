@@ -1,10 +1,13 @@
+import { performance } from "perf_hooks";
 import { Router, type Request, type Response } from "express";
 import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth.js";
-import { createLog } from "../lib/logger.js";
+import { createLog, fms } from "../lib/logger.js";
+import { redisGet, redisSet, redisDel, redisKey, CART_TTL_S } from "../lib/redis.js";
 
 const router = Router();
 const db = () => supabaseAdmin ?? supabaseAnon;
+const cartKey = (userId: string) => redisKey("cart", userId);
 
 // ─── GET /api/cart ─────────────────────────────────────────────────────────────
 router.get("/", requireAuth, async (req: Request, res: Response) => {
@@ -13,11 +16,23 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
   log.step(`user=${userId}  client=${supabaseAdmin ? "admin" : "anon"}`);
 
   try {
+    // ── L2 Redis cache check ──────────────────────────────────────────────────
+    const cacheKey = cartKey(userId);
+    const cached = await redisGet<{ items: unknown[] }>(cacheKey, log);
+    if (cached) {
+      log.success(`cache HIT  items=${cached.items.length}  total=${fms(log.elapsed())}`).end("CART GET");
+      res.json(cached);
+      return;
+    }
+
+    // ── DB: cart_items ────────────────────────────────────────────────────────
+    const t0CartItems = performance.now();
     const { data: cartRows, error: cartErr } = await db()
       .from("cart_items")
       .select("id, sku, size, quantity, product_slug, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
+    log.step(`DB cart_items: ${fms(performance.now() - t0CartItems)}  rows=${cartRows?.length ?? 0}`);
 
     if (cartErr) {
       log.error(`cart_items query failed  code=${(cartErr as any).code}  hint=${(cartErr as any).hint}  msg=${cartErr.message}`, cartErr).end("CART GET");
@@ -25,24 +40,25 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
-    log.step(`cart_items rows=${cartRows?.length ?? 0}`);
-
     if (!cartRows || cartRows.length === 0) {
-      log.success("empty cart").end("CART GET");
+      log.success(`empty cart  total=${fms(log.elapsed())}`).end("CART GET");
       res.json({ items: [] });
       return;
     }
 
+    // ── DB: products (with variants + images) ─────────────────────────────────
     const slugs = [...new Set(cartRows.map((r) => r.product_slug as string))];
+    const t0Products = performance.now();
     const { data: products, error: prodErr } = await db()
       .from("products")
       .select(`
-        title, slug, category_slug, price, original_price, tags, badges, base_sku, sizes, is_unlimited,
+        title, slug, category_slug, price, original_price, tags, badges, sizes, is_unlimited,
         is_featured, is_new_arrival, is_trending, is_bestseller,
         product_images(id, image_url, is_primary, sort_order, variant_id),
         product_variants(id, variant_sku, color_name, color_hex, stock, is_unlimited, sort_order)
       `)
       .in("slug", slugs);
+    log.step(`DB products: ${fms(performance.now() - t0Products)}  slugs=${slugs.length}  rows=${products?.length ?? 0}`);
 
     if (prodErr) {
       log.error("product fetch failed", prodErr).end("CART GET");
@@ -50,6 +66,8 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
+    // ── Item mapping ──────────────────────────────────────────────────────────
+    const t0Map = performance.now();
     const productMap = new Map<string, any>(
       (products ?? []).map((p: any) => [p.slug as string, p])
     );
@@ -130,9 +148,13 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
         };
       })
       .filter(Boolean);
+    log.step(`item mapping: ${fms(performance.now() - t0Map)}  items=${items.length}`);
 
-    log.success(`${items.length} items returned`).end("CART GET");
-    res.json({ items });
+    // ── Cache + respond ───────────────────────────────────────────────────────
+    const payload = { items };
+    await redisSet(cacheKey, payload, CART_TTL_S, log);
+    log.success(`cache MISS → SET  items=${items.length}  total=${fms(log.elapsed())}`).end("CART GET");
+    res.json(payload);
   } catch (err) {
     log.error("unhandled error", err).end("CART GET");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -168,11 +190,13 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
   log.step(`user=${userId}  slug=${product_slug}  sku=${sku}  size="${sizeVal}"  qty=${qty}  client=${supabaseAdmin ? "admin" : "anon"}`);
 
   try {
+    const t0Validate = performance.now();
     const { data: product, error: prodErr } = await db()
       .from("products")
       .select("base_sku, product_variants(variant_sku)")
       .eq("slug", product_slug)
       .maybeSingle();
+    log.step(`DB product validate: ${fms(performance.now() - t0Validate)}`);
 
     if (prodErr) {
       log.error(`product validation failed  code=${(prodErr as any).code}  msg=${prodErr.message}`, prodErr).end("CART ADD");
@@ -196,6 +220,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
+    const t0Conflict = performance.now();
     const { data: existing, error: existErr } = await db()
       .from("cart_items")
       .select("id, quantity")
@@ -203,20 +228,22 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       .eq("sku", sku)
       .eq("size", sizeVal)
       .maybeSingle();
+    log.step(`DB conflict check: ${fms(performance.now() - t0Conflict)}  existing=${!!existing}`);
 
     if (existErr) {
       log.error(`existing row check failed  code=${(existErr as any).code}  msg=${existErr.message}`, existErr).end("CART ADD");
       res.status(500).json({ error: existErr.message });
       return;
     }
-    log.step(`existing row=${!!existing}`);
 
     if (existing) {
       const newQty = (existing.quantity as number) + qty;
+      const t0Write = performance.now();
       const { error: updateErr } = await db()
         .from("cart_items")
         .update({ quantity: newQty, updated_at: new Date().toISOString() })
         .eq("id", existing.id);
+      log.step(`DB increment: ${fms(performance.now() - t0Write)}`);
 
       if (updateErr) {
         log.error(`increment failed  code=${(updateErr as any).code}  msg=${updateErr.message}`, updateErr).end("CART ADD");
@@ -224,14 +251,17 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
         return;
       }
 
-      log.success(`incremented  id=${existing.id}  qty=${existing.quantity}→${newQty}`).end("CART ADD");
+      await redisDel(log, cartKey(userId));
+      log.success(`incremented  id=${existing.id}  qty=${existing.quantity}→${newQty}  total=${fms(log.elapsed())}`).end("CART ADD");
       res.json({ ok: true, action: "incremented", cartItemId: existing.id, quantity: newQty });
     } else {
+      const t0Write = performance.now();
       const { data: inserted, error: insertErr } = await db()
         .from("cart_items")
         .insert({ user_id: userId, product_slug, sku, size: sizeVal, quantity: qty })
         .select("id")
         .single();
+      log.step(`DB insert: ${fms(performance.now() - t0Write)}`);
 
       if (insertErr) {
         log.error(`insert failed  code=${(insertErr as any).code}  msg=${insertErr.message}`, insertErr).end("CART ADD");
@@ -239,7 +269,8 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
         return;
       }
 
-      log.success(`inserted  id=${inserted.id}`).end("CART ADD");
+      await redisDel(log, cartKey(userId));
+      log.success(`inserted  id=${inserted.id}  total=${fms(log.elapsed())}`).end("CART ADD");
       res.status(201).json({ ok: true, action: "added", cartItemId: inserted.id, quantity: qty });
     }
   } catch (err) {
@@ -264,12 +295,14 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
   log.step(`user=${userId}  id=${id}  newSku="${newSku}"`);
 
   try {
+    const t0Fetch = performance.now();
     const { data: current, error: fetchErr } = await db()
       .from("cart_items")
       .select("id, sku, size, quantity, product_slug")
       .eq("id", id)
       .eq("user_id", userId)
       .maybeSingle();
+    log.step(`DB fetch item: ${fms(performance.now() - t0Fetch)}`);
 
     if (fetchErr) {
       log.error("fetch failed", fetchErr).end("CART UPDATE COLOR");
@@ -283,11 +316,13 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
     }
 
     // Validate the new SKU belongs to the same product
+    const t0Validate = performance.now();
     const { data: product, error: prodErr } = await db()
       .from("products")
       .select("base_sku, product_variants(variant_sku)")
       .eq("slug", current.product_slug as string)
       .maybeSingle();
+    log.step(`DB product validate: ${fms(performance.now() - t0Validate)}`);
 
     if (prodErr || !product) {
       log.error("product fetch failed", prodErr).end("CART UPDATE COLOR");
@@ -305,6 +340,7 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
     }
 
     // Check for an existing item with the new SKU + same size
+    const t0Conflict = performance.now();
     const { data: conflict } = await db()
       .from("cart_items")
       .select("id, quantity")
@@ -313,9 +349,11 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
       .eq("size", current.size as string)
       .neq("id", id)
       .maybeSingle();
+    log.step(`DB conflict check: ${fms(performance.now() - t0Conflict)}  conflict=${!!conflict}`);
 
     if (conflict) {
       const mergedQty = (conflict.quantity as number) + (current.quantity as number);
+      const t0Merge = performance.now();
       const { error: mergeErr } = await db()
         .from("cart_items")
         .update({ quantity: mergedQty, updated_at: new Date().toISOString() })
@@ -326,16 +364,20 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
         return;
       }
       await db().from("cart_items").delete().eq("id", id).eq("user_id", userId);
-      log.success(`merged  qty=${mergedQty}`).end("CART UPDATE COLOR");
+      log.step(`DB merge+delete: ${fms(performance.now() - t0Merge)}`);
+      await redisDel(log, cartKey(userId));
+      log.success(`merged  qty=${mergedQty}  total=${fms(log.elapsed())}`).end("CART UPDATE COLOR");
       res.json({ ok: true, action: "merged", mergedId: conflict.id, quantity: mergedQty });
       return;
     }
 
+    const t0Write = performance.now();
     const { error: updateErr } = await db()
       .from("cart_items")
       .update({ sku: newSku, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("user_id", userId);
+    log.step(`DB update sku: ${fms(performance.now() - t0Write)}`);
 
     if (updateErr) {
       log.error("update failed", updateErr).end("CART UPDATE COLOR");
@@ -343,7 +385,8 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
-    log.success(`color updated  id=${id}  sku="${newSku}"`).end("CART UPDATE COLOR");
+    await redisDel(log, cartKey(userId));
+    log.success(`color updated  id=${id}  sku="${newSku}"  total=${fms(log.elapsed())}`).end("CART UPDATE COLOR");
     res.json({ ok: true, action: "updated", id, sku: newSku });
   } catch (err) {
     log.error("unhandled error", err).end("CART UPDATE COLOR");
@@ -368,12 +411,14 @@ router.patch("/:id/size", requireAuth, async (req: Request, res: Response) => {
 
   try {
     // Fetch the item being changed so we know its sku and current quantity
+    const t0Fetch = performance.now();
     const { data: current, error: fetchErr } = await db()
       .from("cart_items")
       .select("id, sku, quantity")
       .eq("id", id)
       .eq("user_id", userId)
       .maybeSingle();
+    log.step(`DB fetch item: ${fms(performance.now() - t0Fetch)}`);
 
     if (fetchErr) {
       log.error("fetch failed", fetchErr).end("CART UPDATE SIZE");
@@ -387,6 +432,7 @@ router.patch("/:id/size", requireAuth, async (req: Request, res: Response) => {
     }
 
     // Check if an item with the same sku + newSize already exists
+    const t0Conflict = performance.now();
     const { data: conflict } = await db()
       .from("cart_items")
       .select("id, quantity")
@@ -395,10 +441,12 @@ router.patch("/:id/size", requireAuth, async (req: Request, res: Response) => {
       .eq("size", newSize)
       .neq("id", id)
       .maybeSingle();
+    log.step(`DB conflict check: ${fms(performance.now() - t0Conflict)}  conflict=${!!conflict}`);
 
     if (conflict) {
       // Merge: add quantities into the existing item, delete the current one
       const mergedQty = (conflict.quantity as number) + (current.quantity as number);
+      const t0Merge = performance.now();
       const { error: mergeErr } = await db()
         .from("cart_items")
         .update({ quantity: mergedQty, updated_at: new Date().toISOString() })
@@ -409,17 +457,21 @@ router.patch("/:id/size", requireAuth, async (req: Request, res: Response) => {
         return;
       }
       await db().from("cart_items").delete().eq("id", id).eq("user_id", userId);
-      log.success(`merged into existing item  qty=${mergedQty}`).end("CART UPDATE SIZE");
+      log.step(`DB merge+delete: ${fms(performance.now() - t0Merge)}`);
+      await redisDel(log, cartKey(userId));
+      log.success(`merged into existing item  qty=${mergedQty}  total=${fms(log.elapsed())}`).end("CART UPDATE SIZE");
       res.json({ ok: true, action: "merged", mergedId: conflict.id, quantity: mergedQty });
       return;
     }
 
     // No conflict — plain size update
+    const t0Write = performance.now();
     const { error: updateErr } = await db()
       .from("cart_items")
       .update({ size: newSize, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("user_id", userId);
+    log.step(`DB update size: ${fms(performance.now() - t0Write)}`);
 
     if (updateErr) {
       log.error("update failed", updateErr).end("CART UPDATE SIZE");
@@ -427,7 +479,8 @@ router.patch("/:id/size", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
-    log.success(`size updated  id=${id}  size="${newSize}"`).end("CART UPDATE SIZE");
+    await redisDel(log, cartKey(userId));
+    log.success(`size updated  id=${id}  size="${newSize}"  total=${fms(log.elapsed())}`).end("CART UPDATE SIZE");
     res.json({ ok: true, action: "updated", id, size: newSize });
   } catch (err) {
     log.error("unhandled error", err).end("CART UPDATE SIZE");
@@ -452,6 +505,7 @@ router.patch("/:id", requireAuth, async (req: Request, res: Response) => {
   log.step(`user=${userId}  id=${id}  qty=${qty}`);
 
   try {
+    const t0Write = performance.now();
     const { data, error } = await db()
       .from("cart_items")
       .update({ quantity: qty, updated_at: new Date().toISOString() })
@@ -459,6 +513,7 @@ router.patch("/:id", requireAuth, async (req: Request, res: Response) => {
       .eq("user_id", userId)
       .select("id, quantity")
       .maybeSingle();
+    log.step(`DB update qty: ${fms(performance.now() - t0Write)}`);
 
     if (error) {
       log.error("update failed", error).end("CART UPDATE QTY");
@@ -471,7 +526,8 @@ router.patch("/:id", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
-    log.success(`updated  id=${id}  qty=${qty}`).end("CART UPDATE QTY");
+    await redisDel(log, cartKey(userId));
+    log.success(`updated  id=${id}  qty=${qty}  total=${fms(log.elapsed())}`).end("CART UPDATE QTY");
     res.json({ ok: true, id: data.id, quantity: data.quantity });
   } catch (err) {
     log.error("unhandled error", err).end("CART UPDATE QTY");
@@ -487,10 +543,12 @@ router.delete("/clear", requireAuth, async (req: Request, res: Response) => {
   log.step(`user=${userId}`);
 
   try {
+    const t0Write = performance.now();
     const { error } = await db()
       .from("cart_items")
       .delete()
       .eq("user_id", userId);
+    log.step(`DB delete all: ${fms(performance.now() - t0Write)}`);
 
     if (error) {
       log.error("clear failed", error).end("CART CLEAR");
@@ -498,7 +556,8 @@ router.delete("/clear", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
-    log.success("cart cleared").end("CART CLEAR");
+    await redisDel(log, cartKey(userId));
+    log.success(`cart cleared  total=${fms(log.elapsed())}`).end("CART CLEAR");
     res.json({ ok: true });
   } catch (err) {
     log.error("unhandled error", err).end("CART CLEAR");
@@ -514,6 +573,7 @@ router.delete("/:id", requireAuth, async (req: Request, res: Response) => {
   log.step(`user=${userId}  id=${id}`);
 
   try {
+    const t0Write = performance.now();
     const { data, error } = await db()
       .from("cart_items")
       .delete()
@@ -521,6 +581,7 @@ router.delete("/:id", requireAuth, async (req: Request, res: Response) => {
       .eq("user_id", userId)
       .select("id")
       .maybeSingle();
+    log.step(`DB delete item: ${fms(performance.now() - t0Write)}`);
 
     if (error) {
       log.error("delete failed", error).end("CART REMOVE");
@@ -533,7 +594,8 @@ router.delete("/:id", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
-    log.success(`removed  id=${id}`).end("CART REMOVE");
+    await redisDel(log, cartKey(userId));
+    log.success(`removed  id=${id}  total=${fms(log.elapsed())}`).end("CART REMOVE");
     res.json({ ok: true });
   } catch (err) {
     log.error("unhandled error", err).end("CART REMOVE");
