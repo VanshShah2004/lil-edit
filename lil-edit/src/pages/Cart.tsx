@@ -49,6 +49,9 @@ import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import type { CartItem } from "@/lib/cartApi";
 
+const abbreviateSize = (size: string) =>
+  size.replace(/months?/gi, "M").replace(/years?/gi, "Y").trim();
+
 const BADGE_PRIORITY = ["newarrival", "trending", "bestseller", "featured"];
 const sortBadges = (badges: string[]) => {
   const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
@@ -390,7 +393,9 @@ export default function Cart() {
                               onClick={(e) => e.stopPropagation()}
                               className="h-7 text-xs font-medium border-gray-300 rounded-full px-2.5 w-auto gap-1 focus:ring-brand-teal"
                             >
-                              <SelectValue placeholder="Size" />
+                              <span className="truncate">
+                                {item.size ? abbreviateSize(item.size) : <span className="text-gray-400">Size</span>}
+                              </span>
                             </SelectTrigger>
                             <SelectContent>
                               {item.sizes.map((s) => (
