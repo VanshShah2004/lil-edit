@@ -331,7 +331,7 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22 }}
-            className="fixed inset-0 z-[99] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[99] bg-black/25"
             onClick={onClose}
             aria-hidden="true"
           />
