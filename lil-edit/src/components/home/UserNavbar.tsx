@@ -125,7 +125,7 @@ const UserNavbar = () => {
             </button>
             <Link to="/dashboard" className="flex-shrink flex items-center gap-2 sm:gap-3 min-w-0">
               <img src={logo} alt="The Lil Edit" className="h-10 sm:h-12 md:h-9 lg:h-9.5 w-auto shrink-0" />
-              <div className="hidden min-[380px]:block text-xl sm:text-xl md:text-[18px] lg:text-[20px] text-foreground leading-none truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <div className="hidden min-[430px]:block text-xl md:text-[18px] lg:text-[20px] text-foreground leading-none" style={{ fontFamily: "'Playfair Display', serif" }}>
                 The Lil Edit
               </div>
             </Link>
