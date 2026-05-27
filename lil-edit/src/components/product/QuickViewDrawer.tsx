@@ -1,6 +1,16 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Minus, Plus, ShoppingBag, Heart, ExternalLink, Eye } from "lucide-react";
+import {
+  X,
+  Minus,
+  Plus,
+  ShoppingBag,
+  Heart,
+  ExternalLink,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +37,7 @@ export type QuickViewProduct = {
   price: number;
   originalPrice: number;
   image: string;
+  images?: string[];
   color: { name: string; hex: string };
   badges: string[];
   tags: string[];
@@ -52,21 +63,22 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
     useWishlist();
   const closeRef = useRef<HTMLButtonElement>(null);
   const dragControls = useDragControls();
+  const [activeImg, setActiveImg] = useState(0);
+  const [slideDir, setSlideDir] = useState<1 | -1>(1);
+
+  // Reset gallery when product changes
+  useEffect(() => {
+    setActiveImg(0);
+  }, [product?.id]);
 
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
+    if (open) document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
@@ -79,6 +91,17 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
   }, [open]);
 
   if (!product) return null;
+
+  const allImages =
+    product.images && product.images.length > 0 ? product.images : [product.image];
+  const total = allImages.length;
+
+  const goTo = (idx: number, dir: 1 | -1) => {
+    setSlideDir(dir);
+    setActiveImg(idx);
+  };
+  const prev = () => goTo((activeImg - 1 + total) % total, -1);
+  const next = () => goTo((activeImg + 1) % total, 1);
 
   const liveCartItem =
     product.source === "cart" ? cartItems.find((i) => i.id === product.id) : undefined;
@@ -106,16 +129,8 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
       ? (product.inStock ?? true)
       : !product.availability?.toLowerCase().includes("out");
 
-  const handleViewFull = () => {
-    onClose();
-    navigate(pdpUrl);
-  };
-
-  const handleMoveToCart = async () => {
-    await moveToCart(product.id);
-    onClose();
-  };
-
+  const handleViewFull = () => { onClose(); navigate(pdpUrl); };
+  const handleMoveToCart = async () => { await moveToCart(product.id); onClose(); };
   const handleWishlistToggle = () => {
     if (wishlisted && wishlistItemForProduct) {
       void removeFromWishlist(wishlistItemForProduct.id);
@@ -123,10 +138,8 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
       void addToWishlist(product.slug, product.sku);
     }
   };
-
   const handleQtyChange = (delta: number) => {
-    const next = Math.max(1, liveQty + delta);
-    void updateQuantity(product.id, next);
+    void updateQuantity(product.id, Math.max(1, liveQty + delta));
   };
 
   return (
@@ -162,7 +175,7 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 32, stiffness: 380, mass: 0.8 }}
-            className="fixed inset-x-0 bottom-0 z-[100] flex flex-col bg-white rounded-t-3xl shadow-2xl max-h-[82vh] outline-none"
+            className="fixed inset-x-0 bottom-0 z-[100] flex flex-col bg-white rounded-t-3xl shadow-2xl max-h-[65vh] outline-none"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Drag handle */}
@@ -173,171 +186,236 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
               <div className="w-12 h-1.5 rounded-full bg-gray-200" />
             </div>
 
-            {/* Header row */}
-            <div className="flex items-center justify-between px-4 sm:px-6 pt-2 pb-3 flex-shrink-0">
-              <span className="flex items-center gap-1.5 text-sm font-bold text-gray-900">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 sm:px-5 pt-1 pb-0 flex-shrink-0">
+              <span className="flex items-center gap-1.5 text-sm font-bold text-gray-900 opacity-65">
                 Quick View
-                <Eye size={16} className="text-gray-900" />
+                <Eye size={15} />
               </span>
               <button
                 ref={closeRef}
                 onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-800"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-800 outline-none"
                 aria-label="Close quick view"
               >
-                <X size={18} />
+                <X size={17} />
               </button>
             </div>
 
-            {/* Scrollable body */}
-            <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 pb-4">
-              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-                {/* Product image */}
-                <div className="sm:w-48 md:w-56 lg:w-60 flex-shrink-0">
-                  <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-gray-100">
-                    <img
-                      src={product.image}
-                      alt={product.title}
-                      onError={(e) => {
-                        e.currentTarget.src = "/fallback-product.webp";
-                      }}
-                      className="w-full h-full object-cover object-center"
-                    />
-                  </div>
-                </div>
+            {/* ── Single scrollable region: image + thumbnails + details ── */}
+            <div className="flex-1 overflow-y-auto overscroll-contain">
 
-                {/* Product details */}
-                <div className="flex-1 min-w-0 flex flex-col gap-3 pb-2">
-                  {/* Title + brand */}
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 leading-snug">
-                      {product.title}
-                    </h2>
-                    {product.brand && (
-                      <p className="text-sm text-brand-teal font-medium mt-0.5">{product.brand}</p>
-                    )}
-                  </div>
+            {/* Title + brand — above image */}
+            <div className="px-4 sm:px-5 pt-0 pb-4">
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-snug">
+                {product.title}
+              </h2>
+              {product.brand && (
+                <p className="text-xs sm:text-sm text-brand-teal font-medium mt-0.5">
+                  {product.brand}
+                </p>
+              )}
+            </div>
 
-                  {/* Price */}
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <span className="text-2xl font-bold text-brand-teal">₹{product.price}</span>
-                    {product.originalPrice > product.price && (
-                      <>
-                        <span className="text-sm line-through text-gray-400">
-                          ₹{product.originalPrice}
-                        </span>
-                        <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-200">
-                          {discount}% off
-                        </span>
-                      </>
-                    )}
-                  </div>
+            {/* Image carousel */}
+            <div className="px-3 sm:px-4">
+              {/* Main image with margin + rounded corners */}
+              <div className="relative h-[26rem] sm:h-[30rem] md:h-[32rem] rounded-2xl overflow-hidden bg-gray-100">
+                <AnimatePresence initial={false} custom={slideDir}>
+                  <motion.img
+                    key={activeImg}
+                    custom={slideDir}
+                    variants={{
+                      enter: (dir: number) => ({ x: dir * 60, opacity: 0 }),
+                      center: { x: 0, opacity: 1 },
+                      exit: (dir: number) => ({ x: dir * -60, opacity: 0 }),
+                    }}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={{ duration: 0.22, ease: "easeOut" }}
+                    src={allImages[activeImg]}
+                    alt={`${product.title} — image ${activeImg + 1}`}
+                    onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                    className="absolute inset-0 w-full h-full object-cover object-center"
+                  />
+                </AnimatePresence>
 
-                  {/* Stock status */}
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                        inStock ? "bg-green-500" : "bg-red-400"
-                      }`}
-                    />
-                    <span
-                      className={`text-sm font-medium ${
-                        inStock ? "text-green-700" : "text-red-500"
-                      }`}
+                {/* Prev / Next arrows */}
+                {total > 1 && (
+                  <>
+                    <button
+                      onClick={prev}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors z-10"
+                      aria-label="Previous image"
                     >
-                      {inStock
-                        ? product.source === "cart"
-                          ? product.availability || "In Stock"
-                          : "In Stock"
-                        : "Out of Stock"}
-                    </span>
-                  </div>
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button
+                      onClick={next}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors z-10"
+                      aria-label="Next image"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </>
+                )}
 
-                  {/* Badges */}
-                  {product.badges.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {sortBadges(product.badges)
-                        .slice(0, 3)
-                        .map((tag, i) => (
-                          <Badge
-                            key={i}
-                            variant="secondary"
-                            className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-xs px-2 py-0.5 rounded-md font-medium shadow-sm"
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
-                    </div>
-                  )}
-
-                  {/* Color + size */}
-                  <div className="flex items-center gap-4 flex-wrap">
-                    {product.color.hex && (
-                      <span className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <span
-                          className="w-6 h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
-                          style={{ backgroundColor: product.color.hex }}
-                        />
-                        {product.color.name || "Color"}
-                      </span>
-                    )}
-                    {product.size && (
-                      <span className="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
-                        Size: {product.size}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Category / SKU */}
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
-                    <span>
-                      Category:{" "}
-                      <span className="text-gray-600 font-medium">{formattedCategory}</span>
-                    </span>
-                    <span>
-                      SKU:{" "}
-                      <span className="text-gray-600 font-medium font-mono">{product.sku}</span>
-                    </span>
-                  </div>
-
-                  {/* Quantity stepper — cart items only */}
-                  {product.source === "cart" && (
-                    <div className="flex items-center gap-3 pt-1">
-                      <span className="text-sm text-gray-600 font-medium">Quantity:</span>
-                      <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white w-fit">
-                        <button
-                          onClick={() => handleQtyChange(-1)}
-                          className="px-3 py-1.5 hover:bg-gray-100 transition"
-                          aria-label="Decrease quantity"
-                        >
-                          <Minus size={12} />
-                        </button>
-                        <span className="px-3 text-sm font-semibold min-w-[2ch] text-center">
-                          {liveQty}
-                        </span>
-                        <button
-                          onClick={() => handleQtyChange(1)}
-                          className="px-3 py-1.5 hover:bg-gray-100 transition"
-                          aria-label="Increase quantity"
-                        >
-                          <Plus size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                {/* Count badge */}
+                {total > 1 && (
+                  <span className="absolute top-2 right-2 bg-black/40 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full z-10">
+                    {activeImg + 1} / {total}
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* CTA footer */}
-            <div className="flex-shrink-0 border-t border-gray-100 px-4 sm:px-6 py-4 bg-white">
-              <div className="flex flex-col sm:flex-row gap-2.5">
+            {/* Thumbnail strip */}
+            <div className="px-3 sm:px-4 pt-2 pb-1">
+              <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                {allImages.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => goTo(i, i > activeImg ? 1 : -1)}
+                    className={`flex-shrink-0 w-12 h-14 sm:w-14 sm:h-16 rounded-xl overflow-hidden border-2 transition-all duration-200 ${
+                      activeImg === i
+                        ? "border-brand-teal scale-105 shadow-md"
+                        : "border-gray-200 hover:border-gray-400 opacity-70 hover:opacity-100"
+                    }`}
+                    aria-label={`View image ${i + 1}`}
+                  >
+                    <img
+                      src={img}
+                      alt={`${product.title} ${i + 1}`}
+                      onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                      className="w-full h-full object-cover object-center"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Details */}
+            <div className="px-4 sm:px-5 pb-4 space-y-3">
+
+              {/* Price row */}
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="text-xl sm:text-2xl font-bold text-brand-teal">
+                  ₹{product.price}
+                </span>
+                {product.originalPrice > product.price && (
+                  <>
+                    <span className="text-sm line-through text-gray-400">
+                      ₹{product.originalPrice}
+                    </span>
+                    <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-200">
+                      {discount}% off
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* Stock + Color + Size — single row */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${inStock ? "bg-green-500" : "bg-red-400"}`} />
+                  <span className={`text-xs font-semibold ${inStock ? "text-green-700" : "text-red-500"}`}>
+                    {inStock
+                      ? product.source === "cart"
+                        ? product.availability || "In Stock"
+                        : "In Stock"
+                      : "Out of Stock"}
+                  </span>
+                </div>
+
+                {product.color.hex && (
+                  <>
+                    <span className="text-gray-300">·</span>
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-gray-700">
+                      <span
+                        className="w-4 h-4 rounded-full border border-gray-300 shadow-sm flex-shrink-0"
+                        style={{ backgroundColor: product.color.hex }}
+                      />
+                      {product.color.name || "Color"}
+                    </span>
+                  </>
+                )}
+
+                {product.size && (
+                  <>
+                    <span className="text-gray-300">·</span>
+                    <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded-full">
+                      Size: {product.size}
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* Badges */}
+              {product.badges.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {sortBadges(product.badges).map((tag, i) => (
+                    <Badge
+                      key={i}
+                      variant="secondary"
+                      className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-[10px] sm:text-xs px-2 py-0.5 rounded-md font-medium shadow-sm"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {/* Category / SKU */}
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] sm:text-xs text-gray-400">
+                <span>
+                  Category:{" "}
+                  <span className="text-gray-600 font-medium">{formattedCategory}</span>
+                </span>
+                <span>
+                  SKU:{" "}
+                  <span className="text-gray-600 font-medium font-mono">{product.sku}</span>
+                </span>
+              </div>
+
+              {/* Quantity stepper — cart items only */}
+              {product.source === "cart" && (
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xs sm:text-sm text-gray-600 font-medium">Qty:</span>
+                  <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white w-fit">
+                    <button
+                      onClick={() => handleQtyChange(-1)}
+                      className="px-2.5 py-1 hover:bg-gray-100 transition"
+                      aria-label="Decrease quantity"
+                    >
+                      <Minus size={11} />
+                    </button>
+                    <span className="px-3 text-sm font-semibold min-w-[2ch] text-center">
+                      {liveQty}
+                    </span>
+                    <button
+                      onClick={() => handleQtyChange(1)}
+                      className="px-2.5 py-1 hover:bg-gray-100 transition"
+                      aria-label="Increase quantity"
+                    >
+                      <Plus size={11} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            </div>{/* end unified scrollable region */}
+
+            {/* ── CTA footer ── */}
+            <div className="flex-shrink-0 border-t border-gray-100 px-4 sm:px-5 py-3 bg-white">
+              <div className="flex flex-row gap-2">
                 <Button
                   variant="outline"
                   onClick={handleViewFull}
-                  className="flex-1 h-11 border-gray-300 text-gray-700 hover:border-brand-teal hover:text-brand-teal rounded-full font-semibold text-sm gap-1.5"
+                  className="flex-1 h-10 border-gray-300 text-gray-700 hover:border-brand-teal hover:text-brand-teal rounded-full font-semibold text-xs sm:text-sm gap-1.5"
                 >
-                  <ExternalLink size={14} />
+                  <ExternalLink size={13} />
                   View Full Product
                 </Button>
 
@@ -345,32 +423,32 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
                   <Button
                     onClick={() => void handleMoveToCart()}
                     disabled={!inStock}
-                    className="flex-1 h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-semibold text-sm gap-1.5 disabled:opacity-60"
+                    className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-semibold text-xs sm:text-sm gap-1.5 disabled:opacity-60"
                   >
-                    <ShoppingBag size={14} />
+                    <ShoppingBag size={13} />
                     Move to Cart
                   </Button>
                 )}
 
                 <Button
                   disabled={!inStock}
-                  className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-sm disabled:opacity-60"
+                  className="flex-1 h-10 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-xs sm:text-sm disabled:opacity-60"
                 >
                   Buy Now
                 </Button>
 
-                {/* Wishlist toggle shown only for cart-source items */}
+                {/* Wishlist toggle — cart-source items only */}
                 {product.source === "cart" && (
                   <button
                     onClick={handleWishlistToggle}
-                    className={`w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-full border transition-colors ${
+                    className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full border transition-colors ${
                       wishlisted
                         ? "border-primary/30 bg-primary/10 text-primary"
                         : "border-gray-300 text-gray-500 hover:border-primary/50 hover:text-primary hover:bg-primary/5"
                     }`}
                     aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}
                   >
-                    <Heart size={16} fill={wishlisted ? "currentColor" : "none"} />
+                    <Heart size={15} fill={wishlisted ? "currentColor" : "none"} />
                   </button>
                 )}
               </div>
