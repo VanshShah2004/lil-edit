@@ -10,6 +10,7 @@ import {
   Eye,
   ChevronLeft,
   ChevronRight,
+  Share2,
 } from "lucide-react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -372,14 +373,22 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
               <span className="flex items-center gap-1.5 text-sm font-bold text-gray-900 opacity-65">
                 Quick View <Eye size={15} />
               </span>
-              <button
-                ref={closeRef}
-                onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-800 outline-none"
-                aria-label="Close quick view"
-              >
-                <X size={17} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500 hover:text-brand-teal outline-none"
+                  aria-label="Share product"
+                >
+                  <Share2 size={16} />
+                </button>
+                <button
+                  ref={closeRef}
+                  onClick={onClose}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-800 outline-none"
+                  aria-label="Close quick view"
+                >
+                  <X size={17} />
+                </button>
+              </div>
             </div>
 
             {isDesktop ? (
