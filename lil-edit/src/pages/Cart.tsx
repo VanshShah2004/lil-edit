@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ChevronRight,
@@ -37,6 +38,9 @@ import img4 from "@/assets/searchbar-frequent_searches/le-4.png";
 import img5 from "@/assets/searchbar-frequent_searches/le-5.png";
 import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
 import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
+
+import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
+import type { CartItem } from "@/lib/cartApi";
 
 const BADGE_PRIORITY = ["newarrival", "trending", "bestseller", "featured"];
 const sortBadges = (badges: string[]) => {
@@ -131,6 +135,9 @@ export default function Cart() {
   const { user, loading: authLoading } = useAuth();
   const { cartItems, loading: cartLoading, updateQuantity, removeItem } = useCart();
 
+  const [selectedProduct, setSelectedProduct] = useState<QuickViewProduct | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+
   const subtotal = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
@@ -152,6 +159,27 @@ export default function Cart() {
   const handleQuantityChange = (itemId: string, currentQty: number, delta: number) => {
     const next = Math.max(1, currentQty + delta);
     void updateQuantity(itemId, next);
+  };
+
+  const openQuickView = (item: CartItem) => {
+    setSelectedProduct({
+      source: "cart",
+      id: item.id,
+      sku: item.sku,
+      slug: item.slug,
+      categorySlug: item.categorySlug,
+      title: item.title,
+      price: item.price,
+      originalPrice: item.originalPrice,
+      image: item.image,
+      color: item.color,
+      badges: item.badges,
+      tags: item.tags,
+      quantity: item.quantity,
+      size: item.size,
+      availability: item.availability,
+    });
+    setQuickViewOpen(true);
   };
 
   if (authLoading) {
@@ -252,7 +280,10 @@ export default function Cart() {
                   key={item.id}
                   className="bg-white border border-gray-200 border-l-8 border-l-brand-teal rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[160px] md:min-h-[140px]"
                 >
-                  <CardContent className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-1.5 relative">
+                  <CardContent
+                    className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-1.5 relative cursor-pointer"
+                    onClick={() => openQuickView(item)}
+                  >
                     {/* IMAGE + DETAILS row */}
                     <div className="flex flex-row gap-3 sm:gap-3 md:gap-4 flex-1">
                     {/* IMAGE */}
@@ -271,7 +302,8 @@ export default function Cart() {
                         </div>
                         <button
                           className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white shadow-sm hover:bg-gray-50 transition"
-                          aria-label="Add to cart"
+                          aria-label="Quick view"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <ShoppingCart size={14} className="text-primary" fill="currentColor" />
                         </button>
@@ -281,11 +313,9 @@ export default function Cart() {
                     {/* DETAILS */}
                     <div className="flex-1 flex flex-col min-w-0 py-0 gap-2">
                       <div className="pr-8 sm:pr-10 md:pr-12">
-                        <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
-                          <h2 className="text-xl sm:text-xl md:text-2xl font-bold text-gray-900 leading-tight line-clamp-2">
-                            {item.title}
-                          </h2>
-                        </Link>
+                        <h2 className="text-xl sm:text-xl md:text-2xl font-bold text-gray-900 leading-tight line-clamp-2">
+                          {item.title}
+                        </h2>
                         <p className="text-xs sm:text-sm mt-0.5 font-medium line-clamp-1 text-brand-teal">
                           The Lil Edit · {item.availability || "In Stock"}
                         </p>
@@ -331,7 +361,10 @@ export default function Cart() {
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white w-fit">
                             <button
-                              onClick={() => handleQuantityChange(item.id, item.quantity, -1)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleQuantityChange(item.id, item.quantity, -1);
+                              }}
                               className="px-2 sm:px-1.5 md:px-2 py-1 hover:bg-gray-100 transition"
                             >
                               <Minus size={11} className="sm:hidden" />
@@ -341,7 +374,10 @@ export default function Cart() {
                               {item.quantity}
                             </span>
                             <button
-                              onClick={() => handleQuantityChange(item.id, item.quantity, 1)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleQuantityChange(item.id, item.quantity, 1);
+                              }}
                               className="px-2 sm:px-1.5 md:px-2 py-1 hover:bg-gray-100 transition"
                             >
                               <Plus size={11} className="sm:hidden" />
@@ -368,7 +404,10 @@ export default function Cart() {
                     {/* DELETE */}
                     <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4">
                       <button
-                        onClick={() => void removeItem(item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void removeItem(item.id);
+                        }}
                         className="p-1.5 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
                         title="Remove item"
                       >
@@ -543,6 +582,12 @@ export default function Cart() {
       </main>
 
       <Footer />
+
+      <QuickViewDrawer
+        open={quickViewOpen}
+        product={selectedProduct}
+        onClose={() => setQuickViewOpen(false)}
+      />
     </div>
   );
 }

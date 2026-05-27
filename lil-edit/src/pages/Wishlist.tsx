@@ -34,6 +34,9 @@ import img4 from "@/assets/searchbar-frequent_searches/le-4.png";
 import img5 from "@/assets/searchbar-frequent_searches/le-5.png";
 import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
 
+import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
+import type { WishlistItem } from "@/lib/wishlistApi";
+
 const BADGE_PRIORITY = ["newarrival", "trending", "bestseller", "featured"];
 const sortBadges = (badges: string[]) => {
   const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
@@ -130,6 +133,9 @@ const WishlistPage = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [movingId, setMovingId] = useState<string | null>(null);
   const [movingAll, setMovingAll] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<QuickViewProduct | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+
   const { user, loading: authLoading } = useAuth();
   const {
     wishlistItems,
@@ -157,6 +163,26 @@ const WishlistPage = () => {
     } finally {
       setMovingAll(false);
     }
+  };
+
+  const openQuickView = (item: WishlistItem) => {
+    setSelectedProduct({
+      source: "wishlist",
+      id: item.id,
+      sku: item.sku,
+      slug: item.slug,
+      categorySlug: item.categorySlug,
+      title: item.title,
+      price: item.price,
+      originalPrice: item.originalPrice,
+      image: item.image,
+      color: item.color,
+      badges: item.badges,
+      tags: item.tags,
+      brand: item.brand,
+      inStock: item.inStock,
+    });
+    setQuickViewOpen(true);
   };
 
   const tabs = [
@@ -276,13 +302,16 @@ const WishlistPage = () => {
                   key={item.id}
                   className="bg-white border border-gray-200 border-l-8 border-l-primary rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[160px] md:min-h-[140px]"
                 >
-                  <CardContent className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-2.5 relative">
+                  <CardContent
+                    className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-2.5 relative cursor-pointer"
+                    onClick={() => openQuickView(item)}
+                  >
                     {/* IMAGE + DETAILS row */}
                     <div className="flex flex-row gap-3 sm:gap-3 md:gap-4 flex-1">
                       {/* IMAGE */}
                       <div className="w-28 sm:w-28 md:w-36 flex-shrink-0 self-stretch">
                         <div className="relative group h-full">
-                          <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`} className="block h-full">
+                          <div className="block h-full">
                             <div className="h-full min-h-[125px] md:min-h-[105px] overflow-hidden rounded-lg bg-gray-100">
                               <img
                                 src={item.image}
@@ -292,9 +321,9 @@ const WishlistPage = () => {
                                 className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
                               />
                             </div>
-                          </Link>
+                          </div>
                           <button
-                            onClick={() => removeFromWishlist(item.id)}
+                            onClick={(e) => { e.stopPropagation(); removeFromWishlist(item.id); }}
                             className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white shadow-sm hover:bg-gray-50 transition"
                             title="Remove from wishlist"
                           >
@@ -306,11 +335,9 @@ const WishlistPage = () => {
                       {/* DETAILS */}
                       <div className="flex-1 flex flex-col min-w-0 py-0">
                         <div className="pr-8 sm:pr-10 md:pr-12">
-                          <Link to={`/collections/${item.categorySlug}/product/${item.slug}$${item.sku}`}>
-                            <h2 className="text-xl sm:text-xl md:text-2xl font-bold text-gray-900 leading-tight line-clamp-2">
-                              {item.title}
-                            </h2>
-                          </Link>
+                          <h2 className="text-xl sm:text-xl md:text-2xl font-bold text-gray-900 leading-tight line-clamp-2">
+                            {item.title}
+                          </h2>
                           <p className="text-xs sm:text-sm mt-0.5 font-medium line-clamp-1 text-brand-teal">
                             {item.brand} · {item.inStock ? "In Stock" : "Out of Stock"}
                           </p>
@@ -359,7 +386,7 @@ const WishlistPage = () => {
                         {/* Cart it + Buy Now */}
                         <div className="flex gap-2 sm:gap-2.5 mt-2">
                           <Button
-                            onClick={() => void handleMoveToCart(item.id)}
+                            onClick={(e) => { e.stopPropagation(); void handleMoveToCart(item.id); }}
                             size="sm"
                             disabled={!item.inStock || movingId === item.id}
                             className="h-9 sm:h-10 flex-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center gap-1.5"
@@ -368,7 +395,7 @@ const WishlistPage = () => {
                             <span>{movingId === item.id ? "Moving…" : "Cart it"}</span>
                           </Button>
                           <Button
-                            onClick={() => {}}
+                            onClick={(e) => e.stopPropagation()}
                             size="sm"
                             disabled={!item.inStock}
                             className="h-9 sm:h-10 flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center"
@@ -382,13 +409,14 @@ const WishlistPage = () => {
                     {/* SHARE + DELETE */}
                     <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 flex flex-row gap-1">
                       <button
+                        onClick={(e) => e.stopPropagation()}
                         className="p-1.5 rounded-full text-gray-500 hover:text-brand-teal hover:bg-teal-50 transition-colors"
                         title="Share"
                       >
                         <Share2 size={16} />
                       </button>
                       <button
-                        onClick={() => removeFromWishlist(item.id)}
+                        onClick={(e) => { e.stopPropagation(); removeFromWishlist(item.id); }}
                         className="p-1.5 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
                         title="Remove from wishlist"
                       >
@@ -518,6 +546,12 @@ const WishlistPage = () => {
       </main>
 
       <Footer />
+
+      <QuickViewDrawer
+        open={quickViewOpen}
+        product={selectedProduct}
+        onClose={() => setQuickViewOpen(false)}
+      />
     </div>
   );
 };
