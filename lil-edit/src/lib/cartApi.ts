@@ -5,6 +5,7 @@ export interface CartItem {
   id: string;
   sku: string;
   size: string;
+  sizes: string[];
   quantity: number;
   title: string;
   slug: string;
@@ -13,6 +14,7 @@ export interface CartItem {
   originalPrice: number;
   image: string;
   color: { name: string; hex: string };
+  colors: { name: string; hex: string; sku: string }[];
   availability: string;
   tags: string[];
   badges: string[];
@@ -71,6 +73,34 @@ export async function addToCart(payload: AddToCartPayload): Promise<void> {
     throw new Error((body as any).error ?? `Add to cart failed (${res.status})`);
   }
   console.log("[cartApi] addToCart success");
+}
+
+export async function updateCartItemColor(
+  cartItemId: string,
+  sku: string
+): Promise<void> {
+  const res = await authFetch(`/api/cart/${cartItemId}/color`, {
+    method: "PATCH",
+    body: JSON.stringify({ sku }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as any).error ?? `Color update failed (${res.status})`);
+  }
+}
+
+export async function updateCartItemSize(
+  cartItemId: string,
+  size: string
+): Promise<void> {
+  const res = await authFetch(`/api/cart/${cartItemId}/size`, {
+    method: "PATCH",
+    body: JSON.stringify({ size }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as any).error ?? `Size update failed (${res.status})`);
+  }
 }
 
 export async function updateCartItemQty(

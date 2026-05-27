@@ -15,6 +15,8 @@ import {
   fetchCart,
   removeCartItem as apiRemove,
   updateCartItemQty as apiUpdateQty,
+  updateCartItemSize as apiUpdateSize,
+  updateCartItemColor as apiUpdateColor,
   type AddToCartPayload,
   type CartItem,
 } from "@/lib/cartApi";
@@ -25,6 +27,8 @@ interface CartContextType {
   loading: boolean;
   addToCart: (payload: AddToCartPayload) => Promise<void>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
+  updateSize: (cartItemId: string, size: string) => Promise<void>;
+  updateColor: (cartItemId: string, sku: string) => Promise<void>;
   removeItem: (cartItemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
   refetchCart: () => void;
@@ -108,6 +112,45 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const updateSize = useCallback(async (cartItemId: string, size: string) => {
+    let snapshot: CartItem[] = [];
+    setCartItems((prev) => {
+      snapshot = prev;
+      return prev.map((item) =>
+        item.id === cartItemId ? { ...item, size } : item
+      );
+    });
+    try {
+      await apiUpdateSize(cartItemId, size);
+      // Backend may have merged items; refetch to get the accurate cart state
+      refetchCart();
+    } catch (err) {
+      setCartItems(snapshot);
+      toast.error("Could not update size");
+    }
+  }, [refetchCart]);
+
+  const updateColor = useCallback(async (cartItemId: string, sku: string) => {
+    let snapshot: CartItem[] = [];
+    setCartItems((prev) => {
+      snapshot = prev;
+      return prev.map((item) => {
+        if (item.id !== cartItemId) return item;
+        const matched = item.colors.find((c) => c.sku === sku);
+        return matched
+          ? { ...item, sku, color: { name: matched.name, hex: matched.hex } }
+          : item;
+      });
+    });
+    try {
+      await apiUpdateColor(cartItemId, sku);
+      refetchCart();
+    } catch (err) {
+      setCartItems(snapshot);
+      toast.error("Could not update color");
+    }
+  }, [refetchCart]);
+
   const removeItem = useCallback(async (cartItemId: string) => {
     let snapshot: CartItem[] = [];
     setCartItems((prev) => {
@@ -144,6 +187,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         loading,
         addToCart,
         updateQuantity,
+        updateSize,
+        updateColor,
         removeItem,
         clearCart: clearCartFn,
         refetchCart,

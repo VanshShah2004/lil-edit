@@ -37,7 +37,7 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
     const { data: products, error: prodErr } = await db()
       .from("products")
       .select(`
-        title, slug, category_slug, price, original_price, tags, badges, base_sku, is_unlimited,
+        title, slug, category_slug, price, original_price, tags, badges, base_sku, sizes, is_unlimited,
         is_featured, is_new_arrival, is_trending, is_bestseller,
         product_images(id, image_url, is_primary, sort_order, variant_id),
         product_variants(id, variant_sku, color_name, color_hex, stock, is_unlimited, sort_order)
@@ -105,7 +105,13 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
             name: (variant?.color_name ?? "") as string,
             hex: (variant?.color_hex ?? "#cccccc") as string,
           },
+          colors: variants.map((v: any) => ({
+            name: (v.color_name ?? "") as string,
+            hex: (v.color_hex ?? "#cccccc") as string,
+            sku: v.variant_sku as string,
+          })),
           availability,
+          sizes: (product.sizes ?? []) as string[],
           tags: (product.tags ?? []) as string[],
           badges: [
             ...(product.badges ?? []),
@@ -231,6 +237,193 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     }
   } catch (err) {
     log.error("unhandled error", err).end("CART ADD");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// ─── PATCH /api/cart/:id/color — change variant (sku) ────────────────────────
+router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
+  const log = createLog().start("CART UPDATE COLOR");
+  const userId = (req as AuthenticatedRequest).userId;
+  const { id } = req.params;
+  const { sku } = req.body as { sku?: unknown };
+
+  if (typeof sku !== "string" || !sku.trim()) {
+    log.warn("invalid sku").end("CART UPDATE COLOR");
+    res.status(400).json({ error: "sku must be a non-empty string" });
+    return;
+  }
+  const newSku = sku.trim();
+  log.step(`user=${userId}  id=${id}  newSku="${newSku}"`);
+
+  try {
+    const { data: current, error: fetchErr } = await db()
+      .from("cart_items")
+      .select("id, sku, size, quantity, product_slug")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (fetchErr) {
+      log.error("fetch failed", fetchErr).end("CART UPDATE COLOR");
+      res.status(500).json({ error: fetchErr.message });
+      return;
+    }
+    if (!current) {
+      log.warn(`item not found  id=${id}`).end("CART UPDATE COLOR");
+      res.status(404).json({ error: "Cart item not found" });
+      return;
+    }
+
+    // Validate the new SKU belongs to the same product
+    const { data: product, error: prodErr } = await db()
+      .from("products")
+      .select("base_sku, product_variants(variant_sku)")
+      .eq("slug", current.product_slug as string)
+      .maybeSingle();
+
+    if (prodErr || !product) {
+      log.error("product fetch failed", prodErr).end("CART UPDATE COLOR");
+      res.status(500).json({ error: "Could not validate SKU" });
+      return;
+    }
+    const validSkus: string[] = [
+      product.base_sku as string,
+      ...((product.product_variants as any[] ?? []).map((v: any) => v.variant_sku as string)),
+    ];
+    if (!validSkus.includes(newSku)) {
+      log.warn(`sku not on product  newSku=${newSku}`).end("CART UPDATE COLOR");
+      res.status(400).json({ error: "SKU does not belong to this product" });
+      return;
+    }
+
+    // Check for an existing item with the new SKU + same size
+    const { data: conflict } = await db()
+      .from("cart_items")
+      .select("id, quantity")
+      .eq("user_id", userId)
+      .eq("sku", newSku)
+      .eq("size", current.size as string)
+      .neq("id", id)
+      .maybeSingle();
+
+    if (conflict) {
+      const mergedQty = (conflict.quantity as number) + (current.quantity as number);
+      const { error: mergeErr } = await db()
+        .from("cart_items")
+        .update({ quantity: mergedQty, updated_at: new Date().toISOString() })
+        .eq("id", conflict.id);
+      if (mergeErr) {
+        log.error("merge failed", mergeErr).end("CART UPDATE COLOR");
+        res.status(500).json({ error: mergeErr.message });
+        return;
+      }
+      await db().from("cart_items").delete().eq("id", id).eq("user_id", userId);
+      log.success(`merged  qty=${mergedQty}`).end("CART UPDATE COLOR");
+      res.json({ ok: true, action: "merged", mergedId: conflict.id, quantity: mergedQty });
+      return;
+    }
+
+    const { error: updateErr } = await db()
+      .from("cart_items")
+      .update({ sku: newSku, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("user_id", userId);
+
+    if (updateErr) {
+      log.error("update failed", updateErr).end("CART UPDATE COLOR");
+      res.status(500).json({ error: updateErr.message });
+      return;
+    }
+
+    log.success(`color updated  id=${id}  sku="${newSku}"`).end("CART UPDATE COLOR");
+    res.json({ ok: true, action: "updated", id, sku: newSku });
+  } catch (err) {
+    log.error("unhandled error", err).end("CART UPDATE COLOR");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// ─── PATCH /api/cart/:id/size — change selected size ──────────────────────────
+router.patch("/:id/size", requireAuth, async (req: Request, res: Response) => {
+  const log = createLog().start("CART UPDATE SIZE");
+  const userId = (req as AuthenticatedRequest).userId;
+  const { id } = req.params;
+  const { size } = req.body as { size?: unknown };
+
+  if (typeof size !== "string" || !size.trim()) {
+    log.warn("invalid size").end("CART UPDATE SIZE");
+    res.status(400).json({ error: "size must be a non-empty string" });
+    return;
+  }
+  const newSize = size.trim();
+  log.step(`user=${userId}  id=${id}  newSize="${newSize}"`);
+
+  try {
+    // Fetch the item being changed so we know its sku and current quantity
+    const { data: current, error: fetchErr } = await db()
+      .from("cart_items")
+      .select("id, sku, quantity")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (fetchErr) {
+      log.error("fetch failed", fetchErr).end("CART UPDATE SIZE");
+      res.status(500).json({ error: fetchErr.message });
+      return;
+    }
+    if (!current) {
+      log.warn(`item not found  id=${id}`).end("CART UPDATE SIZE");
+      res.status(404).json({ error: "Cart item not found" });
+      return;
+    }
+
+    // Check if an item with the same sku + newSize already exists
+    const { data: conflict } = await db()
+      .from("cart_items")
+      .select("id, quantity")
+      .eq("user_id", userId)
+      .eq("sku", current.sku as string)
+      .eq("size", newSize)
+      .neq("id", id)
+      .maybeSingle();
+
+    if (conflict) {
+      // Merge: add quantities into the existing item, delete the current one
+      const mergedQty = (conflict.quantity as number) + (current.quantity as number);
+      const { error: mergeErr } = await db()
+        .from("cart_items")
+        .update({ quantity: mergedQty, updated_at: new Date().toISOString() })
+        .eq("id", conflict.id);
+      if (mergeErr) {
+        log.error("merge update failed", mergeErr).end("CART UPDATE SIZE");
+        res.status(500).json({ error: mergeErr.message });
+        return;
+      }
+      await db().from("cart_items").delete().eq("id", id).eq("user_id", userId);
+      log.success(`merged into existing item  qty=${mergedQty}`).end("CART UPDATE SIZE");
+      res.json({ ok: true, action: "merged", mergedId: conflict.id, quantity: mergedQty });
+      return;
+    }
+
+    // No conflict — plain size update
+    const { error: updateErr } = await db()
+      .from("cart_items")
+      .update({ size: newSize, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("user_id", userId);
+
+    if (updateErr) {
+      log.error("update failed", updateErr).end("CART UPDATE SIZE");
+      res.status(500).json({ error: updateErr.message });
+      return;
+    }
+
+    log.success(`size updated  id=${id}  size="${newSize}"`).end("CART UPDATE SIZE");
+    res.json({ ok: true, action: "updated", id, size: newSize });
+  } catch (err) {
+    log.error("unhandled error", err).end("CART UPDATE SIZE");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });

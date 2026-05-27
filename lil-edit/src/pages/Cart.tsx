@@ -20,6 +20,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
   Carousel,
@@ -133,7 +140,7 @@ function CartSkeleton() {
 
 export default function Cart() {
   const { user, loading: authLoading } = useAuth();
-  const { cartItems, loading: cartLoading, updateQuantity, removeItem } = useCart();
+  const { cartItems, loading: cartLoading, updateQuantity, updateSize, updateColor, removeItem } = useCart();
 
   const [selectedProduct, setSelectedProduct] = useState<QuickViewProduct | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
@@ -337,7 +344,32 @@ export default function Cart() {
 
                       {/* Color + Size */}
                       <div className="flex items-center gap-2 sm:gap-2.5 mt-1">
-                        {item.color.hex && (
+                        {item.colors && item.colors.length > 0 ? (
+                          <Select
+                            value={item.sku}
+                            onValueChange={(val) => { void updateColor(item.id, val); }}
+                          >
+                            <SelectTrigger
+                              onClick={(e) => e.stopPropagation()}
+                              className="h-7 text-xs font-medium border-gray-300 rounded-full px-2.5 w-auto gap-1.5 focus:ring-brand-teal"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {item.colors.map((c) => (
+                                <SelectItem key={c.sku} value={c.sku} className="text-xs">
+                                  <span className="flex items-center gap-2">
+                                    <span
+                                      className="w-4 h-4 rounded-full border border-gray-300 shadow-sm flex-shrink-0"
+                                      style={{ backgroundColor: c.hex }}
+                                    />
+                                    {c.name || "Color"}
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : item.color.hex ? (
                           <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700 whitespace-nowrap">
                             <span
                               className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-gray-300 shadow-sm flex-shrink-0"
@@ -345,15 +377,34 @@ export default function Cart() {
                             />
                             {item.color.name || "Color"}
                           </span>
-                        )}
-                        {item.color.hex && item.size && (
+                        ) : null}
+                        {(item.colors?.length > 0 || item.color.hex) && (item.size || item.sizes?.length > 0) && (
                           <span className="text-3xl text-primary leading-none">·</span>
                         )}
-                        {item.size && (
+                        {item.sizes && item.sizes.length > 0 ? (
+                          <Select
+                            value={item.size || ""}
+                            onValueChange={(val) => { void updateSize(item.id, val); }}
+                          >
+                            <SelectTrigger
+                              onClick={(e) => e.stopPropagation()}
+                              className="h-7 text-xs font-medium border-gray-300 rounded-full px-2.5 w-auto gap-1 focus:ring-brand-teal"
+                            >
+                              <SelectValue placeholder="Size" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {item.sizes.map((s) => (
+                                <SelectItem key={s} value={s} className="text-xs">
+                                  {s}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : item.size ? (
                           <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
                             {item.size}
                           </span>
-                        )}
+                        ) : null}
                       </div>
 
                       {/* Qty + Final Price + Original Price */}
