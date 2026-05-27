@@ -305,6 +305,33 @@ const UserNavbar = () => {
             <span className="font-medium">Collections</span>
           </Link>
 
+          <Link
+            to="/cart"
+            onClick={() => setIsLeftMenuOpen(false)}
+            className="flex items-center gap-3 px-3 py-3 rounded-lg text-foreground hover:bg-secondary transition-colors"
+          >
+            <ShoppingCart className="w-5 h-5 text-muted-foreground" />
+            <span className="font-medium">Cart</span>
+            {cartCount > 0 && (
+              <span className="ml-auto min-w-[20px] h-5 flex items-center justify-center rounded-full bg-[#0F766E] text-white text-[10px] font-bold px-1">
+                {cartCount > 99 ? "99+" : cartCount}
+              </span>
+            )}
+          </Link>
+          <Link
+            to="/wishlist"
+            onClick={() => setIsLeftMenuOpen(false)}
+            className="flex items-center gap-3 px-3 py-3 rounded-lg text-foreground hover:bg-secondary transition-colors"
+          >
+            <Heart className="w-5 h-5 text-muted-foreground" />
+            <span className="font-medium">Wishlist</span>
+            {wishlistCount > 0 && (
+              <span className="ml-auto min-w-[20px] h-5 flex items-center justify-center rounded-full bg-primary text-white text-[10px] font-bold px-1">
+                {wishlistCount > 99 ? "99+" : wishlistCount}
+              </span>
+            )}
+          </Link>
+
           {isAdmin && (
             <Link
               to="/admin/add-product"
