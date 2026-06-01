@@ -27,6 +27,7 @@ import { supabaseAdmin } from "../lib/supabase.js";
 
 // ─── In-process L1 cache (PDP detail only) ───────────────────────────────────
 const DETAIL_CACHE_TTL_MS = 5 * 60 * 1000;
+const DETAIL_CACHE_MAX    = 30;
 interface CacheEntry { payload: object; expiresAt: number; }
 const detailCache = new Map<string, CacheEntry>();
 
@@ -34,10 +35,19 @@ function getL1(key: string): object | null {
   const entry = detailCache.get(key);
   if (!entry) return null;
   if (Date.now() > entry.expiresAt) { detailCache.delete(key); return null; }
+  // Move to end so it is treated as most recently used
+  detailCache.delete(key);
+  detailCache.set(key, entry);
   return entry.payload;
 }
-function setL1(key: string, payload: object) {
+function setL1(key: string, payload: object, log: OpLogger) {
+  if (detailCache.size >= DETAIL_CACHE_MAX) {
+    const evicted = detailCache.keys().next().value as string;
+    detailCache.delete(evicted);
+    log.step(`L1 cache - EVICT (LRU)  evicted=${evicted}  size=${detailCache.size}/${DETAIL_CACHE_MAX}`);
+  }
   detailCache.set(key, { payload, expiresAt: Date.now() + DETAIL_CACHE_TTL_MS });
+  log.step(`L1 cache - SET  key=${key}  size=${detailCache.size}/${DETAIL_CACHE_MAX}`);
 }
 
 export async function invalidateDetailCache(slug: string, log: OpLogger): Promise<void> {
@@ -291,7 +301,7 @@ router.get("/detail", async (req: Request, res: Response) => {
   // L2 Redis cache
   const l2Hit = await redisGet<object>(redisKey("pdp", slug), log);
   if (l2Hit) {
-    setL1(slug, l2Hit);
+    setL1(slug, l2Hit, log);
     log.step("L1 cache - warmed from Redis");
     log.success("L2 Redis - HIT  served from Redis").end("PDP DETAIL");
     res.json(l2Hit);
@@ -336,8 +346,7 @@ router.get("/detail", async (req: Request, res: Response) => {
     const mappedProduct  = mapDatabaseProductToFrontend(product, false);
     const responsePayload = { product: mappedProduct };
 
-    setL1(slug, responsePayload);
-    log.step("L1 cache - stored");
+    setL1(slug, responsePayload, log);
     void redisSet(redisKey("pdp", slug), responsePayload, PRODUCT_TTL_S, log);
 
     log.success(`served from DB  slug=${slug}`).end("PDP DETAIL");
