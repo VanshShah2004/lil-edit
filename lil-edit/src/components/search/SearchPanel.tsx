@@ -1,13 +1,11 @@
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
 import SearchBar from "./SearchBar";
 import FrequentSearches from "./FrequentSearches";
 import CollageGrid from "./CollageGrid";
 import CategoriesList from "./CategoriesList";
 import SuggestionsDropdown from "./SuggestionsDropdown";
 import { useSearchSuggestions } from "@/hooks/useSearchSuggestions";
-import { buildPdpPath } from "@/lib/pdpUrl";
 
 interface SearchPanelProps {
   isOpen: boolean;
@@ -16,17 +14,10 @@ interface SearchPanelProps {
 
 export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(-1);
   const panelRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
 
   const { suggestions, loading } = useSearchSuggestions(searchTerm);
   const hasQuery = searchTerm.trim().length >= 2;
-
-  // Reset keyboard selection whenever the suggestion list changes.
-  useEffect(() => {
-    setSelectedIndex(-1);
-  }, [suggestions]);
 
   // Clear state when panel closes so re-opening starts fresh.
   useEffect(() => {
@@ -35,18 +26,10 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     } else {
       console.log("[SearchPanel] closed — resetting state");
       setSearchTerm("");
-      setSelectedIndex(-1);
     }
   }, [isOpen]);
 
-  // Body-scroll lock + keyboard navigation.
-  // Refs let the handler always see the latest suggestions/selectedIndex without
-  // re-subscribing the listener on every arrow-key press.
-  const suggestionsRef = useRef(suggestions);
-  const selectedIndexRef = useRef(selectedIndex);
-  suggestionsRef.current = suggestions;
-  selectedIndexRef.current = selectedIndex;
-
+  // Body-scroll lock + Escape to close.
   useEffect(() => {
     if (!isOpen) {
       document.body.style.overflow = "";
@@ -56,46 +39,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     document.body.style.overflow = "hidden";
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case "Escape":
-          onClose();
-          break;
-
-        case "ArrowDown":
-          e.preventDefault();
-          if (suggestionsRef.current.length > 0) {
-            setSelectedIndex((prev) =>
-              Math.min(prev + 1, suggestionsRef.current.length - 1)
-            );
-          }
-          break;
-
-        case "ArrowUp":
-          e.preventDefault();
-          setSelectedIndex((prev) => Math.max(prev - 1, -1));
-          break;
-
-        case "Enter": {
-          e.preventDefault();
-          const idx = selectedIndexRef.current;
-          const s = suggestionsRef.current[idx];
-          if (!s) {
-            console.log("[SearchPanel] Enter with no selection — no action");
-            break;
-          }
-          if (s.type === "product") {
-            const path = buildPdpPath(s.categorySlug, s.slug, s.sku);
-            console.log("[SearchPanel] Enter → navigating to product:", path, s.label);
-            navigate(path);
-            onClose();
-          } else {
-            console.log("[SearchPanel] Enter → selecting metadata term:", s.label, `(${s.type})`);
-            setSearchTerm(s.label);
-            setSelectedIndex(-1);
-          }
-          break;
-        }
-      }
+      if (e.key === "Escape") onClose();
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -103,7 +47,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
       window.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "";
     };
-  }, [isOpen, onClose, navigate]);
+  }, [isOpen, onClose]);
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) onClose();
@@ -126,10 +70,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
         <div className="sticky top-0 z-10 bg-background border-b border-border/60">
           <SearchBar
             value={searchTerm}
-            onChange={(val) => {
-              setSearchTerm(val);
-              setSelectedIndex(-1);
-            }}
+            onChange={(val) => setSearchTerm(val)}
             onClose={onClose}
             autoFocus={true}
           />
@@ -138,12 +79,10 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               suggestions={suggestions}
               loading={loading}
               query={searchTerm}
-              selectedIndex={selectedIndex}
               onClose={onClose}
               onSelectTerm={(term) => {
-                console.log("[SearchPanel] metadata suggestion clicked → setting term:", term);
+                console.log("[SearchPanel] autocomplete term selected:", term);
                 setSearchTerm(term);
-                setSelectedIndex(-1);
               }}
             />
           )}

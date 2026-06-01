@@ -23,7 +23,7 @@ export default function FrequentSearches({ onSelect }: FrequentSearchesProps) {
   return (
     <section className="pt-6 pb-3 px-4 sm:px-6 md:px-8 animate-fade-in">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-bold tracking-wider text-[#9a65ad] uppercase">
+        <h3 className="text-base font-bold tracking-wider text-teal-700 uppercase">
           Popular Choices
         </h3>
       </div>
