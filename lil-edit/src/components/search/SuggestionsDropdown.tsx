@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { buildPdpPath } from "@/lib/pdpUrl";
-import type { Suggestion } from "@/services/searchService";
+import type { Suggestion, SuggestionType } from "@/services/searchService";
 
 interface Props {
   suggestions: Suggestion[];
@@ -8,7 +8,14 @@ interface Props {
   query: string;
   selectedIndex: number;
   onClose: () => void;
+  onSelectTerm: (term: string) => void;
 }
+
+const META_ICON: Record<SuggestionType, string> = {
+  product:  "",
+  occasion: "🎉",
+  category: "📁",
+};
 
 export default function SuggestionsDropdown({
   suggestions,
@@ -16,12 +23,19 @@ export default function SuggestionsDropdown({
   query,
   selectedIndex,
   onClose,
+  onSelectTerm,
 }: Props) {
   const navigate = useNavigate();
 
   function handleSelect(s: Suggestion) {
-    navigate(buildPdpPath(s.categorySlug, s.slug, s.sku));
-    onClose();
+    if (s.type === "product") {
+      console.log("[SuggestionsDropdown] navigating to product:", s.label);
+      navigate(buildPdpPath(s.categorySlug, s.slug, s.sku));
+      onClose();
+    } else {
+      console.log("[SuggestionsDropdown] selecting metadata term:", s.label, `(${s.type})`);
+      onSelectTerm(s.label);
+    }
   }
 
   if (loading) {
@@ -63,21 +77,28 @@ export default function SuggestionsDropdown({
               : "border-transparent hover:bg-secondary"
           }`}
         >
-          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-secondary">
-            {s.image ? (
-              <img
-                src={s.image}
-                alt={s.name}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-full h-full bg-secondary" />
-            )}
-          </div>
+          {s.type === "product" ? (
+            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-secondary">
+              {s.image ? (
+                <img
+                  src={s.image}
+                  alt={s.label}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-full h-full bg-secondary" />
+              )}
+            </div>
+          ) : (
+            <div className="w-10 h-10 rounded-lg shrink-0 bg-secondary/60 flex items-center justify-center text-lg">
+              {META_ICON[s.type]}
+            </div>
+          )}
+
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground truncate">{s.name}</p>
-            <p className="text-xs text-muted-foreground">{s.category}</p>
+            <p className="text-sm font-semibold text-foreground truncate">{s.label}</p>
+            <p className="text-xs text-muted-foreground">{s.sublabel}</p>
           </div>
         </button>
       ))}

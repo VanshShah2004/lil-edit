@@ -110,7 +110,7 @@ const HomeCollage = () => {
 
   return (
     <section
-      className="w-full mt-[10px] mb-8 relative"
+      className="w-full mt-[10px] mb-4 relative"
       style={{ overflowX: "clip" }}
       onTouchStart={(e) => {
         touchStartX.current = e.touches[0]?.clientX ?? null;

@@ -12,6 +12,7 @@ import {
   fetchProductTitleBySlug,
   fetchRecommendedProducts,
   fetchSuggestions,
+  invalidateSearchCatalog,
   type SuggestionRow,
 } from "../lib/persistCatalog.js";
 import {
@@ -473,6 +474,8 @@ router.post("/preview", async (req: Request, res: Response) => {
         const { publishedProductId } = await launchProductToDatabase(data, log);
         void invalidateDetailCache(slug, log);
         void invalidateCatalogCaches(log, sku);
+        invalidateSearchCatalog();
+        log.step("Search catalog - invalidated (product launched)");
         database = { ok: true, publishedProductId };
         log.success(`product launched  publishedId=${publishedProductId}`);
       }
@@ -631,6 +634,10 @@ router.delete("/:id", async (req: Request, res: Response) => {
   try {
     await deleteProductFromDatabase(id, status as "DRAFT" | "PUBLISHED", log);
     void invalidateCatalogCaches(log, baseSku);
+    if (status === "PUBLISHED") {
+      invalidateSearchCatalog();
+      log.step("Search catalog - invalidated (published product deleted)");
+    }
     log.success(`deleted  id=${id}  status=${status}`).end("PRODUCT DELETE");
     res.json({ success: true, message: `Successfully deleted ${status} product ${id}.` });
   } catch (err) {

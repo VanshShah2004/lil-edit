@@ -717,70 +717,199 @@ export async function launchProductToDatabase(
 
 // ─── Search suggestions ───────────────────────────────────────────────────────
 
-const SUGGESTION_SELECT = `
+export type SuggestionType = "product" | "occasion" | "category";
+
+export interface SuggestionRow {
+  type:         SuggestionType;
+  id:           string;
+  label:        string;
+  sublabel:     string;
+  image:        string;
+  slug:         string;
+  categorySlug: string;
+  sku:          string;
+}
+
+// ─── In-memory search catalog (rebuilt from DB, 10 min TTL) ──────────────────
+
+interface SearchCatalogEntry {
+  id:           string;
+  title:        string;
+  slug:         string;
+  base_sku:     string;
+  category:     string;
+  category_slug: string;
+  tags:         string[];
+  badges:       string[];
+  occasion:     string;
+  fabric:       string;
+  fit:          string;
+  gender:       string;
+  image:        string;
+}
+
+let _searchCatalog:    SearchCatalogEntry[] | null = null;
+let _searchCatalogExp: number = 0;
+const SEARCH_CATALOG_TTL_MS = 10 * 60 * 1000;
+
+/** Drop the in-memory catalog so the next search request rebuilds it from DB. */
+export function invalidateSearchCatalog(): void {
+  _searchCatalog    = null;
+  _searchCatalogExp = 0;
+}
+
+const SEARCH_CATALOG_SELECT = `
   id, title, slug, base_sku, category, category_slug,
+  tags, badges, occasion, fabric, fit, gender,
   product_images(image_url, is_primary)
 `.trim();
 
-export interface SuggestionRow {
-  id: string;
-  name: string;
-  image: string;
-  category: string;
-  slug: string;
-  categorySlug: string;
-  sku: string;
-}
+async function loadSearchCatalog(log: OpLogger): Promise<SearchCatalogEntry[]> {
+  if (_searchCatalog && Date.now() < _searchCatalogExp) {
+    log.step(`Search catalog - L1 HIT (${_searchCatalog.length} products in memory)`);
+    return _searchCatalog;
+  }
 
-/**
- * Returns up to 8 published products matching the query against title or category.
- * Results are ranked: exact title match → starts-with → contains.
- */
-export async function fetchSuggestions(q: string, log: OpLogger): Promise<SuggestionRow[]> {
   const sb = requireAdmin();
-  const lower = q.toLowerCase();
-  // Escape LIKE wildcards so a literal "%" or "_" in the query doesn't match everything.
-  const escaped = q.replace(/[%_]/g, "\\$&");
-
-  log.step(`DB fetch - suggestions  q="${q}"`);
+  log.step("Search catalog - MISS, fetching from DB");
   const t0 = performance.now();
 
   const { data, error } = await sb
     .from("products")
-    .select(SUGGESTION_SELECT)
-    .or(`title.ilike.%${escaped}%,category.ilike.%${escaped}%`)
-    .limit(20);
+    .select(SEARCH_CATALOG_SELECT);
 
   if (error) throw new Error(error.message);
-  log.step(`DB fetch - suggestions complete  ${fms(performance.now() - t0)}  candidates=${data?.length ?? 0}`);
 
-  function rank(title: string): number {
-    const t = title.toLowerCase();
-    if (t === lower) return 0;
-    if (t.startsWith(lower)) return 1;
-    return 2;
+  _searchCatalog = (data ?? []).map((p) => {
+    const imgs: Array<{ image_url: string; is_primary: boolean }> = p.product_images ?? [];
+    const image = imgs.find((i) => i.is_primary)?.image_url || imgs[0]?.image_url || "";
+    return {
+      id:            p.id            as string,
+      title:         p.title         as string,
+      slug:          p.slug          as string,
+      base_sku:      p.base_sku      as string,
+      category:      p.category      as string,
+      category_slug: p.category_slug as string,
+      tags:          (p.tags    ?? []) as string[],
+      badges:        (p.badges  ?? []) as string[],
+      occasion:      (p.occasion ?? "") as string,
+      fabric:        (p.fabric   ?? "") as string,
+      fit:           (p.fit      ?? "") as string,
+      gender:        (p.gender   ?? "") as string,
+      image,
+    };
+  });
+
+  _searchCatalogExp = Date.now() + SEARCH_CATALOG_TTL_MS;
+  log.step(`Search catalog - loaded ${_searchCatalog.length} products  ${fms(performance.now() - t0)}`);
+  return _searchCatalog;
+}
+
+// ─── Weighted field scoring ───────────────────────────────────────────────────
+
+const FIELD_SCORES: Record<string, number> = {
+  "title:exact":    100,
+  "title:starts":    90,
+  "title:contains":  80,
+  "category":        75,
+  "tag":             65,
+  "occasion":        60,
+  "badge":           55,
+  "fabric":          50,
+  "fit":             50,
+  "gender":          45,
+};
+
+function scoreEntry(
+  entry: SearchCatalogEntry,
+  lower: string,
+): { score: number; field: string } {
+  const t = entry.title.toLowerCase();
+  if (t === lower)         return { score: FIELD_SCORES["title:exact"],    field: "title:exact" };
+  if (t.startsWith(lower)) return { score: FIELD_SCORES["title:starts"],   field: "title:starts" };
+  if (t.includes(lower))   return { score: FIELD_SCORES["title:contains"], field: "title:contains" };
+
+  if (entry.category.toLowerCase().includes(lower))
+    return { score: FIELD_SCORES["category"], field: "category" };
+
+  if (entry.tags.some((v) => v.toLowerCase().includes(lower)))
+    return { score: FIELD_SCORES["tag"], field: "tag" };
+
+  if (entry.occasion.toLowerCase().includes(lower))
+    return { score: FIELD_SCORES["occasion"], field: "occasion" };
+
+  if (entry.badges.some((v) => v.toLowerCase().includes(lower)))
+    return { score: FIELD_SCORES["badge"], field: "badge" };
+
+  if (entry.fabric.toLowerCase().includes(lower))
+    return { score: FIELD_SCORES["fabric"], field: "fabric" };
+
+  if (entry.fit.toLowerCase().includes(lower))
+    return { score: FIELD_SCORES["fit"], field: "fit" };
+
+  if (entry.gender.toLowerCase().includes(lower))
+    return { score: FIELD_SCORES["gender"], field: "gender" };
+
+  return { score: 0, field: "" };
+}
+
+// ─── fetchSuggestions ─────────────────────────────────────────────────────────
+
+/**
+ * Returns up to 5 suggestions (metadata + products) for a search query.
+ * Uses an in-memory catalog so no DB round-trip is needed on cache-warm requests.
+ * Metadata suggestions (tag / badge / occasion / category) come first, then products.
+ */
+export async function fetchSuggestions(q: string, log: OpLogger): Promise<SuggestionRow[]> {
+  const lower   = q.toLowerCase();
+  const catalog = await loadSearchCatalog(log);
+
+  // Score every product in the catalog
+  const scored: Array<{ entry: SearchCatalogEntry; score: number; field: string }> = [];
+  for (const entry of catalog) {
+    const { score, field } = scoreEntry(entry, lower);
+    if (score > 0) scored.push({ entry, score, field });
+  }
+  scored.sort((a, b) => b.score - a.score || a.entry.title.localeCompare(b.entry.title));
+  log.step(`Scoring - ${scored.length}/${catalog.length} products matched`);
+
+  // Collect up to 2 unique metadata suggestions from the highest-scoring matches
+  const metaSuggestions: SuggestionRow[] = [];
+  const seenMeta = new Set<string>();
+
+  for (const { entry, field } of scored) {
+    if (metaSuggestions.length >= 2) break;
+
+    if (field === "occasion") {
+      const key = `occasion:${entry.occasion.toLowerCase()}`;
+      if (!seenMeta.has(key)) {
+        seenMeta.add(key);
+        metaSuggestions.push({ type: "occasion", id: key, label: entry.occasion, sublabel: "Occasion", image: "", slug: "", categorySlug: "", sku: "" });
+      }
+    } else if (field === "category") {
+      const key = `category:${entry.category_slug}`;
+      if (!seenMeta.has(key)) {
+        seenMeta.add(key);
+        metaSuggestions.push({ type: "category", id: key, label: entry.category, sublabel: "Category", image: "", slug: "", categorySlug: entry.category_slug, sku: "" });
+      }
+    }
   }
 
-  return (data ?? [])
-    .slice()
-    .sort((a, b) => rank(a.title) - rank(b.title))
-    .slice(0, 5)
-    .map((p) => {
-      const images: Array<{ image_url: string; is_primary: boolean }> = p.product_images ?? [];
-      const primaryImg =
-        images.find((img) => img.is_primary)?.image_url ||
-        images[0]?.image_url ||
-        "";
-      return {
-        id:          p.id as string,
-        name:        p.title as string,
-        image:       primaryImg,
-        category:    p.category as string,
-        slug:        p.slug as string,
-        categorySlug: p.category_slug as string,
-        sku:         p.base_sku as string,
-      };
-    });
+  // Fill remaining slots (total cap: 5) with the top-scoring products
+  const maxProducts = 5 - metaSuggestions.length;
+  const productSuggestions: SuggestionRow[] = scored.slice(0, maxProducts).map(({ entry }) => ({
+    type:         "product" as const,
+    id:           entry.id,
+    label:        entry.title,
+    sublabel:     entry.category,
+    image:        entry.image,
+    slug:         entry.slug,
+    categorySlug: entry.category_slug,
+    sku:          entry.base_sku,
+  }));
+
+  log.step(`Suggestions - ${metaSuggestions.length} metadata + ${productSuggestions.length} products`);
+  return [...metaSuggestions, ...productSuggestions];
 }
 
 /** Minimal lookup for lazy-loaded reviews (title only). */

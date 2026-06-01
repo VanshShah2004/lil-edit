@@ -79,13 +79,19 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
           e.preventDefault();
           const idx = selectedIndexRef.current;
           const s = suggestionsRef.current[idx];
-          if (s) {
+          if (!s) {
+            console.log("[SearchPanel] Enter with no selection — no action");
+            break;
+          }
+          if (s.type === "product") {
             const path = buildPdpPath(s.categorySlug, s.slug, s.sku);
-            console.log("[SearchPanel] Enter → navigating to:", path, "suggestion:", s.name);
+            console.log("[SearchPanel] Enter → navigating to product:", path, s.label);
             navigate(path);
             onClose();
           } else {
-            console.log("[SearchPanel] Enter with no selection — no action");
+            console.log("[SearchPanel] Enter → selecting metadata term:", s.label, `(${s.type})`);
+            setSearchTerm(s.label);
+            setSelectedIndex(-1);
           }
           break;
         }
@@ -134,6 +140,11 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               query={searchTerm}
               selectedIndex={selectedIndex}
               onClose={onClose}
+              onSelectTerm={(term) => {
+                console.log("[SearchPanel] metadata suggestion clicked → setting term:", term);
+                setSearchTerm(term);
+                setSelectedIndex(-1);
+              }}
             />
           )}
         </div>
