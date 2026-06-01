@@ -21,7 +21,7 @@ export default function CategoriesList() {
         {categories.map((category) => (
           <button
             key={category.name}
-            className="group flex items-center justify-between p-3 rounded-xl hover:bg-secondary transition-colors text-left"
+            className="group flex items-center justify-between p-3 rounded-xl border border-border bg-secondary/40 shadow-sm hover:border-teal-600/40 hover:bg-teal-50/60 hover:shadow-md transition-all text-left"
           >
             <span className="text-base font-semibold text-foreground/80 group-hover:text-teal-700 transition-colors">
               {category.name}

@@ -34,7 +34,7 @@ export default function FrequentSearches({ onSelect }: FrequentSearchesProps) {
           <button
             key={item.id}
             onClick={() => onSelect(item.name)}
-            className="group flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 pr-2 sm:pr-4 rounded-xl border border-border/50 hover:border-teal-600/30 hover:bg-teal-50/50 hover:shadow-sm transition-all text-left w-full"
+            className="group flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 pr-2 sm:pr-4 rounded-xl border border-border bg-secondary/40 shadow-sm hover:border-teal-600/40 hover:bg-teal-50/60 hover:shadow-md transition-all text-left w-full"
           >
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden shrink-0 bg-secondary">
               <img
