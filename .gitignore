@@ -33,6 +33,9 @@ lerna-debug.log*
 !**/env.example
 !**/.env.example
 
+# Claude Code
+.claude/
+
 # Editor/OS
 **/.vscode/*
 !**/.vscode/extensions.json
