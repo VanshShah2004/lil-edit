@@ -40,13 +40,13 @@ export default function SuggestionsDropdown({
 
   if (loading) {
     return (
-      <div className="px-3 sm:px-4 md:px-8 pb-3 flex flex-col gap-1">
+      <div className="px-3 sm:px-4 md:px-8 pb-3 flex flex-col gap-2">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="flex items-center gap-3 px-2 py-2 animate-pulse">
-            <div className="w-10 h-10 rounded-lg bg-secondary shrink-0" />
-            <div className="flex-1 space-y-1.5">
-              <div className="h-3.5 bg-secondary rounded w-3/4" />
-              <div className="h-3 bg-secondary rounded w-1/3" />
+          <div key={i} className="flex items-center gap-5 px-4 py-4 animate-pulse">
+            <div className="w-20 h-20 rounded-2xl bg-secondary shrink-0" />
+            <div className="flex-1 space-y-2.5">
+              <div className="h-5 bg-secondary rounded w-3/4" />
+              <div className="h-4 bg-secondary rounded w-1/3" />
             </div>
           </div>
         ))}
@@ -66,19 +66,19 @@ export default function SuggestionsDropdown({
   }
 
   return (
-    <div className="px-3 sm:px-4 md:px-8 pb-3 flex flex-col gap-0.5">
+    <div className="px-3 sm:px-4 md:px-8 pb-3 flex flex-col gap-2">
       {suggestions.map((s, i) => (
         <button
           key={s.id}
           onClick={() => handleSelect(s)}
-          className={`flex items-center gap-3 px-2 py-2 rounded-lg text-left w-full transition-colors border ${
+          className={`flex items-center gap-5 px-4 py-4 rounded-2xl text-left w-full transition-colors border ${
             i === selectedIndex
               ? "bg-teal-50 border-teal-200"
               : "border-transparent hover:bg-secondary"
           }`}
         >
           {s.type === "product" ? (
-            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-secondary">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden shrink-0 bg-secondary">
               {s.image ? (
                 <img
                   src={s.image}
@@ -91,14 +91,14 @@ export default function SuggestionsDropdown({
               )}
             </div>
           ) : (
-            <div className="w-10 h-10 rounded-lg shrink-0 bg-secondary/60 flex items-center justify-center text-lg">
+            <div className="w-20 h-20 rounded-2xl shrink-0 bg-secondary/60 flex items-center justify-center text-4xl">
               {META_ICON[s.type]}
             </div>
           )}
 
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground truncate">{s.label}</p>
-            <p className="text-xs text-muted-foreground">{s.sublabel}</p>
+            <p className="text-lg font-semibold text-foreground truncate">{s.label}</p>
+            <p className="text-base text-muted-foreground">{s.sublabel}</p>
           </div>
         </button>
       ))}
