@@ -102,10 +102,10 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold transition-all border ${
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-semibold transition-all border ${
                 isActive
-                  ? "bg-[#B19CD9] text-white border-[#B19CD9] shadow-sm"
-                  : "bg-secondary/50 text-foreground/70 border-border hover:border-[#B19CD9]/50 hover:text-[#B19CD9]"
+                  ? "bg-teal-700 text-white border-teal-700 shadow-sm"
+                  : "bg-secondary/50 text-foreground/70 border-border hover:border-teal-700/50 hover:text-teal-700"
               }`}
             >
               <span className="capitalize">{tab}</span>
