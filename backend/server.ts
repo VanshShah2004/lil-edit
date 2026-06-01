@@ -9,7 +9,8 @@ import productsRouter from "./routes/products.js";
 import skuRouter from "./routes/sku.js";
 import cartRouter from "./routes/cart.js";
 import wishlistRouter from "./routes/wishlist.js";
-import { warmupRedis, startRedisKeepalive } from "./lib/redis.js";
+import { warmupRedis, startRedisKeepalive, getRedis, redisSet, redisKey, CATALOG_LIST_TTL_S } from "./lib/redis.js";
+import { fetchThinProductList } from "./lib/persistCatalog.js";
 import { supabaseAdmin, supabaseAnon } from "./lib/supabase.js";
 import { createLog } from "./lib/logger.js";
 
@@ -56,6 +57,31 @@ function startDbKeepAlive(): void {
   }, DB_KEEPALIVE_MS);
 }
 
+async function warmupCatalogCache(): Promise<void> {
+  if (!getRedis() || !supabaseAdmin) return;
+  const log = createLog().start("CATALOG WARMUP");
+
+  const targets: Array<{ status: "ALL" | "PUBLISHED" | "DRAFT"; limit: number | undefined }> = [
+    { status: "ALL",       limit: undefined },
+    { status: "PUBLISHED", limit: undefined },
+    { status: "ALL",       limit: 10 },
+  ];
+
+  await Promise.all(
+    targets.map(async ({ status, limit }) => {
+      const key = redisKey("catalog-list", `${status}:${limit ?? "ALL"}`);
+      try {
+        const result = await fetchThinProductList(status, limit, log);
+        await redisSet(key, result, CATALOG_LIST_TTL_S, log);
+      } catch (err) {
+        log.warn(`failed to warm  key=${key} : ${(err as Error).message}`);
+      }
+    })
+  );
+
+  log.success("3 catalog keys warmed").end("CATALOG WARMUP");
+}
+
 async function warmupStorage(): Promise<void> {
   if (!supabaseAdmin) return;
   const log = createLog().start("STORAGE WARMUP");
@@ -74,6 +100,7 @@ app.listen(PORT, () => {
   void warmupRedis(log).then(() => {
     log.end("REDIS WARMUP");
     startRedisKeepalive();
+    void warmupCatalogCache();
   });
 
   void warmupStorage();
