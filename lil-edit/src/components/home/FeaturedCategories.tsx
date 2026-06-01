@@ -12,7 +12,7 @@ const FeaturedCategories = () => {
       objectPos: 'center 50%'
     },
     { 
-      title: "LIL BEAUTIES", 
+      title: "LIL DIVAS",
       sub: "GRACEFUL & SWEET", 
       accent: "from-rose-600/20",
       img: girlImg,
