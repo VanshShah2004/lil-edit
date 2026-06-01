@@ -45,6 +45,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const abortRef   = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Depend on the stable user *id*, not the user object. Supabase hands back a
+  // fresh User object on every auth event (INITIAL_SESSION, SIGNED_IN,
+  // TOKEN_REFRESHED…), and a new object reference would re-fire the fetch each
+  // time — the cause of the cart being GET'd 4× on load. The id only changes on
+  // an actual login/logout, and the token is fetched fresh per request anyway.
+  const userId = user?.id ?? null;
+
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const refetchCart = useCallback(() => {
@@ -54,7 +61,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Fetch cart whenever user changes or refetchCart() is called
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setCartItems([]);
       setLoading(false);
       return;
@@ -64,6 +71,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
+    console.log(`[CartContext] fetching cart  user=${userId}  tick=${fetchTick}`);
     setLoading(true);
     fetchCart()
       .then((items) => {
@@ -80,7 +88,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       });
 
     return () => ctrl.abort();
-  }, [user, fetchTick]);
+  }, [userId, fetchTick]);
 
   const addToCart = useCallback(
     async (payload: AddToCartPayload) => {

@@ -44,6 +44,11 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   const abortRef    = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Depend on the stable user *id*, not the user object — see the matching note
+  // in CartContext. Prevents the wishlist being GET'd on every Supabase auth
+  // event when the user identity hasn't actually changed.
+  const userId = user?.id ?? null;
+
   const wishlistCount = wishlistItems.length;
 
   const refetchWishlist = useCallback(() => {
@@ -58,7 +63,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setWishlistItems([]);
       setLoading(false);
       return;
@@ -68,6 +73,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
+    console.log(`[WishlistContext] fetching wishlist  user=${userId}  tick=${fetchTick}`);
     setLoading(true);
     fetchWishlist()
       .then((items) => {
@@ -84,7 +90,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       });
 
     return () => ctrl.abort();
-  }, [user, fetchTick]);
+  }, [userId, fetchTick]);
 
   const addToWishlist = useCallback(
     async (productSlug: string, sku: string) => {
