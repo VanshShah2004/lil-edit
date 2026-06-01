@@ -42,11 +42,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   // Incrementing this triggers a re-fetch without needing loadCart in dependency arrays
   const [fetchTick, setFetchTick] = useState(0);
-  const abortRef = useRef<AbortController | null>(null);
+  const abortRef   = useRef<AbortController | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  const refetchCart = useCallback(() => setFetchTick((t) => t + 1), []);
+  const refetchCart = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setFetchTick((t) => t + 1), 50);
+  }, []);
 
   // Fetch cart whenever user changes or refetchCart() is called
   useEffect(() => {

@@ -41,11 +41,15 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchTick, setFetchTick] = useState(0);
-  const abortRef = useRef<AbortController | null>(null);
+  const abortRef    = useRef<AbortController | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const wishlistCount = wishlistItems.length;
 
-  const refetchWishlist = useCallback(() => setFetchTick((t) => t + 1), []);
+  const refetchWishlist = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setFetchTick((t) => t + 1), 50);
+  }, []);
 
   const isWishlisted = useCallback(
     (productSlug: string, sku: string) =>
