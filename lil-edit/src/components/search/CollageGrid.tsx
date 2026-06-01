@@ -20,7 +20,7 @@ const dummyCollageData = [
 
 export default function CollageGrid() {
   return (
-    <section className="py-6 px-4 sm:px-6 md:px-8 border-t border-border/50 animate-fade-in" style={{ animationDelay: "100ms" }}>
+    <section className="pt-2 pb-3 px-4 sm:px-6 md:px-8 border-t border-border/50 animate-fade-in" style={{ animationDelay: "100ms" }}>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-bold tracking-wider text-[#9a65ad] uppercase">
           Discover More
