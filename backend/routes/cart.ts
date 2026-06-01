@@ -41,6 +41,7 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
     }
 
     if (!cartRows || cartRows.length === 0) {
+      void redisSet(cacheKey, { items: [] }, CART_TTL_S, log);
       log.success(`empty cart  total=${fms(log.elapsed())}`).end("CART GET");
       res.json({ items: [] });
       return;

@@ -148,6 +148,7 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
     }
 
     if (!rows || rows.length === 0) {
+      void redisSet(cacheKey, { items: [] }, WISHLIST_TTL_S, log);
       log.success(`empty wishlist  total=${fms(log.elapsed())}`).end("WISHLIST GET");
       res.json({ items: [] });
       return;
