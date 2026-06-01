@@ -53,7 +53,7 @@ const ShopTheLook = () => {
             </h2>
             <button
               onClick={() => navigate("/collections")}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-[#0B5B55] text-white hover:bg-[#094742] shadow-md transition-all duration-300 shrink-0"
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-black text-white hover:bg-gray-800 shadow-md transition-all duration-300 shrink-0"
             >
               <ArrowRight className="w-6 h-6" strokeWidth={2.5} />
             </button>

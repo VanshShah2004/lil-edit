@@ -27,14 +27,14 @@ const TrendingSection = () => {
     <section className="pt-0 pb-12 md:pt-0 md:pb-14 px-0">
       <div className="container">
         <div className="mb-3 md:mb-4">
-          <p className="text-base font-black tracking-[0.2em] uppercase text-[#0F766E] mb-0.5 pt-20">
+          <p className="text-base font-black tracking-[0.2em] uppercase text-[#0F766E] mb-0.5 pt-8">
             Elevated Styles
           </p>
           <div className="flex items-center justify-between">
             <h2 className="font-display text-2xl md:text-3xl font-black text-foreground flex items-center gap-3">
               Trending Now
             </h2>
-            <button className="flex items-center justify-center w-10 h-10 rounded-full bg-secondary text-foreground hover:bg-[#0F766E] hover:text-white transition-all duration-300 shrink-0">
+            <button className="flex items-center justify-center w-10 h-10 rounded-full bg-white text-foreground border border-border shadow-sm hover:bg-[#0F766E] hover:text-white transition-all duration-300 shrink-0">
               <ArrowRight className="w-6 h-6" />
             </button>
           </div>

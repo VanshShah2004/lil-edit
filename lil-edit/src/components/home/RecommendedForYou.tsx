@@ -33,7 +33,7 @@ const RecommendedForYou = () => {
             <h2 className="font-display text-2xl md:text-3xl font-black text-foreground flex items-center gap-3">
               Recommended For You
             </h2>
-            <button className="flex items-center justify-center w-10 h-10 rounded-full bg-secondary text-foreground hover:bg-[#0F766E] hover:text-white transition-all duration-300 shrink-0">
+            <button className="flex items-center justify-center w-10 h-10 rounded-full bg-white text-foreground border border-border shadow-sm hover:bg-[#0F766E] hover:text-white transition-all duration-300 shrink-0">
               <ArrowRight className="w-6 h-6" />
             </button>
           </div>
