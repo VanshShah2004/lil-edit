@@ -17,7 +17,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const { suggestions, loading } = useSearchSuggestions(searchTerm);
-  const hasQuery = searchTerm.trim().length >= 2;
+  const hasQuery = searchTerm.trim().length >= 1;
 
   // Clear state when panel closes so re-opening starts fresh.
   useEffect(() => {
@@ -66,14 +66,19 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
         ref={panelRef}
         className="w-full h-full md:w-[480px] lg:w-[540px] bg-background shadow-2xl flex flex-col md:animate-slide-in-right animate-slide-up-fade overflow-hidden border-l border-border/50"
       >
-        {/* Unified sticky header: search input + inline suggestions */}
-        <div className="sticky top-0 z-10 bg-background border-b border-border/60">
+        {/* Pinned search input */}
+        <div className="shrink-0 z-10 bg-background border-b border-border/60">
           <SearchBar
             value={searchTerm}
             onChange={(val) => setSearchTerm(val)}
             onClose={onClose}
             autoFocus={true}
           />
+        </div>
+
+        {/* Single scroll region — suggestions on top while searching, then the
+            rest of the search panel always below */}
+        <div className="flex-1 overflow-y-auto no-scrollbar pb-safe">
           {hasQuery && (
             <SuggestionsDropdown
               suggestions={suggestions}
@@ -86,9 +91,6 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               }}
             />
           )}
-        </div>
-
-        <div className="flex-1 overflow-y-auto no-scrollbar pb-safe">
           <FrequentSearches onSelect={(term) => setSearchTerm(term)} />
           <CollageGrid />
           <CategoriesList />

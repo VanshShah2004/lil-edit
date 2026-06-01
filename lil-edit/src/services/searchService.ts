@@ -1,6 +1,6 @@
 import { getBackendBaseUrl } from "@/lib/backend";
 
-export type SuggestionType = "product" | "occasion" | "category";
+export type SuggestionType = "product" | "category" | "occasion" | "tag" | "badge" | "fabric" | "fit" | "color" | "trend" | "keyword";
 
 export interface Suggestion {
   type:         SuggestionType;
@@ -26,7 +26,7 @@ export async function fetchSuggestions(q: string, signal?: AbortSignal): Promise
   }
 
   const data = await res.json();
-  const valid = new Set<string>(["product", "occasion", "category"]);
+  const valid = new Set<string>(["product", "category", "occasion", "tag", "badge", "fabric", "fit", "color", "trend", "keyword"]);
   const filtered = (data.suggestions ?? []).filter((s: any) => valid.has(s.type)) as Suggestion[];
   console.log("[searchService] suggestions →", filtered.length, "results for:", q, "(raw:", data.suggestions?.length ?? 0, ")");
   return filtered;

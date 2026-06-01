@@ -7,6 +7,7 @@ import {
   type VariantRowInsert,
 } from "./productMapper.js";
 import { createLog, fms, type OpLogger } from "./logger.js";
+import { matchLexicon } from "./searchLexicon.js";
 
 function requireAdmin() {
   if (!supabaseAdmin) {
@@ -717,7 +718,7 @@ export async function launchProductToDatabase(
 
 // ─── Search suggestions ───────────────────────────────────────────────────────
 
-export type SuggestionType = "product" | "occasion" | "category";
+export type SuggestionType = "product" | "category" | "occasion" | "tag" | "badge" | "fabric" | "fit" | "color" | "trend" | "keyword";
 
 export interface SuggestionRow {
   type:         SuggestionType;
@@ -805,19 +806,54 @@ async function loadSearchCatalog(log: OpLogger): Promise<SearchCatalogEntry[]> {
   return _searchCatalog;
 }
 
+// ─── Fuzzy helpers ────────────────────────────────────────────────────────────
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const prev = Array.from({ length: n + 1 }, (_, i) => i);
+  const curr = new Array<number>(n + 1).fill(0);
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= n; j++) {
+      curr[j] = a[i - 1] === b[j - 1] ? prev[j - 1] : 1 + Math.min(prev[j], curr[j - 1], prev[j - 1]);
+    }
+    for (let k = 0; k <= n; k++) prev[k] = curr[k];
+  }
+  return curr[n];
+}
+
+function fuzzyMatchesTitle(title: string, query: string): boolean {
+  const maxDist = query.length <= 6 ? 1 : 2;
+  const words   = title.toLowerCase().split(/\s+/);
+  return words.some(word => {
+    if (Math.abs(word.length - query.length) > maxDist + 1) return false;
+    return levenshtein(word, query) <= maxDist;
+  });
+}
+
 // ─── Weighted field scoring ───────────────────────────────────────────────────
 
 const FIELD_SCORES: Record<string, number> = {
-  "title:exact":    100,
-  "title:starts":    90,
-  "title:contains":  80,
-  "category":        75,
-  "tag":             65,
-  "occasion":        60,
-  "badge":           55,
-  "fabric":          50,
-  "fit":             50,
-  "gender":          45,
+  "title:exact":        100,
+  "title:starts":        90,
+  "title:word-starts":   85,
+  "title:contains":      80,
+  "category:starts":     78,
+  "category":            75,
+  "tag:starts":          72,
+  "tag":                 65,
+  "occasion:starts":     63,
+  "occasion":            60,
+  "badge:starts":        58,
+  "badge":               55,
+  "fabric:starts":       53,
+  "fabric":              50,
+  "fit:starts":          50,
+  "fit":                 48,
+  "gender":              45,
+  "fuzzy":               30,
 };
 
 function scoreEntry(
@@ -825,30 +861,46 @@ function scoreEntry(
   lower: string,
 ): { score: number; field: string } {
   const t = entry.title.toLowerCase();
-  if (t === lower)         return { score: FIELD_SCORES["title:exact"],    field: "title:exact" };
-  if (t.startsWith(lower)) return { score: FIELD_SCORES["title:starts"],   field: "title:starts" };
-  if (t.includes(lower))   return { score: FIELD_SCORES["title:contains"], field: "title:contains" };
 
-  if (entry.category.toLowerCase().includes(lower))
-    return { score: FIELD_SCORES["category"], field: "category" };
+  if (t === lower)         return { score: FIELD_SCORES["title:exact"],      field: "title" };
+  if (t.startsWith(lower)) return { score: FIELD_SCORES["title:starts"],     field: "title" };
+  if (t.split(/\s+/).some(w => w !== lower && w.startsWith(lower)))
+                           return { score: FIELD_SCORES["title:word-starts"], field: "title" };
+  if (t.includes(lower))  return { score: FIELD_SCORES["title:contains"],    field: "title" };
 
-  if (entry.tags.some((v) => v.toLowerCase().includes(lower)))
-    return { score: FIELD_SCORES["tag"], field: "tag" };
+  const cat = entry.category.toLowerCase();
+  if (cat.startsWith(lower)) return { score: FIELD_SCORES["category:starts"], field: "category" };
+  if (cat.includes(lower))   return { score: FIELD_SCORES["category"],        field: "category" };
 
-  if (entry.occasion.toLowerCase().includes(lower))
-    return { score: FIELD_SCORES["occasion"], field: "occasion" };
+  for (const tag of entry.tags) {
+    const tl = tag.toLowerCase();
+    if (tl.startsWith(lower)) return { score: FIELD_SCORES["tag:starts"], field: "tag" };
+    if (tl.includes(lower))   return { score: FIELD_SCORES["tag"],        field: "tag" };
+  }
 
-  if (entry.badges.some((v) => v.toLowerCase().includes(lower)))
-    return { score: FIELD_SCORES["badge"], field: "badge" };
+  const occ = entry.occasion.toLowerCase();
+  if (occ.startsWith(lower)) return { score: FIELD_SCORES["occasion:starts"], field: "occasion" };
+  if (occ.includes(lower))   return { score: FIELD_SCORES["occasion"],        field: "occasion" };
 
-  if (entry.fabric.toLowerCase().includes(lower))
-    return { score: FIELD_SCORES["fabric"], field: "fabric" };
+  for (const badge of entry.badges) {
+    const bl = badge.toLowerCase();
+    if (bl.startsWith(lower)) return { score: FIELD_SCORES["badge:starts"], field: "badge" };
+    if (bl.includes(lower))   return { score: FIELD_SCORES["badge"],        field: "badge" };
+  }
 
-  if (entry.fit.toLowerCase().includes(lower))
-    return { score: FIELD_SCORES["fit"], field: "fit" };
+  const fab = entry.fabric.toLowerCase();
+  if (fab.startsWith(lower)) return { score: FIELD_SCORES["fabric:starts"], field: "fabric" };
+  if (fab.includes(lower))   return { score: FIELD_SCORES["fabric"],        field: "fabric" };
+
+  const fit = entry.fit.toLowerCase();
+  if (fit.startsWith(lower)) return { score: FIELD_SCORES["fit:starts"], field: "fit" };
+  if (fit.includes(lower))   return { score: FIELD_SCORES["fit"],        field: "fit" };
 
   if (entry.gender.toLowerCase().includes(lower))
     return { score: FIELD_SCORES["gender"], field: "gender" };
+
+  if (lower.length >= 3 && fuzzyMatchesTitle(entry.title, lower))
+    return { score: FIELD_SCORES["fuzzy"], field: "fuzzy" };
 
   return { score: 0, field: "" };
 }
@@ -856,15 +908,15 @@ function scoreEntry(
 // ─── fetchSuggestions ─────────────────────────────────────────────────────────
 
 /**
- * Returns up to 5 suggestions (metadata + products) for a search query.
+ * Returns up to 8 suggestions (metadata + products) for a search query.
+ * Metadata covers categories, occasions, tags, badges, fabrics, and fits.
  * Uses an in-memory catalog so no DB round-trip is needed on cache-warm requests.
- * Metadata suggestions (tag / badge / occasion / category) come first, then products.
  */
 export async function fetchSuggestions(q: string, log: OpLogger): Promise<SuggestionRow[]> {
   const lower   = q.toLowerCase();
   const catalog = await loadSearchCatalog(log);
 
-  // Score every product in the catalog
+  // Score every product in the catalog.
   const scored: Array<{ entry: SearchCatalogEntry; score: number; field: string }> = [];
   for (const entry of catalog) {
     const { score, field } = scoreEntry(entry, lower);
@@ -873,31 +925,103 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
   scored.sort((a, b) => b.score - a.score || a.entry.title.localeCompare(b.entry.title));
   log.step(`Scoring - ${scored.length}/${catalog.length} products matched`);
 
-  // Collect up to 2 unique metadata suggestions from the highest-scoring matches
-  const metaSuggestions: SuggestionRow[] = [];
-  const seenMeta = new Set<string>();
+  // ─── Collect unique metadata suggestions from all matched products ──────────
+  const metaRows   = new Map<string, SuggestionRow>();
+  const metaScores = new Map<string, number>();
 
-  for (const { entry, field } of scored) {
-    if (metaSuggestions.length >= 2) break;
+  function upsertMeta(key: string, row: SuggestionRow, score: number) {
+    const prev = metaScores.get(key);
+    if (prev === undefined || prev < score) { metaRows.set(key, row); metaScores.set(key, score); }
+  }
 
-    if (field === "occasion") {
-      const key = `occasion:${entry.occasion.toLowerCase()}`;
-      if (!seenMeta.has(key)) {
-        seenMeta.add(key);
-        metaSuggestions.push({ type: "occasion", id: key, label: entry.occasion, sublabel: "Occasion", image: "", slug: "", categorySlug: "", sku: "" });
+  for (const { entry } of scored) {
+    const cat = entry.category.toLowerCase();
+    if (cat.includes(lower)) {
+      const s = cat.startsWith(lower) ? FIELD_SCORES["category:starts"] : FIELD_SCORES["category"];
+      upsertMeta(`category:${entry.category_slug}`, { type: "category", id: `category:${entry.category_slug}`, label: entry.category, sublabel: "Category", image: "", slug: "", categorySlug: entry.category_slug, sku: "" }, s);
+    }
+
+    if (entry.occasion) {
+      const occ = entry.occasion.toLowerCase();
+      if (occ.includes(lower)) {
+        const s = occ.startsWith(lower) ? FIELD_SCORES["occasion:starts"] : FIELD_SCORES["occasion"];
+        upsertMeta(`occasion:${occ}`, { type: "occasion", id: `occasion:${occ}`, label: entry.occasion, sublabel: "Occasion", image: "", slug: "", categorySlug: "", sku: "" }, s);
       }
-    } else if (field === "category") {
-      const key = `category:${entry.category_slug}`;
-      if (!seenMeta.has(key)) {
-        seenMeta.add(key);
-        metaSuggestions.push({ type: "category", id: key, label: entry.category, sublabel: "Category", image: "", slug: "", categorySlug: entry.category_slug, sku: "" });
+    }
+
+    for (const tag of entry.tags) {
+      const tl = tag.toLowerCase();
+      if (tl.includes(lower)) {
+        const s = tl.startsWith(lower) ? FIELD_SCORES["tag:starts"] : FIELD_SCORES["tag"];
+        upsertMeta(`tag:${tl}`, { type: "tag", id: `tag:${tl}`, label: tag, sublabel: "Tag", image: "", slug: "", categorySlug: "", sku: "" }, s);
+      }
+    }
+
+    for (const badge of entry.badges) {
+      const bl = badge.toLowerCase();
+      if (bl.includes(lower)) {
+        const s = bl.startsWith(lower) ? FIELD_SCORES["badge:starts"] : FIELD_SCORES["badge"];
+        upsertMeta(`badge:${bl}`, { type: "badge", id: `badge:${bl}`, label: badge, sublabel: "Badge", image: "", slug: "", categorySlug: "", sku: "" }, s);
+      }
+    }
+
+    if (entry.fabric) {
+      const fab = entry.fabric.toLowerCase();
+      if (fab.includes(lower)) {
+        const s = fab.startsWith(lower) ? FIELD_SCORES["fabric:starts"] : FIELD_SCORES["fabric"];
+        upsertMeta(`fabric:${fab}`, { type: "fabric", id: `fabric:${fab}`, label: entry.fabric, sublabel: "Material", image: "", slug: "", categorySlug: "", sku: "" }, s);
+      }
+    }
+
+    if (entry.fit) {
+      const fitl = entry.fit.toLowerCase();
+      if (fitl.includes(lower)) {
+        const s = fitl.startsWith(lower) ? FIELD_SCORES["fit:starts"] : FIELD_SCORES["fit"];
+        upsertMeta(`fit:${fitl}`, { type: "fit", id: `fit:${fitl}`, label: entry.fit, sublabel: "Fit", image: "", slug: "", categorySlug: "", sku: "" }, s);
       }
     }
   }
 
-  // Fill remaining slots (total cap: 5) with the top-scoring products
-  const maxProducts = 5 - metaSuggestions.length;
-  const productSuggestions: SuggestionRow[] = scored.slice(0, maxProducts).map(({ entry }) => ({
+  // ─── Curated lexicon suggestions — independent of the live catalog ──────────
+  // These let the search box suggest terms ("Kurti", "Diwali", "Cotton", "Red")
+  // even when no matching products are currently in stock.
+  const lexiconMatches = matchLexicon(lower, 10);
+  log.step(`Lexicon - ${lexiconMatches.length} curated matches`);
+
+  // Merge product-derived metadata with the curated lexicon, deduped by label.
+  // On a label collision the higher-scoring source wins, so an in-stock match
+  // (real product metadata) outranks the generic curated term where relevant.
+  const merged = new Map<string, { row: SuggestionRow; score: number }>();
+  function mergeMeta(row: SuggestionRow, score: number) {
+    const key = row.label.toLowerCase();
+    const prev = merged.get(key);
+    if (!prev || prev.score < score) merged.set(key, { row, score });
+  }
+  for (const [key, row] of metaRows) mergeMeta(row, metaScores.get(key) ?? 0);
+  for (const m of lexiconMatches) {
+    mergeMeta(
+      {
+        type:         m.entry.type,
+        id:           `lex:${m.entry.type}:${m.entry.term.toLowerCase()}`,
+        label:        m.entry.term,
+        sublabel:     m.entry.sublabel,
+        image:        "",
+        slug:         "",
+        categorySlug: "",
+        sku:          "",
+      },
+      m.score
+    );
+  }
+
+  // Sort merged suggestions by score, cap at 8.
+  const metaSuggestions: SuggestionRow[] = [...merged.values()]
+    .sort((a, b) => b.score - a.score || a.row.label.localeCompare(b.row.label))
+    .slice(0, 8)
+    .map((m) => m.row);
+
+  // Products tab is inventory-bound (these navigate to real PDPs); cap at 8.
+  const productSuggestions: SuggestionRow[] = scored.slice(0, 8).map(({ entry }) => ({
     type:         "product" as const,
     id:           entry.id,
     label:        entry.title,

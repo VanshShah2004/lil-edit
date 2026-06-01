@@ -583,7 +583,7 @@ router.get("/suggestions", async (req: Request, res: Response) => {
   const raw = (req.query.q as string | undefined) ?? "";
   const q   = raw.trim();
 
-  if (q.length < 2 || q.length > 100) {
+  if (q.length < 1 || q.length > 100) {
     log.step(`q.length=${q.length} — skipped`).end("SEARCH SUGGESTIONS");
     res.json({ suggestions: [] });
     return;

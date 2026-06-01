@@ -9,7 +9,7 @@ export function useSearchSuggestions(query: string) {
   useEffect(() => {
     const trimmed = query.trim();
 
-    if (trimmed.length < 2) {
+    if (trimmed.length < 1) {
       console.log("[useSearchSuggestions] query too short — skipped:", JSON.stringify(trimmed));
       setSuggestions([]);
       setLoading(false);

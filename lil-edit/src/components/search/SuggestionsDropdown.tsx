@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search } from "lucide-react";
 import { buildPdpPath } from "@/lib/pdpUrl";
-import type { Suggestion, SuggestionType } from "@/services/searchService";
+import type { Suggestion } from "@/services/searchService";
 
 type Tab = "products" | "suggestions";
 
@@ -14,11 +13,18 @@ interface Props {
   onSelectTerm: (term: string) => void;
 }
 
-const META_ICON: Record<SuggestionType, string> = {
-  product:  "",
-  occasion: "🎉",
-  category: "📁",
-};
+function Highlighted({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span className="text-teal-700 font-bold">{text.slice(idx, idx + query.length)}</span>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
 
 export default function SuggestionsDropdown({ suggestions, loading, query, onClose, onSelectTerm }: Props) {
   const navigate = useNavigate();
@@ -26,10 +32,27 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
   const [selectedIndex, setSelectedIndex] = useState(-1);
 
   const productItems = suggestions.filter(s => s.type === "product");
-  const visibleItems = activeTab === "products" ? productItems : suggestions;
+  const metaItems    = suggestions.filter(s => s.type !== "product");
+  const visibleItems = activeTab === "products" ? productItems : metaItems;
 
   // Reset selection when tab or suggestions list changes.
   useEffect(() => { setSelectedIndex(-1); }, [activeTab, suggestions]);
+
+  // When new results arrive, land on whichever tab actually has results — so a
+  // query with no in-stock products still surfaces curated suggestions instead
+  // of an empty Products tab. Keyed on `suggestions` only, so manual tab toggles
+  // (which change `activeTab`, not `suggestions`) are never overridden.
+  useEffect(() => {
+    const hasProducts = suggestions.some(s => s.type === "product");
+    const hasMeta     = suggestions.some(s => s.type !== "product");
+    if (!hasProducts && hasMeta) {
+      console.log("[SuggestionsDropdown] no products — switching to Suggestions tab");
+      setActiveTab("suggestions");
+    } else if (hasProducts && !hasMeta) {
+      console.log("[SuggestionsDropdown] no suggestions — switching to Products tab");
+      setActiveTab("products");
+    }
+  }, [suggestions]);
 
   // Keep refs fresh so the keyboard handler never captures stale closure values.
   const visibleRef = useRef(visibleItems);
@@ -96,7 +119,7 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
       {/* Tab toggle */}
       <div className="px-3 sm:px-4 md:px-8 pt-2 pb-2 flex gap-2 justify-center">
         {(["products", "suggestions"] as Tab[]).map(tab => {
-          const count = tab === "products" ? productItems.length : suggestions.length;
+          const count = tab === "products" ? productItems.length : metaItems.length;
           const isActive = activeTab === tab;
           return (
             <button
@@ -125,8 +148,8 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
       {loading ? (
         <div className="px-3 sm:px-4 md:px-8 pb-3 flex flex-col gap-2">
           {[0, 1, 2].map(i => (
-            <div key={i} className={`flex items-center gap-4 animate-pulse ${activeTab === "products" ? "px-4 py-4" : "px-4 py-3"}`}>
-              <div className={`${activeTab === "products" ? "w-20 h-20 rounded-2xl" : "w-10 h-10 rounded-xl"} bg-secondary shrink-0`} />
+            <div key={i} className={`flex items-center gap-3 animate-pulse ${activeTab === "products" ? "px-3 py-2.5" : "px-3 py-2"}`}>
+              {activeTab === "products" && <div className="w-14 h-14 rounded-lg bg-secondary shrink-0" />}
               <div className="flex-1 space-y-2">
                 <div className="h-4 bg-secondary rounded w-3/4" />
                 <div className="h-3.5 bg-secondary rounded w-1/3" />
@@ -143,18 +166,18 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
         </div>
       ) : activeTab === "products" ? (
         /* Products tab — image cards */
-        <div className="px-3 sm:px-4 md:px-8 pb-3 flex flex-col gap-2">
+        <div className="px-3 sm:px-4 md:px-8 pb-3 flex flex-col gap-1">
           {productItems.map((s, i) => (
             <button
               key={s.id}
               onClick={() => handleSelect(s)}
-              className={`flex items-center gap-5 px-4 py-4 rounded-2xl text-left w-full transition-colors border ${
+              className={`flex items-center gap-3 px-3 py-2 rounded-xl text-left w-full transition-colors border ${
                 i === selectedIndex
                   ? "bg-teal-50 border-teal-200"
                   : "border-transparent hover:bg-secondary"
               }`}
             >
-              <div className="w-20 h-20 rounded-2xl overflow-hidden shrink-0 bg-secondary">
+              <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-secondary">
                 {s.image ? (
                   <img src={s.image} alt={s.label} className="w-full h-full object-cover" loading="lazy" />
                 ) : (
@@ -162,36 +185,31 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-lg font-semibold text-foreground truncate">{s.label}</p>
-                <p className="text-base text-muted-foreground">{s.sublabel}</p>
+                <p className="text-sm font-semibold text-foreground truncate">
+                  <Highlighted text={s.label} query={query} />
+                </p>
+                <p className="text-xs text-muted-foreground">{s.sublabel}</p>
               </div>
             </button>
           ))}
         </div>
       ) : (
-        /* Suggestions tab — text autocomplete rows */
+        /* Suggestions tab — text autocomplete rows (metadata only) */
         <div className="px-3 sm:px-4 md:px-8 pb-3 flex flex-col gap-1">
-          {suggestions.map((s, i) => (
+          {metaItems.map((s, i) => (
             <button
               key={s.id}
               onClick={() => handleSelect(s)}
-              className={`flex items-center gap-4 px-4 py-3.5 rounded-xl text-left w-full transition-colors border ${
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left w-full transition-colors border ${
                 i === selectedIndex
                   ? "bg-teal-50 border-teal-200"
                   : "border-transparent hover:bg-secondary"
               }`}
             >
-              <div className="w-10 h-10 rounded-xl shrink-0 bg-secondary/60 flex items-center justify-center">
-                {s.type === "product" ? (
-                  <Search className="w-5 h-5 text-muted-foreground" />
-                ) : (
-                  <span className="text-xl">{META_ICON[s.type]}</span>
-                )}
-              </div>
-              <span className="flex-1 text-base font-semibold text-foreground truncate">{s.label}</span>
-              {s.type !== "product" && (
-                <span className="text-xs text-muted-foreground shrink-0">{s.sublabel}</span>
-              )}
+              <span className="flex-1 text-sm font-semibold text-foreground truncate">
+                <Highlighted text={s.label} query={query} />
+              </span>
+              <span className="text-xs text-muted-foreground shrink-0">{s.sublabel}</span>
             </button>
           ))}
         </div>
