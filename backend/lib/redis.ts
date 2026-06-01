@@ -40,7 +40,7 @@ function createClient(): RedisClient | null {
   return redis;
 }
 
-const REDIS_PING_INTERVAL_MS = 30_000; // 30s — Upstash drops connections on idle
+const REDIS_PING_INTERVAL_MS = 250_000; // ~4.2 min — under Upstash's ~310s idle timeout, keeps the connection warm without burning the free-tier command quota
 
 /**
  * Sends a PING every 30 seconds to keep the Upstash TCP connection alive.

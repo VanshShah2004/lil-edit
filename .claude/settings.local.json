@@ -16,7 +16,9 @@
       "Bash(git *)",
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Vansh\\\\OneDrive\\\\Desktop\\\\new-ecomm\\\\backend\" -Recurse -Exclude \"node_modules\" | Where-Object { $_.FullName -notmatch \"node_modules\" } | Select-Object FullName)",
       "Bash(read f *)",
-      "Bash(Get-ChildItem -Recurse -Path \"C:\\\\Users\\\\Vansh\\\\OneDrive\\\\Desktop\\\\new-ecomm\\\\lil-edit\\\\src\" -Filter \"*.tsx\")"
+      "Bash(Get-ChildItem -Recurse -Path \"C:\\\\Users\\\\Vansh\\\\OneDrive\\\\Desktop\\\\new-ecomm\\\\lil-edit\\\\src\" -Filter \"*.tsx\")",
+      "WebSearch",
+      "WebFetch(domain:upstash.com)"
     ]
   }
 }
