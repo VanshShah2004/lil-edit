@@ -11,6 +11,8 @@ import {
   fetchProductBySlug,
   fetchProductTitleBySlug,
   fetchRecommendedProducts,
+  fetchSuggestions,
+  type SuggestionRow,
 } from "../lib/persistCatalog.js";
 import {
   redisGet,
@@ -21,6 +23,7 @@ import {
   REC_TTL_S,
   CATALOG_LIST_TTL_S,
   CATALOG_DETAIL_TTL_S,
+  SUGGESTION_TTL_S,
 } from "../lib/redis.js";
 import { createLog, type OpLogger } from "../lib/logger.js";
 import { supabaseAdmin } from "../lib/supabase.js";
@@ -568,6 +571,41 @@ router.get("/catalog-detail", async (req: Request, res: Response) => {
   } catch (err) {
     log.error("failed", err).end("CATALOG DETAIL");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// ─── GET /api/products/suggestions — search auto-complete ────────────────────
+router.get("/suggestions", async (req: Request, res: Response) => {
+  const log = createLog().start("SEARCH SUGGESTIONS");
+  const raw = (req.query.q as string | undefined) ?? "";
+  const q   = raw.trim();
+
+  if (q.length < 2 || q.length > 100) {
+    log.step(`q.length=${q.length} — skipped`).end("SEARCH SUGGESTIONS");
+    res.json({ suggestions: [] });
+    return;
+  }
+
+  const cacheKey = redisKey("suggestions", q.toLowerCase());
+
+  try {
+    const cached = await redisGet<{ suggestions: SuggestionRow[] }>(cacheKey, log);
+    if (cached) {
+      log.success("L2 Redis - HIT  served from cache").end("SEARCH SUGGESTIONS");
+      res.json(cached);
+      return;
+    }
+
+    const suggestions = await fetchSuggestions(q, log);
+    const payload = { suggestions };
+    void redisSet(cacheKey, payload, SUGGESTION_TTL_S, log);
+
+    log.success(`${suggestions.length} suggestions returned`).end("SEARCH SUGGESTIONS");
+    res.json(payload);
+  } catch (err) {
+    log.error("failed — returning empty suggestions", err);
+    res.status(200).json({ suggestions: [] });
+    log.end("SEARCH SUGGESTIONS");
   }
 });
 

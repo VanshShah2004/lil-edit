@@ -715,6 +715,74 @@ export async function launchProductToDatabase(
   return { publishedProductId: publishedProductId as string };
 }
 
+// ─── Search suggestions ───────────────────────────────────────────────────────
+
+const SUGGESTION_SELECT = `
+  id, title, slug, base_sku, category, category_slug,
+  product_images(image_url, is_primary)
+`.trim();
+
+export interface SuggestionRow {
+  id: string;
+  name: string;
+  image: string;
+  category: string;
+  slug: string;
+  categorySlug: string;
+  sku: string;
+}
+
+/**
+ * Returns up to 8 published products matching the query against title or category.
+ * Results are ranked: exact title match → starts-with → contains.
+ */
+export async function fetchSuggestions(q: string, log: OpLogger): Promise<SuggestionRow[]> {
+  const sb = requireAdmin();
+  const lower = q.toLowerCase();
+  // Escape LIKE wildcards so a literal "%" or "_" in the query doesn't match everything.
+  const escaped = q.replace(/[%_]/g, "\\$&");
+
+  log.step(`DB fetch - suggestions  q="${q}"`);
+  const t0 = performance.now();
+
+  const { data, error } = await sb
+    .from("products")
+    .select(SUGGESTION_SELECT)
+    .or(`title.ilike.%${escaped}%,category.ilike.%${escaped}%`)
+    .limit(20);
+
+  if (error) throw new Error(error.message);
+  log.step(`DB fetch - suggestions complete  ${fms(performance.now() - t0)}  candidates=${data?.length ?? 0}`);
+
+  function rank(title: string): number {
+    const t = title.toLowerCase();
+    if (t === lower) return 0;
+    if (t.startsWith(lower)) return 1;
+    return 2;
+  }
+
+  return (data ?? [])
+    .slice()
+    .sort((a, b) => rank(a.title) - rank(b.title))
+    .slice(0, 5)
+    .map((p) => {
+      const images: Array<{ image_url: string; is_primary: boolean }> = p.product_images ?? [];
+      const primaryImg =
+        images.find((img) => img.is_primary)?.image_url ||
+        images[0]?.image_url ||
+        "";
+      return {
+        id:          p.id as string,
+        name:        p.title as string,
+        image:       primaryImg,
+        category:    p.category as string,
+        slug:        p.slug as string,
+        categorySlug: p.category_slug as string,
+        sku:         p.base_sku as string,
+      };
+    });
+}
+
 /** Minimal lookup for lazy-loaded reviews (title only). */
 export async function fetchProductTitleBySlug(
   slug: string,
