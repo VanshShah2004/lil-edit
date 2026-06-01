@@ -860,7 +860,7 @@ const AddProduct = () => {
                         Original Price (MRP)
                       </label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/50 font-body">â‚¹</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/50 font-body">₹</span>
                         <input
                           type="number"
                           name="originalPrice"
@@ -877,7 +877,7 @@ const AddProduct = () => {
                         Selling Price
                       </label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/50 font-body">â‚¹</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/50 font-body">₹</span>
                         <input
                           type="number"
                           name="price"
@@ -893,11 +893,14 @@ const AddProduct = () => {
                       <motion.div
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="flex items-end pb-1"
+                        className="group"
                       >
-                        <div className="px-4 py-3 bg-red-500/5 border border-red-500/10 rounded-md w-full text-center">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-red-500/60 mb-0.5">Markdown</p>
-                          <p className="text-lg font-bold text-red-500">{discountPercent}% OFF</p>
+                        <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 select-none">
+                          Discount
+                        </label>
+                        <div className="flex items-center justify-center gap-2 px-4 py-4 bg-red-500/5 border border-red-500/20 rounded-md w-fit">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-red-500/70">Markdown</span>
+                          <span className="text-sm font-bold text-red-500 leading-none">{discountPercent}% OFF</span>
                         </div>
                       </motion.div>
                     )}

@@ -899,17 +899,17 @@ const EditProduct = () => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
-                        Product Title
+                    <motion.div className="group">
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+                        Product Title <span className="text-gray-300 normal-case tracking-normal">(locked)</span>
                       </label>
                       <input
                         type="text"
                         name="name"
                         value={formData.name}
-                        onChange={handleInputChange}
+                        readOnly
                         placeholder="e.g. Criss-Cross Back Knot Top"
-                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
+                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-[#F5F4F6] text-gray-400 cursor-not-allowed outline-none transition-all duration-300 font-body text-xs"
                       />
                     </motion.div>
 
@@ -1052,16 +1052,16 @@ const EditProduct = () => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
-                        Category
+                    <motion.div className="group">
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+                        Category <span className="text-gray-300 normal-case tracking-normal">(locked)</span>
                       </label>
                       <div className="relative">
                         <select
                           name="category"
                           value={formData.category}
-                          onChange={handleInputChange}
-                          className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none appearance-none transition-all duration-300 font-body text-xs"
+                          disabled
+                          className="w-full px-5 py-4 rounded-md border border-gray-200 bg-[#F5F4F6] text-gray-400 cursor-not-allowed outline-none appearance-none transition-all duration-300 font-body text-xs"
                         >
                           <option value="">Select a category</option>
                           {CATEGORIES.map((cat) => (
@@ -1070,20 +1070,20 @@ const EditProduct = () => {
                             </option>
                           ))}
                         </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 pointer-events-none" />
                       </div>
                     </motion.div>
 
-                    <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
-                        Gender Category
+                    <motion.div className="group">
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+                        Gender Category <span className="text-gray-300 normal-case tracking-normal">(locked)</span>
                       </label>
                       <div className="relative">
                         <select
                           name="gender"
                           value={formData.gender}
-                          onChange={handleInputChange}
-                          className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none appearance-none transition-all duration-300 font-body text-xs"
+                          disabled
+                          className="w-full px-5 py-4 rounded-md border border-gray-200 bg-[#F5F4F6] text-gray-400 cursor-not-allowed outline-none appearance-none transition-all duration-300 font-body text-xs"
                         >
                           <option value="">Select gender</option>
                           {GENDERS.map((g) => (
@@ -1092,7 +1092,7 @@ const EditProduct = () => {
                             </option>
                           ))}
                         </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 pointer-events-none" />
                       </div>
                     </motion.div>
                   </div>
@@ -1144,11 +1144,14 @@ const EditProduct = () => {
                       <motion.div
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="flex items-end pb-1"
+                        className="group"
                       >
-                        <div className="px-4 py-3 bg-red-500/5 border border-red-500/10 rounded-md w-full text-center">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-red-500/60 mb-0.5">Markdown</p>
-                          <p className="text-lg font-bold text-red-500">{discountPercent}% OFF</p>
+                        <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 select-none">
+                          Discount
+                        </label>
+                        <div className="flex items-center justify-center gap-2 px-4 py-4 bg-red-500/5 border border-red-500/20 rounded-md w-fit">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-red-500/70">Markdown</span>
+                          <span className="text-sm font-bold text-red-500 leading-none">{discountPercent}% OFF</span>
                         </div>
                       </motion.div>
                     )}
