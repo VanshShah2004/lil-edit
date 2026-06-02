@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ChevronRight, Heart, Star, StarHalf, BadgeCheck, ThumbsUp } from "lucide-react";
+import { ChevronRight, ChevronDown, Heart, Star, StarHalf, BadgeCheck, ThumbsUp } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,6 +26,16 @@ import le6 from "@/assets/searchbar-frequent_searches/le-6.png";
 
 const LAVENDER = "#B19CD9";
 const TEAL = "#0B5B55";
+
+// Review sort options. Backend returns reviews newest-first, so "newest" is the
+// payload order, "oldest" is reversed, and rating sorts are stable on top of that.
+const REVIEW_SORT_OPTIONS = [
+  { value: "newest",  label: "Newest" },
+  { value: "oldest",  label: "Oldest" },
+  { value: "highest", label: "Highest rated" },
+  { value: "lowest",  label: "Lowest rated" },
+] as const;
+type ReviewSort = (typeof REVIEW_SORT_OPTIONS)[number]["value"];
 
 // O(1) LRU cache backed by Map insertion order.
 // get() promotes the entry to most-recent; set() evicts the oldest when over cap.
@@ -154,6 +164,33 @@ export default function ProductDetail() {
   const [error, setError] = useState<string | null>(null);
   const lazyLoadSlugRef = useRef<string | undefined>(undefined);
   const cacheHitRef = useRef(!!isProductCacheFresh);
+
+  // ── Review sorting (client-side) ──────────────────────────────────────────
+  const [reviewSort, setReviewSort] = useState<ReviewSort>("newest");
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const sortMenuRef = useRef<HTMLDivElement>(null);
+
+  const sortedReviews = useMemo(() => {
+    const list = [...(reviewsData?.reviews ?? [])]; // payload is newest-first
+    switch (reviewSort) {
+      case "oldest":  return list.reverse();
+      case "highest": return list.sort((a, b) => b.rating - a.rating);
+      case "lowest":  return list.sort((a, b) => a.rating - b.rating);
+      default:        return list; // newest
+    }
+  }, [reviewsData, reviewSort]);
+
+  // Close the sort menu on outside click
+  useEffect(() => {
+    if (!sortMenuOpen) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target as Node)) {
+        setSortMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [sortMenuOpen]);
 
   // ── Perf tracker — one instance per slug, stable across re-renders ────────
   const perfRef     = useRef<PdpClientPerf | null>(null);
@@ -606,13 +643,44 @@ export default function ProductDetail() {
                 <h3 className="text-lg font-bold text-slate-800">
                   Most Relevant Reviews
                 </h3>
-                <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
-                  Sort by: <span className="text-slate-900 font-bold cursor-pointer hover:underline">Newest</span>
+                <div ref={sortMenuRef} className="relative flex items-center gap-2 text-sm text-gray-500 font-medium">
+                  <span>Sort by:</span>
+                  <button
+                    type="button"
+                    onClick={() => setSortMenuOpen((o) => !o)}
+                    aria-haspopup="listbox"
+                    aria-expanded={sortMenuOpen}
+                    className="inline-flex items-center gap-1 text-slate-900 font-bold hover:underline focus:outline-none"
+                  >
+                    {REVIEW_SORT_OPTIONS.find((o) => o.value === reviewSort)?.label}
+                    <ChevronDown size={14} className={`transition-transform duration-200 ${sortMenuOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  {sortMenuOpen && (
+                    <div
+                      role="listbox"
+                      className="absolute right-0 top-full mt-2 z-20 w-44 rounded-xl border border-gray-100 bg-white shadow-xl shadow-slate-200/50 py-1.5 overflow-hidden"
+                    >
+                      {REVIEW_SORT_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          role="option"
+                          aria-selected={reviewSort === opt.value}
+                          onClick={() => { setReviewSort(opt.value); setSortMenuOpen(false); }}
+                          className={`w-full text-left px-4 py-2 text-sm transition-colors hover:bg-gray-50 ${
+                            reviewSort === opt.value ? "text-teal-700 font-bold" : "text-slate-600 font-medium"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-6">
-                {reviewsData.reviews.map((review: any) => (
+                {sortedReviews.map((review: any) => (
                   <div
                     key={review.id}
                     className="relative p-6 sm:p-8 rounded-[2rem] border border-gray-100 bg-white hover:shadow-xl hover:shadow-slate-200/50 hover:border-teal-100/50 transition-all duration-500 group"
