@@ -358,6 +358,13 @@ router.get("/recommendations", async (req: Request, res: Response) => {
   const log      = createLog().start("PDP RECOMMENDATIONS");
   const slug     = req.query.slug     as string;
   const category = req.query.category as string;
+  // Anchor gender + price passed by the PDP (it already has them) so the backend
+  // skips the anchor DB lookup. Both optional — the function falls back if absent.
+  const gender   = (req.query.gender as string) || undefined;
+  const priceRaw = req.query.price as string | undefined;
+  const price    = priceRaw !== undefined && priceRaw !== "" && !Number.isNaN(Number(priceRaw))
+    ? Number(priceRaw)
+    : undefined;
 
   if (!slug) {
     log.warn("Missing slug").end("PDP RECOMMENDATIONS");
@@ -365,7 +372,7 @@ router.get("/recommendations", async (req: Request, res: Response) => {
     return;
   }
 
-  log.step(`slug=${slug}  category=${category || "any"}`);
+  log.step(`slug=${slug}  category=${category || "any"}  gender=${gender ?? "?"}  price=${price ?? "?"}`);
 
   try {
     const cachedRec = await redisGet<{ recommended: object[] }>(redisKey("rec", slug), log);
@@ -375,7 +382,7 @@ router.get("/recommendations", async (req: Request, res: Response) => {
       return;
     }
 
-    const recommendedList  = await fetchRecommendedProducts(slug, category || "", log);
+    const recommendedList  = await fetchRecommendedProducts(slug, category || "", log, { gender, price });
     const mappedRecommended = (recommendedList || []).map(mapDatabaseToRecommended);
     const recPayload        = { recommended: mappedRecommended };
 

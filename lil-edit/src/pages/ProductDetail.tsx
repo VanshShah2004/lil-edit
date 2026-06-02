@@ -384,7 +384,8 @@ export default function ProductDetail() {
       setRecommendationsError(null);
       console.log(`[AbortController] recs fetch START  slug=${productSlug}`);
       fetch(
-        `${base}/api/products/recommendations?slug=${encodeURIComponent(productSlug)}&category=${encodeURIComponent(product.categorySlug)}`,
+        // Pass the anchor's gender + price so the backend can rank without an extra DB lookup
+        `${base}/api/products/recommendations?slug=${encodeURIComponent(productSlug)}&category=${encodeURIComponent(product.categorySlug)}&gender=${encodeURIComponent(product.gender ?? "")}&price=${encodeURIComponent(String(product.price ?? ""))}`,
         { signal: recsController.signal }
       )
         .then(async (res) => {
@@ -775,9 +776,9 @@ export default function ProductDetail() {
               </h2>
               <p className="text-sm text-gray-500 mt-1">Similar styles you’ll love</p>
             </div>
-            <button className="hidden sm:block text-sm font-semibold hover:underline" style={{ color: TEAL }}>
+            <Link to="/collections" onClick={() => window.scrollTo(0, 0)} className="hidden sm:block text-sm font-semibold hover:underline" style={{ color: TEAL }}>
               View All
-            </button>
+            </Link>
           </div>
 
           <div className="flex sm:grid overflow-x-auto sm:overflow-visible flex-nowrap sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 no-scrollbar snap-x snap-mandatory px-1 sm:px-0">

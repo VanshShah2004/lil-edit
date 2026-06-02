@@ -1074,46 +1074,85 @@ export async function fetchRecommendedProducts(
   slug: string,
   categorySlug: string,
   log: OpLogger,
+  anchorHint?: { gender?: string | undefined; price?: number | undefined },
 ) {
   const sb = requireAdmin();
 
   const REC_SELECT = `
-    title, slug, category_slug, price, original_price, base_sku, tags,
+    title, slug, category_slug, price, original_price, base_sku, tags, gender,
     product_images(image_url, is_primary)
   `;
 
-  log.step(`DB fetch - recommendations  category=${categorySlug}  excluding=${slug}`);
+  // Anchor product's gender + price drive ranking for BOTH the same-category
+  // results and the cross-category padding, so recommendations stay gender- and
+  // price-consistent with the product being viewed.
+  //
+  // The PDP passes these in (it already has the product loaded), letting us skip
+  // the lookup. We only hit the DB when the hint is absent (e.g. a direct API call).
+  let anchorGender = anchorHint?.gender ?? null;
+  let anchorPrice  = typeof anchorHint?.price === "number" ? anchorHint.price : null;
+  if (anchorGender === null || anchorPrice === null) {
+    log.step(`DB fetch - anchor gender/price  slug=${slug}  (no hint supplied)`);
+    const { data: anchor } = await sb
+      .from("products")
+      .select("gender, price")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (anchorGender === null) anchorGender = anchor?.gender ?? null;
+    if (anchorPrice === null)  anchorPrice  = Number(anchor?.price) || 0;
+  }
+
+  const anchorPriceNum = anchorPrice ?? 0;
+
+  // Soft preference: same gender as the anchor first, then closest price band.
+  // Applied to an already recency-ordered pool, so recency is the stable tiebreaker.
+  const rankByGenderThenPrice = (a: { gender?: string; price?: number }, b: { gender?: string; price?: number }) => {
+    const aGenderRank = anchorGender && a.gender === anchorGender ? 0 : 1;
+    const bGenderRank = anchorGender && b.gender === anchorGender ? 0 : 1;
+    if (aGenderRank !== bGenderRank) return aGenderRank - bGenderRank;
+    return Math.abs((Number(a.price) || 0) - anchorPriceNum) - Math.abs((Number(b.price) || 0) - anchorPriceNum);
+  };
+
+  // Primary: same category, ranked same-gender-first then nearest price. Pull a
+  // wider pool (was a flat LIMIT 5) so the ranking has candidates to choose from;
+  // opposite-gender same-category items still fill any gap before padding fires.
+  log.step(`DB fetch - recommendations  category=${categorySlug}  excluding=${slug}  anchorGender=${anchorGender ?? "?"}  anchorPrice=${anchorPrice}`);
   const t1 = performance.now();
   const { data: recommended, error: recErr } = await sb
     .from("products")
     .select(REC_SELECT)
     .eq("category_slug", categorySlug)
     .neq("slug", slug)
-    .limit(5);
+    .order("updated_at", { ascending: false })
+    .limit(30);
 
   if (recErr) throw recErr;
   const t2 = performance.now();
-  log.step(`DB fetch - category query complete  ${fms(t2 - t1)}  results=${recommended?.length ?? 0}`);
+  log.step(`DB fetch - category query complete  ${fms(t2 - t1)}  pool=${recommended?.length ?? 0}`);
 
-  let list = recommended || [];
+  let list = (recommended || []).slice().sort(rankByGenderThenPrice).slice(0, 5);
 
   if (list.length < 5) {
     log.step(`DB fetch - padding query (only ${list.length} category results, need 5)`);
     const t3 = performance.now();
+
+    // Cross-category filler, ranked by the same soft preference so padding still
+    // feels relevant (same gender, similar price) rather than just "newest".
     const { data: general, error: genErr } = await sb
       .from("products")
       .select(REC_SELECT)
       .neq("slug", slug)
       .order("updated_at", { ascending: false })
-      .limit(5);
+      .limit(30);
 
     if (!genErr && general) {
       const existingSlugs = new Set(list.map((p) => p.slug));
-      for (const item of general) {
-        if (!existingSlugs.has(item.slug) && list.length < 5) {
-          list.push(item);
-          existingSlugs.add(item.slug);
-        }
+      const candidates = general.filter((p) => !existingSlugs.has(p.slug)).sort(rankByGenderThenPrice);
+
+      for (const item of candidates) {
+        if (list.length >= 5) break;
+        list.push(item);
+        existingSlugs.add(item.slug);
       }
     }
     log.step(`DB fetch - padding complete  ${fms(performance.now() - t3)}  total=${list.length}`);
