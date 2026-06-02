@@ -683,7 +683,7 @@ export default function ProductDetail() {
                 {sortedReviews.map((review: any) => (
                   <div
                     key={review.id}
-                    className="relative p-6 sm:p-8 rounded-[2rem] border border-gray-100 bg-white hover:shadow-xl hover:shadow-slate-200/50 hover:border-teal-100/50 transition-all duration-500 group"
+                    className="relative p-6 sm:p-8 rounded-[2rem] border border-slate-300 bg-slate-50 shadow-md shadow-slate-400/30 hover:bg-white hover:shadow-xl hover:shadow-slate-400/40 hover:border-teal-300 transition-all duration-500 group"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                       <div className="flex items-center gap-4">
