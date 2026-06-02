@@ -498,7 +498,8 @@ export default function ProductDetail() {
 
         {!showSkeleton && (
         <>
-        {/* Reviews & Ratings — lazy-loaded (not on PDP critical path) */}
+        {/* Reviews & Ratings — lazy-loaded; hidden entirely when the product has zero reviews */}
+        {!(reviewsData && reviewsData.totalReviews === 0) && (
         <section className="mt-16 sm:mt-24">
           {/* Full-bleed divider — breaks out of page-container to span the viewport */}
           <div aria-hidden className="w-screen relative left-1/2 -translate-x-1/2 border-t border-gray-400 mb-12" />
@@ -517,23 +518,6 @@ export default function ProductDetail() {
             <p className="text-center text-gray-400 text-sm py-8">
               Customer reviews are temporarily unavailable.
             </p>
-          )}
-
-          {reviewsData && reviewsData.totalReviews === 0 && (
-            <div className="flex flex-col items-center text-center py-12 sm:py-16">
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5 shadow-inner"
-                style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #f5f3ff 100%)" }}
-              >
-                <Star size={28} style={{ color: TEAL }} />
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 mb-2">
-                No reviews yet
-              </h2>
-              <p className="text-gray-500 max-w-sm">
-                Customer reviews will appear here once this piece has been rated.
-              </p>
-            </div>
           )}
 
           {reviewsData && reviewsData.totalReviews > 0 && (
@@ -670,7 +654,7 @@ export default function ProductDetail() {
                 {sortedReviews.slice(0, 3).map((review: any) => (
                   <div
                     key={review.id}
-                    className="relative p-6 sm:p-8 rounded-[2rem] border border-slate-300 bg-slate-50 shadow-md shadow-slate-400/30 hover:bg-white hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-slate-900/25 hover:border-teal-500 transition-all duration-300 group"
+                    className="relative p-6 sm:p-8 rounded-[2rem] border border-slate-300 bg-slate-50 shadow-md shadow-slate-400/30 sm:hover:bg-white sm:hover:-translate-y-1.5 sm:hover:shadow-2xl sm:hover:shadow-slate-900/25 sm:hover:border-teal-500 transition-all duration-300 group"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                       <div className="flex items-center gap-4">
@@ -752,9 +736,12 @@ export default function ProductDetail() {
           </div>
           )}
         </section>
+        )}
 
         {/* YOU MAY ALSO LIKE SECTION */}
-        <section className="page-container w-full mt-14 pb-0 border-t border-gray-100 pt-6">
+        <section className="page-container w-full mt-14 pb-0 pt-6">
+          {/* Full-bleed divider — spans the viewport (matches the divider above the reviews) */}
+          <div aria-hidden className="w-screen relative left-1/2 -translate-x-1/2 border-t border-gray-400 -mt-6 mb-6" />
           <div className="flex items-end justify-between mb-6 sm:mb-8">
             <div>
               <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">
