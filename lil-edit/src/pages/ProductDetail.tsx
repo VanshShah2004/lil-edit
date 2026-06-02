@@ -499,7 +499,9 @@ export default function ProductDetail() {
         {!showSkeleton && (
         <>
         {/* Reviews & Ratings — lazy-loaded (not on PDP critical path) */}
-        <section className="mt-16 sm:mt-24 pt-12 border-t border-gray-100">
+        <section className="mt-16 sm:mt-24">
+          {/* Full-bleed divider — breaks out of page-container to span the viewport */}
+          <div aria-hidden className="w-screen relative left-1/2 -translate-x-1/2 border-t border-gray-400 mb-12" />
           {reviewsLoading && !reviewsData && (
             <div className="flex flex-col md:flex-row gap-12 animate-pulse" aria-hidden>
               <div className="w-full md:w-1/3 h-80 rounded-3xl bg-gray-100" />
