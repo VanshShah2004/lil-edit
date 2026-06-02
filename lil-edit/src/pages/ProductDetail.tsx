@@ -749,7 +749,7 @@ export default function ProductDetail() {
                   )}
                   {visibleReviewCount > 3 && (
                     <button
-                      onClick={() => setVisibleReviewCount((c) => Math.max(3, c - 3))}
+                      onClick={() => setVisibleReviewCount(3)}
                       className="flex-1 py-5 rounded-2xl text-sm font-extrabold text-black bg-transparent border border-gray-300 hover:bg-gray-50 transition-all duration-300 uppercase tracking-[0.2em] shadow-sm flex items-center justify-center gap-2"
                     >
                       Show Less Reviews
