@@ -8,7 +8,6 @@ import Footer from "@/components/layout/Footer";
 import product_images from "@/assets/products";
 import ProductDetailSkeleton from "@/components/ProductDetailSkeleton";
 import ProductPreviewView from "@/components/ProductPreviewView";
-import { Badge } from "@/components/ui/badge";
 import type { Product, ReviewsData } from "@/types/product";
 import { getBackendBaseUrl } from "@/lib/backend";
 import { buildPdpPath } from "@/lib/pdpUrl";
@@ -33,7 +32,6 @@ const REVIEW_SORT_OPTIONS = [
   { value: "newest",  label: "Newest" },
   { value: "oldest",  label: "Oldest" },
   { value: "highest", label: "Highest rated" },
-  { value: "lowest",  label: "Lowest rated" },
 ] as const;
 type ReviewSort = (typeof REVIEW_SORT_OPTIONS)[number]["value"];
 
@@ -170,15 +168,19 @@ export default function ProductDetail() {
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const sortMenuRef = useRef<HTMLDivElement>(null);
 
+  // Sort always runs over the FULL review set (not just the visible cards).
   const sortedReviews = useMemo(() => {
     const list = [...(reviewsData?.reviews ?? [])]; // payload is newest-first
     switch (reviewSort) {
       case "oldest":  return list.reverse();
       case "highest": return list.sort((a, b) => b.rating - a.rating);
-      case "lowest":  return list.sort((a, b) => a.rating - b.rating);
       default:        return list; // newest
     }
   }, [reviewsData, reviewSort]);
+
+  // Always show the top 3 of the chosen order — the sort runs over ALL reviews,
+  // so these 3 reflect the full set, not just a reorder of what was visible.
+  const displayedReviews = sortedReviews.slice(0, 3);
 
   // Close the sort menu on outside click
   useEffect(() => {
@@ -651,7 +653,7 @@ export default function ProductDetail() {
               </div>
 
               <div className="space-y-6">
-                {sortedReviews.slice(0, 3).map((review: any) => (
+                {displayedReviews.map((review: any) => (
                   <div
                     key={review.id}
                     className="relative p-6 sm:p-8 rounded-[2rem] border border-slate-300 bg-slate-50 shadow-md shadow-slate-400/30 sm:hover:bg-white sm:hover:-translate-y-1.5 sm:hover:shadow-2xl sm:hover:shadow-slate-900/25 sm:hover:border-teal-500 transition-all duration-300 group"
@@ -833,19 +835,6 @@ export default function ProductDetail() {
                     <h3 className="font-display text-xs md:text-sm font-medium text-slate-900 leading-snug line-clamp-2">
                       {item.title}
                     </h3>
-                    {(item.tags ?? []).length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {item.tags?.map((tag: string, idx: number) => (
-                          <Badge
-                            key={idx}
-                            variant="secondary"
-                            className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-[9px] px-1.5 py-0 rounded font-medium shadow-sm"
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
                   </div>
                   <div className="text-right shrink-0">
                     <p className="font-body text-xs font-semibold text-[#0F766E]">
