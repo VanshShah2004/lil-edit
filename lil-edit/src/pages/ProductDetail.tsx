@@ -530,16 +530,9 @@ export default function ProductDetail() {
               <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 mb-2">
                 No reviews yet
               </h2>
-              <p className="text-gray-500 max-w-sm mb-8">
-                Be the first to share what you think about this piece.
+              <p className="text-gray-500 max-w-sm">
+                Customer reviews will appear here once this piece has been rated.
               </p>
-              <button
-                onClick={() => alert("Review submission functionality coming soon!")}
-                className="px-8 py-4 rounded-2xl text-sm font-bold text-white shadow-xl shadow-teal-900/10 hover:brightness-95 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
-                style={{ backgroundColor: TEAL }}
-              >
-                WRITE A REVIEW
-              </button>
             </div>
           )}
 
@@ -626,14 +619,6 @@ export default function ProductDetail() {
                         );
                       })}
                     </div>
-
-                    <button
-                      onClick={() => alert("Review submission functionality coming soon!")}
-                      className="w-full mt-10 py-4 rounded-2xl text-sm font-bold text-white shadow-xl shadow-teal-900/10 hover:brightness-95 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
-                      style={{ backgroundColor: TEAL }}
-                    >
-                      WRITE A REVIEW
-                    </button>
                   </div>
                 </div>
               </div>
@@ -682,7 +667,7 @@ export default function ProductDetail() {
               </div>
 
               <div className="space-y-6">
-                {sortedReviews.map((review: any) => (
+                {sortedReviews.slice(0, 3).map((review: any) => (
                   <div
                     key={review.id}
                     className="relative p-6 sm:p-8 rounded-[2rem] border border-slate-300 bg-slate-50 shadow-md shadow-slate-400/30 hover:bg-white hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-slate-900/25 hover:border-teal-500 transition-all duration-300 group"
@@ -758,7 +743,8 @@ export default function ProductDetail() {
 
               <button
                 onClick={() => alert("Pagination functionality coming soon!")}
-                className="w-full mt-10 py-5 rounded-2xl text-sm font-bold text-teal-700 bg-teal-50 border border-teal-100 hover:bg-teal-100 hover:border-teal-200 transition-all duration-300 uppercase tracking-[0.2em] shadow-sm"
+                className="w-full mt-10 py-5 rounded-2xl text-sm font-extrabold text-black hover:brightness-95 transition-all duration-300 uppercase tracking-[0.2em] shadow-sm"
+                style={{ backgroundColor: LAVENDER }}
               >
                 View All {reviewsData.totalReviews} Reviews
               </button>
