@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ChevronRight, ChevronDown, Heart, Star, StarHalf, BadgeCheck, ThumbsUp } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, Heart, Star, StarHalf, BadgeCheck, ThumbsUp } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -167,6 +167,7 @@ export default function ProductDetail() {
   const [reviewSort, setReviewSort] = useState<ReviewSort>("newest");
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const sortMenuRef = useRef<HTMLDivElement>(null);
+  const [visibleReviewCount, setVisibleReviewCount] = useState(3); // grows by 3 per "Show more"
 
   // Sort always runs over the FULL review set (not just the visible cards).
   const sortedReviews = useMemo(() => {
@@ -178,9 +179,16 @@ export default function ProductDetail() {
     }
   }, [reviewsData, reviewSort]);
 
-  // Always show the top 3 of the chosen order — the sort runs over ALL reviews,
-  // so these 3 reflect the full set, not just a reorder of what was visible.
-  const displayedReviews = sortedReviews.slice(0, 3);
+  // Show the first `visibleReviewCount` of the chosen order (starts at 3, grows by
+  // 3 via the "Show more" button). Sort runs over ALL reviews, so the slice
+  // reflects the full set, not just a reorder of what was visible.
+  const displayedReviews = sortedReviews.slice(0, visibleReviewCount);
+
+  // Collapse back to the first 3 only when navigating to a different product.
+  // Changing the sort keeps however many reviews are currently expanded (X).
+  useEffect(() => {
+    setVisibleReviewCount(3);
+  }, [productSlug]);
 
   // Close the sort menu on outside click
   useEffect(() => {
@@ -727,13 +735,29 @@ export default function ProductDetail() {
                 ))}
               </div>
 
-              <button
-                onClick={() => alert("Pagination functionality coming soon!")}
-                className="w-full mt-10 py-5 rounded-2xl text-sm font-extrabold text-black hover:brightness-95 transition-all duration-300 uppercase tracking-[0.2em] shadow-sm"
-                style={{ backgroundColor: LAVENDER }}
-              >
-                View All {reviewsData.totalReviews} Reviews
-              </button>
+              {(displayedReviews.length < sortedReviews.length || visibleReviewCount > 3) && (
+                <div className="mt-10 flex gap-3">
+                  {displayedReviews.length < sortedReviews.length && (
+                    <button
+                      onClick={() => setVisibleReviewCount((c) => c + 3)}
+                      className="flex-1 py-5 rounded-2xl text-sm font-extrabold text-black hover:brightness-95 transition-all duration-300 uppercase tracking-[0.2em] shadow-sm flex items-center justify-center gap-2"
+                      style={{ backgroundColor: LAVENDER }}
+                    >
+                      Show More Reviews
+                      <ChevronDown size={16} className="stroke-[3]" />
+                    </button>
+                  )}
+                  {visibleReviewCount > 3 && (
+                    <button
+                      onClick={() => setVisibleReviewCount((c) => Math.max(3, c - 3))}
+                      className="flex-1 py-5 rounded-2xl text-sm font-extrabold text-black bg-transparent border border-gray-300 hover:bg-gray-50 transition-all duration-300 uppercase tracking-[0.2em] shadow-sm flex items-center justify-center gap-2"
+                    >
+                      Show Less Reviews
+                      <ChevronUp size={16} className="stroke-[3]" />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           )}
