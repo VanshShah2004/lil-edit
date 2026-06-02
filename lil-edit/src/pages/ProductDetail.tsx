@@ -480,7 +480,31 @@ export default function ProductDetail() {
             </p>
           )}
 
-          {reviewsData && (
+          {reviewsData && reviewsData.totalReviews === 0 && (
+            <div className="flex flex-col items-center text-center py-12 sm:py-16">
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5 shadow-inner"
+                style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #f5f3ff 100%)" }}
+              >
+                <Star size={28} style={{ color: TEAL }} />
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 mb-2">
+                No reviews yet
+              </h2>
+              <p className="text-gray-500 max-w-sm mb-8">
+                Be the first to share what you think about this piece.
+              </p>
+              <button
+                onClick={() => alert("Review submission functionality coming soon!")}
+                className="px-8 py-4 rounded-2xl text-sm font-bold text-white shadow-xl shadow-teal-900/10 hover:brightness-95 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
+                style={{ backgroundColor: TEAL }}
+              >
+                WRITE A REVIEW
+              </button>
+            </div>
+          )}
+
+          {reviewsData && reviewsData.totalReviews > 0 && (
           <div className="flex flex-col md:flex-row gap-12">
             {/* Left Column: Summary */}
             <div className="w-full md:w-1/3">

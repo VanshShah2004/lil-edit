@@ -1121,3 +1121,88 @@ export async function fetchRecommendedProducts(
 
   return list;
 }
+
+// ─── Reviews / ratings ───────────────────────────────────────────────────────
+
+export interface ReviewItem {
+  id: string;
+  user: string;
+  rating: number;
+  date: string;
+  title: string;
+  comment: string;
+  verified: boolean;
+  images?: string[];
+}
+
+export interface ReviewsData {
+  averageRating: number;
+  totalReviews: number;
+  distribution: { stars: number; count: number }[];
+  reviews: ReviewItem[];
+}
+
+const REVIEWS_SELECT = `
+  id, user_name, rating, title, comment, verified, images, created_at
+`;
+
+// "2026-06-02T..." → "2 Jun 2026" (matches the date style the PDP renders).
+const REVIEW_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function formatReviewDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getDate()} ${REVIEW_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/**
+ * Fetch all reviews for a product slug and aggregate them into the ReviewsData
+ * shape the PDP consumes. Aggregation (average, 5→1 distribution) is computed in
+ * JS — the per-product review count is small, mirroring how recommendations are
+ * mapped in-process rather than via SQL aggregates.
+ *
+ * A product with no reviews returns a valid empty payload (totalReviews: 0),
+ * NOT an error — the PDP renders a "no reviews yet" state for that case.
+ */
+export async function fetchReviewsDataBySlug(
+  slug: string,
+  log: OpLogger,
+): Promise<ReviewsData> {
+  const sb = requireAdmin();
+
+  log.step(`DB fetch - reviews  slug=${slug}`);
+  const t1 = performance.now();
+  const { data, error } = await sb
+    .from("product_reviews")
+    .select(REVIEWS_SELECT)
+    .eq("product_slug", slug)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  const rows = data || [];
+  log.step(`DB fetch - reviews complete  ${fms(performance.now() - t1)}  count=${rows.length}`);
+
+  const totalReviews = rows.length;
+  const ratingSum = rows.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
+  const averageRating = totalReviews > 0 ? Math.round((ratingSum / totalReviews) * 10) / 10 : 0;
+
+  // 5★ → 1★, always present even when count is 0 (the PDP renders a bar per row).
+  const counts = new Map<number, number>([[5, 0], [4, 0], [3, 0], [2, 0], [1, 0]]);
+  for (const r of rows) {
+    const stars = Math.min(5, Math.max(1, Math.round(Number(r.rating) || 0)));
+    counts.set(stars, (counts.get(stars) ?? 0) + 1);
+  }
+  const distribution = [5, 4, 3, 2, 1].map((stars) => ({ stars, count: counts.get(stars) ?? 0 }));
+
+  const reviews: ReviewItem[] = rows.map((r: any) => ({
+    id: String(r.id),
+    user: r.user_name,
+    rating: Number(r.rating) || 0,
+    date: formatReviewDate(r.created_at),
+    title: r.title || "",
+    comment: r.comment || "",
+    verified: !!r.verified,
+    images: Array.isArray(r.images) && r.images.length > 0 ? r.images : undefined,
+  }));
+
+  return { averageRating, totalReviews, distribution, reviews };
+}

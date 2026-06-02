@@ -9,8 +9,8 @@ import {
   saveDraftToDatabase,
   deleteProductFromDatabase,
   fetchProductBySlug,
-  fetchProductTitleBySlug,
   fetchRecommendedProducts,
+  fetchReviewsDataBySlug,
   fetchSuggestions,
   invalidateSearchCatalog,
   type SuggestionRow,
@@ -22,6 +22,7 @@ import {
   redisKey,
   PRODUCT_TTL_S,
   REC_TTL_S,
+  REVIEWS_TTL_S,
   CATALOG_LIST_TTL_S,
   CATALOG_DETAIL_TTL_S,
   SUGGESTION_TTL_S,
@@ -153,50 +154,6 @@ router.get("/", async (req: Request, res: Response) => {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
-
-// ─── Mock reviews payload ─────────────────────────────────────────────────────
-function buildMockReviewsData(productTitle: string) {
-  return {
-    averageRating: 4.8,
-    totalReviews: 124,
-    distribution: [
-      { stars: 5, count: 98 },
-      { stars: 4, count: 18 },
-      { stars: 3, count: 5  },
-      { stars: 2, count: 2  },
-      { stars: 1, count: 1  },
-    ],
-    reviews: [
-      {
-        id: "rev-1",
-        user: "Priya S.",
-        rating: 5,
-        date: "12 Oct 2023",
-        title: `Absolutely gorgeous ${productTitle}!`,
-        comment: "Highly recommend this! The fabric is so premium and my daughter loved it. Worth every rupee!",
-        verified: true,
-      },
-      {
-        id: "rev-2",
-        user: "Neha Verma",
-        rating: 4,
-        date: "05 Nov 2023",
-        title: "Beautiful style and rich look",
-        comment: "Precisely as shown in the pictures. The fit was a tiny bit loose but we managed perfectly. Very elegant.",
-        verified: true,
-      },
-      {
-        id: "rev-3",
-        user: "Anjali K.",
-        rating: 5,
-        date: "28 Nov 2023",
-        title: "Perfect purchase",
-        comment: "Excellent craftsmanship. The material is soft and highly comfortable for kids. Five stars!",
-        verified: true,
-      },
-    ],
-  };
-}
 
 // ─── DB → frontend shape mappers ─────────────────────────────────────────────
 function mapDatabaseProductToFrontend(dbProduct: any, isDraft: boolean) {
@@ -375,16 +332,20 @@ router.get("/reviews", async (req: Request, res: Response) => {
   log.step(`slug=${slug}`);
 
   try {
-    const title = await fetchProductTitleBySlug(slug, log);
-    if (!title) {
-      log.warn(`product not found  slug=${slug}`).end("PDP REVIEWS");
-      res.status(404).json({ error: "Product not found." });
+    const cached = await redisGet<{ reviewsData: object }>(redisKey("reviews", slug), log);
+    if (cached) {
+      log.success("L2 Redis - HIT  served from cache").end("PDP REVIEWS");
+      res.json(cached);
       return;
     }
 
-    const reviewsData = buildMockReviewsData(title);
-    log.success(`mock reviews generated  title="${title}"`).end("PDP REVIEWS");
-    res.json({ reviewsData });
+    const reviewsData = await fetchReviewsDataBySlug(slug, log);
+    const payload     = { reviewsData };
+
+    void redisSet(redisKey("reviews", slug), payload, REVIEWS_TTL_S, log);
+
+    log.success(`${reviewsData.totalReviews} reviews returned  avg=${reviewsData.averageRating}`).end("PDP REVIEWS");
+    res.json(payload);
   } catch (err) {
     log.error("failed", err);
     res.status(200).json({ reviewsData: null, error: "Failed to load reviews" });

@@ -4,6 +4,7 @@ import { createLog, type OpLogger } from "./logger.js";
 // TTLs (seconds)
 export const PRODUCT_TTL_S        = 5 * 60;   // 5 min  — PDP product detail
 export const REC_TTL_S            = 10 * 60;  // 10 min — PDP recommendations
+export const REVIEWS_TTL_S        = 5 * 60;   // 5 min  — PDP reviews; invalidate on new review
 export const CATALOG_LIST_TTL_S   = 10 * 60;  // 10 min — catalog thin list
 export const CATALOG_DETAIL_TTL_S = 2 * 60;   // 2 min  — catalog full detail per SKU
 export const CART_TTL_S           = 60;        // 60s   — per-user cart; invalidated on every mutation
@@ -118,7 +119,7 @@ export async function redisDel(log: OpLogger, ...keys: string[]): Promise<void> 
 }
 
 export function redisKey(
-  prefix: "pdp" | "rec" | "catalog-list" | "catalog-detail" | "cart" | "wishlist" | "suggestions",
+  prefix: "pdp" | "rec" | "reviews" | "catalog-list" | "catalog-detail" | "cart" | "wishlist" | "suggestions",
   slug: string,
 ): string {
   return `${prefix}:${slug}`;
