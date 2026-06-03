@@ -402,18 +402,6 @@ router.get("/recommendations", async (req: Request, res: Response) => {
 });
 
 // ─── POST /api/products/preview — draft save or product launch ────────────────
-interface StoredProduct {
-  status: "DRAFT" | "PUBLISHED";
-  receivedAt: string;
-  data: Record<string, unknown>;
-}
-let lastProduct: StoredProduct | null = null;
-
-function buildPublicPayload(): Record<string, unknown> | null {
-  if (!lastProduct) return null;
-  return { status: lastProduct.status, receivedAt: lastProduct.receivedAt, ...lastProduct.data };
-}
-
 router.post("/preview", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   const { status, ...data } = req.body as { status: string; [key: string]: unknown };
   const normalized: "DRAFT" | "PUBLISHED" = status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
@@ -425,10 +413,10 @@ router.post("/preview", requireAuth, requireAdmin, async (req: Request, res: Res
   const log    = createLog().start(opName);
   log.step(`sku=${sku}  name="${name}"  slug=${slug}`);
 
-  lastProduct = { status: normalized, receivedAt: new Date().toISOString(), data };
-
   const previewPath = "/api/products/preview";
-  const payload     = buildPublicPayload();
+  // Echo the submitted product back in the response, built per-request — no shared
+  // module-level state, so concurrent admins never see each other's payloads.
+  const payload     = { status: normalized, receivedAt: new Date().toISOString(), ...data };
 
   let database:
     | { ok: true; draftProductId?: string; publishedProductId?: string }
@@ -467,17 +455,7 @@ router.post("/preview", requireAuth, requireAdmin, async (req: Request, res: Res
   }
 
   log.end(opName);
-  res.json({ ok: true, status: lastProduct!.status, previewPath, payload, database });
-});
-
-router.get("/preview", requireAuth, requireAdmin, (_req: Request, res: Response) => {
-  const payload = buildPublicPayload();
-  if (!payload) {
-    res.json({ message: "No product received yet. Use Save Draft or Launch Product in the Curation Studio first." });
-    return;
-  }
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.json(payload);
+  res.json({ ok: true, status: normalized, previewPath, payload, database });
 });
 
 // ─── GET /api/products/catalog-list — thin initial list ──────────────────────
