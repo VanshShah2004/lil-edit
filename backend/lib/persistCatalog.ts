@@ -6,7 +6,7 @@ import {
   type ImageRowInsert,
   type VariantRowInsert,
 } from "./productMapper.js";
-import { createLog, fms, type OpLogger } from "./logger.js";
+import { fms, type OpLogger } from "./logger.js";
 import { matchLexicon } from "./searchLexicon.js";
 
 function requireAdmin() {
@@ -138,8 +138,8 @@ export interface ThinListResult {
 }
 
 export interface ProductDetailResult {
-  published: any | null;
-  draft: any | null;
+  published: Record<string, unknown> | null;
+  draft: Record<string, unknown> | null;
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
@@ -241,6 +241,21 @@ interface InternalThinRow {
   draft_id?: string;
 }
 
+// Raw row shape returned by the catalog-list RPC (nullable id columns the mapper
+// normalizes to `undefined`).
+interface RpcThinRow {
+  base_sku: string;
+  title: string;
+  price: number;
+  created_at: string;
+  updated_at: string;
+  is_published: boolean;
+  has_draft: boolean;
+  has_pending_updates: boolean;
+  published_id?: string | null;
+  draft_id?: string | null;
+}
+
 // ─── Exported functions ───────────────────────────────────────────────────────
 
 export async function fetchAllProducts(log: OpLogger) {
@@ -293,7 +308,7 @@ export async function fetchFilteredProducts(
     log.step(`DB fetch - round 1 complete  ${fms(t2 - t1)}  rows=${published?.length ?? 0}  total=${count ?? 0}`);
 
     const totalCount = count ?? 0;
-    let drafts: any[] = [];
+    let drafts: unknown[] = [];
 
     if (published && published.length > 0) {
       const skus = (published as unknown as Array<{ base_sku: string }>).map((p) => p.base_sku);
@@ -331,7 +346,7 @@ export async function fetchFilteredProducts(
     log.step(`DB fetch - round 1 complete  ${fms(t2 - t1)}  rows=${drafts?.length ?? 0}  total=${count ?? 0}`);
 
     const totalCount = count ?? 0;
-    let published: any[] = [];
+    let published: unknown[] = [];
 
     if (drafts && drafts.length > 0) {
       const skus = (drafts as unknown as Array<{ base_sku: string }>).map((d) => d.base_sku);
@@ -385,8 +400,8 @@ export async function fetchFilteredProducts(
     const totalCount = sortedSkus.length;
     const slicedSkus = limit ? sortedSkus.slice(0, limit) : sortedSkus;
 
-    let published: any[] = [];
-    let drafts: any[] = [];
+    let published: unknown[] = [];
+    let drafts: unknown[] = [];
 
     if (slicedSkus.length > 0) {
       log.step(`DB fetch - ALL / round 2 (full rows for ${slicedSkus.length} SKUs, parallel)`);
@@ -460,7 +475,7 @@ export async function fetchThinProductList(
 
     const imageMap = buildPrimaryImageMap(imgs ?? []);
     const finalRows: ThinProductRow[] = sliced.map((r) => {
-      const hasPending = !!(r as any).has_pending_updates;
+      const hasPending = !!(r as { has_pending_updates?: boolean }).has_pending_updates;
       return {
         base_sku: r.base_sku as string,
         title: r.title as string,
@@ -509,7 +524,7 @@ export async function fetchThinProductList(
 
     const imageMap = buildPrimaryImageMap(imgs ?? []);
     const finalRows: ThinProductRow[] = sliced.map((r) => {
-      const isPublished = !!(r as any).is_published;
+      const isPublished = !!(r as { is_published?: boolean }).is_published;
       return {
         base_sku: r.base_sku as string,
         title: r.title as string,
@@ -540,7 +555,7 @@ export async function fetchThinProductList(
   log.step(`RPC OK  ${fms(tR1 - t1)}  db_rows=${rpcRows?.length ?? 0}  (old path fetched ALL rows from 2 tables separately)`);
 
   const hasMore = limit != null ? (rpcRows?.length ?? 0) > limit : false;
-  const sliced: InternalThinRow[] = (limit != null ? (rpcRows ?? []).slice(0, limit) : (rpcRows ?? [])).map((r: any) => ({
+  const sliced: InternalThinRow[] = (limit != null ? (rpcRows ?? []).slice(0, limit) : (rpcRows ?? [])).map((r: RpcThinRow) => ({
     base_sku: r.base_sku,
     title: r.title,
     price: r.price,
@@ -625,7 +640,10 @@ export async function fetchProductDetailBySku(
   if (draftErr) throw draftErr;
 
   log.step(`DB fetch - detail complete  ${fms(performance.now() - t0)}  published=${!!published}  draft=${!!draft}`);
-  return { published: published ?? null, draft: draft ?? null };
+  return {
+    published: (published ?? null) as Record<string, unknown> | null,
+    draft: (draft ?? null) as Record<string, unknown> | null,
+  };
 }
 
 export function isSupabaseCatalogConfigured(): boolean {
@@ -1147,7 +1165,7 @@ export async function fetchRecommendedProducts(
   const t2 = performance.now();
   log.step(`DB fetch - category query complete  ${fms(t2 - t1)}  pool=${recommended?.length ?? 0}`);
 
-  let list = (recommended || []).slice().sort(rankByGenderThenPrice).slice(0, 5);
+  const list = (recommended || []).slice().sort(rankByGenderThenPrice).slice(0, 5);
 
   if (list.length < 5) {
     log.step(`DB fetch - padding query (only ${list.length} category results, need 5)`);
@@ -1238,7 +1256,7 @@ export async function fetchReviewsDataBySlug(
   log.step(`DB fetch - reviews complete  ${fms(performance.now() - t1)}  count=${rows.length}`);
 
   const totalReviews = rows.length;
-  const ratingSum = rows.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0);
+  const ratingSum = rows.reduce((acc: number, r) => acc + (Number(r.rating) || 0), 0);
   const averageRating = totalReviews > 0 ? Math.round((ratingSum / totalReviews) * 10) / 10 : 0;
 
   // 5★ → 1★, always present even when count is 0 (the PDP renders a bar per row).
@@ -1249,16 +1267,21 @@ export async function fetchReviewsDataBySlug(
   }
   const distribution = [5, 4, 3, 2, 1].map((stars) => ({ stars, count: counts.get(stars) ?? 0 }));
 
-  const reviews: ReviewItem[] = rows.map((r: any) => ({
-    id: String(r.id),
-    user: r.user_name,
-    rating: Number(r.rating) || 0,
-    date: formatReviewDate(r.created_at),
-    title: r.title || "",
-    comment: r.comment || "",
-    verified: !!r.verified,
-    images: Array.isArray(r.images) && r.images.length > 0 ? r.images : undefined,
-  }));
+  const reviews: ReviewItem[] = rows.map((r) => {
+    const item: ReviewItem = {
+      id: String(r.id),
+      user: r.user_name,
+      rating: Number(r.rating) || 0,
+      date: formatReviewDate(r.created_at),
+      title: r.title || "",
+      comment: r.comment || "",
+      verified: !!r.verified,
+    };
+    // `images` is optional on ReviewItem — only attach it when present, rather
+    // than assigning `undefined` (which exactOptionalPropertyTypes rejects).
+    if (Array.isArray(r.images) && r.images.length > 0) item.images = r.images as string[];
+    return item;
+  });
 
   return { averageRating, totalReviews, distribution, reviews };
 }

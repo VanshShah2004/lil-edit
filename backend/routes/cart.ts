@@ -4,6 +4,7 @@ import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth.js";
 import { createLog, fms } from "../lib/logger.js";
 import { redisGet, redisSet, redisDel, redisKey, CART_TTL_S } from "../lib/redis.js";
+import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
 
 const router = Router();
 const db = () => supabaseAdmin ?? supabaseAnon;
@@ -35,7 +36,7 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
     log.step(`DB cart_items: ${fms(performance.now() - t0CartItems)}  rows=${cartRows?.length ?? 0}`);
 
     if (cartErr) {
-      log.error(`cart_items query failed  code=${(cartErr as any).code}  hint=${(cartErr as any).hint}  msg=${cartErr.message}`, cartErr).end("CART GET");
+      log.error(`cart_items query failed  code=${cartErr.code}  hint=${cartErr.hint}  msg=${cartErr.message}`, cartErr).end("CART GET");
       res.status(500).json({ error: cartErr.message });
       return;
     }
@@ -69,8 +70,8 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
 
     // ── Item mapping ──────────────────────────────────────────────────────────
     const t0Map = performance.now();
-    const productMap = new Map<string, any>(
-      (products ?? []).map((p: any) => [p.slug as string, p])
+    const productMap = new Map<string, ProductRow>(
+      ((products ?? []) as unknown as ProductRow[]).map((p) => [p.slug as string, p])
     );
 
     const items = cartRows
@@ -78,27 +79,27 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
         const product = productMap.get(row.product_slug as string);
         if (!product) return null;
 
-        const variants: any[] = [...(product.product_variants ?? [])].sort(
-          (a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+        const variants: VariantRow[] = [...(product.product_variants ?? [])].sort(
+          (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
         );
-        const images: any[] = [...(product.product_images ?? [])].sort(
-          (a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+        const images: ImageRow[] = [...(product.product_images ?? [])].sort(
+          (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
         );
 
-        const variant = variants.find((v: any) => v.variant_sku === row.sku) ?? null;
+        const variant = variants.find((v) => v.variant_sku === row.sku) ?? null;
         const variantImages = variant
-          ? images.filter((img: any) => img.variant_id === variant.id)
+          ? images.filter((img) => img.variant_id === variant.id)
           : [];
-        const globalImages = images.filter((img: any) => img.variant_id == null);
+        const globalImages = images.filter((img) => img.variant_id == null);
         const primaryImage =
-          variantImages.find((img: any) => !!img.is_primary)?.image_url ||
+          variantImages.find((img) => !!img.is_primary)?.image_url ||
           variantImages[0]?.image_url ||
-          images.find((img: any) => !!img.is_primary)?.image_url ||
+          images.find((img) => !!img.is_primary)?.image_url ||
           images[0]?.image_url ||
           "";
         const allImageUrls = [
-          ...variantImages.map((img: any) => img.image_url as string),
-          ...globalImages.map((img: any) => img.image_url as string),
+          ...variantImages.map((img) => img.image_url as string),
+          ...globalImages.map((img) => img.image_url as string),
         ];
         const uniqueImages = [...new Set(allImageUrls)].filter(Boolean);
 
@@ -131,7 +132,7 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
             name: (variant?.color_name ?? "") as string,
             hex: (variant?.color_hex ?? "#cccccc") as string,
           },
-          colors: variants.map((v: any) => ({
+          colors: variants.map((v) => ({
             name: (v.color_name ?? "") as string,
             hex: (v.color_hex ?? "#cccccc") as string,
             sku: v.variant_sku as string,
@@ -200,7 +201,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     log.step(`DB product validate: ${fms(performance.now() - t0Validate)}`);
 
     if (prodErr) {
-      log.error(`product validation failed  code=${(prodErr as any).code}  msg=${prodErr.message}`, prodErr).end("CART ADD");
+      log.error(`product validation failed  code=${prodErr.code}  msg=${prodErr.message}`, prodErr).end("CART ADD");
       res.status(500).json({ error: "Could not validate product" });
       return;
     }
@@ -213,7 +214,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
 
     const validSkus: string[] = [
       product.base_sku as string,
-      ...((product.product_variants as any[] ?? []).map((v: any) => v.variant_sku as string)),
+      ...((product.product_variants as { variant_sku: string }[] ?? []).map((v) => v.variant_sku)),
     ];
     if (!validSkus.includes(sku)) {
       log.warn(`sku not on product  sku=${sku}  valid=[${validSkus.join(",")}]`).end("CART ADD");
@@ -232,7 +233,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     log.step(`DB conflict check: ${fms(performance.now() - t0Conflict)}  existing=${!!existing}`);
 
     if (existErr) {
-      log.error(`existing row check failed  code=${(existErr as any).code}  msg=${existErr.message}`, existErr).end("CART ADD");
+      log.error(`existing row check failed  code=${existErr.code}  msg=${existErr.message}`, existErr).end("CART ADD");
       res.status(500).json({ error: existErr.message });
       return;
     }
@@ -247,7 +248,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       log.step(`DB increment: ${fms(performance.now() - t0Write)}`);
 
       if (updateErr) {
-        log.error(`increment failed  code=${(updateErr as any).code}  msg=${updateErr.message}`, updateErr).end("CART ADD");
+        log.error(`increment failed  code=${updateErr.code}  msg=${updateErr.message}`, updateErr).end("CART ADD");
         res.status(500).json({ error: updateErr.message });
         return;
       }
@@ -265,7 +266,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       log.step(`DB insert: ${fms(performance.now() - t0Write)}`);
 
       if (insertErr) {
-        log.error(`insert failed  code=${(insertErr as any).code}  msg=${insertErr.message}`, insertErr).end("CART ADD");
+        log.error(`insert failed  code=${insertErr.code}  msg=${insertErr.message}`, insertErr).end("CART ADD");
         res.status(500).json({ error: insertErr.message });
         return;
       }
@@ -332,7 +333,7 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
     }
     const validSkus: string[] = [
       product.base_sku as string,
-      ...((product.product_variants as any[] ?? []).map((v: any) => v.variant_sku as string)),
+      ...((product.product_variants as { variant_sku: string }[] ?? []).map((v) => v.variant_sku)),
     ];
     if (!validSkus.includes(newSku)) {
       log.warn(`sku not on product  newSku=${newSku}`).end("CART UPDATE COLOR");

@@ -3,7 +3,8 @@ import { Router, type Request, type Response } from "express";
 import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth.js";
 import { createLog, fms } from "../lib/logger.js";
-import { redisGet, redisSet, redisDel, redisKey, WISHLIST_TTL_S, CART_TTL_S } from "../lib/redis.js";
+import { redisGet, redisSet, redisDel, redisKey, WISHLIST_TTL_S } from "../lib/redis.js";
+import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
 
 const router = Router();
 const db = () => supabaseAdmin ?? supabaseAnon;
@@ -19,28 +20,35 @@ const PRODUCT_SELECT = `
   product_variants(id, variant_sku, color_name, color_hex, stock, is_unlimited, sort_order)
 `.trim();
 
-function enrichWishlistRow(row: any, product: any) {
-  const variants: any[] = [...(product.product_variants ?? [])].sort(
-    (a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+interface WishlistItemRow {
+  id: string;
+  sku: string;
+  product_slug: string;
+  created_at?: string;
+}
+
+function enrichWishlistRow(row: WishlistItemRow, product: ProductRow) {
+  const variants: VariantRow[] = [...(product.product_variants ?? [])].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
   );
-  const images: any[] = [...(product.product_images ?? [])].sort(
-    (a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+  const images: ImageRow[] = [...(product.product_images ?? [])].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
   );
 
-  const variant = variants.find((v: any) => v.variant_sku === row.sku) ?? null;
+  const variant = variants.find((v) => v.variant_sku === row.sku) ?? null;
   const variantImages = variant
-    ? images.filter((img: any) => img.variant_id === variant.id)
+    ? images.filter((img) => img.variant_id === variant.id)
     : [];
-  const globalImages = images.filter((img: any) => img.variant_id == null);
+  const globalImages = images.filter((img) => img.variant_id == null);
   const primaryImage =
-    variantImages.find((img: any) => !!img.is_primary)?.image_url ||
+    variantImages.find((img) => !!img.is_primary)?.image_url ||
     variantImages[0]?.image_url ||
-    images.find((img: any) => !!img.is_primary)?.image_url ||
+    images.find((img) => !!img.is_primary)?.image_url ||
     images[0]?.image_url ||
     "";
   const allImageUrls = [
-    ...variantImages.map((img: any) => img.image_url as string),
-    ...globalImages.map((img: any) => img.image_url as string),
+    ...variantImages.map((img) => img.image_url as string),
+    ...globalImages.map((img) => img.image_url as string),
   ];
   const uniqueImages = [...new Set(allImageUrls)].filter(Boolean);
 
@@ -142,7 +150,7 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
     log.step(`DB wishlist_items: ${fms(performance.now() - t0Rows)}  rows=${rows?.length ?? 0}`);
 
     if (rowErr) {
-      log.error(`wishlist_items query failed  code=${(rowErr as any).code}  msg=${rowErr.message}`, rowErr).end("WISHLIST GET");
+      log.error(`wishlist_items query failed  code=${rowErr.code}  msg=${rowErr.message}`, rowErr).end("WISHLIST GET");
       res.status(500).json({ error: rowErr.message });
       return;
     }
@@ -161,15 +169,15 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
     log.step(`DB products: ${fms(performance.now() - t0Products)}  slugs=${slugs.length}  rows=${products?.length ?? 0}`);
 
     if (prodErr) {
-      log.error(`product fetch failed  code=${(prodErr as any).code}  msg=${prodErr.message}`, prodErr).end("WISHLIST GET");
+      log.error(`product fetch failed  code=${prodErr.code}  msg=${prodErr.message}`, prodErr).end("WISHLIST GET");
       res.status(500).json({ error: prodErr.message });
       return;
     }
 
     // ── Item mapping ──────────────────────────────────────────────────────────
     const t0Map = performance.now();
-    const productMap = new Map<string, any>(
-      (products ?? []).map((p: any) => [p.slug as string, p])
+    const productMap = new Map<string, ProductRow>(
+      ((products ?? []) as unknown as ProductRow[]).map((p) => [p.slug as string, p])
     );
 
     const items = rows
@@ -226,7 +234,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     log.step(`DB product validate: ${fms(performance.now() - t0Validate)}`);
 
     if (prodErr) {
-      log.error(`product validation failed  code=${(prodErr as any).code}`, prodErr).end("WISHLIST ADD");
+      log.error(`product validation failed  code=${prodErr.code}`, prodErr).end("WISHLIST ADD");
       res.status(500).json({ error: "Could not validate product" });
       return;
     }
@@ -238,7 +246,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
 
     const validSkus: string[] = [
       product.base_sku as string,
-      ...((product.product_variants as any[] ?? []).map((v: any) => v.variant_sku as string)),
+      ...((product.product_variants as { variant_sku: string }[] ?? []).map((v) => v.variant_sku)),
     ];
     if (!validSkus.includes(sku)) {
       log.warn(`invalid sku=${sku}  valid=[${validSkus.join(",")}]`).end("WISHLIST ADD");
@@ -257,12 +265,12 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
 
     if (insertErr) {
       // Unique constraint violation = already wishlisted
-      if ((insertErr as any).code === "23505") {
+      if (insertErr.code === "23505") {
         log.step("already wishlisted — returning 200").end("WISHLIST ADD");
         res.json({ ok: true, action: "already_exists" });
         return;
       }
-      log.error(`insert failed  code=${(insertErr as any).code}  msg=${insertErr.message}`, insertErr).end("WISHLIST ADD");
+      log.error(`insert failed  code=${insertErr.code}  msg=${insertErr.message}`, insertErr).end("WISHLIST ADD");
       res.status(500).json({ error: insertErr.message });
       return;
     }
@@ -296,7 +304,7 @@ router.post("/move-to-cart/:id", requireAuth, async (req: Request, res: Response
     log.step(`DB fetch row: ${fms(performance.now() - t0Fetch)}`);
 
     if (rowErr) {
-      log.error(`row fetch failed  code=${(rowErr as any).code}`, rowErr).end("WISHLIST MOVE TO CART");
+      log.error(`row fetch failed  code=${rowErr.code}`, rowErr).end("WISHLIST MOVE TO CART");
       res.status(500).json({ error: rowErr.message });
       return;
     }
@@ -319,7 +327,7 @@ router.post("/move-to-cart/:id", requireAuth, async (req: Request, res: Response
     log.step(`DB cart upsert: ${fms(performance.now() - t0Cart)}  action=${action}`);
 
     if (cartErr) {
-      log.error(`cart upsert failed  code=${(cartErr as any).code}  msg=${cartErr.message}`, cartErr).end("WISHLIST MOVE TO CART");
+      log.error(`cart upsert failed  code=${cartErr.code}  msg=${cartErr.message}`, cartErr).end("WISHLIST MOVE TO CART");
       res.status(500).json({ error: cartErr.message });
       return;
     }
@@ -334,7 +342,7 @@ router.post("/move-to-cart/:id", requireAuth, async (req: Request, res: Response
     log.step(`DB wishlist delete: ${fms(performance.now() - t0Del)}`);
 
     if (delErr) {
-      log.error(`wishlist delete failed  code=${(delErr as any).code}`, delErr).end("WISHLIST MOVE TO CART");
+      log.error(`wishlist delete failed  code=${delErr.code}`, delErr).end("WISHLIST MOVE TO CART");
       res.status(500).json({ error: delErr.message });
       return;
     }
@@ -365,7 +373,7 @@ router.post("/move-all-to-cart", requireAuth, async (req: Request, res: Response
     log.step(`DB wishlist_items: ${fms(performance.now() - t0Rows)}  rows=${rows?.length ?? 0}`);
 
     if (rowErr) {
-      log.error(`rows fetch failed  code=${(rowErr as any).code}`, rowErr).end("WISHLIST MOVE ALL TO CART");
+      log.error(`rows fetch failed  code=${rowErr.code}`, rowErr).end("WISHLIST MOVE ALL TO CART");
       res.status(500).json({ error: rowErr.message });
       return;
     }
@@ -383,13 +391,13 @@ router.post("/move-all-to-cart", requireAuth, async (req: Request, res: Response
     log.step(`DB products: ${fms(performance.now() - t0Products)}  slugs=${slugs.length}`);
 
     if (prodErr) {
-      log.error(`product fetch failed  code=${(prodErr as any).code}`, prodErr).end("WISHLIST MOVE ALL TO CART");
+      log.error(`product fetch failed  code=${prodErr.code}`, prodErr).end("WISHLIST MOVE ALL TO CART");
       res.status(500).json({ error: prodErr.message });
       return;
     }
 
-    const productMap = new Map<string, any>(
-      (products ?? []).map((p: any) => [p.slug as string, p])
+    const productMap = new Map<string, ProductRow>(
+      ((products ?? []) as unknown as ProductRow[]).map((p) => [p.slug as string, p])
     );
 
     log.step(`total rows=${rows.length}  unique slugs=${slugs.length}`);
@@ -413,7 +421,7 @@ router.post("/move-all-to-cart", requireAuth, async (req: Request, res: Response
       );
 
       if (cartErr) {
-        log.error(`cart upsert failed for sku=${row.sku}  code=${(cartErr as any).code}`, cartErr);
+        log.error(`cart upsert failed for sku=${row.sku}  code=${cartErr.code}`, cartErr);
         skipped++;
         continue;
       }
@@ -433,7 +441,7 @@ router.post("/move-all-to-cart", requireAuth, async (req: Request, res: Response
       log.step(`DB bulk delete: ${fms(performance.now() - t0Del)}  deleted=${movedIds.length}`);
 
       if (delErr) {
-        log.error(`bulk wishlist delete failed  code=${(delErr as any).code}`, delErr).end("WISHLIST MOVE ALL TO CART");
+        log.error(`bulk wishlist delete failed  code=${delErr.code}`, delErr).end("WISHLIST MOVE ALL TO CART");
         res.status(500).json({ error: delErr.message });
         return;
       }
@@ -465,7 +473,7 @@ router.delete("/clear", requireAuth, async (req: Request, res: Response) => {
     log.step(`DB delete all: ${fms(performance.now() - t0Write)}`);
 
     if (error) {
-      log.error(`clear failed  code=${(error as any).code}  msg=${error.message}`, error).end("WISHLIST CLEAR");
+      log.error(`clear failed  code=${error.code}  msg=${error.message}`, error).end("WISHLIST CLEAR");
       res.status(500).json({ error: error.message });
       return;
     }
@@ -498,7 +506,7 @@ router.delete("/:id", requireAuth, async (req: Request, res: Response) => {
     log.step(`DB delete item: ${fms(performance.now() - t0Write)}`);
 
     if (error) {
-      log.error(`delete failed  code=${(error as any).code}  msg=${error.message}`, error).end("WISHLIST REMOVE");
+      log.error(`delete failed  code=${error.code}  msg=${error.message}`, error).end("WISHLIST REMOVE");
       res.status(500).json({ error: error.message });
       return;
     }

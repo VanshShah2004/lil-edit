@@ -15,6 +15,7 @@ import {
   invalidateSearchCatalog,
   type SuggestionRow,
 } from "../lib/persistCatalog.js";
+import type { ProductRow, ImageRow } from "../lib/catalogRowTypes.js";
 import {
   redisGet,
   redisSet,
@@ -160,29 +161,29 @@ router.get("/", requireAuth, requireAdmin, async (req: Request, res: Response) =
 });
 
 // ─── DB → frontend shape mappers ─────────────────────────────────────────────
-function mapDatabaseProductToFrontend(dbProduct: any, isDraft: boolean) {
-  const images = (isDraft ? (dbProduct.draft_product_images || []) : (dbProduct.product_images || []))
+function mapDatabaseProductToFrontend(dbProduct: ProductRow, isDraft: boolean) {
+  const images: ImageRow[] = (isDraft ? (dbProduct.draft_product_images || []) : (dbProduct.product_images || []))
     .slice()
-    .sort((a: { sort_order?: number }, b: { sort_order?: number }) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const variants = (isDraft ? (dbProduct.draft_product_variants || []) : (dbProduct.product_variants || []))
     .slice()
-    .sort((a: { sort_order?: number }, b: { sort_order?: number }) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
-  const mappedImages = images.map((img: any) => ({
+  const mappedImages = images.map((img) => ({
     id: String(img.id),
     url: img.image_url,
     isPrimary: !!img.is_primary,
     sortOrder: img.sort_order,
   }));
 
-  const globalImages = mappedImages.filter((img: any) => {
-    const dbImg = images.find((i: any) => i.id === img.id);
+  const globalImages = mappedImages.filter((img) => {
+    const dbImg = images.find((i) => i.id === img.id);
     return !dbImg || !dbImg.variant_id;
   });
 
-  const colors = variants.map((v: any) => {
-    const variantImages = mappedImages.filter((img: any) => {
-      const dbImg = images.find((i: any) => i.id === img.id);
+  const colors = variants.map((v) => {
+    const variantImages = mappedImages.filter((img) => {
+      const dbImg = images.find((i) => i.id === img.id);
       return dbImg && dbImg.variant_id === v.id;
     });
     return {
@@ -223,9 +224,9 @@ function mapDatabaseProductToFrontend(dbProduct: any, isDraft: boolean) {
   };
 }
 
-function mapDatabaseToRecommended(dbProd: any) {
+function mapDatabaseToRecommended(dbProd: ProductRow) {
   const images    = dbProd.product_images || [];
-  const primaryImg = images.find((img: any) => img.is_primary)?.image_url || images[0]?.image_url || "";
+  const primaryImg = images.find((img) => img.is_primary)?.image_url || images[0]?.image_url || "";
   return {
     title: dbProd.title,
     slug: dbProd.slug,
@@ -301,7 +302,7 @@ router.get("/detail", async (req: Request, res: Response) => {
 
     log.step("Validate - SKU belongs to product");
     const hasBaseSkuMatch    = product.base_sku === sku;
-    const hasVariantSkuMatch = product.product_variants?.some((v: any) => v.variant_sku === sku);
+    const hasVariantSkuMatch = product.product_variants?.some((v) => v.variant_sku === sku);
     if (!hasBaseSkuMatch && !hasVariantSkuMatch) {
       log.warn(`SKU not found on product  sku=${sku}`).end("PDP DETAIL");
       res.status(404).json({ error: "SKU does not belong to this product." });
@@ -421,7 +422,7 @@ router.post("/preview", requireAuth, requireAdmin, async (req: Request, res: Res
   let database:
     | { ok: true; draftProductId?: string; publishedProductId?: string }
     | { ok: false; skipped: true; reason: string }
-    | { ok: false; error: string } = { ok: false, skipped: true, reason: "not_configured" };
+    | { ok: false; error: string };
 
   if (isSupabaseCatalogConfigured()) {
     try {
