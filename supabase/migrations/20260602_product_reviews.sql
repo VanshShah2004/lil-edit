@@ -87,6 +87,40 @@ CREATE POLICY "reviews: delete own"
   ON public.product_reviews FOR DELETE
   USING (auth.uid() = user_id);
 
+-- ── Lock the `verified` flag (system-controlled) ─────────────────────────────
+-- The insert/update policies above only check ownership, not which columns
+-- change — so without this guard a user could give their own review a fake
+-- "Verified purchase" badge (verified=true). `verified` is trust data set by the
+-- system after confirming a real purchase; it must not be writable by the
+-- reviewer. This trigger forces client roles (anon/authenticated) to
+-- verified=false on INSERT and blocks them from changing it on UPDATE, while the
+-- service-role backend still sets it freely. Canonical standalone copy:
+-- 20260603_review_verified_lock.sql (both idempotent; applying either/both is fine).
+CREATE OR REPLACE FUNCTION public.enforce_review_verified_system_only()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+-- SECURITY INVOKER (the default) is REQUIRED: the guard relies on current_user
+-- reflecting the actual caller.
+AS $$
+BEGIN
+  IF current_user IN ('authenticated', 'anon') THEN
+    IF TG_OP = 'INSERT' THEN
+      NEW.verified := FALSE;
+    ELSIF TG_OP = 'UPDATE' AND NEW.verified IS DISTINCT FROM OLD.verified THEN
+      RAISE EXCEPTION 'product_reviews.verified is system-controlled'
+        USING ERRCODE = 'insufficient_privilege';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_enforce_review_verified ON public.product_reviews;
+CREATE TRIGGER trg_enforce_review_verified
+  BEFORE INSERT OR UPDATE ON public.product_reviews
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_review_verified_system_only();
+
 -- =============================================================================
 -- OPTIONAL FOLLOW-UP (not applied here):
 -- To purge reviews when a product is permanently deleted (not merely edited),
