@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Trash2, MapPin, CheckCircle2, Home, Briefcase, Navigation, Star } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Home, Briefcase } from "lucide-react";
 
 interface AddressManagerProps {
   addresses: any[];
@@ -11,7 +11,6 @@ interface AddressManagerProps {
 export default function AddressManager({ addresses, setAddresses, setDeletedAddresses }: AddressManagerProps) {
   // Form State
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     type: "home",

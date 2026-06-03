@@ -115,9 +115,11 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
             price: 0,
             originalPrice: 0,
             image: "",
+            images: [],
             color: { name: "", hex: "#cccccc" },
             inStock: true,
             tags: [],
+            badges: [],
             createdAt: new Date().toISOString(),
           },
         ];

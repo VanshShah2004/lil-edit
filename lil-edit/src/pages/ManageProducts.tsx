@@ -472,7 +472,7 @@ const ManageProducts = () => {
     DRAFT: false
   });
 
-  const [hasMoreMap, setHasMoreMap] = useState<{
+  const [, setHasMoreMap] = useState<{
     ALL: boolean;
     PUBLISHED: boolean;
     DRAFT: boolean;

@@ -534,7 +534,7 @@ const EditProduct = () => {
           name: formattedName, 
           hex, 
           sku: variantSku, 
-          stock: isStockUnlimited ? null : 1, 
+          stock: isStockUnlimited ? 0 : 1,
           isUnlimited: isStockUnlimited,
           images: [] 
         }]
@@ -547,7 +547,7 @@ const EditProduct = () => {
     setFormData(prev => ({
       ...prev,
       selectedColors: prev.selectedColors.map(c => 
-        c.name === colorName ? { ...c, isUnlimited, stock: isUnlimited ? null : 1 } : c
+        c.name === colorName ? { ...c, isUnlimited, stock: isUnlimited ? 0 : 1 } : c
       )
     }));
   };
@@ -1205,7 +1205,7 @@ const EditProduct = () => {
                               selectedColors: prev.selectedColors.map(c => ({
                                 ...c,
                                 isUnlimited: true,
-                                stock: null
+                                stock: 0
                               }))
                             }));
                           }}

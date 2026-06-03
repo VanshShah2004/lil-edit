@@ -1,4 +1,3 @@
-import { ArrowUpRight } from "lucide-react";
 import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
 import img2 from "@/assets/searchbar-frequent_searches/le-2.png";
 import img3 from "@/assets/searchbar-frequent_searches/le-3.png";

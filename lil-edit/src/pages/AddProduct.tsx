@@ -25,7 +25,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 import ProductPreviewView from "@/components/ProductPreviewView";
 import type { Product, ProductImage, ProductColor } from "@/types/product";
-import { generateBaseSku, generateColorSku } from "@/utils/sku";
+import { generateColorSku } from "@/utils/sku";
 import { slugify } from "@/utils/slug";
 import { getBackendBaseUrl } from "@/lib/backend";
 import { authHeader } from "@/lib/apiAuth";
@@ -244,10 +244,6 @@ const AddProduct = () => {
     categorySlug: "",
   });
 
-  // In a real system, this would be fetched from the backend based on the last product ID
-  // For this prototype, we'll start at 0001 and pad to 4 digits
-  const [nextProductId] = useState("0001");
-
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadingCount, setUploadingCount] = useState(0);
@@ -354,7 +350,7 @@ const AddProduct = () => {
           name: formattedName, 
           hex, 
           sku: variantSku, 
-          stock: isStockUnlimited ? null : 1, 
+          stock: isStockUnlimited ? 0 : 1,
           isUnlimited: isStockUnlimited,
           images: [] 
         }]
@@ -367,7 +363,7 @@ const AddProduct = () => {
     setFormData(prev => ({
       ...prev,
       selectedColors: prev.selectedColors.map(c => 
-        c.name === colorName ? { ...c, isUnlimited, stock: isUnlimited ? null : 1 } : c
+        c.name === colorName ? { ...c, isUnlimited, stock: isUnlimited ? 0 : 1 } : c
       )
     }));
   };
@@ -957,7 +953,7 @@ const AddProduct = () => {
                               selectedColors: prev.selectedColors.map(c => ({
                                 ...c,
                                 isUnlimited: true,
-                                stock: null
+                                stock: 0
                               }))
                             }));
                           }}

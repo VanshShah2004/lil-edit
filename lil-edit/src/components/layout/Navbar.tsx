@@ -13,7 +13,6 @@ const Navbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const location = useLocation();
-  const isProductPage = location.pathname.startsWith("/product");
 
   useLayoutEffect(() => {
     const updateHeight = () => {

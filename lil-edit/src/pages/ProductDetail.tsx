@@ -5,7 +5,6 @@ import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
-import product_images from "@/assets/products";
 import ProductDetailSkeleton from "@/components/ProductDetailSkeleton";
 import ProductPreviewView from "@/components/ProductPreviewView";
 import type { Product, ReviewsData } from "@/types/product";
@@ -14,14 +13,6 @@ import { buildPdpPath } from "@/lib/pdpUrl";
 import { getOptimizedUrlForVariant } from "@/lib/productImage";
 import { PdpClientPerf } from "@/lib/pdpClientPerf";
 import { useWishlist } from "@/contexts/WishlistContext";
-
-import le0 from "@/assets/searchbar-frequent_searches/le-0.png";
-import le1 from "@/assets/searchbar-frequent_searches/le-1.png";
-import le2 from "@/assets/searchbar-frequent_searches/le-2.png";
-import le3 from "@/assets/searchbar-frequent_searches/le-3.png";
-import le4 from "@/assets/searchbar-frequent_searches/le-4.png";
-import le5 from "@/assets/searchbar-frequent_searches/le-5.png";
-import le6 from "@/assets/searchbar-frequent_searches/le-6.png";
 
 const LAVENDER = "#B19CD9";
 const TEAL = "#0B5B55";

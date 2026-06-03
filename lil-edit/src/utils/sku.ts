@@ -1,3 +1,5 @@
+import { generateCategoryCode, generateGenderCode } from "@shared/skuCodes";
+
 export { CATEGORY_MAP, generateCategoryCode, generateGenderCode } from "@shared/skuCodes";
 
 export const generateColorCode = (colorName: string): string =>

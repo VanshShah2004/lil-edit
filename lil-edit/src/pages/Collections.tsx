@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight, Heart, ArrowRight, Search, Zap, Star } from "lucide-react";
+import { ChevronRight, Heart, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -73,13 +73,6 @@ const featuredCollections = [
   },
 ];
 
-const trendingCollections = [
-  { id: "trend-1", name: "Summer Escape", badge: "New", image: img1 },
-  { id: "trend-2", name: "Tiny Trendsetters", badge: "Trending", image: img2 },
-  { id: "trend-3", name: "Cozy Classics", badge: null, image: img3 },
-  { id: "trend-4", name: "Party Picks", badge: "Best Seller", image: img5 },
-  { id: "trend-5", name: "Mini Streetwear", badge: "New", image: img6 },
-];
 
 const occasionCategories = [
   { id: "occ-1", name: "Birthday Party", gradient: "from-pink-200 to-rose-200", icon: "🎉" },

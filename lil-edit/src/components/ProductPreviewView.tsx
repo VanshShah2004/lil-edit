@@ -447,8 +447,9 @@ const ProductPreviewView = ({
               {cartBusy ? "Adding…" : "ADD TO CART"}
             </button>
             <button
-              onClick={() => {}}
-              className="w-full text-white py-3 rounded-full font-bold text-sm transition-opacity"
+              onClick={() => void handleBuyNow()}
+              disabled={cartBusy || previewMode}
+              className="w-full text-white py-3 rounded-full font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
               style={{ backgroundColor: "#0B5B55" }}
             >
               BUY NOW

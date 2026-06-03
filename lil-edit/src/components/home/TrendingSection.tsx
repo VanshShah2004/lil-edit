@@ -1,4 +1,4 @@
-import { Heart, Sparkles, ArrowRight } from "lucide-react";
+import { Heart, ArrowRight } from "lucide-react";
 import le0 from "@/assets/searchbar-frequent_searches/le-0.png";
 import le1 from "@/assets/searchbar-frequent_searches/le-1.png";
 import le2 from "@/assets/searchbar-frequent_searches/le-2.png";

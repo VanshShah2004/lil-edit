@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Heart,
   LayoutDashboard,
@@ -23,7 +23,7 @@ import MegaMenu from "@/components/MegaMenu";
 import SearchPanel from "@/components/search/SearchPanel";
 
 const UserNavbar = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [, setIsScrolled] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isLeftMenuOpen, setIsLeftMenuOpen] = useState(false);
@@ -34,7 +34,6 @@ const UserNavbar = () => {
   const { cartCount } = useCart();
   const { wishlistCount } = useWishlist();
   const navigate = useNavigate();
-  const location = useLocation();
   const hideMegaMenu = false;
   const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
   const firstNameCandidate =

@@ -2,7 +2,6 @@ import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
-import HeroSection from "@/components/landing/HeroSection";
 import CategoriesSection from "@/components/landing/CategoriesSection";
 import FeaturesBar from "@/components/landing/FeaturesBar";
 import CtaBanner from "@/components/landing/CtaBanner";
