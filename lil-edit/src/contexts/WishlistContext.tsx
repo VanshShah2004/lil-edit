@@ -64,6 +64,8 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!userId) {
+      // Reset to the logged-out wishlist — syncing to external auth state.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWishlistItems([]);
       setLoading(false);
       return;
@@ -144,7 +146,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     });
     try {
       await apiRemove(wishlistItemId);
-    } catch (err) {
+    } catch {
       setWishlistItems(snapshot);
       toast.error("Could not remove from wishlist");
     }
@@ -199,7 +201,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     });
     try {
       await apiClear();
-    } catch (err) {
+    } catch {
       setWishlistItems(snapshot);
       toast.error("Could not clear wishlist");
     }

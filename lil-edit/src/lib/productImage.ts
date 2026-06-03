@@ -60,7 +60,7 @@ export function optimizeProductImageUrl(
 ): string {
   if (!url || !isTransformableUrl(url)) return url;
 
-  let base = url.includes(SUPABASE_RENDER_PATH)
+  const base = url.includes(SUPABASE_RENDER_PATH)
     ? url.split("?")[0]!
     : url.replace(SUPABASE_OBJECT_PATH, SUPABASE_RENDER_PATH).split("?")[0]!;
 

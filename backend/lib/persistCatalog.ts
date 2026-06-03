@@ -211,7 +211,7 @@ async function insertVariantsAndMap(
 function buildPrimaryImageMap(
   images: Array<{ product_id: string; image_url: string; is_primary: boolean }>,
 ): Map<string, string> {
-  const primary  = new Map<string, string>();
+  const primary = new Map<string, string>();
   const fallback = new Map<string, string>();
   for (const img of images) {
     if (img.is_primary) {
@@ -222,23 +222,23 @@ function buildPrimaryImageMap(
   }
   const result = new Map<string, string>();
   for (const [id, url] of fallback) result.set(id, url);
-  for (const [id, url] of primary)  result.set(id, url); // primary wins
+  for (const [id, url] of primary) result.set(id, url); // primary wins
   return result;
 }
 
 // ─── Internal row type for ALL-mode merge ─────────────────────────────────────
 
 interface InternalThinRow {
-  base_sku:            string;
-  title:               string;
-  price:               number;
-  created_at:          string;
-  updated_at:          string;
-  is_published:        boolean;
-  has_draft:           boolean;
+  base_sku: string;
+  title: string;
+  price: number;
+  created_at: string;
+  updated_at: string;
+  is_published: boolean;
+  has_draft: boolean;
   has_pending_updates: boolean;
-  published_id?:       string;
-  draft_id?:           string;
+  published_id?: string;
+  draft_id?: string;
 }
 
 // ─── Exported functions ───────────────────────────────────────────────────────
@@ -251,20 +251,20 @@ export async function fetchAllProducts(log: OpLogger) {
 
   const [
     { data: published, error: pubErr },
-    { data: drafts,    error: draftErr },
+    { data: drafts, error: draftErr },
   ] = await Promise.all([
-    sb.from("products")      .select(MANAGE_PRODUCT_SELECT).order("updated_at", { ascending: false }),
-    sb.from("draft_products").select(MANAGE_DRAFT_SELECT)  .order("updated_at", { ascending: false }),
+    sb.from("products").select(MANAGE_PRODUCT_SELECT).order("updated_at", { ascending: false }),
+    sb.from("draft_products").select(MANAGE_DRAFT_SELECT).order("updated_at", { ascending: false }),
   ]);
 
-  if (pubErr)   throw pubErr;
+  if (pubErr) throw pubErr;
   if (draftErr) throw draftErr;
 
   log.step(`DB fetch - complete  ${fms(performance.now() - t0)}  published=${published?.length ?? 0}  drafts=${drafts?.length ?? 0}`);
 
   return {
     published: published || [],
-    drafts:    drafts    || [],
+    drafts: drafts || [],
   };
 }
 
@@ -296,7 +296,7 @@ export async function fetchFilteredProducts(
     let drafts: any[] = [];
 
     if (published && published.length > 0) {
-      const skus = published.map((p) => p.base_sku);
+      const skus = (published as unknown as Array<{ base_sku: string }>).map((p) => p.base_sku);
       log.step(`DB fetch - matching drafts for ${skus.length} SKUs`);
       const { data: draftData, error: draftErr } = await sb
         .from("draft_products")
@@ -334,7 +334,7 @@ export async function fetchFilteredProducts(
     let published: any[] = [];
 
     if (drafts && drafts.length > 0) {
-      const skus = drafts.map((d) => d.base_sku);
+      const skus = (drafts as unknown as Array<{ base_sku: string }>).map((d) => d.base_sku);
       log.step(`DB fetch - matching published for ${skus.length} SKUs`);
       const { data: pubData, error: pubErr } = await sb
         .from("products")
@@ -358,15 +358,15 @@ export async function fetchFilteredProducts(
     log.step("DB fetch - ALL / round 1 (SKU scan, parallel)");
     const t1 = performance.now();
     const [
-      { data: pubSkus,   error: pubSkuErr   },
+      { data: pubSkus, error: pubSkuErr },
       { data: draftSkus, error: draftSkuErr },
     ] = await Promise.all([
-      sb.from("products")      .select("base_sku, updated_at"),
+      sb.from("products").select("base_sku, updated_at"),
       sb.from("draft_products").select("base_sku, updated_at"),
     ]);
     const t2 = performance.now();
 
-    if (pubSkuErr)   throw pubSkuErr;
+    if (pubSkuErr) throw pubSkuErr;
     if (draftSkuErr) throw draftSkuErr;
 
     log.step(`DB fetch - round 1 complete  ${fms(t2 - t1)}  pub=${pubSkus?.length ?? 0}  drafts=${draftSkus?.length ?? 0}`);
@@ -375,34 +375,34 @@ export async function fetchFilteredProducts(
     pubSkus?.forEach((p) => skuMap.set(p.base_sku, new Date(p.updated_at)));
     draftSkus?.forEach((d) => {
       const dDate = new Date(d.updated_at);
-      const cur   = skuMap.get(d.base_sku);
+      const cur = skuMap.get(d.base_sku);
       if (!cur || dDate > cur) skuMap.set(d.base_sku, dDate);
     });
 
-    const sortedSkus  = Array.from(skuMap.entries())
+    const sortedSkus = Array.from(skuMap.entries())
       .sort((a, b) => b[1].getTime() - a[1].getTime())
       .map(([sku]) => sku);
-    const totalCount  = sortedSkus.length;
-    const slicedSkus  = limit ? sortedSkus.slice(0, limit) : sortedSkus;
+    const totalCount = sortedSkus.length;
+    const slicedSkus = limit ? sortedSkus.slice(0, limit) : sortedSkus;
 
     let published: any[] = [];
-    let drafts:    any[] = [];
+    let drafts: any[] = [];
 
     if (slicedSkus.length > 0) {
       log.step(`DB fetch - ALL / round 2 (full rows for ${slicedSkus.length} SKUs, parallel)`);
       const [
-        { data: pubData,   error: pubErr   },
+        { data: pubData, error: pubErr },
         { data: draftData, error: draftErr },
       ] = await Promise.all([
-        sb.from("products")      .select(MANAGE_PRODUCT_SELECT).in("base_sku", slicedSkus),
-        sb.from("draft_products").select(MANAGE_DRAFT_SELECT)  .in("base_sku", slicedSkus),
+        sb.from("products").select(MANAGE_PRODUCT_SELECT).in("base_sku", slicedSkus),
+        sb.from("draft_products").select(MANAGE_DRAFT_SELECT).in("base_sku", slicedSkus),
       ]);
 
-      if (pubErr)   throw pubErr;
+      if (pubErr) throw pubErr;
       if (draftErr) throw draftErr;
 
-      published = pubData   || [];
-      drafts    = draftData || [];
+      published = pubData || [];
+      drafts = draftData || [];
       log.step(`DB fetch - round 2 complete  ${fms(performance.now() - t2)}  published=${published.length}  drafts=${drafts.length}`);
     }
 
@@ -441,8 +441,8 @@ export async function fetchThinProductList(
     const tR1 = performance.now();
     log.step(`products table loaded  ${fms(tR1 - t1)}  db_limit=${limit != null ? limit + 1 : "NONE"}  db_rows=${rows?.length ?? 0}`);
 
-    const hasMore    = limit != null ? (rows?.length ?? 0) > limit : false;
-    const sliced     = limit != null ? (rows ?? []).slice(0, limit) : (rows ?? []);
+    const hasMore = limit != null ? (rows?.length ?? 0) > limit : false;
+    const sliced = limit != null ? (rows ?? []).slice(0, limit) : (rows ?? []);
     const totalCount = sliced.length;
     log.step(`LIMIT check  requested=${limit ?? "ALL"}  db_returned=${rows?.length ?? 0}  serving=${sliced.length}  hasMore=${hasMore}`);
 
@@ -450,8 +450,8 @@ export async function fetchThinProductList(
     log.step(`Loading product_images table  ids=${ids.length}`);
     const { data: imgs, error: imgErr } = ids.length > 0
       ? await sb.from("product_images")
-          .select("product_id, image_url, is_primary")
-          .in("product_id", ids)
+        .select("product_id, image_url, is_primary")
+        .in("product_id", ids)
       : { data: [] as { product_id: string; image_url: string; is_primary: boolean }[], error: null };
     if (imgErr) throw imgErr;
 
@@ -462,15 +462,15 @@ export async function fetchThinProductList(
     const finalRows: ThinProductRow[] = sliced.map((r) => {
       const hasPending = !!(r as any).has_pending_updates;
       return {
-        base_sku:            r.base_sku   as string,
-        title:               r.title      as string,
-        price:               r.price      as number,
-        created_at:          r.created_at as string,
-        updated_at:          r.updated_at as string,
-        primary_image_url:   imageMap.get(r.id as string) ?? null,
+        base_sku: r.base_sku as string,
+        title: r.title as string,
+        price: r.price as number,
+        created_at: r.created_at as string,
+        updated_at: r.updated_at as string,
+        primary_image_url: imageMap.get(r.id as string) ?? null,
         has_pending_updates: hasPending,
-        is_published:        true,
-        has_draft:           hasPending,
+        is_published: true,
+        has_draft: hasPending,
       };
     });
 
@@ -490,8 +490,8 @@ export async function fetchThinProductList(
     const tR1 = performance.now();
     log.step(`draft_products table loaded  ${fms(tR1 - t1)}  db_limit=${limit != null ? limit + 1 : "NONE"}  db_rows=${rows?.length ?? 0}`);
 
-    const hasMore    = limit != null ? (rows?.length ?? 0) > limit : false;
-    const sliced     = limit != null ? (rows ?? []).slice(0, limit) : (rows ?? []);
+    const hasMore = limit != null ? (rows?.length ?? 0) > limit : false;
+    const sliced = limit != null ? (rows ?? []).slice(0, limit) : (rows ?? []);
     const totalCount = sliced.length;
     log.step(`LIMIT check  requested=${limit ?? "ALL"}  db_returned=${rows?.length ?? 0}  serving=${sliced.length}  hasMore=${hasMore}`);
 
@@ -499,8 +499,8 @@ export async function fetchThinProductList(
     log.step(`Loading draft_product_images table  ids=${ids.length}`);
     const { data: imgs, error: imgErr } = ids.length > 0
       ? await sb.from("draft_product_images")
-          .select("product_id, image_url, is_primary")
-          .in("product_id", ids)
+        .select("product_id, image_url, is_primary")
+        .in("product_id", ids)
       : { data: [] as { product_id: string; image_url: string; is_primary: boolean }[], error: null };
     if (imgErr) throw imgErr;
 
@@ -511,15 +511,15 @@ export async function fetchThinProductList(
     const finalRows: ThinProductRow[] = sliced.map((r) => {
       const isPublished = !!(r as any).is_published;
       return {
-        base_sku:            r.base_sku   as string,
-        title:               r.title      as string,
-        price:               r.price      as number,
-        created_at:          r.created_at as string,
-        updated_at:          r.updated_at as string,
-        primary_image_url:   imageMap.get(r.id as string) ?? null,
+        base_sku: r.base_sku as string,
+        title: r.title as string,
+        price: r.price as number,
+        created_at: r.created_at as string,
+        updated_at: r.updated_at as string,
+        primary_image_url: imageMap.get(r.id as string) ?? null,
         has_pending_updates: isPublished,
-        is_published:        isPublished,
-        has_draft:           true,
+        is_published: isPublished,
+        has_draft: true,
       };
     });
 
@@ -539,18 +539,18 @@ export async function fetchThinProductList(
   const tR1 = performance.now();
   log.step(`RPC OK  ${fms(tR1 - t1)}  db_rows=${rpcRows?.length ?? 0}  (old path fetched ALL rows from 2 tables separately)`);
 
-  const hasMore    = limit != null ? (rpcRows?.length ?? 0) > limit : false;
+  const hasMore = limit != null ? (rpcRows?.length ?? 0) > limit : false;
   const sliced: InternalThinRow[] = (limit != null ? (rpcRows ?? []).slice(0, limit) : (rpcRows ?? [])).map((r: any) => ({
-    base_sku:            r.base_sku,
-    title:               r.title,
-    price:               r.price,
-    created_at:          r.created_at,
-    updated_at:          r.updated_at,
-    is_published:        r.is_published,
-    has_draft:           r.has_draft,
+    base_sku: r.base_sku,
+    title: r.title,
+    price: r.price,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+    is_published: r.is_published,
+    has_draft: r.has_draft,
     has_pending_updates: r.has_pending_updates,
-    published_id:        r.published_id ?? undefined,
-    draft_id:            r.draft_id     ?? undefined,
+    published_id: r.published_id ?? undefined,
+    draft_id: r.draft_id ?? undefined,
   }));
   const totalCount = sliced.length;
   log.step(`LIMIT check  requested=${limit ?? "ALL"}  db_returned=${rpcRows?.length ?? 0}  serving=${sliced.length}  hasMore=${hasMore}`);
@@ -563,37 +563,37 @@ export async function fetchThinProductList(
   const [pubImgsRes, draftImgsRes] = await Promise.all([
     publishedIds.length > 0
       ? sb.from("product_images")
-          .select("product_id, image_url, is_primary")
-          .in("product_id", publishedIds)
+        .select("product_id, image_url, is_primary")
+        .in("product_id", publishedIds)
       : Promise.resolve({ data: [] as { product_id: string; image_url: string; is_primary: boolean }[], error: null }),
     draftOnlyIds.length > 0
       ? sb.from("draft_product_images")
-          .select("product_id, image_url, is_primary")
-          .in("product_id", draftOnlyIds)
+        .select("product_id, image_url, is_primary")
+        .in("product_id", draftOnlyIds)
       : Promise.resolve({ data: [] as { product_id: string; image_url: string; is_primary: boolean }[], error: null }),
   ]);
 
-  if (pubImgsRes.error)   throw pubImgsRes.error;
+  if (pubImgsRes.error) throw pubImgsRes.error;
   if (draftImgsRes.error) throw draftImgsRes.error;
 
   const tR2 = performance.now();
   log.step(`image tables loaded  ${fms(tR2 - tR1)}  pub_images=${pubImgsRes.data?.length ?? 0}  draft_images=${draftImgsRes.data?.length ?? 0}`);
 
-  const pubImageMap   = buildPrimaryImageMap(pubImgsRes.data   ?? []);
+  const pubImageMap = buildPrimaryImageMap(pubImgsRes.data ?? []);
   const draftImageMap = buildPrimaryImageMap(draftImgsRes.data ?? []);
 
   const finalRows: ThinProductRow[] = sliced.map((r) => ({
-    base_sku:            r.base_sku,
-    title:               r.title,
-    price:               r.price,
-    created_at:          r.created_at,
-    updated_at:          r.updated_at,
-    primary_image_url:   r.is_published
-      ? (pubImageMap.get(r.published_id!)   ?? null)
-      : (draftImageMap.get(r.draft_id!)     ?? null),
+    base_sku: r.base_sku,
+    title: r.title,
+    price: r.price,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+    primary_image_url: r.is_published
+      ? (pubImageMap.get(r.published_id!) ?? null)
+      : (draftImageMap.get(r.draft_id!) ?? null),
     has_pending_updates: r.has_pending_updates,
-    is_published:        r.is_published,
-    has_draft:           r.has_draft,
+    is_published: r.is_published,
+    has_draft: r.has_draft,
   }));
 
   log.step(`has_pending_updates=${finalRows.filter(r => r.has_pending_updates).length} / ${finalRows.length} products`);
@@ -615,13 +615,13 @@ export async function fetchProductDetailBySku(
 
   const [
     { data: published, error: pubErr },
-    { data: draft,     error: draftErr },
+    { data: draft, error: draftErr },
   ] = await Promise.all([
-    sb.from("products")      .select(MANAGE_PRODUCT_SELECT).eq("base_sku", baseSku).maybeSingle(),
-    sb.from("draft_products").select(MANAGE_DRAFT_SELECT)  .eq("base_sku", baseSku).maybeSingle(),
+    sb.from("products").select(MANAGE_PRODUCT_SELECT).eq("base_sku", baseSku).maybeSingle(),
+    sb.from("draft_products").select(MANAGE_DRAFT_SELECT).eq("base_sku", baseSku).maybeSingle(),
   ]);
 
-  if (pubErr)   throw pubErr;
+  if (pubErr) throw pubErr;
   if (draftErr) throw draftErr;
 
   log.step(`DB fetch - detail complete  ${fms(performance.now() - t0)}  published=${!!published}  draft=${!!draft}`);
@@ -706,9 +706,9 @@ export async function launchProductToDatabase(
 
   log.step("DB RPC - launch_product_atomic (delete draft + insert published, atomic)");
   const { data: publishedProductId, error } = await sb.rpc("launch_product_atomic", {
-    p_product:  productPublished,
+    p_product: productPublished,
     p_variants: variants,
-    p_images:   images,
+    p_images: images,
   });
 
   if (error) throw new Error(error.message);
@@ -721,42 +721,58 @@ export async function launchProductToDatabase(
 export type SuggestionType = "product" | "category" | "occasion" | "tag" | "badge" | "fabric" | "fit" | "color" | "trend" | "keyword";
 
 export interface SuggestionRow {
-  type:         SuggestionType;
-  id:           string;
-  label:        string;
-  sublabel:     string;
-  image:        string;
-  slug:         string;
+  type: SuggestionType;
+  id: string;
+  label: string;
+  sublabel: string;
+  image: string;
+  slug: string;
   categorySlug: string;
-  sku:          string;
+  sku: string;
 }
 
 // ─── In-memory search catalog (rebuilt from DB, 10 min TTL) ──────────────────
 
 interface SearchCatalogEntry {
-  id:           string;
-  title:        string;
-  slug:         string;
-  base_sku:     string;
-  category:     string;
+  id: string;
+  title: string;
+  slug: string;
+  base_sku: string;
+  category: string;
   category_slug: string;
-  tags:         string[];
-  badges:       string[];
-  occasion:     string;
-  fabric:       string;
-  fit:          string;
-  gender:       string;
-  image:        string;
+  tags: string[];
+  badges: string[];
+  occasion: string;
+  fabric: string;
+  fit: string;
+  gender: string;
+  image: string;
 }
 
-let _searchCatalog:    SearchCatalogEntry[] | null = null;
+let _searchCatalog: SearchCatalogEntry[] | null = null;
 let _searchCatalogExp: number = 0;
 const SEARCH_CATALOG_TTL_MS = 10 * 60 * 1000;
 
 /** Drop the in-memory catalog so the next search request rebuilds it from DB. */
 export function invalidateSearchCatalog(): void {
-  _searchCatalog    = null;
+  _searchCatalog = null;
   _searchCatalogExp = 0;
+}
+
+interface SearchCatalogDbRow {
+  id: string;
+  title: string;
+  slug: string;
+  base_sku: string;
+  category: string;
+  category_slug: string;
+  tags: string[] | null;
+  badges: string[] | null;
+  occasion: string | null;
+  fabric: string | null;
+  fit: string | null;
+  gender: string | null;
+  product_images: Array<{ image_url: string; is_primary: boolean }> | null;
 }
 
 const SEARCH_CATALOG_SELECT = `
@@ -781,22 +797,23 @@ async function loadSearchCatalog(log: OpLogger): Promise<SearchCatalogEntry[]> {
 
   if (error) throw new Error(error.message);
 
-  _searchCatalog = (data ?? []).map((p) => {
+  const rows = (data ?? []) as unknown as SearchCatalogDbRow[];
+  _searchCatalog = rows.map((p) => {
     const imgs: Array<{ image_url: string; is_primary: boolean }> = p.product_images ?? [];
     const image = imgs.find((i) => i.is_primary)?.image_url || imgs[0]?.image_url || "";
     return {
-      id:            p.id            as string,
-      title:         p.title         as string,
-      slug:          p.slug          as string,
-      base_sku:      p.base_sku      as string,
-      category:      p.category      as string,
-      category_slug: p.category_slug as string,
-      tags:          (p.tags    ?? []) as string[],
-      badges:        (p.badges  ?? []) as string[],
-      occasion:      (p.occasion ?? "") as string,
-      fabric:        (p.fabric   ?? "") as string,
-      fit:           (p.fit      ?? "") as string,
-      gender:        (p.gender   ?? "") as string,
+      id: p.id,
+      title: p.title,
+      slug: p.slug,
+      base_sku: p.base_sku,
+      category: p.category,
+      category_slug: p.category_slug,
+      tags: p.tags ?? [],
+      badges: p.badges ?? [],
+      occasion: p.occasion ?? "",
+      fabric: p.fabric ?? "",
+      fit: p.fit ?? "",
+      gender: p.gender ?? "",
       image,
     };
   });
@@ -817,16 +834,16 @@ function levenshtein(a: string, b: string): number {
   for (let i = 1; i <= m; i++) {
     curr[0] = i;
     for (let j = 1; j <= n; j++) {
-      curr[j] = a[i - 1] === b[j - 1] ? prev[j - 1] : 1 + Math.min(prev[j], curr[j - 1], prev[j - 1]);
+      curr[j] = a[i - 1] === b[j - 1] ? prev[j - 1]! : 1 + Math.min(prev[j]!, curr[j - 1]!, prev[j - 1]!);
     }
-    for (let k = 0; k <= n; k++) prev[k] = curr[k];
+    for (let k = 0; k <= n; k++) prev[k] = curr[k]!;
   }
-  return curr[n];
+  return curr[n]!;
 }
 
 function fuzzyMatchesTitle(title: string, query: string): boolean {
   const maxDist = query.length <= 6 ? 1 : 2;
-  const words   = title.toLowerCase().split(/\s+/);
+  const words = title.toLowerCase().split(/\s+/);
   return words.some(word => {
     if (Math.abs(word.length - query.length) > maxDist + 1) return false;
     return levenshtein(word, query) <= maxDist;
@@ -835,25 +852,25 @@ function fuzzyMatchesTitle(title: string, query: string): boolean {
 
 // ─── Weighted field scoring ───────────────────────────────────────────────────
 
-const FIELD_SCORES: Record<string, number> = {
-  "title:exact":        100,
-  "title:starts":        90,
-  "title:word-starts":   85,
-  "title:contains":      80,
-  "category:starts":     78,
-  "category":            75,
-  "tag:starts":          72,
-  "tag":                 65,
-  "occasion:starts":     63,
-  "occasion":            60,
-  "badge:starts":        58,
-  "badge":               55,
-  "fabric:starts":       53,
-  "fabric":              50,
-  "fit:starts":          50,
-  "fit":                 48,
-  "gender":              45,
-  "fuzzy":               30,
+const FIELD_SCORES = {
+  "title:exact": 100,
+  "title:starts": 90,
+  "title:word-starts": 85,
+  "title:contains": 80,
+  "category:starts": 78,
+  "category": 75,
+  "tag:starts": 72,
+  "tag": 65,
+  "occasion:starts": 63,
+  "occasion": 60,
+  "badge:starts": 58,
+  "badge": 55,
+  "fabric:starts": 53,
+  "fabric": 50,
+  "fit:starts": 50,
+  "fit": 48,
+  "gender": 45,
+  "fuzzy": 30,
 };
 
 function scoreEntry(
@@ -862,39 +879,39 @@ function scoreEntry(
 ): { score: number; field: string } {
   const t = entry.title.toLowerCase();
 
-  if (t === lower)         return { score: FIELD_SCORES["title:exact"],      field: "title" };
-  if (t.startsWith(lower)) return { score: FIELD_SCORES["title:starts"],     field: "title" };
+  if (t === lower) return { score: FIELD_SCORES["title:exact"], field: "title" };
+  if (t.startsWith(lower)) return { score: FIELD_SCORES["title:starts"], field: "title" };
   if (t.split(/\s+/).some(w => w !== lower && w.startsWith(lower)))
-                           return { score: FIELD_SCORES["title:word-starts"], field: "title" };
-  if (t.includes(lower))  return { score: FIELD_SCORES["title:contains"],    field: "title" };
+    return { score: FIELD_SCORES["title:word-starts"], field: "title" };
+  if (t.includes(lower)) return { score: FIELD_SCORES["title:contains"], field: "title" };
 
   const cat = entry.category.toLowerCase();
   if (cat.startsWith(lower)) return { score: FIELD_SCORES["category:starts"], field: "category" };
-  if (cat.includes(lower))   return { score: FIELD_SCORES["category"],        field: "category" };
+  if (cat.includes(lower)) return { score: FIELD_SCORES["category"], field: "category" };
 
   for (const tag of entry.tags) {
     const tl = tag.toLowerCase();
     if (tl.startsWith(lower)) return { score: FIELD_SCORES["tag:starts"], field: "tag" };
-    if (tl.includes(lower))   return { score: FIELD_SCORES["tag"],        field: "tag" };
+    if (tl.includes(lower)) return { score: FIELD_SCORES["tag"], field: "tag" };
   }
 
   const occ = entry.occasion.toLowerCase();
   if (occ.startsWith(lower)) return { score: FIELD_SCORES["occasion:starts"], field: "occasion" };
-  if (occ.includes(lower))   return { score: FIELD_SCORES["occasion"],        field: "occasion" };
+  if (occ.includes(lower)) return { score: FIELD_SCORES["occasion"], field: "occasion" };
 
   for (const badge of entry.badges) {
     const bl = badge.toLowerCase();
     if (bl.startsWith(lower)) return { score: FIELD_SCORES["badge:starts"], field: "badge" };
-    if (bl.includes(lower))   return { score: FIELD_SCORES["badge"],        field: "badge" };
+    if (bl.includes(lower)) return { score: FIELD_SCORES["badge"], field: "badge" };
   }
 
   const fab = entry.fabric.toLowerCase();
   if (fab.startsWith(lower)) return { score: FIELD_SCORES["fabric:starts"], field: "fabric" };
-  if (fab.includes(lower))   return { score: FIELD_SCORES["fabric"],        field: "fabric" };
+  if (fab.includes(lower)) return { score: FIELD_SCORES["fabric"], field: "fabric" };
 
   const fit = entry.fit.toLowerCase();
   if (fit.startsWith(lower)) return { score: FIELD_SCORES["fit:starts"], field: "fit" };
-  if (fit.includes(lower))   return { score: FIELD_SCORES["fit"],        field: "fit" };
+  if (fit.includes(lower)) return { score: FIELD_SCORES["fit"], field: "fit" };
 
   if (entry.gender.toLowerCase().includes(lower))
     return { score: FIELD_SCORES["gender"], field: "gender" };
@@ -913,7 +930,7 @@ function scoreEntry(
  * Uses an in-memory catalog so no DB round-trip is needed on cache-warm requests.
  */
 export async function fetchSuggestions(q: string, log: OpLogger): Promise<SuggestionRow[]> {
-  const lower   = q.toLowerCase();
+  const lower = q.toLowerCase();
   const catalog = await loadSearchCatalog(log);
 
   // Score every product in the catalog.
@@ -926,7 +943,7 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
   log.step(`Scoring - ${scored.length}/${catalog.length} products matched`);
 
   // ─── Collect unique metadata suggestions from all matched products ──────────
-  const metaRows   = new Map<string, SuggestionRow>();
+  const metaRows = new Map<string, SuggestionRow>();
   const metaScores = new Map<string, number>();
 
   function upsertMeta(key: string, row: SuggestionRow, score: number) {
@@ -1001,14 +1018,14 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
   for (const m of lexiconMatches) {
     mergeMeta(
       {
-        type:         m.entry.type,
-        id:           `lex:${m.entry.type}:${m.entry.term.toLowerCase()}`,
-        label:        m.entry.term,
-        sublabel:     m.entry.sublabel,
-        image:        "",
-        slug:         "",
+        type: m.entry.type,
+        id: `lex:${m.entry.type}:${m.entry.term.toLowerCase()}`,
+        label: m.entry.term,
+        sublabel: m.entry.sublabel,
+        image: "",
+        slug: "",
         categorySlug: "",
-        sku:          "",
+        sku: "",
       },
       m.score
     );
@@ -1022,14 +1039,14 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
 
   // Products tab is inventory-bound (these navigate to real PDPs); cap at 8.
   const productSuggestions: SuggestionRow[] = scored.slice(0, 8).map(({ entry }) => ({
-    type:         "product" as const,
-    id:           entry.id,
-    label:        entry.title,
-    sublabel:     entry.category,
-    image:        entry.image,
-    slug:         entry.slug,
+    type: "product" as const,
+    id: entry.id,
+    label: entry.title,
+    sublabel: entry.category,
+    image: entry.image,
+    slug: entry.slug,
     categorySlug: entry.category_slug,
-    sku:          entry.base_sku,
+    sku: entry.base_sku,
   }));
 
   log.step(`Suggestions - ${metaSuggestions.length} metadata + ${productSuggestions.length} products`);
@@ -1090,7 +1107,7 @@ export async function fetchRecommendedProducts(
   // The PDP passes these in (it already has the product loaded), letting us skip
   // the lookup. We only hit the DB when the hint is absent (e.g. a direct API call).
   let anchorGender = anchorHint?.gender ?? null;
-  let anchorPrice  = typeof anchorHint?.price === "number" ? anchorHint.price : null;
+  let anchorPrice = typeof anchorHint?.price === "number" ? anchorHint.price : null;
   if (anchorGender === null || anchorPrice === null) {
     log.step(`DB fetch - anchor gender/price  slug=${slug}  (no hint supplied)`);
     const { data: anchor } = await sb
@@ -1099,7 +1116,7 @@ export async function fetchRecommendedProducts(
       .eq("slug", slug)
       .maybeSingle();
     if (anchorGender === null) anchorGender = anchor?.gender ?? null;
-    if (anchorPrice === null)  anchorPrice  = Number(anchor?.price) || 0;
+    if (anchorPrice === null) anchorPrice = Number(anchor?.price) || 0;
   }
 
   const anchorPriceNum = anchorPrice ?? 0;

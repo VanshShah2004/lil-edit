@@ -16,7 +16,7 @@ dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 import { supabaseAdmin } from "../lib/supabase.js";
 
-const BUCKET       = "product-images";
+const BUCKET = "product-images";
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?
 function parseDataUrl(dataUrl: string): { buffer: Buffer; mime: string } | null {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/s);
   if (!match) return null;
-  return { mime: match[1], buffer: Buffer.from(match[2], "base64") };
+  return { mime: match[1]!, buffer: Buffer.from(match[2]!, "base64") };
 }
 
 async function uploadBuffer(buffer: Buffer, mime: string, storagePath: string): Promise<string> {
@@ -38,9 +38,9 @@ async function uploadBuffer(buffer: Buffer, mime: string, storagePath: string): 
 // ── Per-table migration ───────────────────────────────────────────────────────
 
 async function migrateTable(
-  imgTable:     "product_images"       | "draft_product_images",
-  parentTable:  "products"             | "draft_products",
-  variantTable: "product_variants"     | "draft_product_variants",
+  imgTable: "product_images" | "draft_product_images",
+  parentTable: "products" | "draft_products",
+  variantTable: "product_variants" | "draft_product_variants",
 ): Promise<void> {
   const sb = supabaseAdmin!;
   console.log(`\n── ${imgTable} ${"─".repeat(Math.max(0, 44 - imgTable.length))}`);
@@ -91,10 +91,10 @@ async function migrateTable(
       continue;
     }
 
-    const baseSku     = skuMap.get(img.product_id as string) ?? "unknown";
-    const colorName   = img.variant_id ? (colorMap.get(img.variant_id as string) ?? "variant") : null;
-    const context     = colorName ? colorName.toLowerCase().replace(/\s+/g, "-") : "global";
-    const ext         = parsed.mime.includes("png") ? "png" : "jpg";
+    const baseSku = skuMap.get(img.product_id as string) ?? "unknown";
+    const colorName = img.variant_id ? (colorMap.get(img.variant_id as string) ?? "variant") : null;
+    const context = colorName ? colorName.toLowerCase().replace(/\s+/g, "-") : "global";
+    const ext = parsed.mime.includes("png") ? "png" : "jpg";
     const storagePath = `products/${baseSku}/${context}/${randomUUID()}.${ext}`;
 
     try {
@@ -138,7 +138,7 @@ async function main(): Promise<void> {
     throw new Error(`Bucket creation failed: ${bucketErr.message}`);
   }
 
-  await migrateTable("product_images",       "products",       "product_variants");
+  await migrateTable("product_images", "products", "product_variants");
   await migrateTable("draft_product_images", "draft_products", "draft_product_variants");
 
   console.log("\n✓ Migration complete.");

@@ -36,6 +36,7 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
   const visibleItems = activeTab === "products" ? productItems : metaItems;
 
   // Reset selection when tab or suggestions list changes.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setSelectedIndex(-1); }, [activeTab, suggestions]);
 
   // When new results arrive, land on whichever tab actually has results — so a
@@ -45,8 +46,10 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
   useEffect(() => {
     const hasProducts = suggestions.some(s => s.type === "product");
     const hasMeta     = suggestions.some(s => s.type !== "product");
+    // Land on whichever tab actually has results when new suggestions arrive.
     if (!hasProducts && hasMeta) {
       console.log("[SuggestionsDropdown] no products — switching to Suggestions tab");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab("suggestions");
     } else if (hasProducts && !hasMeta) {
       console.log("[SuggestionsDropdown] no suggestions — switching to Products tab");
@@ -55,12 +58,15 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
   }, [suggestions]);
 
   // Keep refs fresh so the keyboard handler never captures stale closure values.
+  // Written in an effect (after render) so refs are never mutated during render.
   const visibleRef = useRef(visibleItems);
   const selectedRef = useRef(selectedIndex);
   const activeTabRef = useRef(activeTab);
-  visibleRef.current = visibleItems;
-  selectedRef.current = selectedIndex;
-  activeTabRef.current = activeTab;
+  useEffect(() => {
+    visibleRef.current = visibleItems;
+    selectedRef.current = selectedIndex;
+    activeTabRef.current = activeTab;
+  });
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

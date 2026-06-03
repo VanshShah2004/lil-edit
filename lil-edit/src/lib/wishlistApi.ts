@@ -22,7 +22,7 @@ export interface WishlistItem {
 
 async function getAccessToken(): Promise<string | null> {
   const { data: { session } } = await supabase.auth.getSession();
-  console.log("[wishlistApi] token:", !!session?.access_token ? "present" : "missing");
+  console.log("[wishlistApi] token:", session?.access_token ? "present" : "missing");
   return session?.access_token ?? null;
 }
 
@@ -47,7 +47,7 @@ export async function fetchWishlist(): Promise<WishlistItem[]> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     console.error("[wishlistApi] fetchWishlist error:", body);
-    throw new Error((body as any).error ?? `Wishlist fetch failed (${res.status})`);
+    throw new Error((body as { error?: string }).error ?? `Wishlist fetch failed (${res.status})`);
   }
   const data = await res.json();
   console.log("[wishlistApi] fetchWishlist →", (data.items ?? []).length, "items");
@@ -68,7 +68,7 @@ export async function addToWishlist(product_slug: string, sku: string): Promise<
       return;
     }
     console.error("[wishlistApi] addToWishlist error:", body);
-    throw new Error((body as any).error ?? `Add to wishlist failed (${res.status})`);
+    throw new Error((body as { error?: string }).error ?? `Add to wishlist failed (${res.status})`);
   }
   console.log("[wishlistApi] addToWishlist success");
 }
@@ -79,7 +79,7 @@ export async function removeWishlistItem(wishlistItemId: string): Promise<void> 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     console.error("[wishlistApi] removeWishlistItem error:", body);
-    throw new Error((body as any).error ?? `Remove from wishlist failed (${res.status})`);
+    throw new Error((body as { error?: string }).error ?? `Remove from wishlist failed (${res.status})`);
   }
   console.log("[wishlistApi] removeWishlistItem success");
 }
@@ -90,7 +90,7 @@ export async function clearWishlist(): Promise<void> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     console.error("[wishlistApi] clearWishlist error:", body);
-    throw new Error((body as any).error ?? `Clear wishlist failed (${res.status})`);
+    throw new Error((body as { error?: string }).error ?? `Clear wishlist failed (${res.status})`);
   }
   console.log("[wishlistApi] clearWishlist success");
 }
@@ -101,7 +101,7 @@ export async function moveToCart(wishlistItemId: string): Promise<void> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     console.error("[wishlistApi] moveToCart error:", body);
-    throw new Error((body as any).error ?? `Move to cart failed (${res.status})`);
+    throw new Error((body as { error?: string }).error ?? `Move to cart failed (${res.status})`);
   }
   console.log("[wishlistApi] moveToCart success");
 }
@@ -112,7 +112,7 @@ export async function moveAllToCart(): Promise<{ moved: number; skipped: number 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     console.error("[wishlistApi] moveAllToCart error:", body);
-    throw new Error((body as any).error ?? `Move all to cart failed (${res.status})`);
+    throw new Error((body as { error?: string }).error ?? `Move all to cart failed (${res.status})`);
   }
   const data = await res.json();
   console.log("[wishlistApi] moveAllToCart →", data.moved, "moved,", data.skipped, "skipped");

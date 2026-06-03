@@ -6,7 +6,7 @@ import { Loader2, Save, Sparkles } from "lucide-react";
 import Footer from "@/components/layout/Footer";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
-import AddressManager from "@/components/profile/AddressManager";
+import AddressManager, { type Address } from "@/components/profile/AddressManager";
 // Mocking OTP
 
 export default function Profile() {
@@ -34,7 +34,7 @@ export default function Profile() {
   });
 
   // Addresses State
-  const [addresses, setAddresses] = useState<any[]>([]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
   const [deletedAddresses, setDeletedAddresses] = useState<string[]>([]);
 
   useEffect(() => {
@@ -57,6 +57,8 @@ export default function Profile() {
       }
       fetchAddresses();
     }
+    // Intentionally re-syncs only when the user/profile identity changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, profile]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,7 +93,7 @@ export default function Profile() {
       setMockOtpSent(true);
       setOtp(""); // Clear any existing OTP
       toast.success("Mock OTP sent! (Use 123456 to verify)");
-    } catch (error: any) {
+    } catch {
       toast.error("Failed to send OTP");
     } finally {
       setIsSendingOtp(false);
@@ -164,7 +166,13 @@ export default function Profile() {
 
     try {
       // 1. Update Profile
-      const updateData: any = {
+      const updateData: {
+        first_name: string;
+        last_name: string;
+        dob: string | null;
+        gender: string | null;
+        phone_number?: string;
+      } = {
         first_name: personalInfo.first_name,
         last_name: personalInfo.last_name,
         dob: personalInfo.dob || null,
@@ -203,9 +211,9 @@ export default function Profile() {
 
       toast.success("Profile and addresses saved successfully");
 
-    } catch (error: any) {
+    } catch (error) {
       console.error("Save error:", error);
-      toast.error(error.message || "Failed to update profile");
+      toast.error(error instanceof Error ? error.message : "Failed to update profile");
     } finally {
       setIsSaving(false);
     }

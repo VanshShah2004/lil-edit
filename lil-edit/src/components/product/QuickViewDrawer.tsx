@@ -79,6 +79,8 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
   const [activeImg, setActiveImg] = useState(0);
   const [slideDir, setSlideDir] = useState<1 | -1>(1);
 
+  // Reset gallery to the first image whenever a different product is shown.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setActiveImg(0); }, [product?.id]);
 
   useEffect(() => {

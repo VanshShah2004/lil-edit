@@ -179,8 +179,8 @@ async function sendCurationToBackend(
   if (!res.ok) {
     throw new Error(
       (json.database && "error" in json.database ? json.database.error : undefined) ||
-        json.message ||
-        `Backend error (${res.status})`
+      json.message ||
+      `Backend error (${res.status})`
     );
   }
   return { database: json.database };
@@ -258,10 +258,31 @@ interface EditableProduct {
   is_new_arrival?: boolean;
   is_bestseller?: boolean;
   is_trending?: boolean;
-  product_images?: any[];
-  draft_product_images?: any[];
-  product_variants?: any[];
-  draft_product_variants?: any[];
+  product_images?: ProductImageRow[];
+  draft_product_images?: ProductImageRow[];
+  product_variants?: ProductVariantRow[];
+  draft_product_variants?: ProductVariantRow[];
+}
+
+interface ProductVariantRow {
+  id: string;
+  color_name?: string;
+  color_hex?: string;
+  variant_sku?: string;
+  stock?: number | null;
+  is_unlimited?: boolean;
+}
+
+interface ProductImageRow {
+  id?: string;
+  variant_id?: string | null;
+  image_url: string;
+}
+
+interface EditSnapshot {
+  formData: FormData;
+  globalImages: string[];
+  isStockUnlimited: boolean;
 }
 
 const EditProduct = () => {
@@ -269,7 +290,7 @@ const EditProduct = () => {
   const navigate = useNavigate();
   const { productId } = useParams<{ productId: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [uploadingCount, setUploadingCount] = useState(0);
@@ -280,7 +301,7 @@ const EditProduct = () => {
   const [newBadgeName, setNewBadgeName] = useState("");
   const [availableCustomBadges, setAvailableCustomBadges] = useState<string[]>([]);
   const [originalProduct, setOriginalProduct] = useState<EditableProduct | null>(null);
-  const [initialState, setInitialState] = useState<any>(null);
+  const [initialState, setInitialState] = useState<EditSnapshot | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -329,12 +350,12 @@ const EditProduct = () => {
         });
         if (!res.ok) throw new Error("Failed to fetch products");
         const data = await res.json();
-        
-        const published = (data.published || []).map((p: any) => ({ ...p, status: "PUBLISHED" }));
-        const drafts = (data.drafts || []).map((d: any) => ({ ...d, status: "DRAFT" }));
+
+        const published = (data.published || []).map((p: EditableProduct) => ({ ...p, status: "PUBLISHED" }));
+        const drafts = (data.drafts || []).map((d: EditableProduct) => ({ ...d, status: "DRAFT" }));
         const allProducts = [...published, ...drafts];
         const product = allProducts.find((p: EditableProduct) => p.id === productId);
-        
+
         if (!product) {
           toast.error("Product not found");
           navigate("/admin/manage-products");
@@ -361,13 +382,13 @@ const EditProduct = () => {
           care_instructions: product.care_instructions || "",
           descriptionPoints: (product.description_points || []).filter((pt: string) => pt !== "No product details added yet."),
           selectedSizes: product.sizes || [],
-          selectedColors: (variants || []).map((v: any) => ({
+          selectedColors: (variants || []).map((v: ProductVariantRow) => ({
             name: v.color_name || "Color",
             hex: v.color_hex || "#cccccc",
             sku: v.variant_sku || "",
-            stock: v.is_unlimited ? null : Number(v.stock ?? 0),
+            stock: v.is_unlimited ? 0 : Number(v.stock ?? 0),
             isUnlimited: !!v.is_unlimited,
-            images: (images || []).filter((img: any) => img.variant_id === v.id).map((img: any) => img.image_url) || []
+            images: (images || []).filter((img: ProductImageRow) => img.variant_id === v.id).map((img: ProductImageRow) => img.image_url) || []
           })),
           featured: product.is_featured || false,
           newArrival: product.is_new_arrival || false,
@@ -380,12 +401,12 @@ const EditProduct = () => {
 
         setFormData(initialFormValues);
 
-        const globalImages = (images || []).filter((img: any) => !img.variant_id).map((img: any) => img.image_url);
+        const globalImages = (images || []).filter((img: ProductImageRow) => !img.variant_id).map((img: ProductImageRow) => img.image_url);
         setImagePreviews(globalImages);
-        
+
         setAvailableCustomBadges(product.badges || []);
 
-        const isUnlimited = variants.some((v: any) => !!v.is_unlimited);
+        const isUnlimited = variants.some((v: ProductVariantRow) => !!v.is_unlimited);
         setIsStockUnlimited(isUnlimited);
 
         setInitialState({
@@ -411,13 +432,13 @@ const EditProduct = () => {
             care_instructions: product.care_instructions || "",
             descriptionPoints: (product.description_points || []).filter((pt: string) => pt !== "No product details added yet."),
             selectedSizes: product.sizes || [],
-            selectedColors: (variants || []).map((v: any) => ({
+            selectedColors: (variants || []).map((v: ProductVariantRow) => ({
               name: v.color_name || "Color",
               hex: v.color_hex || "#cccccc",
               sku: v.variant_sku || "",
-              stock: v.is_unlimited ? null : Number(v.stock ?? 0),
+              stock: v.is_unlimited ? 0 : Number(v.stock ?? 0),
               isUnlimited: !!v.is_unlimited,
-              images: (images || []).filter((img: any) => img.variant_id === v.id).map((img: any) => img.image_url) || []
+              images: (images || []).filter((img: ProductImageRow) => img.variant_id === v.id).map((img: ProductImageRow) => img.image_url) || []
             })),
             featured: product.is_featured || false,
             newArrival: product.is_new_arrival || false,
@@ -530,13 +551,13 @@ const EditProduct = () => {
 
       setFormData(prev => ({
         ...prev,
-        selectedColors: [...prev.selectedColors, { 
-          name: formattedName, 
-          hex, 
-          sku: variantSku, 
+        selectedColors: [...prev.selectedColors, {
+          name: formattedName,
+          hex,
+          sku: variantSku,
           stock: isStockUnlimited ? 0 : 1,
           isUnlimited: isStockUnlimited,
-          images: [] 
+          images: []
         }]
       }));
       setNewColorInput("");
@@ -546,7 +567,7 @@ const EditProduct = () => {
   const toggleVariantStockMode = (colorName: string, isUnlimited: boolean) => {
     setFormData(prev => ({
       ...prev,
-      selectedColors: prev.selectedColors.map(c => 
+      selectedColors: prev.selectedColors.map(c =>
         c.name === colorName ? { ...c, isUnlimited, stock: isUnlimited ? 0 : 1 } : c
       )
     }));
@@ -555,7 +576,7 @@ const EditProduct = () => {
   const updateVariantStock = (colorName: string, stock: number) => {
     setFormData(prev => ({
       ...prev,
-      selectedColors: prev.selectedColors.map(c => 
+      selectedColors: prev.selectedColors.map(c =>
         c.name === colorName ? { ...c, stock } : c
       )
     }));
@@ -661,7 +682,7 @@ const EditProduct = () => {
     } else {
       setFormData(prev => ({
         ...prev,
-        selectedColors: prev.selectedColors.map(c => 
+        selectedColors: prev.selectedColors.map(c =>
           c.name === targetTab ? { ...c, images: c.images.filter((_, i) => i !== index) } : c
         )
       }));
@@ -700,7 +721,7 @@ const EditProduct = () => {
       "trending", "slug", "categorySlug"
     ];
     for (const f of fields) {
-      if (formData[f as keyof typeof formData] !== initialState.formData[f]) {
+      if (formData[f as keyof typeof formData] !== initialState.formData[f as keyof FormData]) {
         return true;
       }
     }
@@ -708,8 +729,8 @@ const EditProduct = () => {
     // 2. Arrays
     const arrayFields = ["tags", "descriptionPoints", "selectedSizes", "customBadges"];
     for (const f of arrayFields) {
-      const arr1 = formData[f as keyof typeof formData] as any[];
-      const arr2 = initialState.formData[f] as any[];
+      const arr1 = formData[f as keyof typeof formData] as string[];
+      const arr2 = initialState.formData[f as keyof FormData] as string[];
       const sorted1 = [...(arr1 || [])].sort();
       const sorted2 = [...(arr2 || [])].sort();
       if (sorted1.length !== sorted2.length || JSON.stringify(sorted1) !== JSON.stringify(sorted2)) {
@@ -764,10 +785,10 @@ const EditProduct = () => {
       const mappedProduct = mapFormDataToProduct(updatedFormData, imagePreviews, isStockUnlimited);
       setSavedPreviewProduct(mappedProduct);
       setPreviewActivated(true);
-      
+
       // Update form data to reflect the tag
       setFormData(updatedFormData);
-      
+
       if (database && database.ok === false && "skipped" in database && database.skipped) {
         toast.warning(database.reason);
       } else {
@@ -867,15 +888,15 @@ const EditProduct = () => {
 
       <div className="pt-[200px] md:pt-[168px] pb-24 px-4 sm:px-8 lg:px-12 xl:px-20">
         <div className="mx-auto max-w-none">
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              className="mb-8 space-y-1"
-            >
-              <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: "#B19CD9" }}>
-                Curation Studio
-              </p>
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            className="mb-8 space-y-1"
+          >
+            <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: "#B19CD9" }}>
+              Curation Studio
+            </p>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">
               Edit Product
             </h1>
@@ -1177,9 +1198,9 @@ const EditProduct = () => {
                           Overall Stock Level
                         </label>
                       </div>
-                      
+
                       <div className="flex p-1 bg-gray-100/50 rounded-md border border-gray-200/50 w-full h-[50px]">
-                        <button 
+                        <button
                           type="button"
                           onClick={() => {
                             setIsStockUnlimited(false);
@@ -1196,7 +1217,7 @@ const EditProduct = () => {
                         >
                           Limited
                         </button>
-                        <button 
+                        <button
                           type="button"
                           onClick={() => {
                             setIsStockUnlimited(true);
@@ -1380,8 +1401,8 @@ const EditProduct = () => {
                                 </div>
 
                                 <div className="flex items-center gap-6 sm:gap-10">
-                                  <div 
-                                    className="flex items-center gap-3 cursor-pointer group/assets" 
+                                  <div
+                                    className="flex items-center gap-3 cursor-pointer group/assets"
                                     onClick={() => setActiveImageTab(color.name)}
                                   >
                                     <div className="text-2xl font-bold text-gray-900 group-hover/assets:scale-110 transition-transform">
@@ -1393,8 +1414,8 @@ const EditProduct = () => {
                                   </div>
 
                                   <button
-                                    onClick={(e) => { 
-                                      e.stopPropagation(); 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       setActiveImageTab(color.name);
                                       document.getElementById('image-studio')?.scrollIntoView({ behavior: 'smooth' });
                                       setTimeout(() => {
@@ -1423,16 +1444,16 @@ const EditProduct = () => {
                                     <label className="text-[9px] font-bold uppercase tracking-widest text-gray-400/50 block">
                                       {color.isUnlimited ? "Stock Level (Auto)" : "Stock Level"}
                                     </label>
-                                    
+
                                     <div className="flex p-1 bg-gray-100/50 rounded-lg border border-gray-200/50 scale-90 origin-right">
-                                      <button 
+                                      <button
                                         type="button"
                                         onClick={() => toggleVariantStockMode(color.name, false)}
                                         className={`px-3 py-1.5 rounded-md text-[7px] font-bold uppercase tracking-widest transition-all ${!color.isUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
                                       >
                                         Limited
                                       </button>
-                                      <button 
+                                      <button
                                         type="button"
                                         onClick={() => toggleVariantStockMode(color.name, true)}
                                         className={`px-3 py-1.5 rounded-md text-[7px] font-bold uppercase tracking-widest transition-all ${color.isUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
@@ -1441,7 +1462,7 @@ const EditProduct = () => {
                                       </button>
                                     </div>
                                   </div>
-                                  
+
                                   <div className="relative group/input">
                                     <input
                                       type="number"
@@ -1491,11 +1512,10 @@ const EditProduct = () => {
                       <div className="flex items-center gap-2 p-1 bg-gray-50 rounded-2xl border border-gray-200/40 w-fit max-w-full overflow-x-auto no-scrollbar">
                         <button
                           onClick={() => setActiveImageTab("Global")}
-                          className={`px-6 py-2.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${
-                            activeImageTab === "Global" 
-                              ? "bg-white text-gray-900 shadow-sm border border-gray-200/40" 
+                          className={`px-6 py-2.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${activeImageTab === "Global"
+                              ? "bg-white text-gray-900 shadow-sm border border-gray-200/40"
                               : "text-gray-400/60 hover:text-gray-900"
-                          }`}
+                            }`}
                         >
                           Global Images
                         </button>
@@ -1503,18 +1523,17 @@ const EditProduct = () => {
                           <button
                             key={color.name}
                             onClick={() => setActiveImageTab(color.name)}
-                            className={`px-6 py-2.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-3 whitespace-nowrap ${
-                              activeImageTab === color.name 
-                                ? "bg-white text-gray-900 shadow-sm border border-gray-200/40" 
+                            className={`px-6 py-2.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-3 whitespace-nowrap ${activeImageTab === color.name
+                                ? "bg-white text-gray-900 shadow-sm border border-gray-200/40"
                                 : "text-gray-400/60 hover:text-gray-900"
-                            }`}
+                              }`}
                           >
                             <div className="w-2.5 h-2.5 rounded-full border border-black/5" style={{ backgroundColor: color.hex }} />
                             {color.name}
                           </button>
                         ))}
                       </div>
-                      
+
                       <div className="hidden sm:block">
                         <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400/40">
                           {activeImageTab === "Global" ? "Shared Gallery" : `${activeImageTab} Variant`}
@@ -1547,7 +1566,7 @@ const EditProduct = () => {
                             {activeImageTab === "Global" ? "Global Collection" : `${activeImageTab} Variant`}
                           </p>
                           <p className="text-sm text-gray-400 font-body font-light mb-8 max-w-xs mx-auto">
-                            {activeImageTab === "Global" 
+                            {activeImageTab === "Global"
                               ? "Upload general campaign or shared editorial shots."
                               : `Upload exclusive shots for the ${activeImageTab} variant.`}
                           </p>
@@ -1581,7 +1600,7 @@ const EditProduct = () => {
                         const currentImages = activeImageTab === "Global"
                           ? imagePreviews
                           : formData.selectedColors.find(c => c.name === activeImageTab)?.images || [];
-                        
+
                         if (currentImages.length === 0) return null;
 
                         return (
@@ -1759,11 +1778,10 @@ const EditProduct = () => {
                       !formData.gender ||
                       !formData.sku
                     }
-                    className={`flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full font-bold uppercase tracking-widest text-xs transition-all duration-300 shadow-xl ${
-                      !formData.name || !formData.category || !formData.gender || !formData.sku
+                    className={`flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full font-bold uppercase tracking-widest text-xs transition-all duration-300 shadow-xl ${!formData.name || !formData.category || !formData.gender || !formData.sku
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none border border-gray-200"
                         : "bg-[#B19CD9] text-black hover:brightness-105 shadow-[#B19CD9]/30"
-                    } disabled:opacity-50`}
+                      } disabled:opacity-50`}
                   >
                     {isPublishing ? (
                       <Loader className="w-4 h-4 animate-spin" />
@@ -1797,10 +1815,10 @@ const EditProduct = () => {
                 {savedPreviewProduct ? (
                   <motion.div layout className="rounded-[1.5rem] overflow-hidden border border-gray-200/30 bg-white mx-[-6px]">
                     <div className="max-h-[calc(100vh-220px)] overflow-y-auto">
-                      <ProductPreviewView 
-                        product={savedPreviewProduct} 
-                        previewMode={true} 
-                        forceMobileLayout={true} 
+                      <ProductPreviewView
+                        product={savedPreviewProduct}
+                        previewMode={true}
+                        forceMobileLayout={true}
                         initialColorName={activeImageTab !== "Global" ? activeImageTab : undefined}
                       />
                     </div>

@@ -62,6 +62,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Fetch cart whenever user changes or refetchCart() is called
   useEffect(() => {
     if (!userId) {
+      // Reset to the logged-out cart — syncing to external auth state.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCartItems([]);
       setLoading(false);
       return;
@@ -118,7 +120,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
     try {
       await apiUpdateQty(cartItemId, quantity);
-    } catch (err) {
+    } catch {
       setCartItems(snapshot);
       toast.error("Could not update quantity");
     }
@@ -136,7 +138,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       await apiUpdateSize(cartItemId, size);
       // Backend may have merged items; refetch to get the accurate cart state
       refetchCart();
-    } catch (err) {
+    } catch {
       setCartItems(snapshot);
       toast.error("Could not update size");
     }
@@ -157,7 +159,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       await apiUpdateColor(cartItemId, sku);
       refetchCart();
-    } catch (err) {
+    } catch {
       setCartItems(snapshot);
       toast.error("Could not update color");
     }
@@ -171,7 +173,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
     try {
       await apiRemove(cartItemId);
-    } catch (err) {
+    } catch {
       setCartItems(snapshot);
       toast.error("Could not remove item");
     }
@@ -185,7 +187,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
     try {
       await apiClear();
-    } catch (err) {
+    } catch {
       setCartItems(snapshot);
       toast.error("Could not clear cart");
     }

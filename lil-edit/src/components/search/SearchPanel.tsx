@@ -25,6 +25,8 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
       console.log("[SearchPanel] opened");
     } else {
       console.log("[SearchPanel] closed — resetting state");
+      // Reset the query so a re-open starts fresh.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSearchTerm("");
     }
   }, [isOpen]);

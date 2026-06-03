@@ -30,7 +30,7 @@ export interface AddToCartPayload {
 
 async function getAccessToken(): Promise<string | null> {
   const { data: { session } } = await supabase.auth.getSession();
-  console.log("[cartApi] token:", !!session?.access_token ? "present" : "missing");
+  console.log("[cartApi] token:", session?.access_token ? "present" : "missing");
   return session?.access_token ?? null;
 }
 
@@ -55,7 +55,7 @@ export async function fetchCart(): Promise<CartItem[]> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     console.error("[cartApi] fetchCart error:", body);
-    throw new Error((body as any).error ?? `Cart fetch failed (${res.status})`);
+    throw new Error((body as { error?: string }).error ?? `Cart fetch failed (${res.status})`);
   }
   const data = await res.json();
   console.log("[cartApi] fetchCart →", (data.items ?? []).length, "items");
@@ -71,7 +71,7 @@ export async function addToCart(payload: AddToCartPayload): Promise<void> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     console.error("[cartApi] addToCart error:", body);
-    throw new Error((body as any).error ?? `Add to cart failed (${res.status})`);
+    throw new Error((body as { error?: string }).error ?? `Add to cart failed (${res.status})`);
   }
   console.log("[cartApi] addToCart success");
 }
@@ -86,7 +86,7 @@ export async function updateCartItemColor(
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error((body as any).error ?? `Color update failed (${res.status})`);
+    throw new Error((body as { error?: string }).error ?? `Color update failed (${res.status})`);
   }
 }
 
@@ -100,7 +100,7 @@ export async function updateCartItemSize(
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error((body as any).error ?? `Size update failed (${res.status})`);
+    throw new Error((body as { error?: string }).error ?? `Size update failed (${res.status})`);
   }
 }
 
@@ -114,7 +114,7 @@ export async function updateCartItemQty(
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error((body as any).error ?? `Quantity update failed (${res.status})`);
+    throw new Error((body as { error?: string }).error ?? `Quantity update failed (${res.status})`);
   }
 }
 
@@ -122,7 +122,7 @@ export async function removeCartItem(cartItemId: string): Promise<void> {
   const res = await authFetch(`/api/cart/${cartItemId}`, { method: "DELETE" });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error((body as any).error ?? `Remove failed (${res.status})`);
+    throw new Error((body as { error?: string }).error ?? `Remove failed (${res.status})`);
   }
 }
 
@@ -130,6 +130,6 @@ export async function clearCart(): Promise<void> {
   const res = await authFetch("/api/cart/clear", { method: "DELETE" });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error((body as any).error ?? `Clear cart failed (${res.status})`);
+    throw new Error((body as { error?: string }).error ?? `Clear cart failed (${res.status})`);
   }
 }

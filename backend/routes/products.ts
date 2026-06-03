@@ -568,7 +568,7 @@ router.get("/suggestions", async (req: Request, res: Response) => {
 
 // ─── DELETE /api/products/:id ─────────────────────────────────────────────────
 router.delete("/:id", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-  const { id }  = req.params;
+  const id      = req.params.id as string;
   const status  = req.query.status   as string;
   const baseSku = req.query.base_sku as string | undefined;
 

@@ -2,9 +2,23 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, MapPin, Home, Briefcase } from "lucide-react";
 
+export interface Address {
+  id: string;
+  type: string;
+  label: string | null;
+  line1: string;
+  line2: string;
+  landmark: string;
+  city: string;
+  state: string;
+  country: string;
+  pincode: string;
+  is_default: boolean;
+}
+
 interface AddressManagerProps {
-  addresses: any[];
-  setAddresses: React.Dispatch<React.SetStateAction<any[]>>;
+  addresses: Address[];
+  setAddresses: React.Dispatch<React.SetStateAction<Address[]>>;
   setDeletedAddresses: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
@@ -51,7 +65,7 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
     }
   };
 
-  const openForm = (address: any = null) => {
+  const openForm = (address: Address | null = null) => {
     if (address) {
       setEditingId(address.id);
       setForm({

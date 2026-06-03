@@ -108,7 +108,10 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
   useEffect(() => {
     const images = version.type === "PUBLISHED" ? version.data.product_images : version.data.draft_product_images;
     const firstGlobal = images?.find(i => !i.variant_id)?.image_url ?? images?.[0]?.image_url ?? null;
+    // Reset the previewed image when switching to a different version.
     setActiveImage(firstGlobal);
+    // Keyed on version identity; image arrays are read once per version switch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version.data.id]);
 
   const p = version.data;
@@ -375,6 +378,22 @@ interface GroupedProduct {
   lastModified?: number;
 }
 
+type CatalogDetailData = { published?: ProductItem; draft?: ProductItem };
+
+interface CatalogListRow {
+  base_sku: string;
+  title: string;
+  price: number;
+  created_at: string;
+  updated_at: string;
+  primary_image_url?: string | null;
+  has_pending_updates?: boolean;
+  is_published?: boolean;
+  has_draft?: boolean;
+}
+
+interface CatalogListResponse { products?: CatalogListRow[]; hasMore?: boolean; }
+
 // ─── Module-level in-memory caches (survive re-renders and remounts) ─────────
 import {
   LIST_TTL_MS, DETAIL_TTL_MS,
@@ -393,7 +412,7 @@ function traceFlow(type: "LIST" | "DETAIL", steps: string[]): void {
   console.log(`[TRACE] ${type} FLOW:\n${steps.map(s => `  ${s}`).join("\n")}`);
 }
 
-function mapDetailResponse(data: any): { published?: ProductItem; draft?: ProductItem } {
+function mapDetailResponse(data: CatalogDetailData): { published?: ProductItem; draft?: ProductItem } {
   const published: ProductItem | undefined = data.published
     ? {
         ...data.published,
@@ -499,7 +518,7 @@ const ManageProducts = () => {
     if (entry && !isExpired(entry.timestamp, DETAIL_TTL_MS)) {
       const age = Math.round((Date.now() - entry.timestamp) / 1000);
       clog(`[CACHE] DETAIL → HIT (memory) sku=${sku} age=${age}s`);
-      applyDetail(sku, entry.data);
+      applyDetail(sku, entry.data as CatalogDetailData);
       traceFlow("DETAIL", ["Frontend Cache → HIT", "No API call"]);
       return;
     }
@@ -514,7 +533,7 @@ const ManageProducts = () => {
         const detail = await existing;
         const waited = Math.round(performance.now() - waitT0);
         clog(`[CACHE] DETAIL → IN-FLIGHT RESOLVED sku=${sku} waited=${waited}ms`);
-        applyDetail(sku, detail);
+        applyDetail(sku, detail as CatalogDetailData);
         traceFlow("DETAIL", [
           "Frontend Cache → MISS",
           `In-Flight Dedup → JOINED (waited ${waited}ms)`,
@@ -575,14 +594,14 @@ const ManageProducts = () => {
     const traceSteps: string[] = [];
 
     try {
-      let data: any;
+      let data: CatalogListResponse;
 
       // ① Module-level list cache hit
       const listEntry = listCache.get(key);
       if (listEntry && !isExpired(listEntry.timestamp, LIST_TTL_MS)) {
         const age = Math.round((Date.now() - listEntry.timestamp) / 1000);
         clog(`[CACHE] LIST → HIT (memory) key=${key} age=${age}s`);
-        data = listEntry.data;
+        data = listEntry.data as CatalogListResponse;
         traceSteps.push("Frontend Cache → HIT", "No API call");
       } else {
         if (listEntry) clog(`[CACHE] LIST → EXPIRED key=${key}`);
@@ -592,7 +611,7 @@ const ManageProducts = () => {
         if (existing) {
           clog(`[CACHE] LIST → USING IN-FLIGHT REQUEST key=${key}`);
           const waitT0 = performance.now();
-          data = await existing;
+          data = (await existing) as CatalogListResponse;
           const waited = Math.round(performance.now() - waitT0);
           clog(`[CACHE] LIST → IN-FLIGHT RESOLVED key=${key} waited=${waited}ms`);
           traceSteps.push(
@@ -639,9 +658,9 @@ const ManageProducts = () => {
       }
 
       // Hydrate thin rows from module-level detail cache (TTL-checked)
-      const rows: GroupedProduct[] = (data.products ?? []).map((p: any) => {
+      const rows: GroupedProduct[] = (data.products ?? []).map((p: CatalogListRow) => {
         const dEntry = detailCache.get(p.base_sku);
-        const cached = dEntry && !isExpired(dEntry.timestamp, DETAIL_TTL_MS) ? dEntry.data : null;
+        const cached = dEntry && !isExpired(dEntry.timestamp, DETAIL_TTL_MS) ? (dEntry.data as CatalogDetailData) : null;
         return {
           base_sku:            p.base_sku,
           title:               p.title,
@@ -684,6 +703,8 @@ const ManageProducts = () => {
 
   useEffect(() => {
     fetchProducts(filterStatus, showAllMap[filterStatus]);
+    // Re-fetch only when the active filter or its show-all flag changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterStatus, showAllMap[filterStatus]]);
 
   const handleProductSelect = (product: GroupedProduct) => {
@@ -1220,11 +1241,12 @@ const ManageProducts = () => {
                         label: selectedProduct.has_pending_updates ? "Updates To be Synced" : "Draft Version",
                       },
                     ]
-                      .filter(v => v.data && (v.type !== "DRAFT" || !selectedProduct.is_published || selectedProduct.has_pending_updates))
+                      .filter((v): v is { type: "PUBLISHED" | "DRAFT"; data: ProductItem; label: string } =>
+                        Boolean(v.data) && (v.type !== "DRAFT" || !selectedProduct.is_published || selectedProduct.has_pending_updates))
                       .map((version, idx) => (
                         <ProductVersionView
                           key={version.type}
-                          version={version as any}
+                          version={version}
                           isSecondary={idx > 0}
                           isUpdate={selectedProduct.is_published && selectedProduct.has_pending_updates}
                           onEdit={handleEditProduct}

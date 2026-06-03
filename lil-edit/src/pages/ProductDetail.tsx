@@ -69,10 +69,20 @@ class LRUCache<V> {
   get size() { return this.map.size; }
 }
 
+interface RecommendedProduct {
+  slug: string;
+  sku: string;
+  categorySlug: string;
+  image: string;
+  title: string;
+  price: number;
+  originalPrice: number;
+}
+
 // ⚡ Module-level product cache — persists across route changes within the session.
 // Key = product slug. Capped at 30 entries each; oldest slug evicted when exceeded.
 const productCache        = new LRUCache<{ product: Product;         cachedAt: number }>(30, "product");
-const recommendationCache = new LRUCache<{ recommended: any[];       cachedAt: number }>(30, "recs");
+const recommendationCache = new LRUCache<{ recommended: RecommendedProduct[]; cachedAt: number }>(30, "recs");
 const reviewsCache        = new LRUCache<{ reviewsData: ReviewsData; cachedAt: number }>(30, "reviews");
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -141,7 +151,7 @@ export default function ProductDetail() {
   const isReviewsCacheFresh = reviewsCached && (Date.now() - reviewsCached.cachedAt < CACHE_TTL_MS);
 
   const [product, setProduct] = useState<Product | null>(isProductCacheFresh ? productCached.product : null);
-  const [recommendedProducts, setRecommendedProducts] = useState<any[]>(isRecCacheFresh ? recCached.recommended : []);
+  const [recommendedProducts, setRecommendedProducts] = useState<RecommendedProduct[]>(isRecCacheFresh ? recCached.recommended : []);
   const [reviewsData, setReviewsData] = useState<ReviewsData | null>(
     isReviewsCacheFresh ? reviewsCached.reviewsData : null
   );
@@ -284,6 +294,7 @@ export default function ProductDetail() {
       controller.abort();
     };
     // SKU in URL is for display/validation only — same product slug = same payload (no refetch on color change)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productSlug, categoryParam]);
 
   // Canonicalize base-SKU URLs to primary variant SKU without remounting or refetching
@@ -577,7 +588,7 @@ export default function ProductDetail() {
                     </p>
 
                     <div className="w-full space-y-3">
-                      {reviewsData.distribution.map((item: any) => {
+                      {reviewsData.distribution.map((item) => {
                         const pct = reviewsData.totalReviews > 0 ? Math.round((item.count / reviewsData.totalReviews) * 100) : 0;
                         return (
                           <div key={item.stars} className="flex items-center gap-4 group">
@@ -653,7 +664,7 @@ export default function ProductDetail() {
               </div>
 
               <div className="space-y-6">
-                {displayedReviews.map((review: any) => (
+                {displayedReviews.map((review) => (
                   <div
                     key={review.id}
                     className="relative p-6 sm:p-8 rounded-[2rem] border border-slate-300 bg-slate-50 shadow-md shadow-slate-400/30 sm:hover:bg-white sm:hover:-translate-y-1.5 sm:hover:shadow-2xl sm:hover:shadow-slate-900/25 sm:hover:border-teal-500 transition-all duration-300 group"
@@ -704,7 +715,7 @@ export default function ProductDetail() {
 
                       {review.images && (
                         <div className="flex flex-wrap gap-3 mt-6">
-                          {review.images.map((img: any, idx: number) => (
+                          {review.images.map((img: string, idx: number) => (
                             <div key={idx} className="relative w-24 h-32 rounded-xl overflow-hidden border border-gray-100 shadow-sm cursor-zoom-in group/img">
                               <img src={img} alt="Review" className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110" />
                               <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors" />

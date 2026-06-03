@@ -161,6 +161,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       listener?.subscription.unsubscribe();
     };
+    // Mount-only: registers a single auth listener for the app's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const sendSignupOtp = async (email: string) => {
