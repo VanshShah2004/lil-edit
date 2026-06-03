@@ -324,7 +324,9 @@ const EditProduct = () => {
 
       try {
         const base = getBackendBaseUrl();
-        const res = await fetch(`${base}/api/products`);
+        const res = await fetch(`${base}/api/products`, {
+          headers: { ...(await authHeader()) },
+        });
         if (!res.ok) throw new Error("Failed to fetch products");
         const data = await res.json();
         

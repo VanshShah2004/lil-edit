@@ -122,7 +122,9 @@ router.post("/upload-url", requireAuth, requireAdmin, async (req: Request, res: 
 });
 
 // ─── Legacy full-detail list ──────────────────────────────────────────────────
-router.get("/", async (req: Request, res: Response) => {
+// Returns published AND drafts — admin-only (consumed by the EditProduct admin
+// page). Gated so unpublished products are never served to anon/non-admin callers.
+router.get("/", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   const log = createLog().start("PRODUCT LIST");
   try {
     const status    = req.query.status as "ALL" | "PUBLISHED" | "DRAFT" | undefined;
@@ -479,7 +481,9 @@ router.get("/preview", requireAuth, requireAdmin, (_req: Request, res: Response)
 });
 
 // ─── GET /api/products/catalog-list — thin initial list ──────────────────────
-router.get("/catalog-list", async (req: Request, res: Response) => {
+// Can include drafts (status=DRAFT, or the default ALL) — admin-only (consumed by
+// the ManageProducts admin page). Middleware runs before the Redis read.
+router.get("/catalog-list", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   const log    = createLog().start("CATALOG LIST");
   const status = (req.query.status as "ALL" | "PUBLISHED" | "DRAFT" | undefined) ?? "ALL";
   const limitQuery = req.query.limit as string | undefined;
@@ -510,7 +514,9 @@ router.get("/catalog-list", async (req: Request, res: Response) => {
 });
 
 // ─── GET /api/products/catalog-detail — full detail per SKU (lazy) ────────────
-router.get("/catalog-detail", async (req: Request, res: Response) => {
+// Returns the draft object for a SKU — admin-only (consumed by ManageProducts).
+// Without this gate, drafts were enumerable by walking the predictable SKU space.
+router.get("/catalog-detail", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   const sku = req.query.sku as string;
   if (!sku) {
     res.status(400).json({ error: "sku parameter is required." });

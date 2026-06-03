@@ -419,7 +419,8 @@ function prefetchDetailForSku(sku: string): void {
   if (entry && !isExpired(entry.timestamp, DETAIL_TTL_MS)) return;
 
   clog(`[CACHE] DETAIL → PREFETCH sku=${sku}`);
-  const p = fetch(`${getBackendBaseUrl()}/api/products/catalog-detail?sku=${encodeURIComponent(sku)}`)
+  const p = authHeader()
+    .then(headers => fetch(`${getBackendBaseUrl()}/api/products/catalog-detail?sku=${encodeURIComponent(sku)}`, { headers }))
     .then(res => { if (!res.ok) throw new Error("prefetch failed"); return res.json(); })
     .then(data => mapDetailResponse(data));
 
@@ -439,7 +440,8 @@ function prefetchList(status: "ALL" | "PUBLISHED" | "DRAFT", showAll: boolean): 
   clog(`[CACHE] LIST → PREFETCH key=${key}`);
   const params = new URLSearchParams({ status });
   if (!showAll) params.append("limit", "10");
-  const p = fetch(`${getBackendBaseUrl()}/api/products/catalog-list?${params}`)
+  const p = authHeader()
+    .then(headers => fetch(`${getBackendBaseUrl()}/api/products/catalog-list?${params}`, { headers }))
     .then(res => { if (!res.ok) throw new Error("prefetch failed"); return res.json(); });
 
   listInFlight.set(key, p);
@@ -533,7 +535,9 @@ const ManageProducts = () => {
       const base = getBackendBaseUrl();
       clog(`[FRONTEND] FETCH DETAIL → sku=${sku}`);
       const t0 = performance.now();
-      const res = await fetch(`${base}/api/products/catalog-detail?sku=${encodeURIComponent(sku)}`);
+      const res = await fetch(`${base}/api/products/catalog-detail?sku=${encodeURIComponent(sku)}`, {
+        headers: { ...(await authHeader()) },
+      });
       detailApiSource = res.headers.get("X-Cache") === "HIT" ? "Redis" : "DB";
       if (!res.ok) throw new Error("Failed to fetch product detail");
       const data = await res.json();
@@ -608,7 +612,8 @@ const ManageProducts = () => {
           const fetchT0 = performance.now();
 
           let listApiSource = "DB"; // overwritten from X-Cache response header
-          const fetchPromise = fetch(`${base}/api/products/catalog-list?${params.toString()}`)
+          const fetchPromise = authHeader()
+            .then(headers => fetch(`${base}/api/products/catalog-list?${params.toString()}`, { headers }))
             .then(res => {
               listApiSource = res.headers.get("X-Cache") === "HIT" ? "Redis" : "DB";
               if (!res.ok) throw new Error("Failed to fetch products");
