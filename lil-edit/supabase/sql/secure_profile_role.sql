@@ -1,4 +1,10 @@
 -- =============================================================================
+-- NOTE (2026-06): This lock is now also included as section 5 of
+-- create_profiles.sql, so a fresh setup applies it automatically and can't leave
+-- the role column unprotected. This standalone file is kept for existing runbooks
+-- and is fully idempotent — running it (or both files) is harmless. You only need
+-- to apply ONE of the two.
+-- =============================================================================
 -- Security fix: make profiles.role unforgeable
 --
 -- The "Users can update own profile" policy (create_profiles.sql) lets a user
