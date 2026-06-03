@@ -6,9 +6,14 @@ interface AdminRouteProps {
 }
 
 export const AdminRoute = ({ children }: AdminRouteProps) => {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, profileLoaded } = useAuth();
 
-  if (loading) {
+  // Wait for both the auth session AND (when signed in) the profile fetch to
+  // settle. `loading` only covers the session, and the profile loads in the
+  // background, so deciding on `profile?.role` before it resolves would bounce a
+  // real admin to /dashboard on a hard refresh / direct navigation.
+  if (loading || (user && !profileLoaded)) {
+    console.log(`[AdminRoute] WAIT — loading=${loading}  user=${!!user}  profileLoaded=${profileLoaded}`);
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -20,14 +25,17 @@ export const AdminRoute = ({ children }: AdminRouteProps) => {
   }
 
   if (!user) {
+    console.log("[AdminRoute] DENY — not logged in → redirect /");
     return <Navigate to="/" />;
   }
 
   const isAdmin = profile?.role === "admin";
   if (!isAdmin) {
+    console.log(`[AdminRoute] DENY — role=${profile?.role ?? "none"} (need admin) → redirect /dashboard`);
     return <Navigate to="/dashboard" />;
   }
 
+  console.log(`[AdminRoute] ALLOW — admin access granted  role=${profile?.role}`);
   return <>{children}</>;
 };
 

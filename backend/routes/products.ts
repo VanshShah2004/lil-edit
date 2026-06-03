@@ -29,6 +29,8 @@ import {
 } from "../lib/redis.js";
 import { createLog, type OpLogger } from "../lib/logger.js";
 import { supabaseAdmin } from "../lib/supabase.js";
+import { requireAuth } from "../middleware/requireAuth.js";
+import { requireAdmin } from "../middleware/requireAdmin.js";
 
 // ─── In-process L1 cache (PDP detail only) ───────────────────────────────────
 const DETAIL_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -86,7 +88,7 @@ async function invalidateCatalogCaches(log: OpLogger, baseSku?: string): Promise
 const router = Router();
 
 // ─── POST /upload-url — issue a signed Supabase Storage upload URL ────────────
-router.post("/upload-url", async (req: Request, res: Response) => {
+router.post("/upload-url", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   if (!supabaseAdmin) {
     res.status(503).json({ error: "Supabase service role not configured" });
     return;
@@ -410,7 +412,7 @@ function buildPublicPayload(): Record<string, unknown> | null {
   return { status: lastProduct.status, receivedAt: lastProduct.receivedAt, ...lastProduct.data };
 }
 
-router.post("/preview", async (req: Request, res: Response) => {
+router.post("/preview", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   const { status, ...data } = req.body as { status: string; [key: string]: unknown };
   const normalized: "DRAFT" | "PUBLISHED" = status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
   const sku  = String(data.sku  ?? "UNKNOWN");
@@ -466,7 +468,7 @@ router.post("/preview", async (req: Request, res: Response) => {
   res.json({ ok: true, status: lastProduct!.status, previewPath, payload, database });
 });
 
-router.get("/preview", (_req: Request, res: Response) => {
+router.get("/preview", requireAuth, requireAdmin, (_req: Request, res: Response) => {
   const payload = buildPublicPayload();
   if (!payload) {
     res.json({ message: "No product received yet. Use Save Draft or Launch Product in the Curation Studio first." });
@@ -581,7 +583,7 @@ router.get("/suggestions", async (req: Request, res: Response) => {
 });
 
 // ─── DELETE /api/products/:id ─────────────────────────────────────────────────
-router.delete("/:id", async (req: Request, res: Response) => {
+router.delete("/:id", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   const { id }  = req.params;
   const status  = req.query.status   as string;
   const baseSku = req.query.base_sku as string | undefined;

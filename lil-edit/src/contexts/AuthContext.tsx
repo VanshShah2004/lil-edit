@@ -34,6 +34,13 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  /**
+   * True once the profile row fetch has settled (success OR failure) for the
+   * current user. Distinct from `loading`, which only tracks the auth session.
+   * Route guards that depend on `profile.role` (AdminRoute) must wait on this so
+   * they don't read a still-null profile and falsely reject a real admin.
+   */
+  profileLoaded: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   sendSignupOtp: (email: string) => Promise<void>;
@@ -70,25 +77,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
-    if (!error && data) {
-      setProfile({
-        id: data.id,
-        email: data.email,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        role: data.role,
-        phone_number: data.phone_number,
-        is_phone_number_verified: data.is_phone_number_verified,
-        dob: data.dob,
-        gender: data.gender,
-      } as Profile);
+    console.log(`[AuthContext] fetching profile  user=${userId}`);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
+      if (!error && data) {
+        console.log(`[AuthContext] profile loaded  user=${userId}  role=${data.role}`);
+        setProfile({
+          id: data.id,
+          email: data.email,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          role: data.role,
+          phone_number: data.phone_number,
+          is_phone_number_verified: data.is_phone_number_verified,
+          dob: data.dob,
+          gender: data.gender,
+        } as Profile);
+      } else {
+        console.warn(`[AuthContext] profile fetch returned no row  user=${userId}`, error);
+      }
+    } finally {
+      // Mark the load settled whether it succeeded or failed, so guards can tell
+      // "still loading" apart from "loaded, no admin role".
+      console.log(`[AuthContext] profile load settled  user=${userId}  → profileLoaded=true`);
+      setProfileLoaded(true);
     }
   };
 
@@ -129,7 +148,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (currentUser) {
           loadProfileInBackground(currentUser.id);
         } else {
+          console.log("[AuthContext] no user — clearing profile + profileLoaded");
           setProfile(null);
+          setProfileLoaded(false);
         }
       } catch (err) {
         console.error("Auth state change error:", err);
@@ -371,6 +392,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         user,
         profile,
         loading,
+        profileLoaded,
         signIn,
         signInWithGoogle,
         sendSignupOtp,

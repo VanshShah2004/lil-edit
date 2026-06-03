@@ -28,6 +28,7 @@ import type { Product, ProductImage, ProductColor } from "@/types/product";
 import { generateColorSku } from "@/utils/sku";
 import { slugify } from "@/utils/slug";
 import { getBackendBaseUrl } from "@/lib/backend";
+import { authHeader } from "@/lib/apiAuth";
 import { uploadProductImage } from "@/lib/uploadImage";
 import { toast } from "sonner";
 
@@ -157,11 +158,13 @@ async function sendCurationToBackend(
 ): Promise<{ database?: PersistDatabaseResult }> {
   const base = getBackendBaseUrl();
   const body = { status, ...buildCurationPayload(formData, imagePreviews, isStockUnlimited) };
+  console.log(`[EditProduct] POST /api/products/preview  status=${status}  sku=${(body as { sku?: string }).sku ?? "?"}`);
   const res = await fetch(`${base}/api/products/preview`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(await authHeader()) },
     body: JSON.stringify(body),
   });
+  console.log(`[EditProduct] preview → ${res.status}${res.status === 401 || res.status === 403 ? " (admin auth failed)" : ""}`);
   let json: {
     ok?: boolean;
     previewPath?: string;

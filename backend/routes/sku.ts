@@ -1,10 +1,12 @@
 import { Router, type Request, type Response } from "express";
 import { SKUCounterService } from "../services/skuCounterService.js";
 import { createLog } from "../lib/logger.js";
+import { requireAuth } from "../middleware/requireAuth.js";
+import { requireAdmin } from "../middleware/requireAdmin.js";
 
 const router = Router();
 
-router.get("/generate", async (req: Request, res: Response) => {
+router.get("/generate", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   const log = createLog().start("SKU GENERATE");
   const { category, gender } = req.query;
 
@@ -26,7 +28,7 @@ router.get("/generate", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/validate", async (req: Request, res: Response) => {
+router.get("/validate", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   const log = createLog().start("SKU VALIDATE");
   const { sku } = req.query;
 

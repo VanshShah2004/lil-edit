@@ -15,6 +15,7 @@ import {
   Zap
 } from "lucide-react";
 import { getBackendBaseUrl } from "@/lib/backend";
+import { authHeader } from "@/lib/apiAuth";
 import { buildPayloadFromProduct } from "@/lib/buildProductPayload";
 import UserNavbar from "@/components/home/UserNavbar";
 import Navbar from "@/components/layout/Navbar";
@@ -705,11 +706,13 @@ const ManageProducts = () => {
         ...buildPayloadFromProduct(product, images || [], variants || []),
       };
 
+      console.log(`[ManageProducts] POST /api/products/preview (launch)  sku=${product.base_sku}`);
       const res = await fetch(`${base}/api/products/preview`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await authHeader()) },
         body: JSON.stringify(payload),
       });
+      console.log(`[ManageProducts] launch → ${res.status}${res.status === 401 || res.status === 403 ? " (admin auth failed)" : ""}`);
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -750,10 +753,12 @@ const ManageProducts = () => {
 
     try {
       const base = getBackendBaseUrl();
+      console.log(`[ManageProducts] DELETE /api/products/${product.id}  status=${product.status}  sku=${product.base_sku}`);
       const res = await fetch(
         `${base}/api/products/${product.id}?status=${product.status}&base_sku=${encodeURIComponent(product.base_sku)}`,
-        { method: "DELETE" }
+        { method: "DELETE", headers: { ...(await authHeader()) } }
       );
+      console.log(`[ManageProducts] delete → ${res.status}${res.status === 401 || res.status === 403 ? " (admin auth failed)" : ""}`);
 
       if (!res.ok) {
         const data = await res.json();

@@ -1,4 +1,5 @@
 import { getBackendBaseUrl } from "./backend";
+import { authHeader } from "./apiAuth";
 
 const MAX_WIDTH     = 1200;
 const JPEG_QUALITY  = 0.82;
@@ -42,11 +43,13 @@ export async function uploadProductImage(
   const path    = `products/${baseSku || "temp"}/${slug}/${crypto.randomUUID()}.jpg`;
 
   // 1. Request a signed upload URL from the backend (uses service role key)
+  console.log(`[uploadImage] POST /api/products/upload-url  path=${path}`);
   const urlRes = await fetch(`${getBackendBaseUrl()}/api/products/upload-url`, {
     method:  "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(await authHeader()) },
     body:    JSON.stringify({ path }),
   });
+  console.log(`[uploadImage] upload-url → ${urlRes.status}${urlRes.status === 401 || urlRes.status === 403 ? " (auth failed)" : ""}`);
   if (!urlRes.ok) {
     const { error } = await urlRes.json().catch(() => ({ error: "Upload URL request failed" }));
     throw new Error(error ?? "Failed to get upload URL");

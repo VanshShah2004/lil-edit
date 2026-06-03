@@ -28,6 +28,7 @@ import type { Product, ProductImage, ProductColor } from "@/types/product";
 import { generateBaseSku, generateColorSku } from "@/utils/sku";
 import { slugify } from "@/utils/slug";
 import { getBackendBaseUrl } from "@/lib/backend";
+import { authHeader } from "@/lib/apiAuth";
 import { uploadProductImage } from "@/lib/uploadImage";
 import { toast } from "sonner";
 
@@ -129,11 +130,13 @@ async function sendCurationToBackend(
 ): Promise<{ database?: PersistDatabaseResult }> {
   const base = getBackendBaseUrl();
   const body = { status, ...buildPayloadFromForm(formData, imagePreviews, isStockUnlimited) };
+  console.log(`[AddProduct] POST /api/products/preview  status=${status}  sku=${(body as { sku?: string }).sku ?? "?"}`);
   const res = await fetch(`${base}/api/products/preview`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(await authHeader()) },
     body: JSON.stringify(body),
   });
+  console.log(`[AddProduct] preview → ${res.status}${res.status === 401 || res.status === 403 ? " (admin auth failed)" : ""}`);
   let json: {
     ok?: boolean;
     previewPath?: string;
@@ -582,9 +585,14 @@ const AddProduct = () => {
       setIsGeneratingSku(true);
       try {
         const base = getBackendBaseUrl();
-        const res = await fetch(`${base}/api/sku/generate?category=${encodeURIComponent(formData.category)}&gender=${encodeURIComponent(formData.gender)}`);
+        console.log(`[AddProduct] GET /api/sku/generate  category=${formData.category}  gender=${formData.gender}`);
+        const res = await fetch(`${base}/api/sku/generate?category=${encodeURIComponent(formData.category)}&gender=${encodeURIComponent(formData.gender)}`, {
+          headers: { ...(await authHeader()) },
+        });
+        console.log(`[AddProduct] sku/generate → ${res.status}${res.status === 401 || res.status === 403 ? " (admin auth failed)" : ""}`);
         const json = await res.json();
         if (json.sku) {
+          console.log(`[AddProduct] generated sku=${json.sku}`);
           setFormData(prev => ({ ...prev, sku: json.sku }));
         }
       } catch (err) {
