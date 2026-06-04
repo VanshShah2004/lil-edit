@@ -1,0 +1,188 @@
+import { performance } from "perf_hooks";
+import { Router, type Request, type Response } from "express";
+import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
+import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth.js";
+import { createLog, fms } from "../lib/logger.js";
+import { redisGet, redisSet, redisKey, ORDER_TTL_S } from "../lib/redis.js";
+
+const router = Router();
+const db = () => supabaseAdmin ?? supabaseAnon;
+const orderListKey   = (userId: string) => redisKey("order", `list:${userId}`);
+// Detail keys are scoped by user so a cached payload can never leak to another
+// account that requests the same order id.
+const orderDetailKey = (userId: string, orderId: string) => redisKey("order", `detail:${userId}:${orderId}`);
+
+// Columns selected for both list and detail (detail adds shipping_address).
+const ORDER_ITEMS_SELECT = `
+  id, product_slug, category_slug, sku, title, image_url,
+  size, color_name, color_hex, unit_price, quantity, line_total
+`.trim();
+
+interface OrderItemRow {
+  id: string;
+  product_slug: string;
+  category_slug: string | null;
+  sku: string;
+  title: string;
+  image_url: string | null;
+  size: string | null;
+  color_name: string | null;
+  color_hex: string | null;
+  unit_price: number | string;
+  quantity: number;
+  line_total: number | string;
+}
+
+interface OrderRow {
+  id: string;
+  order_number: string;
+  status: string;
+  payment_method: string;
+  payment_status: string;
+  subtotal: number | string;
+  discount: number | string;
+  shipping_fee: number | string;
+  total: number | string;
+  item_count: number;
+  created_at: string;
+  shipping_address?: Record<string, unknown> | null;
+  order_items?: OrderItemRow[];
+}
+
+function mapItem(row: OrderItemRow) {
+  return {
+    id: row.id,
+    productSlug: row.product_slug,
+    categorySlug: row.category_slug ?? "",
+    sku: row.sku,
+    title: row.title,
+    image: row.image_url ?? "",
+    size: row.size ?? "",
+    color: { name: row.color_name ?? "", hex: row.color_hex ?? "#cccccc" },
+    // NUMERIC columns can come back as strings over the wire — coerce to number.
+    unitPrice: Number(row.unit_price) || 0,
+    quantity: row.quantity,
+    lineTotal: Number(row.line_total) || 0,
+  };
+}
+
+function mapOrder(row: OrderRow, includeAddress: boolean) {
+  const base = {
+    id: row.id,
+    orderNumber: row.order_number,
+    status: row.status,
+    paymentMethod: row.payment_method,
+    paymentStatus: row.payment_status,
+    subtotal: Number(row.subtotal) || 0,
+    discount: Number(row.discount) || 0,
+    shippingFee: Number(row.shipping_fee) || 0,
+    total: Number(row.total) || 0,
+    itemCount: row.item_count,
+    createdAt: row.created_at,
+    items: (row.order_items ?? []).map(mapItem),
+  };
+  if (!includeAddress) return base;
+  return { ...base, shippingAddress: row.shipping_address ?? {} };
+}
+
+// ─── GET /api/orders — list the caller's orders, newest first ────────────────────
+router.get("/", requireAuth, async (req: Request, res: Response) => {
+  const log = createLog().start("ORDERS LIST");
+  const userId = (req as AuthenticatedRequest).userId;
+  log.step(`user=${userId}  client=${supabaseAdmin ? "admin" : "anon"}`);
+
+  try {
+    const cacheKey = orderListKey(userId);
+    const cached = await redisGet<{ orders: unknown[] }>(cacheKey, log);
+    if (cached) {
+      log.success(`cache HIT  orders=${cached.orders.length}  total=${fms(log.elapsed())}`).end("ORDERS LIST");
+      res.json(cached);
+      return;
+    }
+
+    const t0 = performance.now();
+    const { data, error } = await db()
+      .from("orders")
+      .select(`
+        id, order_number, status, payment_method, payment_status,
+        subtotal, discount, shipping_fee, total, item_count, created_at,
+        order_items(${ORDER_ITEMS_SELECT})
+      `)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    log.step(`DB orders: ${fms(performance.now() - t0)}  rows=${data?.length ?? 0}`);
+
+    if (error) {
+      log.error(`orders query failed  code=${error.code}  msg=${error.message}`, error).end("ORDERS LIST");
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    const orders = ((data ?? []) as unknown as OrderRow[]).map((o) => mapOrder(o, false));
+    const payload = { orders };
+    void redisSet(cacheKey, payload, ORDER_TTL_S, log);
+
+    log.success(`cache MISS → SET  orders=${orders.length}  total=${fms(log.elapsed())}`).end("ORDERS LIST");
+    res.json(payload);
+  } catch (err) {
+    log.error("unhandled error", err).end("ORDERS LIST");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// ─── GET /api/orders/:id — single order detail (ownership-scoped) ─────────────────
+router.get("/:id", requireAuth, async (req: Request, res: Response) => {
+  const log = createLog().start("ORDER DETAIL");
+  const userId = (req as AuthenticatedRequest).userId;
+  const orderId = req.params.id as string;
+  log.step(`user=${userId}  order=${orderId}`);
+
+  try {
+    const cacheKey = orderDetailKey(userId, orderId);
+    const cached = await redisGet<{ order: unknown }>(cacheKey, log);
+    if (cached) {
+      log.success(`cache HIT  total=${fms(log.elapsed())}`).end("ORDER DETAIL");
+      res.json(cached);
+      return;
+    }
+
+    const t0 = performance.now();
+    // Scoped by BOTH id and user_id: a non-owner gets no row → 404, never another
+    // user's order.
+    const { data, error } = await db()
+      .from("orders")
+      .select(`
+        id, order_number, status, payment_method, payment_status,
+        subtotal, discount, shipping_fee, total, item_count, created_at, shipping_address,
+        order_items(${ORDER_ITEMS_SELECT})
+      `)
+      .eq("id", orderId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    log.step(`DB order: ${fms(performance.now() - t0)}  found=${!!data}`);
+
+    if (error) {
+      log.error(`order query failed  code=${error.code}  msg=${error.message}`, error).end("ORDER DETAIL");
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    if (!data) {
+      log.warn(`not found / not owned  order=${orderId}`).end("ORDER DETAIL");
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    const order = mapOrder(data as unknown as OrderRow, true);
+    const payload = { order };
+    void redisSet(cacheKey, payload, ORDER_TTL_S, log);
+
+    log.success(`served  order=${order.orderNumber}  items=${order.items.length}  total=${fms(log.elapsed())}`).end("ORDER DETAIL");
+    res.json(payload);
+  } catch (err) {
+    log.error("unhandled error", err).end("ORDER DETAIL");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+export default router;

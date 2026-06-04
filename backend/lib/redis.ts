@@ -9,6 +9,7 @@ export const CATALOG_LIST_TTL_S   = 10 * 60;  // 10 min — catalog thin list
 export const CATALOG_DETAIL_TTL_S = 2 * 60;   // 2 min  — catalog full detail per SKU
 export const CART_TTL_S           = 60;        // 60s   — per-user cart; invalidated on every mutation
 export const WISHLIST_TTL_S       = 60;        // 60s   — per-user wishlist; invalidated on every mutation
+export const ORDER_TTL_S          = 60;        // 60s   — per-user orders; short so seeded/new rows surface quickly
 export const SUGGESTION_TTL_S     = 5 * 60;   // 5 min  — search auto-suggestions
 
 type RedisClient = InstanceType<typeof Redis>;
@@ -119,7 +120,7 @@ export async function redisDel(log: OpLogger, ...keys: string[]): Promise<void> 
 }
 
 export function redisKey(
-  prefix: "pdp" | "rec" | "reviews" | "catalog-list" | "catalog-detail" | "cart" | "wishlist" | "suggestions",
+  prefix: "pdp" | "rec" | "reviews" | "catalog-list" | "catalog-detail" | "cart" | "wishlist" | "suggestions" | "order",
   slug: string,
 ): string {
   return `${prefix}:${slug}`;

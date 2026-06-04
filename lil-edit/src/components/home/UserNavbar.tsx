@@ -48,7 +48,7 @@ const UserNavbar = () => {
   const isAdmin = role === "admin";
   const dashboardMenuItems = [
     { to: "/profile", label: "Profile", icon: User, adminOnly: false },
-    { to: "#", label: "Orders", icon: Package, adminOnly: false },
+    { to: "/orders", label: "Orders", icon: Package, adminOnly: false },
     // Keep this role-aware list so admin-only options can be expanded easily.
     { to: "/admin/add-product", label: "Add Product", icon: Plus, adminOnly: true },
     { to: "/admin/manage-products", label: "View/Edit Products", icon: Shirt, adminOnly: true },

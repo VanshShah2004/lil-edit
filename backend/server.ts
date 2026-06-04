@@ -9,6 +9,7 @@ import productsRouter from "./routes/products.js";
 import skuRouter from "./routes/sku.js";
 import cartRouter from "./routes/cart.js";
 import wishlistRouter from "./routes/wishlist.js";
+import ordersRouter from "./routes/orders.js";
 import { warmupRedis, startRedisKeepalive, getRedis, redisSet, redisKey, CATALOG_LIST_TTL_S } from "./lib/redis.js";
 import { fetchThinProductList } from "./lib/persistCatalog.js";
 import { supabaseAdmin, supabaseAnon } from "./lib/supabase.js";
@@ -37,6 +38,7 @@ app.use("/api/products", productsRouter);
 app.use("/api/sku",      skuRouter);
 app.use("/api/cart",     cartRouter);
 app.use("/api/wishlist", wishlistRouter);
+app.use("/api/orders",   ordersRouter);
 
 app.get("/", (_req, res) => {
   res.json({ ok: true, message: "new-ecomm backend" });
