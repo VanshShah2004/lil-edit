@@ -148,31 +148,31 @@ const OrdersPage = () => {
 
         <section className="page-container flex-1 w-full max-w-2xl mx-auto px-3 sm:px-6 pb-16 space-y-5">
           {/* Heading */}
-          <div className="flex items-end justify-between gap-3 flex-wrap">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 flex items-center gap-2">
-                Your Orders
-                <Package className="w-6 h-6 sm:w-7 sm:h-7 text-brand-teal" />
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">{orders.length} order{orders.length !== 1 ? "s" : ""} placed</p>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 flex items-center gap-2">
+              Your Orders
+              <Package className="w-6 h-6 sm:w-7 sm:h-7 text-brand-teal" />
+            </h1>
+            {/* Order count + sort share a row, width-matched to the card column so the
+                sort button caps the card on desktop; sort only meaningful with >1 order */}
+            <div className="flex items-center justify-between gap-3 mt-1 w-full sm:w-[65%]">
+              <p className="text-sm text-gray-500">{orders.length} order{orders.length !== 1 ? "s" : ""} placed</p>
+              {user && !loading && !error && orders.length > 1 && (
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
+                  <SelectTrigger className="h-8 w-auto gap-1.5 rounded-full border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-brand-teal/20 [&>svg]:h-3.5 [&>svg]:w-3.5">
+                    <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
+                    <SelectValue placeholder="Sort" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {SORT_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value} className="text-xs">
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
-
-            {/* Sort control — only meaningful with more than one order */}
-            {user && !loading && !error && orders.length > 1 && (
-              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
-                <SelectTrigger className="h-8 w-auto gap-1.5 rounded-full border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-brand-teal/20 [&>svg]:h-3.5 [&>svg]:w-3.5">
-                  <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
-                  <SelectValue placeholder="Sort" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  {SORT_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value} className="text-xs">
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
           </div>
 
           {loading ? (
