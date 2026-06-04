@@ -249,7 +249,7 @@ const OrdersPage = () => {
                       </div>
 
                       {/* Item count + total — fills the left of the mobile row; pushes actions right on desktop */}
-                      <div className="flex flex-col flex-1 sm:flex-none sm:mr-auto">
+                      <div className="flex flex-col flex-1 sm:flex-none sm:ml-20 sm:mr-auto">
                         <span className="text-xs text-gray-500">
                           {order.itemCount} item{order.itemCount !== 1 ? "s" : ""}
                         </span>
