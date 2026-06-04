@@ -39,7 +39,7 @@ function useIsDesktop() {
 }
 
 export type QuickViewProduct = {
-  source: "cart" | "wishlist";
+  source: "cart" | "wishlist" | "order";
   id: string;
   sku: string;
   slug: string;

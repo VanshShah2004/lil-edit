@@ -7,7 +7,8 @@ import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchOrderById, type OrderDetail, type OrderStatus } from "@/lib/ordersApi";
+import { fetchOrderById, type OrderDetail, type OrderItem, type OrderStatus } from "@/lib/ordersApi";
+import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
   pending:    "bg-indigo-50 text-indigo-700 border-indigo-200",
@@ -55,8 +56,32 @@ const OrderDetailPage = () => {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<QuickViewProduct | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
 
   const userId = user?.id ?? null;
+
+  // Map an order-line snapshot into the shared quick-view shape. Order items carry
+  // no original price / badges / image gallery, so those degrade to neutral values.
+  const openQuickView = (item: OrderItem) => {
+    setSelectedProduct({
+      source: "order",
+      id: item.id,
+      sku: item.sku,
+      slug: item.productSlug,
+      categorySlug: item.categorySlug,
+      title: item.title,
+      price: item.unitPrice,
+      originalPrice: item.unitPrice,
+      image: item.image,
+      color: item.color,
+      badges: [],
+      tags: [],
+      quantity: item.quantity,
+      size: item.size,
+    });
+    setQuickViewOpen(true);
+  };
 
   useEffect(() => {
     if (!userId || !orderId) {
@@ -166,7 +191,14 @@ const OrderDetailPage = () => {
                 </h2>
                 <div className="divide-y divide-gray-500">
                   {order.items.map((item) => (
-                    <div key={item.id} className="flex gap-3 sm:gap-4 py-3 first:pt-0 last:pb-0">
+                    <div
+                      key={item.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openQuickView(item)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openQuickView(item); } }}
+                      className="flex gap-3 sm:gap-4 py-3 first:pt-0 last:pb-0 cursor-pointer group -mx-2 px-2 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
                       <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
                         {item.image ? (
                           <img
@@ -248,6 +280,12 @@ const OrderDetailPage = () => {
       </main>
 
       <Footer />
+
+      <QuickViewDrawer
+        open={quickViewOpen}
+        product={selectedProduct}
+        onClose={() => setQuickViewOpen(false)}
+      />
     </div>
   );
 };
