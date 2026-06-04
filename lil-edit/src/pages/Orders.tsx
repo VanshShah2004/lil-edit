@@ -220,7 +220,7 @@ const OrdersPage = () => {
 
                     {/* Media + meta + actions — single row on desktop; on mobile the thumbnails
                         take their own row and the meta + Reorder share the row below. */}
-                    <div className="flex flex-wrap items-center gap-y-4 gap-x-3 sm:flex-nowrap sm:gap-0 border-t border-gray-300 pt-2 sm:border-t-0 sm:pt-0">
+                    <div className="flex flex-wrap items-center gap-y-4 gap-x-3 sm:flex-nowrap sm:gap-0 border-t border-gray-300 pt-2 sm:pt-4">
                       {/* Thumbnail strip — overlapping stack. Full row on mobile; fixed width on desktop
                           (wider than the 4-thumb max) so the meta never sits flush and lines up across cards. */}
                       <div className="flex items-center w-full sm:w-[290px] sm:shrink-0 sm:overflow-hidden">
