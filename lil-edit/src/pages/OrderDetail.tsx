@@ -9,6 +9,7 @@ import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchOrderById, type OrderDetail, type OrderItem, type OrderStatus } from "@/lib/ordersApi";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
+import { getBackendBaseUrl } from "@/lib/backend";
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
   pending:    "bg-indigo-50 text-indigo-700 border-indigo-200",
@@ -61,8 +62,10 @@ const OrderDetailPage = () => {
 
   const userId = user?.id ?? null;
 
-  // Map an order-line snapshot into the shared quick-view shape. Order items carry
-  // no original price / badges / image gallery, so those degrade to neutral values.
+  // Map an order-line snapshot into the shared quick-view shape. The snapshot only
+  // stores the single primary image, so the drawer opens with that immediately, then
+  // we enrich it with the live product's full image gallery (the cart gets this from
+  // the backend; orders aren't linked to products, so we fetch it on demand).
   const openQuickView = (item: OrderItem) => {
     setSelectedProduct({
       source: "order",
@@ -74,6 +77,7 @@ const OrderDetailPage = () => {
       price: item.unitPrice,
       originalPrice: item.unitPrice,
       image: item.image,
+      images: item.image ? [item.image] : [],
       color: item.color,
       badges: [],
       tags: [],
@@ -81,6 +85,34 @@ const OrderDetailPage = () => {
       size: item.size,
     });
     setQuickViewOpen(true);
+
+    if (!item.productSlug || !item.sku) return;
+    const url = `${getBackendBaseUrl()}/api/products/detail?slug=${encodeURIComponent(item.productSlug)}&sku=${encodeURIComponent(item.sku)}&category=${encodeURIComponent(item.categorySlug)}`;
+    console.log(`[OrderDetailPage] quick-view gallery fetch  ${url}`);
+    fetch(url)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const product = data?.product;
+        if (!product) return;
+        // Purchased variant's images take priority, then the snapshot's primary (in
+        // case it isn't part of the variant set), then the product's global gallery.
+        // Deduped so repeats collapse.
+        const matchColor = (product.colors ?? []).find((c: { sku: string }) => c.sku === item.sku);
+        const urls: string[] = [
+          ...((matchColor?.images ?? []) as { url: string }[]).map((im) => im.url),
+          item.image,
+          ...((product.images ?? []) as { url: string }[]).map((im) => im.url),
+        ].filter(Boolean);
+        const images = Array.from(new Set(urls));
+        console.log(`[OrderDetailPage] quick-view gallery → ${images.length} image(s)`);
+        // Only apply if the same item is still showing (drawer not switched/closed).
+        setSelectedProduct((prev) =>
+          prev && prev.id === item.id
+            ? { ...prev, images, badges: product.badges ?? prev.badges }
+            : prev,
+        );
+      })
+      .catch((err) => console.error("[OrderDetailPage] quick-view gallery fetch failed", err));
   };
 
   useEffect(() => {
