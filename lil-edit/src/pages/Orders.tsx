@@ -20,9 +20,9 @@ import { fetchOrders, type OrderStatus, type OrderSummary } from "@/lib/ordersAp
 const STATUS_STYLES: Record<OrderStatus, string> = {
   pending:    "bg-indigo-50 text-indigo-700 border-indigo-200",
   confirmed:  "bg-indigo-50 text-indigo-700 border-indigo-200",
-  processing: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  shipped:    "bg-indigo-50 text-indigo-700 border-indigo-200",
-  delivered:  "bg-emerald-50 text-emerald-700 border-emerald-200",
+  processing: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  shipped:    "bg-emerald-50 text-emerald-700 border-emerald-200",
+  delivered:  "bg-indigo-50 text-indigo-700 border-indigo-200",
   cancelled:  "bg-rose-50 text-rose-700 border-rose-200",
 };
 
@@ -30,17 +30,17 @@ const STATUS_STYLES: Record<OrderStatus, string> = {
 const STATUS_ACCENT: Record<OrderStatus, string> = {
   pending:    "bg-indigo-400",
   confirmed:  "bg-indigo-400",
-  processing: "bg-indigo-400",
-  shipped:    "bg-indigo-400",
-  delivered:  "bg-emerald-400",
+  processing: "bg-emerald-400",
+  shipped:    "bg-emerald-400",
+  delivered:  "bg-indigo-400",
   cancelled:  "bg-rose-400",
 };
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 function formatDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  return `${d.getDate()} ${MONTHS[d.getMonth()]},${d.getFullYear()}`;
 }
 
 function inr(n: number): string {
@@ -146,7 +146,7 @@ const OrdersPage = () => {
           </div>
         </div>
 
-        <section className="page-container flex-1 w-full max-w-3xl mx-auto px-3 sm:px-6 pb-16 space-y-5">
+        <section className="page-container flex-1 w-full max-w-2xl mx-auto px-3 sm:px-6 pb-16 space-y-5">
           {/* Heading */}
           <div className="flex items-end justify-between gap-3 flex-wrap">
             <div>
@@ -198,70 +198,75 @@ const OrdersPage = () => {
             </div>
           ) : (
             sortedOrders.map((order) => (
-              <Link key={order.id} to={`/orders/${order.id}`} className="block group">
-                <Card className="relative bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 hover:border-brand-teal/40 transition-all duration-300">
+              <Link key={order.id} to={`/orders/${order.id}`} className="block group w-full sm:w-[65%] sm:mr-auto">
+                <Card className="relative bg-white border border-gray-400 rounded-2xl overflow-hidden shadow-lg ring-1 ring-black/10 sm:min-h-[210px] hover:shadow-2xl hover:-translate-y-0.5 hover:border-brand-teal/60 transition-all duration-300">
                   {/* Status accent strip */}
                   <div className={`h-1 w-full ${STATUS_ACCENT[order.status]}`} />
 
-                  <div className="p-4 sm:p-5 space-y-4">
+                  <div className="p-4 sm:px-5 sm:py-7 space-y-4 sm:space-y-6">
                     {/* Header row */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{order.orderNumber}</p>
-                        <p className="text-sm sm:text-base font-bold text-gray-900 line-clamp-2 mt-0.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{order.orderNumber}</p>
+                        <h2 className="text-base sm:text-lg font-bold text-gray-900 leading-tight line-clamp-2 mt-0.5">
                           {order.items.length > 0
                             ? order.items.map((i) => i.title).join(", ")
                             : order.orderNumber}
-                        </p>
+                        </h2>
                         <p className="text-xs text-gray-500 mt-0.5">Placed on {formatDate(order.createdAt)}</p>
                       </div>
                       <StatusBadge status={order.status} />
                     </div>
 
-                    {/* Thumbnail strip — overlapping stack */}
-                    <div className="flex items-center">
-                      <div className="flex -space-x-3">
-                        {order.items.slice(0, 4).map((item) => (
-                          <div key={item.id} className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0 ring-2 ring-white shadow-sm">
-                            {item.image ? (
-                              <img
-                                src={item.image}
-                                alt={item.title}
-                                loading="lazy"
-                                onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                <Package size={20} />
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                    {/* Media + meta + actions — single row on desktop; on mobile the thumbnails
+                        take their own row and the meta + Reorder share the row below. */}
+                    <div className="flex flex-wrap items-center gap-y-4 gap-x-3 sm:flex-nowrap sm:gap-0 border-t border-gray-100 pt-3.5 sm:border-t-0 sm:pt-0">
+                      {/* Thumbnail strip — overlapping stack. Full row on mobile; fixed width on desktop
+                          (wider than the 4-thumb max) so the meta never sits flush and lines up across cards. */}
+                      <div className="flex items-center w-full sm:w-[290px] sm:shrink-0 sm:overflow-hidden">
+                        <div className="flex -space-x-3">
+                          {order.items.slice(0, 4).map((item) => (
+                            <div key={item.id} className="w-14 h-16 sm:w-16 sm:h-20 rounded-xl overflow-hidden bg-gray-100 shrink-0 ring-2 ring-white shadow-sm">
+                              {item.image ? (
+                                <img
+                                  src={item.image}
+                                  alt={item.title}
+                                  loading="lazy"
+                                  onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                  <Package size={20} />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        {order.items.length > 4 && (
+                          <span className="ml-3 text-xs font-medium text-gray-500">+{order.items.length - 4} more</span>
+                        )}
                       </div>
-                      {order.items.length > 4 && (
-                        <span className="ml-3 text-xs font-medium text-gray-500">+{order.items.length - 4} more</span>
-                      )}
-                    </div>
 
-                    {/* Footer row */}
-                    <div className="flex items-end justify-between border-t border-gray-100 pt-3.5">
-                      <div className="flex flex-col">
+                      {/* Item count + total — fills the left of the mobile row; pushes actions right on desktop */}
+                      <div className="flex flex-col flex-1 sm:flex-none sm:mr-auto">
                         <span className="text-xs text-gray-500">
                           {order.itemCount} item{order.itemCount !== 1 ? "s" : ""}
                         </span>
                         <span className="text-base sm:text-lg font-bold text-gray-900 leading-tight">{inr(order.total)}</span>
                       </div>
-                      <div className="flex items-center gap-2 sm:gap-3">
+
+                      {/* Actions — far right on desktop; right of the meta on mobile */}
+                      <div className="flex items-center gap-3 shrink-0">
                         {/* Reorder — placeholder for now; only blocks the card's link nav */}
                         <button
                           type="button"
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                          className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-brand-teal border border-brand-teal/30 rounded-full px-3 py-1.5 hover:bg-brand-teal/5 transition-colors"
+                          className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-white bg-brand-teal rounded-full px-3 py-1.5 hover:bg-brand-teal/90 transition-colors shadow-sm shrink-0"
                         >
                           <RotateCcw className="w-3.5 h-3.5" /> Reorder
                         </button>
-                        <span className="hidden sm:flex items-center gap-1 text-sm font-semibold text-brand-teal group-hover:gap-2 transition-all">
+                        <span className="hidden sm:flex items-center gap-1 text-sm font-semibold text-brand-teal group-hover:gap-2 transition-all shrink-0">
                           View details <ArrowRight className="w-4 h-4" />
                         </span>
                       </div>
