@@ -1,8 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, Package, ArrowRight, RotateCcw } from "lucide-react";
+import { ChevronRight, Package, ArrowRight, RotateCcw, ArrowUpDown } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
@@ -38,6 +45,20 @@ function formatDate(iso: string): string {
 
 function inr(n: number): string {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
+}
+
+type SortKey = "newest" | "oldest";
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+];
+
+function sortOrders(orders: OrderSummary[], key: SortKey): OrderSummary[] {
+  const copy = [...orders];
+  const time = (o: OrderSummary) => new Date(o.createdAt).getTime();
+  return key === "oldest"
+    ? copy.sort((a, b) => time(a) - time(b))
+    : copy.sort((a, b) => time(b) - time(a));
 }
 
 function StatusBadge({ status }: { status: OrderStatus }) {
@@ -77,8 +98,10 @@ const OrdersPage = () => {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortKey>("newest");
 
   const userId = user?.id ?? null;
+  const sortedOrders = useMemo(() => sortOrders(orders, sortBy), [orders, sortBy]);
 
   useEffect(() => {
     if (!userId) {
@@ -125,12 +148,31 @@ const OrdersPage = () => {
 
         <section className="page-container flex-1 w-full max-w-3xl mx-auto px-3 sm:px-6 pb-16 space-y-5">
           {/* Heading */}
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 flex items-center gap-2">
-              Your Orders
-              <Package className="w-6 h-6 sm:w-7 sm:h-7 text-brand-teal" />
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">{orders.length} order{orders.length !== 1 ? "s" : ""} placed</p>
+          <div className="flex items-end justify-between gap-3 flex-wrap">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 flex items-center gap-2">
+                Your Orders
+                <Package className="w-6 h-6 sm:w-7 sm:h-7 text-brand-teal" />
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">{orders.length} order{orders.length !== 1 ? "s" : ""} placed</p>
+            </div>
+
+            {/* Sort control — only meaningful with more than one order */}
+            {user && !loading && !error && orders.length > 1 && (
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
+                <SelectTrigger className="w-auto gap-2 rounded-full border-gray-200 bg-white text-sm font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-brand-teal/20">
+                  <ArrowUpDown className="w-4 h-4 text-gray-400" />
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  {SORT_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value} className="text-sm">
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {loading ? (
@@ -155,7 +197,7 @@ const OrdersPage = () => {
               <Link to="/dashboard" className="text-sm font-medium text-brand-teal underline underline-offset-2">Start shopping</Link>
             </div>
           ) : (
-            orders.map((order) => (
+            sortedOrders.map((order) => (
               <Link key={order.id} to={`/orders/${order.id}`} className="block group">
                 <Card className="relative bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 hover:border-brand-teal/40 transition-all duration-300">
                   {/* Status accent strip */}
