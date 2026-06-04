@@ -160,13 +160,13 @@ const OrdersPage = () => {
             {/* Sort control — only meaningful with more than one order */}
             {user && !loading && !error && orders.length > 1 && (
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
-                <SelectTrigger className="w-auto gap-2 rounded-full border-gray-200 bg-white text-sm font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-brand-teal/20">
-                  <ArrowUpDown className="w-4 h-4 text-gray-400" />
+                <SelectTrigger className="h-8 w-auto gap-1.5 rounded-full border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-brand-teal/20 [&>svg]:h-3.5 [&>svg]:w-3.5">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
                   <SelectValue placeholder="Sort" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
                   {SORT_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value} className="text-sm">
+                    <SelectItem key={o.value} value={o.value} className="text-xs">
                       {o.label}
                     </SelectItem>
                   ))}
