@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, Package, ArrowRight } from "lucide-react";
+import { ChevronRight, Package, ArrowRight, RotateCcw } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import Navbar from "@/components/layout/Navbar";
@@ -11,12 +11,22 @@ import { fetchOrders, type OrderStatus, type OrderSummary } from "@/lib/ordersAp
 
 // Status → badge colours. Keys match the DB status CHECK constraint.
 const STATUS_STYLES: Record<OrderStatus, string> = {
-  pending:    "bg-amber-50 text-amber-700 border-amber-200",
-  confirmed:  "bg-sky-50 text-sky-700 border-sky-200",
+  pending:    "bg-indigo-50 text-indigo-700 border-indigo-200",
+  confirmed:  "bg-indigo-50 text-indigo-700 border-indigo-200",
   processing: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  shipped:    "bg-purple-50 text-purple-700 border-purple-200",
+  shipped:    "bg-indigo-50 text-indigo-700 border-indigo-200",
   delivered:  "bg-emerald-50 text-emerald-700 border-emerald-200",
   cancelled:  "bg-rose-50 text-rose-700 border-rose-200",
+};
+
+// Solid accent colours for the card's top strip — keyed to the same statuses.
+const STATUS_ACCENT: Record<OrderStatus, string> = {
+  pending:    "bg-indigo-400",
+  confirmed:  "bg-indigo-400",
+  processing: "bg-indigo-400",
+  shipped:    "bg-indigo-400",
+  delivered:  "bg-emerald-400",
+  cancelled:  "bg-rose-400",
 };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -32,7 +42,8 @@ function inr(n: number): string {
 
 function StatusBadge({ status }: { status: OrderStatus }) {
   return (
-    <span className={`text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full border capitalize ${STATUS_STYLES[status]}`}>
+    <span className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full border capitalize ${STATUS_STYLES[status]}`}>
+      <span className="w-1.5 h-1.5 rounded-full bg-current" />
       {status}
     </span>
   );
@@ -146,50 +157,72 @@ const OrdersPage = () => {
           ) : (
             orders.map((order) => (
               <Link key={order.id} to={`/orders/${order.id}`} className="block group">
-                <Card className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg hover:border-brand-teal/30 transition-all duration-300">
+                <Card className="relative bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 hover:border-brand-teal/40 transition-all duration-300">
+                  {/* Status accent strip */}
+                  <div className={`h-1 w-full ${STATUS_ACCENT[order.status]}`} />
+
                   <div className="p-4 sm:p-5 space-y-4">
                     {/* Header row */}
                     <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm sm:text-base font-bold text-gray-900">{order.orderNumber}</p>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{order.orderNumber}</p>
+                        <p className="text-sm sm:text-base font-bold text-gray-900 line-clamp-2 mt-0.5">
+                          {order.items.length > 0
+                            ? order.items.map((i) => i.title).join(", ")
+                            : order.orderNumber}
+                        </p>
                         <p className="text-xs text-gray-500 mt-0.5">Placed on {formatDate(order.createdAt)}</p>
                       </div>
                       <StatusBadge status={order.status} />
                     </div>
 
-                    {/* Thumbnail strip */}
-                    <div className="flex items-center gap-2.5">
-                      {order.items.slice(0, 4).map((item) => (
-                        <div key={item.id} className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
-                          {item.image ? (
-                            <img
-                              src={item.image}
-                              alt={item.title}
-                              loading="lazy"
-                              onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-300">
-                              <Package size={20} />
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                    {/* Thumbnail strip — overlapping stack */}
+                    <div className="flex items-center">
+                      <div className="flex -space-x-3">
+                        {order.items.slice(0, 4).map((item) => (
+                          <div key={item.id} className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0 ring-2 ring-white shadow-sm">
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.title}
+                                loading="lazy"
+                                onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                <Package size={20} />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                       {order.items.length > 4 && (
-                        <span className="text-xs font-medium text-gray-500">+{order.items.length - 4} more</span>
+                        <span className="ml-3 text-xs font-medium text-gray-500">+{order.items.length - 4} more</span>
                       )}
                     </div>
 
                     {/* Footer row */}
-                    <div className="flex items-center justify-between border-t border-gray-100 pt-3">
-                      <span className="text-xs sm:text-sm text-gray-500">
-                        {order.itemCount} item{order.itemCount !== 1 ? "s" : ""} · Total{" "}
-                        <span className="font-bold text-gray-900">{inr(order.total)}</span>
-                      </span>
-                      <span className="flex items-center gap-1 text-sm font-semibold text-brand-teal group-hover:gap-2 transition-all">
-                        View details <ArrowRight className="w-4 h-4" />
-                      </span>
+                    <div className="flex items-end justify-between border-t border-gray-100 pt-3.5">
+                      <div className="flex flex-col">
+                        <span className="text-xs text-gray-500">
+                          {order.itemCount} item{order.itemCount !== 1 ? "s" : ""}
+                        </span>
+                        <span className="text-base sm:text-lg font-bold text-gray-900 leading-tight">{inr(order.total)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        {/* Reorder — placeholder for now; only blocks the card's link nav */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                          className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-brand-teal border border-brand-teal/30 rounded-full px-3 py-1.5 hover:bg-brand-teal/5 transition-colors"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" /> Reorder
+                        </button>
+                        <span className="hidden sm:flex items-center gap-1 text-sm font-semibold text-brand-teal group-hover:gap-2 transition-all">
+                          View details <ArrowRight className="w-4 h-4" />
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </Card>
