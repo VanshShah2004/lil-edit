@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ChevronRight, Package, MapPin, ArrowLeft } from "lucide-react";
+import { ChevronRight, Package, MapPin, ArrowLeft, RotateCcw } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import Navbar from "@/components/layout/Navbar";
@@ -137,16 +137,25 @@ const OrderDetailPage = () => {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{order.orderNumber}</h1>
-                    <p className="text-xs sm:text-sm text-gray-500 mt-1">Placed on {formatDate(order.createdAt)}</p>
+                    <p className="text-sm sm:text-base text-gray-500 mt-1">Placed on {formatDate(order.createdAt)}</p>
                   </div>
                   <span className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full border capitalize ${STATUS_STYLES[order.status]}`}>
                     <span className="w-1.5 h-1.5 rounded-full bg-current" />
                     {order.status}
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-x-6 gap-y-1 mt-4 text-xs sm:text-sm text-gray-600">
-                  <span>Payment: <span className="font-medium text-gray-800 uppercase">{order.paymentMethod}</span></span>
-                  <span>Payment status: <span className="font-medium text-gray-800 capitalize">{order.paymentStatus}</span></span>
+                <div className="flex items-center justify-between gap-3 mt-4">
+                  <div className="flex flex-col gap-y-1 text-xs sm:text-sm text-gray-600">
+                    <span>Payment: <span className="font-medium text-gray-800 uppercase">{order.paymentMethod}</span></span>
+                    <span>Payment status: <span className="font-medium text-gray-800 capitalize">{order.paymentStatus}</span></span>
+                  </div>
+                  {/* Reorder — placeholder for now; placement pipeline ships with checkout */}
+                  <button
+                    type="button"
+                    className="shrink-0 inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-brand-teal rounded-full px-4 py-2 hover:bg-brand-teal/90 transition-colors shadow-sm"
+                  >
+                    <RotateCcw className="w-4 h-4" /> Reorder
+                  </button>
                 </div>
               </div>
 
@@ -155,7 +164,7 @@ const OrderDetailPage = () => {
                 <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
                   Items ({order.itemCount})
                 </h2>
-                <div className="divide-y divide-gray-300">
+                <div className="divide-y divide-gray-500">
                   {order.items.map((item) => (
                     <div key={item.id} className="flex gap-3 sm:gap-4 py-3 first:pt-0 last:pb-0">
                       <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
