@@ -10,19 +10,29 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchOrderById, type OrderDetail, type OrderStatus } from "@/lib/ordersApi";
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
-  pending:    "bg-amber-50 text-amber-700 border-amber-200",
-  confirmed:  "bg-sky-50 text-sky-700 border-sky-200",
-  processing: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  shipped:    "bg-purple-50 text-purple-700 border-purple-200",
-  delivered:  "bg-emerald-50 text-emerald-700 border-emerald-200",
+  pending:    "bg-indigo-50 text-indigo-700 border-indigo-200",
+  confirmed:  "bg-indigo-50 text-indigo-700 border-indigo-200",
+  processing: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  shipped:    "bg-emerald-50 text-emerald-700 border-emerald-200",
+  delivered:  "bg-indigo-50 text-indigo-700 border-indigo-200",
   cancelled:  "bg-rose-50 text-rose-700 border-rose-200",
 };
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// Solid accent colours for the card's top strip — keyed to the same statuses.
+const STATUS_ACCENT: Record<OrderStatus, string> = {
+  pending:    "bg-indigo-400",
+  confirmed:  "bg-indigo-400",
+  processing: "bg-emerald-400",
+  shipped:    "bg-emerald-400",
+  delivered:  "bg-indigo-400",
+  cancelled:  "bg-rose-400",
+};
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 function formatDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  return `${d.getDate()} ${MONTHS[d.getMonth()]},${d.getFullYear()}`;
 }
 
 function inr(n: number): string {
@@ -118,15 +128,19 @@ const OrderDetailPage = () => {
               <Link to="/orders" className="text-sm font-medium text-brand-teal underline underline-offset-2">View all orders</Link>
             </div>
           ) : (
-            <div className="space-y-5">
+            <Card className="relative bg-white border border-gray-400 rounded-2xl overflow-hidden shadow-lg ring-1 ring-black/10 divide-y divide-gray-100">
+              {/* Status accent strip — absolutely placed so it doesn't add a divider line */}
+              <div className={`absolute top-0 inset-x-0 h-1 z-10 ${STATUS_ACCENT[order.status]}`} />
+
               {/* Summary header */}
-              <Card className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">
+              <div className="p-4 sm:p-5 pt-5 sm:pt-6">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{order.orderNumber}</h1>
                     <p className="text-xs sm:text-sm text-gray-500 mt-1">Placed on {formatDate(order.createdAt)}</p>
                   </div>
-                  <span className={`text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full border capitalize ${STATUS_STYLES[order.status]}`}>
+                  <span className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full border capitalize ${STATUS_STYLES[order.status]}`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
                     {order.status}
                   </span>
                 </div>
@@ -134,17 +148,17 @@ const OrderDetailPage = () => {
                   <span>Payment: <span className="font-medium text-gray-800 uppercase">{order.paymentMethod}</span></span>
                   <span>Payment status: <span className="font-medium text-gray-800 capitalize">{order.paymentStatus}</span></span>
                 </div>
-              </Card>
+              </div>
 
               {/* Items */}
-              <Card className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">
+              <div className="p-4 sm:p-5">
                 <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
                   Items ({order.itemCount})
                 </h2>
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-300">
                   {order.items.map((item) => (
                     <div key={item.id} className="flex gap-3 sm:gap-4 py-3 first:pt-0 last:pb-0">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
                         {item.image ? (
                           <img
                             src={item.image}
@@ -161,15 +175,17 @@ const OrderDetailPage = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm sm:text-base font-semibold text-gray-900 line-clamp-2">{item.title}</p>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-gray-500">
-                          {item.size && <span>Size: {item.size}</span>}
-                          {item.color.name && (
-                            <span className="flex items-center gap-1">
-                              <span className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: item.color.hex }} />
-                              {item.color.name}
-                            </span>
-                          )}
-                          <span>Qty: {item.quantity}</span>
+                        <div className="mt-1 text-xs text-gray-500 space-y-1">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            {item.size && <span>Size: {item.size}</span>}
+                            {item.color.name && (
+                              <span className="flex items-center gap-1">
+                                <span className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: item.color.hex }} />
+                                {item.color.name}
+                              </span>
+                            )}
+                          </div>
+                          <div>Qty: {item.quantity}</div>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
@@ -181,22 +197,22 @@ const OrderDetailPage = () => {
                     </div>
                   ))}
                 </div>
-              </Card>
+              </div>
 
               {/* Shipping address */}
               {addrLine && (
-                <Card className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">
+                <div className="p-4 sm:p-5">
                   <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-brand-teal" /> Shipping Address
                   </h2>
                   {addr?.label && <p className="text-sm font-medium text-gray-800 mb-0.5">{addr.label}</p>}
                   <p className="text-sm text-gray-600 leading-relaxed">{addrLine}</p>
                   {addr?.country && <p className="text-sm text-gray-600">{addr.country}</p>}
-                </Card>
+                </div>
               )}
 
               {/* Totals */}
-              <Card className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5">
+              <div className="p-4 sm:p-5">
                 <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">Payment Summary</h2>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between text-gray-600">
@@ -216,8 +232,8 @@ const OrderDetailPage = () => {
                     <span className="text-lg font-bold text-brand-teal">{inr(order.total)}</span>
                   </div>
                 </div>
-              </Card>
-            </div>
+              </div>
+            </Card>
           )}
         </section>
       </main>
