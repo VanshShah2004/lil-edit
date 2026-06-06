@@ -112,7 +112,7 @@ function SidebarProductCard({ product }: { product: SidebarProduct }) {
   return (
     <Link
       to={`/collections/${product.categorySlug}/product/${product.slug}`}
-      className="group flex gap-3 rounded-xl p-2 -mx-2 hover:bg-gray-50 transition-colors"
+      className="group flex gap-3 py-3 hover:bg-gray-50 transition-colors"
     >
       <div className="w-14 h-[72px] rounded-lg overflow-hidden bg-gray-100 shrink-0">
         {product.image ? (
@@ -167,7 +167,7 @@ function BuyAgainSection({ items }: { items: SidebarProduct[] }) {
         <RotateCcw className="w-6 h-6 text-brand-teal" />
         Buy Again
       </h2>
-      <div className="bg-white border border-gray-400 rounded-2xl p-4 shadow-lg ring-1 ring-black/10 space-y-0.5">
+      <div className="bg-white border border-gray-400 rounded-2xl p-4 shadow-lg ring-1 ring-black/10 divide-y divide-gray-400">
         {items.map((item) => (
           <SidebarProductCard key={`${item.slug}-${item.sku}`} product={item} />
         ))}
@@ -188,7 +188,7 @@ function YouMayLikeSection({ items, loading }: { items: SidebarProduct[]; loadin
         {loading ? (
           <SidebarSkeleton />
         ) : (
-          <div className="space-y-0.5">
+          <div className="divide-y divide-gray-400">
             {items.map((item) => (
               <SidebarProductCard key={`${item.slug}-${item.sku}`} product={item} />
             ))}
