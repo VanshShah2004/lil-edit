@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, Package, ArrowRight, RotateCcw, ArrowUpDown } from "lucide-react";
+import { ChevronRight, Package, ArrowRight, RotateCcw, ArrowUpDown, Sparkles } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import {
@@ -15,6 +15,7 @@ import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchOrders, type OrderStatus, type OrderSummary } from "@/lib/ordersApi";
+import { getBackendBaseUrl } from "@/lib/backend";
 
 // Status → badge colours. Keys match the DB status CHECK constraint.
 const STATUS_STYLES: Record<OrderStatus, string> = {
@@ -61,6 +62,20 @@ function sortOrders(orders: OrderSummary[], key: SortKey): OrderSummary[] {
     : copy.sort((a, b) => time(b) - time(a));
 }
 
+// ─── Sidebar types ────────────────────────────────────────────────────────────
+
+type SidebarProduct = {
+  title: string;
+  slug: string;
+  categorySlug: string;
+  price: number;
+  originalPrice: number;
+  image: string;
+  sku: string;
+};
+
+// ─── Shared sub-components ────────────────────────────────────────────────────
+
 function StatusBadge({ status }: { status: OrderStatus }) {
   return (
     <span className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full border capitalize ${STATUS_STYLES[status]}`}>
@@ -93,16 +108,137 @@ function OrdersSkeleton() {
   );
 }
 
+function SidebarProductCard({ product }: { product: SidebarProduct }) {
+  return (
+    <Link
+      to={`/collections/${product.categorySlug}/product/${product.slug}`}
+      className="group flex gap-3 rounded-xl p-2 -mx-2 hover:bg-gray-50 transition-colors"
+    >
+      <div className="w-14 h-[72px] rounded-lg overflow-hidden bg-gray-100 shrink-0">
+        {product.image ? (
+          <img
+            src={product.image}
+            alt={product.title}
+            loading="lazy"
+            onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-300">
+            <Package size={16} />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0 py-0.5">
+        <p className="font-display text-base font-medium text-gray-900 line-clamp-2 leading-tight">{product.title}</p>
+        <div className="mt-1.5 flex items-baseline gap-1.5 flex-wrap">
+          <span className="text-xl font-bold text-brand-teal">{inr(product.price)}</span>
+          {product.originalPrice > product.price && (
+            <span className="text-base text-gray-400 line-through">{inr(product.originalPrice)}</span>
+          )}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function SidebarSkeleton() {
+  return (
+    <div className="space-y-3 animate-pulse">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <div key={n} className="flex gap-3">
+          <div className="w-14 h-[72px] bg-gray-200 rounded-lg shrink-0" />
+          <div className="flex-1 space-y-2 py-1">
+            <div className="h-3 bg-gray-200 rounded w-full" />
+            <div className="h-3 bg-gray-200 rounded w-3/4" />
+            <div className="h-4 bg-gray-200 rounded w-1/2 mt-2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BuyAgainSection({ items }: { items: SidebarProduct[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <h2 className="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2">
+        <RotateCcw className="w-6 h-6 text-brand-teal" />
+        Buy Again
+      </h2>
+      <div className="bg-white border border-gray-400 rounded-2xl p-4 shadow-lg ring-1 ring-black/10 space-y-0.5">
+        {items.map((item) => (
+          <SidebarProductCard key={`${item.slug}-${item.sku}`} product={item} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function YouMayLikeSection({ items, loading }: { items: SidebarProduct[]; loading: boolean }) {
+  if (!loading && items.length === 0) return null;
+  return (
+    <div>
+      <h2 className="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2">
+        <Sparkles className="w-6 h-6 text-brand-teal" />
+        You May Like
+      </h2>
+      <div className="bg-white border border-gray-400 rounded-2xl p-4 shadow-lg ring-1 ring-black/10">
+        {loading ? (
+          <SidebarSkeleton />
+        ) : (
+          <div className="space-y-0.5">
+            {items.map((item) => (
+              <SidebarProductCard key={`${item.slug}-${item.sku}`} product={item} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
 const OrdersPage = () => {
   const { user, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>("newest");
+  const [recommendations, setRecommendations] = useState<SidebarProduct[]>([]);
+  const [recsLoading, setRecsLoading] = useState(false);
 
   const userId = user?.id ?? null;
   const sortedOrders = useMemo(() => sortOrders(orders, sortBy), [orders, sortBy]);
 
+  // Deduplicated items from order history — most-recent variant per product slug.
+  const buyAgainItems = useMemo<SidebarProduct[]>(() => {
+    const seen = new Set<string>();
+    const items: SidebarProduct[] = [];
+    for (const order of sortedOrders) {
+      for (const item of order.items) {
+        if (!seen.has(item.productSlug)) {
+          seen.add(item.productSlug);
+          items.push({
+            title: item.title,
+            slug: item.productSlug,
+            categorySlug: item.categorySlug,
+            price: item.unitPrice,
+            originalPrice: item.originalPrice,
+            image: item.image,
+            sku: item.sku,
+          });
+        }
+        if (items.length >= 5) break;
+      }
+      if (items.length >= 5) break;
+    }
+    return items;
+  }, [sortedOrders]);
+
+  // Orders fetch.
   useEffect(() => {
     if (!userId) {
       // Reset to the logged-out state — syncing to external auth state.
@@ -128,9 +264,50 @@ const OrdersPage = () => {
     return () => { cancelled = true; };
   }, [userId]);
 
+  // Recommendations fetch — anchored to the most recently ordered item.
+  useEffect(() => {
+    const anchor = sortedOrders[0]?.items[0];
+    if (!anchor?.productSlug) { setRecommendations([]); return; }
+
+    let cancelled = false;
+    setRecsLoading(true);
+    const url = `${getBackendBaseUrl()}/api/products/recommendations?slug=${encodeURIComponent(anchor.productSlug)}&category=${encodeURIComponent(anchor.categorySlug)}`;
+    console.log(`[OrdersPage] fetching recommendations  anchor=${anchor.productSlug}`);
+
+    fetch(url)
+      .then((res) => (res.ok ? res.json() : { recommended: [] }))
+      .then((data) => {
+        if (!cancelled) {
+          const recs: SidebarProduct[] = (data.recommended ?? []).slice(0, 5).map(
+            (r: { title: string; slug: string; categorySlug: string; price: number; originalPrice: number; image: string; sku: string }) => ({
+              title: r.title,
+              slug: r.slug,
+              categorySlug: r.categorySlug,
+              price: r.price,
+              originalPrice: r.originalPrice,
+              image: r.image,
+              sku: r.sku,
+            }),
+          );
+          setRecommendations(recs);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("[OrdersPage] recommendations fetch failed", err);
+          setRecommendations([]);
+        }
+      })
+      .finally(() => { if (!cancelled) setRecsLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [sortedOrders]);
+
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
+
+  const showSidebar = !!user && !loading && !error && orders.length > 0;
 
   return (
     <div className="min-h-screen bg-[#FAF9F7] flex flex-col text-gray-900 overflow-x-hidden">
@@ -146,136 +323,149 @@ const OrdersPage = () => {
           </div>
         </div>
 
-        <section className="page-container flex-1 w-full max-w-2xl mx-auto px-3 sm:px-6 pb-16 space-y-5">
-          {/* Heading */}
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 flex items-center gap-2">
-              Your Orders
-              <Package className="w-6 h-6 sm:w-7 sm:h-7 text-brand-teal" />
-            </h1>
-            {/* Order count + sort share a row, width-matched to the card column so the
-                sort button caps the card on desktop; sort only meaningful with >1 order */}
-            <div className="flex items-center justify-between gap-3 mt-1 w-full sm:w-[65%]">
-              <p className="text-sm text-gray-500">{orders.length} order{orders.length !== 1 ? "s" : ""} placed</p>
-              {user && !loading && !error && orders.length > 1 && (
-                <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
-                  <SelectTrigger className="h-8 w-auto gap-1.5 rounded-full border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-brand-teal/20 [&>svg]:h-3.5 [&>svg]:w-3.5">
-                    <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
-                    <SelectValue placeholder="Sort" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {SORT_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value} className="text-xs">
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+        <section className="page-container flex-1 w-full max-w-3xl mx-auto px-3 sm:px-6 pb-16">
+          <div className="flex flex-col sm:flex-row sm:gap-6 sm:items-start">
+
+            {/* ── Left column: orders list ─────────────────────────────────── */}
+            <div className="flex-1 min-w-0 space-y-5">
+              {/* Heading */}
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 flex items-center gap-2">
+                  Your Orders
+                  <Package className="w-6 h-6 sm:w-7 sm:h-7 text-brand-teal" />
+                </h1>
+                {/* Order count + sort — sort only meaningful with >1 order */}
+                <div className="flex items-center justify-between gap-3 mt-1 w-full">
+                  <p className="text-sm text-gray-500">{orders.length} order{orders.length !== 1 ? "s" : ""} placed</p>
+                  {user && !loading && !error && orders.length > 1 && (
+                    <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
+                      <SelectTrigger className="h-8 w-auto gap-1.5 rounded-full border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-brand-teal/20 [&>svg]:h-3.5 [&>svg]:w-3.5">
+                        <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
+                        <SelectValue placeholder="Sort" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        {SORT_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value} className="text-xs">
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              </div>
+
+              {loading ? (
+                <OrdersSkeleton />
+              ) : !user ? (
+                <div className="w-full py-16 sm:py-20 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
+                  <Package size={48} className="text-brand-teal mb-4 opacity-40" />
+                  <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Track your orders</p>
+                  <p className="text-sm text-gray-500 mb-6">Log in to view your order history.</p>
+                  <Link to="/login" className="text-sm font-medium text-brand-teal underline underline-offset-2">Log in</Link>
+                </div>
+              ) : error ? (
+                <div className="w-full py-16 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
+                  <p className="text-lg font-semibold text-gray-800 mb-2">Couldn't load your orders</p>
+                  <p className="text-sm text-gray-500">{error}</p>
+                </div>
+              ) : orders.length === 0 ? (
+                <div className="w-full py-16 sm:py-20 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
+                  <Package size={48} className="text-brand-teal mb-4 opacity-40" />
+                  <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">No orders yet</p>
+                  <p className="text-sm text-gray-500 mb-6">When you place an order, it'll show up here.</p>
+                  <Link to="/dashboard" className="text-sm font-medium text-brand-teal underline underline-offset-2">Start shopping</Link>
+                </div>
+              ) : (
+                sortedOrders.map((order) => (
+                  <Link key={order.id} to={`/orders/${order.id}`} className="block group w-full">
+                    <Card className="relative bg-white border border-gray-400 rounded-2xl overflow-hidden shadow-lg ring-1 ring-black/10 sm:min-h-[210px] hover:shadow-2xl hover:-translate-y-0.5 hover:border-brand-teal/60 transition-all duration-300">
+                      {/* Status accent strip */}
+                      <div className={`h-1 w-full ${STATUS_ACCENT[order.status]}`} />
+
+                      <div className="p-4 sm:px-5 sm:py-7 space-y-1 sm:space-y-2">
+                        {/* Header row */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">{order.orderNumber}</p>
+                            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight line-clamp-2 mt-0.5">
+                              {order.items.length > 0
+                                ? order.items.map((i) => i.title).join(", ")
+                                : order.orderNumber}
+                            </h2>
+                            <p className="text-xs text-gray-500 mt-2">Placed on {formatDate(order.createdAt)}</p>
+                          </div>
+                          <StatusBadge status={order.status} />
+                        </div>
+
+                        {/* Media + meta + actions — single row on desktop; on mobile the thumbnails
+                            take their own row and the meta + Reorder share the row below. */}
+                        <div className="flex flex-wrap items-center gap-y-4 gap-x-3 sm:flex-nowrap sm:gap-0 border-t border-gray-300 pt-2 sm:pt-4">
+                          {/* Thumbnail strip — overlapping stack. Full row on mobile; fixed width on desktop
+                              (wider than the 4-thumb max) so the meta never sits flush and lines up across cards. */}
+                          <div className="flex items-center w-full sm:w-[290px] sm:shrink-0 sm:overflow-hidden">
+                            <div className="flex -space-x-3">
+                              {order.items.slice(0, 4).map((item) => (
+                                <div key={item.id} className="w-14 h-16 sm:w-16 sm:h-20 rounded-xl overflow-hidden bg-gray-100 shrink-0 ring-2 ring-white shadow-sm">
+                                  {item.image ? (
+                                    <img
+                                      src={item.image}
+                                      alt={item.title}
+                                      loading="lazy"
+                                      onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                      <Package size={20} />
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                            {order.items.length > 4 && (
+                              <span className="ml-3 text-xs font-medium text-gray-500">+{order.items.length - 4} more</span>
+                            )}
+                          </div>
+
+                          {/* Item count + total — fills the left of the mobile row; pushes actions right on desktop */}
+                          <div className="flex flex-col flex-1 sm:flex-none sm:ml-20 sm:mr-auto">
+                            <span className="text-xs text-gray-500">
+                              {order.itemCount} item{order.itemCount !== 1 ? "s" : ""}
+                            </span>
+                            <span className="text-base sm:text-lg font-bold text-gray-900 leading-tight">{inr(order.total)}</span>
+                          </div>
+
+                          {/* Actions — far right on desktop; right of the meta on mobile */}
+                          <div className="flex items-center gap-3 shrink-0">
+                            {/* Reorder — placeholder for now; only blocks the card's link nav */}
+                            <button
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                              className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-white bg-brand-teal rounded-full px-3 py-1.5 hover:bg-brand-teal/90 transition-colors shadow-sm shrink-0"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" /> Reorder
+                            </button>
+                            <span className="hidden sm:flex items-center gap-1 text-sm font-semibold text-brand-teal group-hover:gap-2 transition-all shrink-0">
+                              View details <ArrowRight className="w-4 h-4" />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  </Link>
+                ))
               )}
             </div>
+
+            {/* ── Right sidebar: Buy Again + You May Like ───────────────────── */}
+            {showSidebar && (
+              <aside className="w-full sm:w-[40%] sm:shrink-0 space-y-14 mt-8 sm:mt-10 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
+                <BuyAgainSection items={buyAgainItems} />
+                <YouMayLikeSection items={recommendations} loading={recsLoading} />
+              </aside>
+            )}
           </div>
-
-          {loading ? (
-            <OrdersSkeleton />
-          ) : !user ? (
-            <div className="w-full py-16 sm:py-20 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
-              <Package size={48} className="text-brand-teal mb-4 opacity-40" />
-              <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Track your orders</p>
-              <p className="text-sm text-gray-500 mb-6">Log in to view your order history.</p>
-              <Link to="/login" className="text-sm font-medium text-brand-teal underline underline-offset-2">Log in</Link>
-            </div>
-          ) : error ? (
-            <div className="w-full py-16 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
-              <p className="text-lg font-semibold text-gray-800 mb-2">Couldn't load your orders</p>
-              <p className="text-sm text-gray-500">{error}</p>
-            </div>
-          ) : orders.length === 0 ? (
-            <div className="w-full py-16 sm:py-20 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
-              <Package size={48} className="text-brand-teal mb-4 opacity-40" />
-              <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">No orders yet</p>
-              <p className="text-sm text-gray-500 mb-6">When you place an order, it'll show up here.</p>
-              <Link to="/dashboard" className="text-sm font-medium text-brand-teal underline underline-offset-2">Start shopping</Link>
-            </div>
-          ) : (
-            sortedOrders.map((order) => (
-              <Link key={order.id} to={`/orders/${order.id}`} className="block group w-full sm:w-[65%] sm:mr-auto">
-                <Card className="relative bg-white border border-gray-400 rounded-2xl overflow-hidden shadow-lg ring-1 ring-black/10 sm:min-h-[210px] hover:shadow-2xl hover:-translate-y-0.5 hover:border-brand-teal/60 transition-all duration-300">
-                  {/* Status accent strip */}
-                  <div className={`h-1 w-full ${STATUS_ACCENT[order.status]}`} />
-
-                  <div className="p-4 sm:px-5 sm:py-7 space-y-1 sm:space-y-2">
-                    {/* Header row */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">{order.orderNumber}</p>
-                        <h2 className="text-base sm:text-lg font-bold text-gray-900 leading-tight line-clamp-2 mt-0.5">
-                          {order.items.length > 0
-                            ? order.items.map((i) => i.title).join(", ")
-                            : order.orderNumber}
-                        </h2>
-                        <p className="text-xs text-gray-500 mt-2">Placed on {formatDate(order.createdAt)}</p>
-                      </div>
-                      <StatusBadge status={order.status} />
-                    </div>
-
-                    {/* Media + meta + actions — single row on desktop; on mobile the thumbnails
-                        take their own row and the meta + Reorder share the row below. */}
-                    <div className="flex flex-wrap items-center gap-y-4 gap-x-3 sm:flex-nowrap sm:gap-0 border-t border-gray-300 pt-2 sm:pt-4">
-                      {/* Thumbnail strip — overlapping stack. Full row on mobile; fixed width on desktop
-                          (wider than the 4-thumb max) so the meta never sits flush and lines up across cards. */}
-                      <div className="flex items-center w-full sm:w-[290px] sm:shrink-0 sm:overflow-hidden">
-                        <div className="flex -space-x-3">
-                          {order.items.slice(0, 4).map((item) => (
-                            <div key={item.id} className="w-14 h-16 sm:w-16 sm:h-20 rounded-xl overflow-hidden bg-gray-100 shrink-0 ring-2 ring-white shadow-sm">
-                              {item.image ? (
-                                <img
-                                  src={item.image}
-                                  alt={item.title}
-                                  loading="lazy"
-                                  onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                  <Package size={20} />
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                        {order.items.length > 4 && (
-                          <span className="ml-3 text-xs font-medium text-gray-500">+{order.items.length - 4} more</span>
-                        )}
-                      </div>
-
-                      {/* Item count + total — fills the left of the mobile row; pushes actions right on desktop */}
-                      <div className="flex flex-col flex-1 sm:flex-none sm:ml-20 sm:mr-auto">
-                        <span className="text-xs text-gray-500">
-                          {order.itemCount} item{order.itemCount !== 1 ? "s" : ""}
-                        </span>
-                        <span className="text-base sm:text-lg font-bold text-gray-900 leading-tight">{inr(order.total)}</span>
-                      </div>
-
-                      {/* Actions — far right on desktop; right of the meta on mobile */}
-                      <div className="flex items-center gap-3 shrink-0">
-                        {/* Reorder — placeholder for now; only blocks the card's link nav */}
-                        <button
-                          type="button"
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                          className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-white bg-brand-teal rounded-full px-3 py-1.5 hover:bg-brand-teal/90 transition-colors shadow-sm shrink-0"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" /> Reorder
-                        </button>
-                        <span className="hidden sm:flex items-center gap-1 text-sm font-semibold text-brand-teal group-hover:gap-2 transition-all shrink-0">
-                          View details <ArrowRight className="w-4 h-4" />
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              </Link>
-            ))
-          )}
         </section>
       </main>
 
