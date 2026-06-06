@@ -163,7 +163,7 @@ function BuyAgainSection({ items }: { items: SidebarProduct[] }) {
   if (items.length === 0) return null;
   return (
     <div>
-      <h2 className="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2">
+      <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
         <RotateCcw className="w-6 h-6 text-brand-teal" />
         Buy Again
       </h2>
@@ -180,7 +180,7 @@ function YouMayLikeSection({ items, loading }: { items: SidebarProduct[]; loadin
   if (!loading && items.length === 0) return null;
   return (
     <div>
-      <h2 className="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2">
+      <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
         <Sparkles className="w-6 h-6 text-brand-teal" />
         You May Like
       </h2>
@@ -327,9 +327,9 @@ const OrdersPage = () => {
           <div className="flex flex-col sm:flex-row sm:gap-6 sm:items-start">
 
             {/* ── Left column: orders list ─────────────────────────────────── */}
-            <div className="flex-1 min-w-0 space-y-5">
+            <div className="flex-1 min-w-0">
               {/* Heading */}
-              <div>
+              <div className="mb-2">
                 <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 flex items-center gap-2">
                   Your Orders
                   <Package className="w-6 h-6 sm:w-7 sm:h-7 text-brand-teal" />
@@ -339,7 +339,7 @@ const OrdersPage = () => {
                   <p className="text-sm text-gray-500">{orders.length} order{orders.length !== 1 ? "s" : ""} placed</p>
                   {user && !loading && !error && orders.length > 1 && (
                     <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
-                      <SelectTrigger className="h-8 w-auto gap-1.5 rounded-full border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-brand-teal/20 [&>svg]:h-3.5 [&>svg]:w-3.5">
+                      <SelectTrigger className="relative -top-[12px] h-8 w-auto gap-1.5 rounded-full border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-brand-teal/20 [&>svg]:h-3.5 [&>svg]:w-3.5">
                         <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
                         <SelectValue placeholder="Sort" />
                       </SelectTrigger>
@@ -355,6 +355,7 @@ const OrdersPage = () => {
                 </div>
               </div>
 
+              <div className="space-y-5">
               {loading ? (
                 <OrdersSkeleton />
               ) : !user ? (
@@ -456,11 +457,12 @@ const OrdersPage = () => {
                   </Link>
                 ))
               )}
+              </div>
             </div>
 
             {/* ── Right sidebar: Buy Again + You May Like ───────────────────── */}
             {showSidebar && (
-              <aside className="w-full sm:w-[40%] sm:shrink-0 space-y-14 mt-8 sm:mt-10 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
+              <aside className="w-full sm:w-[35%] sm:shrink-0 space-y-14 mt-8 sm:mt-7 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
                 <BuyAgainSection items={buyAgainItems} />
                 <YouMayLikeSection items={recommendations} loading={recsLoading} />
               </aside>
