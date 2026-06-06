@@ -172,6 +172,7 @@ const OrderDetailPage = () => {
         </div>
 
         <section className="page-container flex-1 w-full max-w-3xl mx-auto px-3 sm:px-6 pb-16">
+          <div className="w-full sm:w-[65%] sm:mr-auto">
           <Link to="/orders" className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-brand-teal mb-5">
             <ArrowLeft className="w-4 h-4" /> Back to orders
           </Link>
@@ -334,6 +335,7 @@ const OrderDetailPage = () => {
               </div>
             </Card>
           )}
+          </div>
         </section>
       </main>
 
