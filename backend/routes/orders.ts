@@ -15,7 +15,7 @@ const orderDetailKey = (userId: string, orderId: string) => redisKey("order", `d
 // Columns selected for both list and detail (detail adds shipping_address).
 const ORDER_ITEMS_SELECT = `
   id, product_slug, category_slug, sku, title, image_url,
-  size, color_name, color_hex, unit_price, quantity, line_total
+  size, color_name, color_hex, unit_price, original_price, quantity, line_total
 `.trim();
 
 interface OrderItemRow {
@@ -29,6 +29,7 @@ interface OrderItemRow {
   color_name: string | null;
   color_hex: string | null;
   unit_price: number | string;
+  original_price: number | string | null;
   quantity: number;
   line_total: number | string;
 }
@@ -61,6 +62,8 @@ function mapItem(row: OrderItemRow) {
     color: { name: row.color_name ?? "", hex: row.color_hex ?? "#cccccc" },
     // NUMERIC columns can come back as strings over the wire — coerce to number.
     unitPrice: Number(row.unit_price) || 0,
+    // Falls back to the paid price when unset, so the UI shows no fake discount.
+    originalPrice: Number(row.original_price) || Number(row.unit_price) || 0,
     quantity: row.quantity,
     lineTotal: Number(row.line_total) || 0,
   };

@@ -22,6 +22,7 @@ export interface OrderItem {
   size: string;
   color: { name: string; hex: string };
   unitPrice: number;
+  originalPrice: number;
   quantity: number;
   lineTotal: number;
 }

@@ -75,7 +75,7 @@ const OrderDetailPage = () => {
       categorySlug: item.categorySlug,
       title: item.title,
       price: item.unitPrice,
-      originalPrice: item.unitPrice,
+      originalPrice: item.originalPrice,
       image: item.image,
       images: item.image ? [item.image] : [],
       color: item.color,
@@ -148,6 +148,12 @@ const OrderDetailPage = () => {
   const addrLine = addr
     ? [addr.line1, addr.line2, addr.landmark, addr.city, addr.state, addr.pincode].filter(Boolean).join(", ")
     : "";
+
+  // MRP (pre-discount) subtotal and savings, summed from the item snapshots, so the
+  // Payment Summary can show the original total struck through and the % saved.
+  const mrpSubtotal = order?.items.reduce((s, it) => s + it.originalPrice * it.quantity, 0) ?? 0;
+  const mrpSavings = order ? Math.max(0, mrpSubtotal - order.subtotal) : 0;
+  const mrpPct = mrpSubtotal > 0 ? Math.round((mrpSavings / mrpSubtotal) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-[#FAF9F7] flex flex-col text-gray-900 overflow-x-hidden">
@@ -262,9 +268,16 @@ const OrderDetailPage = () => {
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm sm:text-base font-bold text-gray-900">{inr(item.lineTotal)}</p>
-                        {item.quantity > 1 && (
-                          <p className="text-[11px] text-gray-400 mt-0.5">{inr(item.unitPrice)} each</p>
+                        {/* Price paid, represented as unit price × quantity — on top. */}
+                        <p className="text-sm sm:text-base font-bold text-gray-900">{inr(item.unitPrice)} × {item.quantity}</p>
+                        {/* Original (MRP) struck below, with % off — only when discounted. */}
+                        {item.originalPrice > item.unitPrice && (
+                          <div className="mt-0.5 flex items-center justify-end gap-1.5">
+                            <span className="text-[11px] text-gray-400 line-through">{inr(item.originalPrice)} × {item.quantity}</span>
+                            <span className="text-[11px] font-semibold text-emerald-600">
+                              {Math.round((1 - item.unitPrice / item.originalPrice) * 100)}% off
+                            </span>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -288,9 +301,22 @@ const OrderDetailPage = () => {
               <div className="p-4 sm:p-5">
                 <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">Payment Summary</h2>
                 <div className="space-y-2 text-sm">
+                  {/* Original (MRP) total struck through, when the items were discounted. */}
+                  {mrpSavings > 0 && (
+                    <div className="flex justify-between text-gray-500">
+                      <span>Total MRP</span>
+                      <span className="line-through">{inr(mrpSubtotal)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-gray-600">
                     <span>Subtotal</span><span>{inr(order.subtotal)}</span>
                   </div>
+                  {/* Savings off MRP, with the % off — mirrors the per-item badge. */}
+                  {mrpSavings > 0 && (
+                    <div className="flex justify-between text-emerald-600 font-medium">
+                      <span>You saved</span><span>−{inr(mrpSavings)} ({mrpPct}% off)</span>
+                    </div>
+                  )}
                   {order.discount > 0 && (
                     <div className="flex justify-between text-emerald-600">
                       <span>Discount</span><span>−{inr(order.discount)}</span>
