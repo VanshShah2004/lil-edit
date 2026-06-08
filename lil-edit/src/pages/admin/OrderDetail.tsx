@@ -17,7 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   fetchAdminOrderById,
   updateOrderStatus,
-  SETTABLE_ORDER_STATUSES,
+  nextStatuses,
   type AdminOrderDetail,
   type OrderStatus,
 } from "@/lib/adminOrdersApi";
@@ -147,6 +147,10 @@ const AdminOrderDetailPage = () => {
 
   const addr = order?.shippingAddress;
   const dirty = !!order && selectedStatus !== order.status;
+  // Legal next statuses for this order (current first). A terminal order has no
+  // moves left, so only its current status appears and the control locks.
+  const statusOptions = order ? nextStatuses(order.status) : [];
+  const terminal = statusOptions.length <= 1;
 
   return (
     <div className="min-h-screen bg-white text-[#1a1a1a] flex flex-col font-sans">
@@ -242,16 +246,21 @@ const AdminOrderDetailPage = () => {
                     <OrderStatusBadge status={order.status} />
                   </div>
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Update status</label>
-                  <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as OrderStatus)}>
-                    <SelectTrigger className="mt-1.5 h-10 w-full border-gray-200 bg-gray-50/50 text-sm">
+                  <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as OrderStatus)} disabled={terminal}>
+                    <SelectTrigger className="mt-1.5 h-10 w-full border-gray-200 bg-gray-50/50 text-sm disabled:opacity-60">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {SETTABLE_ORDER_STATUSES.map((s) => (
+                      {statusOptions.map((s) => (
                         <SelectItem key={s} value={s} className="text-sm">{STATUS_LABELS[s]}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {terminal && (
+                    <p className="mt-2 text-xs text-gray-400">
+                      This order is {STATUS_LABELS[order.status].toLowerCase()} — a final state. No further status changes are allowed.
+                    </p>
+                  )}
                   <button
                     type="button"
                     onClick={handleSave}

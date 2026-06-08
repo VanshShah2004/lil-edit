@@ -78,6 +78,26 @@ export const SETTABLE_ORDER_STATUSES: OrderStatus[] = [
   "cancelled",
 ];
 
+// Legal status transitions — mirrors the state machine enforced in the DB
+// (admin_set_order_status / 20260610_order_status_transitions.sql). The backend is
+// authoritative; this just keeps the UI from offering moves the server will reject.
+// An order may jump FORWARD to any later stage, or be cancelled, but never move
+// backward; delivered & cancelled are terminal (no outgoing transitions).
+export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  pending:    ["processing", "shipped", "delivered", "cancelled"],
+  confirmed:  ["processing", "shipped", "delivered", "cancelled"],
+  processing: ["shipped", "delivered", "cancelled"],
+  shipped:    ["delivered", "cancelled"],
+  delivered:  [],
+  cancelled:  [],
+};
+
+// Statuses an admin may move TO from `from` — the current status first (so it stays
+// selected), then its legal next states.
+export function nextStatuses(from: OrderStatus): OrderStatus[] {
+  return [from, ...(ORDER_TRANSITIONS[from] ?? [])];
+}
+
 export interface AdminOrdersQuery {
   search?: string;
   status?: OrderStatus | "all";

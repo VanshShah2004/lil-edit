@@ -343,7 +343,7 @@ router.patch("/:id/status", async (req: Request, res: Response) => {
 
     // The function returns one row (or none for a missing order).
     const result = (Array.isArray(data) ? data[0] : data) as
-      | { owner_id: string; from_status: string; changed: boolean }
+      | { owner_id: string; from_status: string; result: "changed" | "unchanged" | "invalid" }
       | undefined;
 
     if (!result) {
@@ -352,7 +352,13 @@ router.patch("/:id/status", async (req: Request, res: Response) => {
       return;
     }
 
-    if (!result.changed) {
+    if (result.result === "invalid") {
+      log.warn(`illegal transition  order=${orderId}  ${result.from_status}→${status}`).end("ADMIN ORDER STATUS");
+      res.status(400).json({ error: `Cannot change status from "${result.from_status}" to "${status}".` });
+      return;
+    }
+
+    if (result.result === "unchanged") {
       log.success(`no change  order=${orderId}  already=${status}`).end("ADMIN ORDER STATUS");
       res.json({ success: true, unchanged: true });
       return;
