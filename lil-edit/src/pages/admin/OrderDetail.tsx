@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronRight, User, MapPin, Receipt, ShoppingBag, Save, History } from "lucide-react";
+import { ArrowLeft, ChevronRight, User, MapPin, Receipt, ShoppingBag, Save, History, Mail, Check } from "lucide-react";
 import { toast } from "sonner";
 
 import UserNavbar from "@/components/home/UserNavbar";
@@ -88,6 +88,7 @@ const AdminOrderDetailPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus>("pending");
   const [note, setNote] = useState("");
+  const [notifyByEmail, setNotifyByEmail] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const loadOrder = (id: string, withSpinner = true) => {
@@ -235,7 +236,10 @@ const AdminOrderDetailPage = () => {
 
                 {/* Status History — immutable audit trail of every status change */}
                 <SectionCard icon={History} title="Status History">
-                  <OrderStatusTimeline events={order.statusHistory ?? []} />
+                  <OrderStatusTimeline
+                    events={order.statusHistory ?? []}
+                    onToggleNotify={() => setNotifyByEmail((v) => !v)}
+                  />
                 </SectionCard>
               </div>
 
@@ -283,6 +287,27 @@ const AdminOrderDetailPage = () => {
                       <p className="mt-1 text-right text-[10px] text-gray-300">{note.length}/500</p>
                     </div>
                   )}
+
+                  {/* Notify the customer of this status change by email (wiring TBD).
+                      Always shown in Status Management, regardless of order state. */}
+                  <button
+                    type="button"
+                    onClick={() => setNotifyByEmail((v) => !v)}
+                    aria-pressed={notifyByEmail}
+                    className="mt-4 w-full inline-flex items-center justify-between gap-2 rounded-md bg-[#B19CD9] px-3 py-2.5 text-sm font-medium text-gray-900 hover:bg-[#9d86c9] transition-colors"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Mail className="h-4 w-4" /> Notify customer via Gmail
+                    </span>
+                    <span
+                      className={`flex h-4 w-4 items-center justify-center rounded-[4px] border transition-colors ${
+                        notifyByEmail ? "border-gray-900 bg-gray-900 text-white" : "border-gray-900/40 bg-white"
+                      }`}
+                    >
+                      {notifyByEmail && <Check className="h-3 w-3" strokeWidth={3} />}
+                    </span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleSave}

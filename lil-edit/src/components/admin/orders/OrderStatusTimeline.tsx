@@ -1,4 +1,4 @@
-import { Check, X } from "lucide-react";
+import { Check, X, Mail } from "lucide-react";
 import type { OrderStatus, OrderStatusEvent } from "@/lib/adminOrdersApi";
 
 // Headline per resulting status. The opening entry (fromStatus === null) shows as
@@ -22,6 +22,7 @@ function formatStamp(iso: string): string {
 
 function Node({
   label, fromLabel, toLabel, isPlacement, actor, email, note, stamp, mostRecent, cancelled, isLast,
+  notify, onToggleNotify,
 }: {
   label: string;
   fromLabel?: string;
@@ -34,6 +35,8 @@ function Node({
   mostRecent: boolean;
   cancelled: boolean;
   isLast: boolean;
+  notify?: boolean;
+  onToggleNotify?: () => void;
 }) {
   const dotBg = cancelled ? "bg-rose-400" : "bg-emerald-500";
   return (
@@ -55,9 +58,22 @@ function Node({
       </div>
 
       <div className={`flex-1 ${isLast ? "" : "pb-6"}`}>
-        <p className={`text-sm leading-4 ${mostRecent ? "font-bold text-gray-900" : "font-medium text-gray-700"}`}>
-          {label}
-        </p>
+        {/* Status headline; on the latest state the notify button sits at the right
+            of the same row. */}
+        <div className="flex items-center justify-between gap-2">
+          <p className={`text-sm leading-4 ${mostRecent ? "font-bold text-gray-900" : "font-medium text-gray-700"}`}>
+            {label}
+          </p>
+          {notify && onToggleNotify && (
+            <button
+              type="button"
+              onClick={onToggleNotify}
+              className="shrink-0 inline-flex items-center gap-1 rounded-[4px] bg-[#B19CD9] px-2.5 py-1 text-[11px] font-semibold text-gray-900 hover:bg-[#9d86c9] transition-colors"
+            >
+              <Mail className="h-3 w-3" /> Notify via Gmail
+            </button>
+          )}
+        </div>
         {/* Description: the state change that was made + who made it (the admin-only
             additions over the customer view). */}
         <p className="text-xs text-gray-500 mt-1">
@@ -84,7 +100,12 @@ function Node({
 // Admin status history — the customer "Order Journey" look (latest on top, green
 // dots, tick on the most recent), but driven by the real audit events and showing
 // who made each change. `events` arrive newest-first from the API.
-export function OrderStatusTimeline({ events }: { events: OrderStatusEvent[] }) {
+export function OrderStatusTimeline({
+  events, onToggleNotify,
+}: {
+  events: OrderStatusEvent[];
+  onToggleNotify?: () => void;
+}) {
   if (events.length === 0) {
     return <p className="text-sm text-gray-400">No status history recorded yet.</p>;
   }
@@ -109,6 +130,8 @@ export function OrderStatusTimeline({ events }: { events: OrderStatusEvent[] }) 
             mostRecent={i === 0}
             cancelled={ev.toStatus === "cancelled"}
             isLast={i === events.length - 1}
+            notify={i === 0}
+            onToggleNotify={onToggleNotify}
           />
         );
       })}
