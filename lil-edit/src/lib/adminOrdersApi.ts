@@ -138,7 +138,8 @@ export async function fetchAdminOrderById(orderId: string): Promise<AdminOrderDe
   }
   const data = await res.json();
   console.log("[adminOrdersApi] fetchAdminOrderById →", data.order?.orderNumber ?? "?");
-  return data.order as AdminOrderDetail;
+  const order = data.order as AdminOrderDetail;
+  return { ...order, statusHistory: order.statusHistory ?? [] };
 }
 
 export async function updateOrderStatus(orderId: string, status: OrderStatus): Promise<{ success: boolean }> {

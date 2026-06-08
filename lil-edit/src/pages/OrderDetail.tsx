@@ -11,6 +11,7 @@ import { fetchOrderById, type OrderDetail, type OrderItem, type OrderStatus } fr
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import { getBackendBaseUrl } from "@/lib/backend";
 import { BuyAgainSection, YouMayLikeSection, type SidebarProduct } from "@/components/orders/OrdersSidebar";
+import OrderTimeline from "@/components/orders/OrderTimeline";
 import { useBuyAgainBadges } from "@/hooks/useBuyAgainBadges";
 import { composeProductBadges } from "@/lib/productBadges";
 
@@ -415,6 +416,11 @@ const OrderDetailPage = () => {
                   <p className="text-sm text-gray-600 leading-relaxed">{addrLine}</p>
                   {addr?.country && <p className="text-sm text-gray-600">{addr.country}</p>}
                 </div>
+              )}
+
+              {/* Order journey — status milestones, oldest first */}
+              {(order.statusHistory?.length ?? 0) > 0 && (
+                <OrderTimeline events={order.statusHistory} currentStatus={order.status} />
               )}
 
               {/* Totals */}

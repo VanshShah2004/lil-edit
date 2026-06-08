@@ -35,6 +35,16 @@ interface OrderItemRow {
   line_total: number | string;
 }
 
+// Customer-safe audit row: the status transition + when, but NOT who changed it.
+// The acting admin's identity (changed_by/name/email) is deliberately omitted from
+// the customer projection — it stays admin-only.
+interface StatusHistoryRow {
+  id: string;
+  from_status: string | null;
+  to_status: string;
+  created_at: string;
+}
+
 interface OrderRow {
   id: string;
   order_number: string;
@@ -49,6 +59,7 @@ interface OrderRow {
   created_at: string;
   shipping_address?: Record<string, unknown> | null;
   order_items?: OrderItemRow[];
+  order_status_history?: StatusHistoryRow[];
 }
 
 function mapItem(row: OrderItemRow) {
@@ -89,7 +100,19 @@ function mapOrder(row: OrderRow, includeAddress: boolean) {
     items: (row.order_items ?? []).map(mapItem),
   };
   if (!includeAddress) return base;
-  return { ...base, shippingAddress: row.shipping_address ?? {} };
+  return {
+    ...base,
+    shippingAddress: row.shipping_address ?? {},
+    // Oldest → newest, so the customer reads it as their order's journey.
+    statusHistory: (row.order_status_history ?? [])
+      .map((h) => ({
+        id: h.id,
+        fromStatus: h.from_status,
+        toStatus: h.to_status,
+        createdAt: h.created_at,
+      }))
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+  };
 }
 
 // ─── GET /api/orders — list the caller's orders, newest first ────────────────────
@@ -161,7 +184,8 @@ router.get("/:id", requireAuth, async (req: Request, res: Response) => {
       .select(`
         id, order_number, status, payment_method, payment_status,
         subtotal, discount, shipping_fee, total, item_count, created_at, shipping_address,
-        order_items(${ORDER_ITEMS_SELECT})
+        order_items(${ORDER_ITEMS_SELECT}),
+        order_status_history(id, from_status, to_status, created_at)
       `)
       .eq("id", orderId)
       .eq("user_id", userId)

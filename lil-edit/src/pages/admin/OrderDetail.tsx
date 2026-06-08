@@ -228,7 +228,7 @@ const AdminOrderDetailPage = () => {
 
                 {/* Status History — immutable audit trail of every status change */}
                 <SectionCard icon={History} title="Status History">
-                  <OrderStatusTimeline events={order.statusHistory} />
+                  <OrderStatusTimeline events={order.statusHistory ?? []} />
                 </SectionCard>
               </div>
 

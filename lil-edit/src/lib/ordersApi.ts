@@ -57,8 +57,18 @@ export interface OrderSummary {
   items: OrderItem[];
 }
 
+// Customer-facing status event: the transition + when. Intentionally carries no
+// actor info — the admin who made the change is never exposed to the customer.
+export interface OrderStatusEvent {
+  id: string;
+  fromStatus: OrderStatus | null;
+  toStatus: OrderStatus;
+  createdAt: string;
+}
+
 export interface OrderDetail extends OrderSummary {
   shippingAddress: OrderAddress;
+  statusHistory: OrderStatusEvent[];
 }
 
 async function getAccessToken(): Promise<string | null> {
@@ -104,5 +114,8 @@ export async function fetchOrderById(orderId: string): Promise<OrderDetail> {
   }
   const data = await res.json();
   console.log("[ordersApi] fetchOrderById →", data.order?.orderNumber ?? "?");
-  return data.order as OrderDetail;
+  // Default statusHistory so a stale cached payload (pre-audit-trail) can't crash
+  // the page on `.statusHistory.length`.
+  const order = data.order as OrderDetail;
+  return { ...order, statusHistory: order.statusHistory ?? [] };
 }
