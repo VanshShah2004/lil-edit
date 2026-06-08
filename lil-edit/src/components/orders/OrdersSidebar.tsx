@@ -26,6 +26,9 @@ export type SidebarProduct = {
   image: string;
   sku: string;
   badges?: string[];
+  // Carried from order snapshots (Buy Again). null = product deleted; undefined
+  // for live recommendations, which are always navigable.
+  productId?: string | null;
 };
 
 export function SidebarProductCard({ product, onClick }: { product: SidebarProduct; onClick: () => void }) {

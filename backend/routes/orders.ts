@@ -14,12 +14,13 @@ const orderDetailKey = (userId: string, orderId: string) => redisKey("order", `d
 
 // Columns selected for both list and detail (detail adds shipping_address).
 const ORDER_ITEMS_SELECT = `
-  id, product_slug, category_slug, sku, title, image_url,
+  id, product_id, product_slug, category_slug, sku, title, image_url,
   size, color_name, color_hex, unit_price, original_price, quantity, line_total
 `.trim();
 
 interface OrderItemRow {
   id: string;
+  product_id: string | null;
   product_slug: string;
   category_slug: string | null;
   sku: string;
@@ -53,6 +54,9 @@ interface OrderRow {
 function mapItem(row: OrderItemRow) {
   return {
     id: row.id,
+    // Soft link to the live product (null if it was deleted) — for reorder /
+    // "view product"; the snapshot fields below render the line regardless.
+    productId: row.product_id ?? null,
     productSlug: row.product_slug,
     categorySlug: row.category_slug ?? "",
     sku: row.sku,

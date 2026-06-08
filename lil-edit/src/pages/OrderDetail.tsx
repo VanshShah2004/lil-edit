@@ -83,6 +83,7 @@ const OrderDetailPage = () => {
         originalPrice: item.originalPrice,
         image: item.image,
         sku: item.sku,
+        productId: item.productId,
       });
       if (items.length >= 5) break;
     }
@@ -98,6 +99,7 @@ const OrderDetailPage = () => {
     setSelectedProduct({
       source: "order",
       id: item.id,
+      productId: item.productId,
       sku: item.sku,
       slug: item.productSlug,
       categorySlug: item.categorySlug,
@@ -147,6 +149,7 @@ const OrderDetailPage = () => {
     setSelectedProduct({
       source: "order",
       id: item.slug,
+      productId: item.productId,
       sku: item.sku,
       slug: item.slug,
       categorySlug: item.categorySlug,

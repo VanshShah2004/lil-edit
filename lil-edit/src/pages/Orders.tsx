@@ -132,6 +132,7 @@ const OrdersPage = () => {
             originalPrice: item.originalPrice,
             image: item.image,
             sku: item.sku,
+            productId: item.productId,
           });
         }
         if (items.length >= 5) break;
@@ -216,6 +217,7 @@ const OrdersPage = () => {
     setSelectedProduct({
       source: "order",
       id: item.slug,
+      productId: item.productId,
       sku: item.sku,
       slug: item.slug,
       categorySlug: item.categorySlug,

@@ -14,6 +14,10 @@ export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
 export interface OrderItem {
   id: string;
+  // Live-catalog link, or null if the product has since been deleted. The
+  // snapshot fields below always render the line; this is only for navigating
+  // to the current product (reorder / view).
+  productId: string | null;
   productSlug: string;
   categorySlug: string;
   sku: string;

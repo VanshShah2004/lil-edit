@@ -41,6 +41,9 @@ function useIsDesktop() {
 export type QuickViewProduct = {
   source: "cart" | "wishlist" | "order";
   id: string;
+  // Live-catalog link for order snapshots: string = exists, null = product
+  // deleted (so the PDP would 404), undefined = unknown/not an order snapshot.
+  productId?: string | null;
   sku: string;
   slug: string;
   categorySlug: string;
@@ -135,12 +138,16 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
 
   const pdpUrl = `/collections/${product.categorySlug}/product/${product.slug}$${product.sku}`;
 
+  // An order line whose product has since been deleted (productId nulled by the
+  // ON DELETE SET NULL link) has no live PDP to open — guard the navigation.
+  const productUnavailable = product.source === "order" && product.productId === null;
+
   const inStock =
     product.source === "wishlist"
       ? (product.inStock ?? true)
       : !product.availability?.toLowerCase().includes("out");
 
-  const handleViewFull = () => { onClose(); navigate(pdpUrl); };
+  const handleViewFull = () => { if (productUnavailable) return; onClose(); navigate(pdpUrl); };
   const handleMoveToCart = async () => { await moveToCart(product.id); onClose(); };
   const handleWishlistToggle = () => {
     if (wishlisted && wishlistItemForProduct) {
@@ -316,8 +323,8 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
 
   const ctaMobile = () => (
     <div className="flex flex-row gap-2">
-      <Button variant="outline" onClick={handleViewFull} className="flex-1 h-11 border-gray-300 text-gray-700 hover:bg-transparent hover:border-brand-teal hover:text-brand-teal rounded-full font-semibold text-base gap-1.5">
-        <ExternalLink size={15} /> View Full Product
+      <Button variant="outline" onClick={handleViewFull} disabled={productUnavailable} className="flex-1 h-11 border-gray-300 text-gray-700 hover:bg-transparent hover:border-brand-teal hover:text-brand-teal rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 disabled:hover:border-gray-300 disabled:hover:text-gray-700">
+        <ExternalLink size={15} /> {productUnavailable ? "Product Unavailable" : "View Full Product"}
       </Button>
       {product.source === "wishlist" && (
         <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-semibold text-base gap-1.5 disabled:opacity-60">
@@ -345,8 +352,8 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
       <Button disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base disabled:opacity-60">
         Buy Now
       </Button>
-      <Button variant="outline" onClick={handleViewFull} className="flex-1 h-11 border-gray-300 text-gray-700 hover:bg-transparent hover:border-brand-teal hover:text-brand-teal rounded-full font-semibold text-base gap-1.5">
-        <ExternalLink size={15} /> View Full Product
+      <Button variant="outline" onClick={handleViewFull} disabled={productUnavailable} className="flex-1 h-11 border-gray-300 text-gray-700 hover:bg-transparent hover:border-brand-teal hover:text-brand-teal rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 disabled:hover:border-gray-300 disabled:hover:text-gray-700">
+        <ExternalLink size={15} /> {productUnavailable ? "Product Unavailable" : "View Full Product"}
       </Button>
       {product.source === "cart" && (
         <button onClick={handleWishlistToggle} className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full border transition-colors ${wishlisted ? "border-primary/30 bg-primary/10 text-primary" : "border-gray-300 text-gray-500 hover:border-primary/50 hover:text-primary hover:bg-primary/5"}`} aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}>
