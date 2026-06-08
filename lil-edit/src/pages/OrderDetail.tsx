@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronRight, Package, MapPin, ArrowLeft, RotateCcw } from "lucide-react";
 
@@ -10,6 +10,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchOrderById, type OrderDetail, type OrderItem, type OrderStatus } from "@/lib/ordersApi";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import { getBackendBaseUrl } from "@/lib/backend";
+import { BuyAgainSection, YouMayLikeSection, type SidebarProduct } from "@/components/orders/OrdersSidebar";
+import { useBuyAgainBadges } from "@/hooks/useBuyAgainBadges";
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
   pending:    "bg-indigo-50 text-indigo-700 border-indigo-200",
@@ -59,8 +61,33 @@ const OrderDetailPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<QuickViewProduct | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const [recommendations, setRecommendations] = useState<SidebarProduct[]>([]);
+  const [recsLoading, setRecsLoading] = useState(false);
 
   const userId = user?.id ?? null;
+
+  // Buy Again — deduplicated items from this order, most-recent variant per product slug.
+  const buyAgainItems = useMemo<SidebarProduct[]>(() => {
+    if (!order) return [];
+    const seen = new Set<string>();
+    const items: SidebarProduct[] = [];
+    for (const item of order.items) {
+      if (seen.has(item.productSlug)) continue;
+      seen.add(item.productSlug);
+      items.push({
+        title: item.title,
+        slug: item.productSlug,
+        categorySlug: item.categorySlug,
+        price: item.unitPrice,
+        originalPrice: item.originalPrice,
+        image: item.image,
+        sku: item.sku,
+      });
+      if (items.length >= 5) break;
+    }
+    return items;
+  }, [order]);
+  const buyAgainItemsWithBadges = useBuyAgainBadges(buyAgainItems);
 
   // Map an order-line snapshot into the shared quick-view shape. The snapshot only
   // stores the single primary image, so the drawer opens with that immediately, then
@@ -115,6 +142,49 @@ const OrderDetailPage = () => {
       .catch((err) => console.error("[OrderDetailPage] quick-view gallery fetch failed", err));
   };
 
+  const openSidebarQuickView = (item: SidebarProduct) => {
+    setSelectedProduct({
+      source: "order",
+      id: item.slug,
+      sku: item.sku,
+      slug: item.slug,
+      categorySlug: item.categorySlug,
+      title: item.title,
+      price: item.price,
+      originalPrice: item.originalPrice,
+      image: item.image,
+      images: item.image ? [item.image] : [],
+      color: { name: "", hex: "" },
+      badges: [],
+      tags: [],
+    });
+    setQuickViewOpen(true);
+
+    if (!item.slug || !item.sku) return;
+    const url = `${getBackendBaseUrl()}/api/products/detail?slug=${encodeURIComponent(item.slug)}&sku=${encodeURIComponent(item.sku)}&category=${encodeURIComponent(item.categorySlug)}`;
+    console.log(`[OrderDetailPage] sidebar quick-view fetch  ${url}`);
+    fetch(url)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const product = data?.product;
+        if (!product) return;
+        const matchColor = (product.colors ?? []).find((c: { sku: string }) => c.sku === item.sku);
+        const urls: string[] = [
+          ...((matchColor?.images ?? []) as { url: string }[]).map((im) => im.url),
+          item.image,
+          ...((product.images ?? []) as { url: string }[]).map((im) => im.url),
+        ].filter(Boolean);
+        const images = Array.from(new Set(urls));
+        console.log(`[OrderDetailPage] sidebar quick-view → ${images.length} image(s)`);
+        setSelectedProduct((prev) =>
+          prev && prev.slug === item.slug
+            ? { ...prev, images, badges: product.badges ?? prev.badges }
+            : prev,
+        );
+      })
+      .catch((err) => console.error("[OrderDetailPage] sidebar quick-view fetch failed", err));
+  };
+
   useEffect(() => {
     if (!userId || !orderId) {
       // Reset to the logged-out state — syncing to external auth state.
@@ -140,6 +210,46 @@ const OrderDetailPage = () => {
     return () => { cancelled = true; };
   }, [userId, orderId]);
 
+  // Recommendations fetch — anchored to the order's first item.
+  useEffect(() => {
+    const anchor = order?.items[0];
+    if (!anchor?.productSlug) { setRecommendations([]); return; }
+
+    let cancelled = false;
+    setRecsLoading(true);
+    const url = `${getBackendBaseUrl()}/api/products/recommendations?slug=${encodeURIComponent(anchor.productSlug)}&category=${encodeURIComponent(anchor.categorySlug)}`;
+    console.log(`[OrderDetailPage] fetching recommendations  anchor=${anchor.productSlug}`);
+
+    fetch(url)
+      .then((res) => (res.ok ? res.json() : { recommended: [] }))
+      .then((data) => {
+        if (!cancelled) {
+          const recs: SidebarProduct[] = (data.recommended ?? []).slice(0, 5).map(
+            (r: { title: string; slug: string; categorySlug: string; price: number; originalPrice: number; image: string; sku: string; badges?: string[] }) => ({
+              title: r.title,
+              slug: r.slug,
+              categorySlug: r.categorySlug,
+              price: r.price,
+              originalPrice: r.originalPrice,
+              image: r.image,
+              sku: r.sku,
+              badges: r.badges ?? [],
+            }),
+          );
+          setRecommendations(recs);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("[OrderDetailPage] recommendations fetch failed", err);
+          setRecommendations([]);
+        }
+      })
+      .finally(() => { if (!cancelled) setRecsLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [order]);
+
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -154,6 +264,8 @@ const OrderDetailPage = () => {
   const mrpSubtotal = order?.items.reduce((s, it) => s + it.originalPrice * it.quantity, 0) ?? 0;
   const mrpSavings = order ? Math.max(0, mrpSubtotal - order.subtotal) : 0;
   const mrpPct = mrpSubtotal > 0 ? Math.round((mrpSavings / mrpSubtotal) * 100) : 0;
+
+  const showSidebar = !!user && !loading && !error && !!order;
 
   return (
     <div className="min-h-screen bg-[#FAF9F7] flex flex-col text-gray-900 overflow-x-hidden">
@@ -172,7 +284,10 @@ const OrderDetailPage = () => {
         </div>
 
         <section className="page-container flex-1 w-full max-w-3xl mx-auto px-3 sm:px-6 pb-16">
-          <div className="w-full sm:w-[65%] sm:mr-auto">
+          <div className="flex flex-col sm:flex-row sm:gap-6 sm:items-start">
+
+          {/* ── Left column: order detail ───────────────────────────────────── */}
+          <div className="flex-1 min-w-0">
           <Link to="/orders" className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-brand-teal mb-5">
             <ArrowLeft className="w-4 h-4" /> Back to orders
           </Link>
@@ -334,6 +449,15 @@ const OrderDetailPage = () => {
                 </div>
               </div>
             </Card>
+          )}
+          </div>
+
+          {/* ── Right sidebar: Buy Again + You May Like ───────────────────── */}
+          {showSidebar && (
+            <aside className="w-full sm:w-[35%] sm:shrink-0 space-y-14 mt-8 sm:mt-7 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
+              <BuyAgainSection items={buyAgainItemsWithBadges} onItemClick={openSidebarQuickView} />
+              <YouMayLikeSection items={recommendations} loading={recsLoading} onItemClick={openSidebarQuickView} />
+            </aside>
           )}
           </div>
         </section>

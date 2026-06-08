@@ -1114,7 +1114,8 @@ export async function fetchRecommendedProducts(
   const sb = requireAdmin();
 
   const REC_SELECT = `
-    title, slug, category_slug, price, original_price, base_sku, tags, gender,
+    title, slug, category_slug, price, original_price, base_sku, tags, badges, gender,
+    is_featured, is_new_arrival, is_trending, is_bestseller,
     product_images(image_url, is_primary)
   `;
 

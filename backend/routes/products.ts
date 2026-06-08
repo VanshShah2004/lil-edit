@@ -236,6 +236,15 @@ function mapDatabaseToRecommended(dbProd: ProductRow) {
     image: primaryImg,
     sku: dbProd.base_sku,
     tags: dbProd.tags || [],
+    // Custom badges plus the merchandising flags rendered as labels — same composition
+    // the cart and wishlist endpoints use, so the sidebar shows "New Arrival" etc.
+    badges: [
+      ...(dbProd.badges ?? []),
+      ...(dbProd.is_featured    ? ["Featured"]    : []),
+      ...(dbProd.is_new_arrival ? ["New Arrival"] : []),
+      ...(dbProd.is_trending    ? ["Trending"]    : []),
+      ...(dbProd.is_bestseller  ? ["Bestseller"]  : []),
+    ] as string[],
   };
 }
 

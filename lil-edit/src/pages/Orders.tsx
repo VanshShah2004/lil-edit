@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, Package, ArrowRight, RotateCcw, ArrowUpDown, Sparkles } from "lucide-react";
+import { ChevronRight, Package, ArrowRight, RotateCcw, ArrowUpDown } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import {
@@ -17,6 +17,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchOrders, type OrderStatus, type OrderSummary } from "@/lib/ordersApi";
 import { getBackendBaseUrl } from "@/lib/backend";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
+import { BuyAgainSection, YouMayLikeSection, type SidebarProduct } from "@/components/orders/OrdersSidebar";
+import { useBuyAgainBadges } from "@/hooks/useBuyAgainBadges";
 
 // Status → badge colours. Keys match the DB status CHECK constraint.
 const STATUS_STYLES: Record<OrderStatus, string> = {
@@ -63,18 +65,6 @@ function sortOrders(orders: OrderSummary[], key: SortKey): OrderSummary[] {
     : copy.sort((a, b) => time(b) - time(a));
 }
 
-// ─── Sidebar types ────────────────────────────────────────────────────────────
-
-type SidebarProduct = {
-  title: string;
-  slug: string;
-  categorySlug: string;
-  price: number;
-  originalPrice: number;
-  image: string;
-  sku: string;
-};
-
 // ─── Shared sub-components ────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: OrderStatus }) {
@@ -105,100 +95,6 @@ function OrdersSkeleton() {
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-function SidebarProductCard({ product, onClick }: { product: SidebarProduct; onClick: () => void }) {
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
-      className="group flex gap-3 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
-    >
-      <div className="w-14 h-[72px] rounded-lg overflow-hidden bg-gray-100 shrink-0">
-        {product.image ? (
-          <img
-            src={product.image}
-            alt={product.title}
-            loading="lazy"
-            onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-300">
-            <Package size={16} />
-          </div>
-        )}
-      </div>
-      <div className="flex-1 min-w-0 py-0.5">
-        <p className="font-display text-base font-medium text-gray-900 line-clamp-2 leading-tight">{product.title}</p>
-        <div className="mt-1.5 flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-xl font-bold text-brand-teal">{inr(product.price)}</span>
-          {product.originalPrice > product.price && (
-            <span className="text-base text-gray-400 line-through">{inr(product.originalPrice)}</span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SidebarSkeleton() {
-  return (
-    <div className="space-y-3 animate-pulse">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <div key={n} className="flex gap-3">
-          <div className="w-14 h-[72px] bg-gray-200 rounded-lg shrink-0" />
-          <div className="flex-1 space-y-2 py-1">
-            <div className="h-3 bg-gray-200 rounded w-full" />
-            <div className="h-3 bg-gray-200 rounded w-3/4" />
-            <div className="h-4 bg-gray-200 rounded w-1/2 mt-2" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function BuyAgainSection({ items, onItemClick }: { items: SidebarProduct[]; onItemClick: (item: SidebarProduct) => void }) {
-  if (items.length === 0) return null;
-  return (
-    <div>
-      <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-        <RotateCcw className="w-6 h-6 text-brand-teal" />
-        Buy Again
-      </h2>
-      <div className="bg-white border border-gray-400 rounded-2xl p-4 shadow-lg ring-1 ring-black/10 divide-y divide-gray-400">
-        {items.map((item) => (
-          <SidebarProductCard key={`${item.slug}-${item.sku}`} product={item} onClick={() => onItemClick(item)} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function YouMayLikeSection({ items, loading, onItemClick }: { items: SidebarProduct[]; loading: boolean; onItemClick: (item: SidebarProduct) => void }) {
-  if (!loading && items.length === 0) return null;
-  return (
-    <div>
-      <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-        <Sparkles className="w-6 h-6 text-brand-teal" />
-        You May Like
-      </h2>
-      <div className="bg-white border border-gray-400 rounded-2xl p-4 shadow-lg ring-1 ring-black/10">
-        {loading ? (
-          <SidebarSkeleton />
-        ) : (
-          <div className="divide-y divide-gray-400">
-            {items.map((item) => (
-              <SidebarProductCard key={`${item.slug}-${item.sku}`} product={item} onClick={() => onItemClick(item)} />
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -243,6 +139,7 @@ const OrdersPage = () => {
     }
     return items;
   }, [sortedOrders]);
+  const buyAgainItemsWithBadges = useBuyAgainBadges(buyAgainItems);
 
   // Orders fetch.
   useEffect(() => {
@@ -285,7 +182,7 @@ const OrdersPage = () => {
       .then((data) => {
         if (!cancelled) {
           const recs: SidebarProduct[] = (data.recommended ?? []).slice(0, 5).map(
-            (r: { title: string; slug: string; categorySlug: string; price: number; originalPrice: number; image: string; sku: string }) => ({
+            (r: { title: string; slug: string; categorySlug: string; price: number; originalPrice: number; image: string; sku: string; badges?: string[] }) => ({
               title: r.title,
               slug: r.slug,
               categorySlug: r.categorySlug,
@@ -293,6 +190,7 @@ const OrdersPage = () => {
               originalPrice: r.originalPrice,
               image: r.image,
               sku: r.sku,
+              badges: r.badges ?? [],
             }),
           );
           setRecommendations(recs);
@@ -512,7 +410,7 @@ const OrdersPage = () => {
             {/* ── Right sidebar: Buy Again + You May Like ───────────────────── */}
             {showSidebar && (
               <aside className="w-full sm:w-[35%] sm:shrink-0 space-y-14 mt-8 sm:mt-7 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
-                <BuyAgainSection items={buyAgainItems} onItemClick={openSidebarQuickView} />
+                <BuyAgainSection items={buyAgainItemsWithBadges} onItemClick={openSidebarQuickView} />
                 <YouMayLikeSection items={recommendations} loading={recsLoading} onItemClick={openSidebarQuickView} />
               </aside>
             )}
