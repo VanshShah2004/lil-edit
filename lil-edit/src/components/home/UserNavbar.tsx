@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  ClipboardList,
   Heart,
   LayoutDashboard,
   LogOut,
@@ -52,6 +53,7 @@ const UserNavbar = () => {
     // Keep this role-aware list so admin-only options can be expanded easily.
     { to: "/admin/add-product", label: "Add Product", icon: Plus, adminOnly: true },
     { to: "/admin/manage-products", label: "View/Edit Products", icon: Shirt, adminOnly: true },
+    { to: "/admin/orders", label: "Manage Orders", icon: ClipboardList, adminOnly: true },
     { to: "#", label: "Admin Settings", icon: Settings, adminOnly: true },
   ];
   const visibleMenuItems = dashboardMenuItems.filter((item) => !item.adminOnly || isAdmin);

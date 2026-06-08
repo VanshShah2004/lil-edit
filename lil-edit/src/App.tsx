@@ -52,9 +52,11 @@ const OrderDetail    = lazyWithLog("OrderDetail",     () => import("./pages/Orde
 // Admin pages pull in heavy deps (charts, upload tooling) that normal shoppers
 // never need — splitting them keeps that weight off the customer-facing bundle.
 // These chunks should NEVER appear in the console for a normal shopper session.
-const AddProduct     = lazyWithLog("AddProduct",      () => import("./pages/AddProduct"));
-const EditProduct    = lazyWithLog("EditProduct",     () => import("./pages/EditProduct"));
-const ManageProducts = lazyWithLog("ManageProducts",  () => import("./pages/ManageProducts"));
+const AddProduct       = lazyWithLog("AddProduct",       () => import("./pages/AddProduct"));
+const EditProduct      = lazyWithLog("EditProduct",      () => import("./pages/EditProduct"));
+const ManageProducts   = lazyWithLog("ManageProducts",   () => import("./pages/ManageProducts"));
+const AdminOrders      = lazyWithLog("AdminOrders",      () => import("./pages/admin/Orders"));
+const AdminOrderDetail = lazyWithLog("AdminOrderDetail", () => import("./pages/admin/OrderDetail"));
 
 const queryClient = new QueryClient();
 
@@ -90,6 +92,8 @@ const App = () => (
             <Route path="/admin/add-product" element={<AdminRoute><AddProduct /></AdminRoute>} />
             <Route path="/admin/edit/:productId" element={<AdminRoute><EditProduct /></AdminRoute>} />
             <Route path="/admin/manage-products" element={<AdminRoute><ManageProducts /></AdminRoute>} />
+            <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
+            <Route path="/admin/orders/:orderId" element={<AdminRoute><AdminOrderDetail /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
