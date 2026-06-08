@@ -16,6 +16,7 @@ import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchOrders, type OrderStatus, type OrderSummary } from "@/lib/ordersApi";
 import { getBackendBaseUrl } from "@/lib/backend";
+import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 
 // Status → badge colours. Keys match the DB status CHECK constraint.
 const STATUS_STYLES: Record<OrderStatus, string> = {
@@ -108,11 +109,14 @@ function OrdersSkeleton() {
   );
 }
 
-function SidebarProductCard({ product }: { product: SidebarProduct }) {
+function SidebarProductCard({ product, onClick }: { product: SidebarProduct; onClick: () => void }) {
   return (
-    <Link
-      to={`/collections/${product.categorySlug}/product/${product.slug}`}
-      className="group flex gap-3 py-3 hover:bg-gray-50 transition-colors"
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+      className="group flex gap-3 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
     >
       <div className="w-14 h-[72px] rounded-lg overflow-hidden bg-gray-100 shrink-0">
         {product.image ? (
@@ -138,7 +142,7 @@ function SidebarProductCard({ product }: { product: SidebarProduct }) {
           )}
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -159,7 +163,7 @@ function SidebarSkeleton() {
   );
 }
 
-function BuyAgainSection({ items }: { items: SidebarProduct[] }) {
+function BuyAgainSection({ items, onItemClick }: { items: SidebarProduct[]; onItemClick: (item: SidebarProduct) => void }) {
   if (items.length === 0) return null;
   return (
     <div>
@@ -169,14 +173,14 @@ function BuyAgainSection({ items }: { items: SidebarProduct[] }) {
       </h2>
       <div className="bg-white border border-gray-400 rounded-2xl p-4 shadow-lg ring-1 ring-black/10 divide-y divide-gray-400">
         {items.map((item) => (
-          <SidebarProductCard key={`${item.slug}-${item.sku}`} product={item} />
+          <SidebarProductCard key={`${item.slug}-${item.sku}`} product={item} onClick={() => onItemClick(item)} />
         ))}
       </div>
     </div>
   );
 }
 
-function YouMayLikeSection({ items, loading }: { items: SidebarProduct[]; loading: boolean }) {
+function YouMayLikeSection({ items, loading, onItemClick }: { items: SidebarProduct[]; loading: boolean; onItemClick: (item: SidebarProduct) => void }) {
   if (!loading && items.length === 0) return null;
   return (
     <div>
@@ -190,7 +194,7 @@ function YouMayLikeSection({ items, loading }: { items: SidebarProduct[]; loadin
         ) : (
           <div className="divide-y divide-gray-400">
             {items.map((item) => (
-              <SidebarProductCard key={`${item.slug}-${item.sku}`} product={item} />
+              <SidebarProductCard key={`${item.slug}-${item.sku}`} product={item} onClick={() => onItemClick(item)} />
             ))}
           </div>
         )}
@@ -209,6 +213,8 @@ const OrdersPage = () => {
   const [sortBy, setSortBy] = useState<SortKey>("newest");
   const [recommendations, setRecommendations] = useState<SidebarProduct[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<QuickViewProduct | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
 
   const userId = user?.id ?? null;
   const sortedOrders = useMemo(() => sortOrders(orders, sortBy), [orders, sortBy]);
@@ -306,6 +312,49 @@ const OrdersPage = () => {
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
+
+  const openSidebarQuickView = (item: SidebarProduct) => {
+    setSelectedProduct({
+      source: "order",
+      id: item.slug,
+      sku: item.sku,
+      slug: item.slug,
+      categorySlug: item.categorySlug,
+      title: item.title,
+      price: item.price,
+      originalPrice: item.originalPrice,
+      image: item.image,
+      images: item.image ? [item.image] : [],
+      color: { name: "", hex: "" },
+      badges: [],
+      tags: [],
+    });
+    setQuickViewOpen(true);
+
+    if (!item.slug || !item.sku) return;
+    const url = `${getBackendBaseUrl()}/api/products/detail?slug=${encodeURIComponent(item.slug)}&sku=${encodeURIComponent(item.sku)}&category=${encodeURIComponent(item.categorySlug)}`;
+    console.log(`[OrdersPage] sidebar quick-view fetch  ${url}`);
+    fetch(url)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const product = data?.product;
+        if (!product) return;
+        const matchColor = (product.colors ?? []).find((c: { sku: string }) => c.sku === item.sku);
+        const urls: string[] = [
+          ...((matchColor?.images ?? []) as { url: string }[]).map((im) => im.url),
+          item.image,
+          ...((product.images ?? []) as { url: string }[]).map((im) => im.url),
+        ].filter(Boolean);
+        const images = Array.from(new Set(urls));
+        console.log(`[OrdersPage] sidebar quick-view → ${images.length} image(s)`);
+        setSelectedProduct((prev) =>
+          prev && prev.slug === item.slug
+            ? { ...prev, images, badges: product.badges ?? prev.badges }
+            : prev,
+        );
+      })
+      .catch((err) => console.error("[OrdersPage] sidebar quick-view fetch failed", err));
+  };
 
   const showSidebar = !!user && !loading && !error && orders.length > 0;
 
@@ -463,8 +512,8 @@ const OrdersPage = () => {
             {/* ── Right sidebar: Buy Again + You May Like ───────────────────── */}
             {showSidebar && (
               <aside className="w-full sm:w-[35%] sm:shrink-0 space-y-14 mt-8 sm:mt-7 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
-                <BuyAgainSection items={buyAgainItems} />
-                <YouMayLikeSection items={recommendations} loading={recsLoading} />
+                <BuyAgainSection items={buyAgainItems} onItemClick={openSidebarQuickView} />
+                <YouMayLikeSection items={recommendations} loading={recsLoading} onItemClick={openSidebarQuickView} />
               </aside>
             )}
           </div>
@@ -472,6 +521,12 @@ const OrdersPage = () => {
       </main>
 
       <Footer />
+
+      <QuickViewDrawer
+        open={quickViewOpen}
+        product={selectedProduct}
+        onClose={() => setQuickViewOpen(false)}
+      />
     </div>
   );
 };
