@@ -58,6 +58,7 @@ interface OrderRow {
   transaction_id?: string | null;
   shipping_address?: Record<string, unknown> | null;
   order_items?: OrderItemRow[];
+  order_status_history?: StatusHistoryRow[];
 }
 
 interface ProfileRow {
@@ -66,6 +67,16 @@ interface ProfileRow {
   first_name: string | null;
   last_name: string | null;
   phone_number: string | null;
+}
+
+interface StatusHistoryRow {
+  id: string;
+  from_status: string | null;
+  to_status: string;
+  changed_by: string | null;
+  changed_by_name: string | null;
+  changed_by_email: string | null;
+  created_at: string;
 }
 
 function mapItem(row: OrderItemRow) {
@@ -83,6 +94,18 @@ function mapItem(row: OrderItemRow) {
     originalPrice: Number(row.original_price) || Number(row.unit_price) || 0,
     quantity: row.quantity,
     lineTotal: Number(row.line_total) || 0,
+  };
+}
+
+function mapHistory(row: StatusHistoryRow) {
+  return {
+    id: row.id,
+    fromStatus: row.from_status,
+    toStatus: row.to_status,
+    changedBy: row.changed_by,
+    changedByName: row.changed_by_name || "",
+    changedByEmail: row.changed_by_email || "",
+    createdAt: row.created_at,
   };
 }
 
@@ -118,6 +141,10 @@ function mapOrder(row: OrderRow, profile: ProfileRow | undefined, includeDetail:
     ...base,
     transactionId: row.transaction_id ?? null,
     shippingAddress: row.shipping_address ?? {},
+    // Newest change first — the timeline reads top-down from the latest action.
+    statusHistory: (row.order_status_history ?? [])
+      .map(mapHistory)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
   };
 }
 
@@ -241,7 +268,10 @@ router.get("/:id", async (req: Request, res: Response) => {
         id, user_id, order_number, status, payment_method, payment_status,
         subtotal, discount, shipping_fee, tax, total, item_count, created_at,
         transaction_id, shipping_address,
-        order_items(${ORDER_ITEMS_SELECT})
+        order_items(${ORDER_ITEMS_SELECT}),
+        order_status_history(
+          id, from_status, to_status, changed_by, changed_by_name, changed_by_email, created_at
+        )
       `,
       )
       .eq("id", orderId)
@@ -287,12 +317,23 @@ router.patch("/:id/status", async (req: Request, res: Response) => {
   }
 
   try {
-    const { data, error } = await db()
-      .from("orders")
-      .update({ status })
-      .eq("id", orderId)
-      .select("user_id")
-      .maybeSingle();
+    // Snapshot the acting admin's identity into the audit row so the trail stays
+    // readable even if this admin's profile is later changed or removed.
+    const adminProfiles = await loadProfiles([adminId]);
+    const admin = adminProfiles.get(adminId);
+    const adminName = [admin?.first_name, admin?.last_name].filter(Boolean).join(" ").trim() || "Admin";
+    const adminEmail = admin?.email ?? "";
+
+    // Atomic: locks the order row, updates the status, and appends the audit entry
+    // in a single transaction (admin_set_order_status). The audit trail can never
+    // desync from the order's actual state, and concurrent edits serialize.
+    const { data, error } = await db().rpc("admin_set_order_status", {
+      p_order_id: orderId,
+      p_status: status,
+      p_admin_id: adminId,
+      p_admin_name: adminName,
+      p_admin_email: adminEmail,
+    });
 
     if (error) {
       log.error(`update failed  code=${error.code}  msg=${error.message}`, error).end("ADMIN ORDER STATUS");
@@ -300,23 +341,34 @@ router.patch("/:id/status", async (req: Request, res: Response) => {
       return;
     }
 
-    if (!data) {
+    // The function returns one row (or none for a missing order).
+    const result = (Array.isArray(data) ? data[0] : data) as
+      | { owner_id: string; from_status: string; changed: boolean }
+      | undefined;
+
+    if (!result) {
       log.warn(`not found  order=${orderId}`).end("ADMIN ORDER STATUS");
       res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    if (!result.changed) {
+      log.success(`no change  order=${orderId}  already=${status}`).end("ADMIN ORDER STATUS");
+      res.json({ success: true, unchanged: true });
       return;
     }
 
     // Bust the OWNER's cached order list + detail so the customer sees the new
     // status immediately (same keys orders.ts writes). The admin list/detail are
     // uncached and always read fresh.
-    const ownerId = (data as { user_id: string }).user_id;
+    const ownerId = result.owner_id;
     await redisDel(
       log,
       redisKey("order", `list:${ownerId}`),
       redisKey("order", `detail:${ownerId}:${orderId}`),
     );
 
-    log.success(`updated  order=${orderId}  status=${status}  owner=${ownerId}`).end("ADMIN ORDER STATUS");
+    log.success(`updated  order=${orderId}  ${result.from_status}→${status}  by=${adminName}  owner=${ownerId}`).end("ADMIN ORDER STATUS");
     res.json({ success: true });
   } catch (err) {
     log.error("unhandled error", err).end("ADMIN ORDER STATUS");

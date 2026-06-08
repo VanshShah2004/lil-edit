@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronRight, User, MapPin, Receipt, ShoppingBag, Save } from "lucide-react";
+import { ArrowLeft, ChevronRight, User, MapPin, Receipt, ShoppingBag, Save, History } from "lucide-react";
 import { toast } from "sonner";
 
 import UserNavbar from "@/components/home/UserNavbar";
@@ -24,6 +24,7 @@ import {
 import { OrderStatusBadge, PaymentStatusBadge } from "@/components/admin/orders/OrderStatusBadge";
 import OrderItemsTable from "@/components/admin/orders/OrderItemsTable";
 import OrderSummaryCard from "@/components/admin/orders/OrderSummaryCard";
+import OrderStatusTimeline from "@/components/admin/orders/OrderStatusTimeline";
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -223,6 +224,11 @@ const AdminOrderDetailPage = () => {
                 {/* Ordered Products */}
                 <SectionCard icon={ShoppingBag} title={`Ordered Products (${order.itemCount})`}>
                   <OrderItemsTable items={order.items} />
+                </SectionCard>
+
+                {/* Status History — immutable audit trail of every status change */}
+                <SectionCard icon={History} title="Status History">
+                  <OrderStatusTimeline events={order.statusHistory} />
                 </SectionCard>
               </div>
 

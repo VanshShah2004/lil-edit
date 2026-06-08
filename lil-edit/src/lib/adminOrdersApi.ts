@@ -40,9 +40,22 @@ export interface AdminShippingAddress extends OrderAddress {
   phone?: string;
 }
 
+// One immutable audit-trail entry: who moved the order from one status to another,
+// and when. `fromStatus` is null for the opening "order placed" entry.
+export interface OrderStatusEvent {
+  id: string;
+  fromStatus: OrderStatus | null;
+  toStatus: OrderStatus;
+  changedBy: string | null;
+  changedByName: string;
+  changedByEmail: string;
+  createdAt: string;
+}
+
 export interface AdminOrderDetail extends AdminOrderSummary {
   transactionId: string | null;
   shippingAddress: AdminShippingAddress;
+  statusHistory: OrderStatusEvent[];
 }
 
 export interface AdminOrdersResponse {
