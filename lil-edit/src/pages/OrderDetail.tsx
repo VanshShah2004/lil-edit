@@ -12,6 +12,7 @@ import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/Qui
 import { getBackendBaseUrl } from "@/lib/backend";
 import { BuyAgainSection, YouMayLikeSection, type SidebarProduct } from "@/components/orders/OrdersSidebar";
 import { useBuyAgainBadges } from "@/hooks/useBuyAgainBadges";
+import { composeProductBadges } from "@/lib/productBadges";
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
   pending:    "bg-indigo-50 text-indigo-700 border-indigo-200",
@@ -135,7 +136,7 @@ const OrderDetailPage = () => {
         // Only apply if the same item is still showing (drawer not switched/closed).
         setSelectedProduct((prev) =>
           prev && prev.id === item.id
-            ? { ...prev, images, badges: product.badges ?? prev.badges }
+            ? { ...prev, images, badges: composeProductBadges(product), descriptionPoints: product.descriptionPoints ?? [] }
             : prev,
         );
       })
@@ -178,7 +179,7 @@ const OrderDetailPage = () => {
         console.log(`[OrderDetailPage] sidebar quick-view → ${images.length} image(s)`);
         setSelectedProduct((prev) =>
           prev && prev.slug === item.slug
-            ? { ...prev, images, badges: product.badges ?? prev.badges }
+            ? { ...prev, images, badges: composeProductBadges(product), descriptionPoints: product.descriptionPoints ?? [] }
             : prev,
         );
       })

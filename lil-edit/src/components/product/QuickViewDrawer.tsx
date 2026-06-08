@@ -57,6 +57,8 @@ export type QuickViewProduct = {
   availability?: string;
   brand?: string;
   inStock?: boolean;
+  // Enriched from the live product (orders/cart snapshots don't carry this).
+  descriptionPoints?: string[];
 };
 
 export type QuickViewDrawerProps = {
@@ -235,11 +237,11 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
     <div className="space-y-3">
       {/* Price */}
       <div className="flex items-center gap-2.5 flex-wrap">
-        <span className="text-xl sm:text-2xl font-bold text-brand-teal">₹{product.price}</span>
+        <span className="text-3xl md:text-2xl font-bold text-brand-teal">₹{product.price}</span>
         {product.originalPrice > product.price && (
           <>
-            <span className="text-sm line-through text-gray-400">₹{product.originalPrice}</span>
-            <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-200">{discount}% off</span>
+            <span className="text-lg md:text-base line-through text-gray-400">₹{product.originalPrice}</span>
+            <span className="text-sm md:text-xs font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-200">{discount}% off</span>
           </>
         )}
       </div>
@@ -247,16 +249,16 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
       {/* Stock + Color + Size */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-1.5">
-          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${inStock ? "bg-green-500" : "bg-red-400"}`} />
-          <span className={`text-xs font-semibold ${inStock ? "text-green-700" : "text-red-500"}`}>
+          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${inStock ? "bg-green-500" : "bg-red-400"}`} />
+          <span className={`text-base md:text-lg font-semibold ${inStock ? "text-green-700" : "text-red-500"}`}>
             {inStock ? (product.source === "cart" ? product.availability || "In Stock" : "In Stock") : "Out of Stock"}
           </span>
         </div>
         {product.color.hex && (
           <>
             <span className="text-gray-300">·</span>
-            <span className="flex items-center gap-1.5 text-xs font-medium text-gray-700">
-              <span className="w-4 h-4 rounded-full border border-gray-300 shadow-sm flex-shrink-0" style={{ backgroundColor: product.color.hex }} />
+            <span className="flex items-center gap-1.5 text-base md:text-lg font-medium text-gray-700">
+              <span className="w-5 h-5 md:w-6 md:h-6 rounded-full border border-gray-300 shadow-sm flex-shrink-0" style={{ backgroundColor: product.color.hex }} />
               {product.color.name || "Color"}
             </span>
           </>
@@ -264,7 +266,7 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
         {product.size && (
           <>
             <span className="text-gray-300">·</span>
-            <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded-full">Size: {product.size}</span>
+            <span className="text-base md:text-lg font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded-full">Size: {product.size}</span>
           </>
         )}
       </div>
@@ -273,7 +275,7 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
       {product.badges.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {sortBadges(product.badges).map((tag, i) => (
-            <Badge key={i} variant="secondary" className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-[10px] sm:text-xs px-2 py-0.5 rounded-md font-medium shadow-sm">
+            <Badge key={i} variant="secondary" className="bg-gradient-to-r from-purple-50 to-indigo-50 text-indigo-800 border border-indigo-100 text-sm md:text-xs px-2.5 py-1 rounded-md font-medium shadow-sm">
               {tag}
             </Badge>
           ))}
@@ -281,19 +283,31 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
       )}
 
       {/* Category / SKU */}
-      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] sm:text-xs text-gray-400">
+      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm md:text-base text-gray-400">
         <span>Category: <span className="text-gray-600 font-medium">{formattedCategory}</span></span>
         <span>SKU: <span className="text-gray-600 font-medium font-mono">{product.sku}</span></span>
       </div>
 
+      {/* Product details — enriched from the live product (snapshots don't carry it). */}
+      {product.descriptionPoints && product.descriptionPoints.length > 0 && (
+        <div className="space-y-1.5">
+          <h3 className="text-sm md:text-base font-semibold text-gray-900">Product Details</h3>
+          <ul className="list-disc pl-4 space-y-1 text-sm md:text-base text-gray-600">
+            {product.descriptionPoints.map((point, i) => (
+              <li key={i}>{point}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Qty stepper — cart only */}
       {product.source === "cart" && (
         <div className="flex items-center gap-2.5">
-          <span className="text-xs sm:text-sm text-gray-600 font-medium">Qty:</span>
+          <span className="text-base md:text-lg text-gray-600 font-medium">Qty:</span>
           <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white w-fit">
-            <button onClick={() => handleQtyChange(-1)} className="px-2.5 py-1 hover:bg-gray-100 transition" aria-label="Decrease quantity"><Minus size={11} /></button>
-            <span className="px-3 text-sm font-semibold min-w-[2ch] text-center">{liveQty}</span>
-            <button onClick={() => handleQtyChange(1)} className="px-2.5 py-1 hover:bg-gray-100 transition" aria-label="Increase quantity"><Plus size={11} /></button>
+            <button onClick={() => handleQtyChange(-1)} className="px-3 py-1.5 md:py-2 hover:bg-gray-100 transition" aria-label="Decrease quantity"><Minus size={13} /></button>
+            <span className="px-3 text-base md:text-lg font-semibold min-w-[2ch] text-center">{liveQty}</span>
+            <button onClick={() => handleQtyChange(1)} className="px-3 py-1.5 md:py-2 hover:bg-gray-100 transition" aria-label="Increase quantity"><Plus size={13} /></button>
           </div>
         </div>
       )}
@@ -302,15 +316,15 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
 
   const ctaMobile = () => (
     <div className="flex flex-row gap-2">
-      <Button variant="outline" onClick={handleViewFull} className="flex-1 h-10 border-gray-300 text-gray-700 hover:border-brand-teal hover:text-brand-teal rounded-full font-semibold text-xs sm:text-sm gap-1.5">
-        <ExternalLink size={13} /> View Full Product
+      <Button variant="outline" onClick={handleViewFull} className="flex-1 h-11 border-gray-300 text-gray-700 hover:bg-transparent hover:border-brand-teal hover:text-brand-teal rounded-full font-semibold text-base gap-1.5">
+        <ExternalLink size={15} /> View Full Product
       </Button>
       {product.source === "wishlist" && (
-        <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-semibold text-xs sm:text-sm gap-1.5 disabled:opacity-60">
-          <ShoppingBag size={13} /> Move to Cart
+        <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-semibold text-base gap-1.5 disabled:opacity-60">
+          <ShoppingBag size={15} /> Move to Cart
         </Button>
       )}
-      <Button disabled={!inStock} className="flex-1 h-10 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-xs sm:text-sm disabled:opacity-60">
+      <Button disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base disabled:opacity-60">
         Buy Now
       </Button>
       {product.source === "cart" && (
@@ -324,15 +338,15 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
   const ctaDesktop = () => (
     <div className="flex gap-2">
       {product.source === "wishlist" && (
-        <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-semibold text-sm gap-1.5 disabled:opacity-60">
-          <ShoppingBag size={13} /> Move to Cart
+        <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-semibold text-base gap-1.5 disabled:opacity-60">
+          <ShoppingBag size={15} /> Move to Cart
         </Button>
       )}
-      <Button disabled={!inStock} className="flex-1 h-10 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-sm disabled:opacity-60">
+      <Button disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base disabled:opacity-60">
         Buy Now
       </Button>
-      <Button variant="outline" onClick={handleViewFull} className="flex-1 h-10 border-gray-300 text-gray-700 hover:border-brand-teal hover:text-brand-teal rounded-full font-semibold text-sm gap-1.5">
-        <ExternalLink size={13} /> View Full Product
+      <Button variant="outline" onClick={handleViewFull} className="flex-1 h-11 border-gray-300 text-gray-700 hover:bg-transparent hover:border-brand-teal hover:text-brand-teal rounded-full font-semibold text-base gap-1.5">
+        <ExternalLink size={15} /> View Full Product
       </Button>
       {product.source === "cart" && (
         <button onClick={handleWishlistToggle} className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full border transition-colors ${wishlisted ? "border-primary/30 bg-primary/10 text-primary" : "border-gray-300 text-gray-500 hover:border-primary/50 hover:text-primary hover:bg-primary/5"}`} aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}>
@@ -428,9 +442,9 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
                     {/* Right: title + details */}
                     <div className="flex-1 px-5 pt-4 pb-4 border-l border-gray-100 space-y-3">
                       <div>
-                        <h2 className="text-2xl font-bold text-gray-900 leading-snug">{product.title}</h2>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 leading-snug">{product.title}</h2>
                         {product.brand && (
-                          <p className="text-sm text-brand-teal font-medium mt-0.5">{product.brand}</p>
+                          <p className="text-base md:text-lg text-brand-teal font-medium mt-0.5">{product.brand}</p>
                         )}
                       </div>
                       {details()}

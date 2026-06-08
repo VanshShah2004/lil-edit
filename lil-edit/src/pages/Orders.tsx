@@ -19,6 +19,7 @@ import { getBackendBaseUrl } from "@/lib/backend";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import { BuyAgainSection, YouMayLikeSection, type SidebarProduct } from "@/components/orders/OrdersSidebar";
 import { useBuyAgainBadges } from "@/hooks/useBuyAgainBadges";
+import { composeProductBadges } from "@/lib/productBadges";
 
 // Status → badge colours. Keys match the DB status CHECK constraint.
 const STATUS_STYLES: Record<OrderStatus, string> = {
@@ -247,7 +248,7 @@ const OrdersPage = () => {
         console.log(`[OrdersPage] sidebar quick-view → ${images.length} image(s)`);
         setSelectedProduct((prev) =>
           prev && prev.slug === item.slug
-            ? { ...prev, images, badges: product.badges ?? prev.badges }
+            ? { ...prev, images, badges: composeProductBadges(product), descriptionPoints: product.descriptionPoints ?? [] }
             : prev,
         );
       })

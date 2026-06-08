@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { getBackendBaseUrl } from "@/lib/backend";
+import { composeProductBadges } from "@/lib/productBadges";
 import type { SidebarProduct } from "@/components/orders/OrdersSidebar";
 
 // Buy Again items come from order snapshots, which don't store badges (orders aren't
@@ -22,13 +23,7 @@ export function useBuyAgainBadges(items: SidebarProduct[]): SidebarProduct[] {
           if (!product) return;
           // Custom badges plus the merchandising flags rendered as labels — same
           // composition the cart/wishlist endpoints use for their badge lists.
-          const productBadges: string[] = [
-            ...(product.badges ?? []),
-            ...(product.featured ? ["Featured"] : []),
-            ...(product.newArrival ? ["New Arrival"] : []),
-            ...(product.trending ? ["Trending"] : []),
-            ...(product.bestseller ? ["Bestseller"] : []),
-          ];
+          const productBadges = composeProductBadges(product);
           if (!cancelled && productBadges.length > 0) {
             setBadgesBySku((prev) => ({ ...prev, [key]: productBadges }));
           }
