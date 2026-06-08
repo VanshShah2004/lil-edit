@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   fetchAdminOrderById,
@@ -86,6 +87,7 @@ const AdminOrderDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus>("pending");
+  const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
   const loadOrder = (id: string, withSpinner = true) => {
@@ -128,8 +130,9 @@ const AdminOrderDetailPage = () => {
     // Optimistic badge update.
     setOrder((prev) => (prev ? { ...prev, status: selectedStatus } : prev));
     try {
-      await updateOrderStatus(order.id, selectedStatus);
+      await updateOrderStatus(order.id, selectedStatus, note);
       toast.success(`Order status updated to "${STATUS_LABELS[selectedStatus]}"`);
+      setNote(""); // clear after it's been recorded with the change
       await loadOrder(order.id, false); // refresh from source of truth
     } catch (err) {
       console.error("[AdminOrderDetail] status update failed", err);
@@ -260,6 +263,25 @@ const AdminOrderDetailPage = () => {
                     <p className="mt-2 text-xs text-gray-400">
                       This order is {STATUS_LABELS[order.status].toLowerCase()} — a final state. No further status changes are allowed.
                     </p>
+                  )}
+
+                  {/* Optional note/reminder recorded with this change and shown in the
+                      Status History below (admin-only). */}
+                  {!terminal && (
+                    <div className="mt-4">
+                      <label htmlFor="status-note" className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        Note / reminder <span className="font-medium normal-case text-gray-300">(optional)</span>
+                      </label>
+                      <Textarea
+                        id="status-note"
+                        value={note}
+                        onChange={(e) => setNote(e.target.value.slice(0, 500))}
+                        placeholder="e.g. Courier delayed — customer informed"
+                        rows={2}
+                        className="mt-1.5 resize-none border-gray-200 bg-gray-50/50 text-sm"
+                      />
+                      <p className="mt-1 text-right text-[10px] text-gray-300">{note.length}/500</p>
+                    </div>
                   )}
                   <button
                     type="button"

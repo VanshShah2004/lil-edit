@@ -112,22 +112,25 @@ export function OrderTimeline({ events, currentStatus }: { events: OrderStatusEv
     });
   } else {
     const current = STEP_INDEX[currentStatus];
-    // Every reached step shows a time: its own event's, or — when that step had no
-    // discrete event (e.g. the order jumped straight to shipped) — the last known
-    // milestone's time carried forward. Upcoming steps none.
-    let carried: string | undefined;
     // Only milestones up to (and including) the current state — remaining stages
     // aren't shown.
-    nodes = STEPS.slice(0, current + 1).map((step, idx) => {
-      const own = stampFor(idx);
-      if (own) carried = own;
-      return {
-        key: step.label,
-        label: step.label,
-        stamp: formatStamp((own ?? carried) as string),
-        state: idx === current ? "current" : "done",
-      };
-    });
+    const reached = STEPS.slice(0, current + 1);
+    const owns = reached.map((_, idx) => stampFor(idx));
+    // A skipped step (no discrete event of its own — e.g. the order jumped from
+    // pending straight to delivered) takes the timestamp of the HIGHER state it was
+    // jumped TO, not the one it moved from. So carry the time backward from the top.
+    const resolved: (string | undefined)[] = [];
+    let carriedFromAbove: string | undefined;
+    for (let idx = current; idx >= 0; idx--) {
+      if (owns[idx]) carriedFromAbove = owns[idx];
+      resolved[idx] = owns[idx] ?? carriedFromAbove;
+    }
+    nodes = reached.map((step, idx) => ({
+      key: step.label,
+      label: step.label,
+      stamp: formatStamp(resolved[idx] as string),
+      state: idx === current ? "current" : "done",
+    }));
   }
 
   // Reverse for display: latest milestone on top, earliest at the bottom.

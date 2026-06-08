@@ -76,6 +76,7 @@ interface StatusHistoryRow {
   changed_by: string | null;
   changed_by_name: string | null;
   changed_by_email: string | null;
+  note: string | null;
   created_at: string;
 }
 
@@ -105,6 +106,7 @@ function mapHistory(row: StatusHistoryRow) {
     changedBy: row.changed_by,
     changedByName: row.changed_by_name || "",
     changedByEmail: row.changed_by_email || "",
+    note: row.note ?? null,
     createdAt: row.created_at,
   };
 }
@@ -270,7 +272,7 @@ router.get("/:id", async (req: Request, res: Response) => {
         transaction_id, shipping_address,
         order_items(${ORDER_ITEMS_SELECT}),
         order_status_history(
-          id, from_status, to_status, changed_by, changed_by_name, changed_by_email, created_at
+          id, from_status, to_status, changed_by, changed_by_name, changed_by_email, note, created_at
         )
       `,
       )
@@ -308,7 +310,11 @@ router.patch("/:id/status", async (req: Request, res: Response) => {
   const adminId = (req as AuthenticatedRequest).userId;
   const orderId = req.params.id as string;
   const status = String((req.body as { status?: unknown })?.status ?? "").toLowerCase() as OrderStatus;
-  log.step(`admin=${adminId}  order=${orderId}  → status=${status}`);
+  // Optional admin note/reminder attached to this change. Trim + cap so a stray
+  // huge payload can't bloat the audit row; empty becomes null.
+  const rawNote = String((req.body as { note?: unknown })?.note ?? "").trim();
+  const note = rawNote ? rawNote.slice(0, 500) : null;
+  log.step(`admin=${adminId}  order=${orderId}  → status=${status}  note=${note ? `"${note.slice(0, 40)}…"` : "none"}`);
 
   if (!VALID_STATUSES.includes(status)) {
     log.warn(`invalid status="${status}"`).end("ADMIN ORDER STATUS");
@@ -333,6 +339,7 @@ router.patch("/:id/status", async (req: Request, res: Response) => {
       p_admin_id: adminId,
       p_admin_name: adminName,
       p_admin_email: adminEmail,
+      p_note: note,
     });
 
     if (error) {

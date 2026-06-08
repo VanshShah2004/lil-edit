@@ -49,6 +49,8 @@ export interface OrderStatusEvent {
   changedBy: string | null;
   changedByName: string;
   changedByEmail: string;
+  // Optional admin note/reminder left with this change (admin view only).
+  note: string | null;
   createdAt: string;
 }
 
@@ -162,10 +164,10 @@ export async function fetchAdminOrderById(orderId: string): Promise<AdminOrderDe
   return { ...order, statusHistory: order.statusHistory ?? [] };
 }
 
-export async function updateOrderStatus(orderId: string, status: OrderStatus): Promise<{ success: boolean }> {
+export async function updateOrderStatus(orderId: string, status: OrderStatus, note?: string): Promise<{ success: boolean }> {
   const res = await authFetch(`/api/admin/orders/${orderId}/status`, {
     method: "PATCH",
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, note: note ?? "" }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

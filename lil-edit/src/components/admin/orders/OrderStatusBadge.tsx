@@ -1,14 +1,14 @@
 import type { OrderStatus, PaymentStatus } from "@/lib/adminOrdersApi";
 
-// Order-status badge colours — exactly per the admin spec:
-//   Pending → Yellow, Processing → Blue, Shipped → Purple, Delivered → Green,
-//   Cancelled → Red. `confirmed` (a DB status that predates this UI) reuses blue.
+// Order-status badge colours:
+//   Pending → Yellow, Processing → Green, Shipped → Purple, Delivered → Blue,
+//   Cancelled → Red. `confirmed` (a DB status that predates this UI) reuses green.
 const ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
   pending:    "bg-yellow-50 text-yellow-700 border-yellow-200",
-  confirmed:  "bg-blue-50 text-blue-700 border-blue-200",
-  processing: "bg-blue-50 text-blue-700 border-blue-200",
+  confirmed:  "bg-green-50 text-green-700 border-green-200",
+  processing: "bg-green-50 text-green-700 border-green-200",
   shipped:    "bg-purple-50 text-purple-700 border-purple-200",
-  delivered:  "bg-green-50 text-green-700 border-green-200",
+  delivered:  "bg-blue-50 text-blue-700 border-blue-200",
   cancelled:  "bg-red-50 text-red-700 border-red-200",
 };
 
