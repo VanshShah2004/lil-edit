@@ -12,6 +12,9 @@
 -- remain possible.
 
 DROP FUNCTION IF EXISTS public.admin_set_payment_status(UUID, TEXT, UUID, TEXT, TEXT, TEXT, BOOLEAN, TEXT);
+-- Also drop the pre-conflict-guard 7-arg signature (from 20260615) so it can't linger
+-- as an orphan overload alongside the 8-arg version below.
+DROP FUNCTION IF EXISTS public.admin_set_payment_status(UUID, TEXT, UUID, TEXT, TEXT, TEXT, BOOLEAN);
 
 CREATE OR REPLACE FUNCTION public.admin_set_payment_status(
   p_order_id        UUID,
