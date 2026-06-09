@@ -68,9 +68,12 @@ export type QuickViewDrawerProps = {
   open: boolean;
   product: QuickViewProduct | null;
   onClose: () => void;
+  // Admin/preview contexts (e.g. the Curation Studio) hide the "Buy Now" CTA, which
+  // has no meaning there. Defaults to false so all shopper-facing usages are unchanged.
+  hideBuyNow?: boolean;
 };
 
-export default function QuickViewDrawer({ open, product, onClose }: QuickViewDrawerProps) {
+export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = false }: QuickViewDrawerProps) {
   const navigate = useNavigate();
   const { cartItems, updateQuantity } = useCart();
   const { moveToCart, isWishlisted, addToWishlist, removeFromWishlist, wishlistItems } =
@@ -322,8 +325,17 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
   );
 
   const ctaMobile = () => (
-    <div className="flex flex-row gap-2">
-      <Button variant="outline" onClick={handleViewFull} disabled={productUnavailable} className="flex-1 h-11 border-gray-300 text-gray-700 hover:bg-transparent hover:border-brand-teal hover:text-brand-teal rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 disabled:hover:border-gray-300 disabled:hover:text-gray-700">
+    <div className={`flex flex-row gap-2 ${hideBuyNow ? "justify-center" : ""}`}>
+      <Button
+        variant={hideBuyNow ? "default" : "outline"}
+        onClick={handleViewFull}
+        disabled={productUnavailable}
+        className={`h-11 rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 ${
+          hideBuyNow
+            ? "flex-1 px-8 max-w-[38rem] bg-brand-teal hover:bg-[#0C5D53] text-white"
+            : "flex-1 border-gray-300 text-gray-700 hover:bg-transparent hover:border-brand-teal hover:text-brand-teal disabled:hover:border-gray-300 disabled:hover:text-gray-700"
+        }`}
+      >
         <ExternalLink size={15} /> {productUnavailable ? "Product Unavailable" : "View Full Product"}
       </Button>
       {product.source === "wishlist" && (
@@ -331,9 +343,11 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
           <ShoppingBag size={15} /> Move to Cart
         </Button>
       )}
-      <Button disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base disabled:opacity-60">
-        Buy Now
-      </Button>
+      {!hideBuyNow && (
+        <Button disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base disabled:opacity-60">
+          Buy Now
+        </Button>
+      )}
       {product.source === "cart" && (
         <button onClick={handleWishlistToggle} className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full border transition-colors ${wishlisted ? "border-primary/30 bg-primary/10 text-primary" : "border-gray-300 text-gray-500 hover:border-primary/50 hover:text-primary hover:bg-primary/5"}`} aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}>
           <Heart size={15} fill={wishlisted ? "currentColor" : "none"} />
@@ -343,16 +357,27 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
   );
 
   const ctaDesktop = () => (
-    <div className="flex gap-2">
+    <div className={`flex gap-2 ${hideBuyNow ? "justify-center" : ""}`}>
       {product.source === "wishlist" && (
         <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-semibold text-base gap-1.5 disabled:opacity-60">
           <ShoppingBag size={15} /> Move to Cart
         </Button>
       )}
-      <Button disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base disabled:opacity-60">
-        Buy Now
-      </Button>
-      <Button variant="outline" onClick={handleViewFull} disabled={productUnavailable} className="flex-1 h-11 border-gray-300 text-gray-700 hover:bg-transparent hover:border-brand-teal hover:text-brand-teal rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 disabled:hover:border-gray-300 disabled:hover:text-gray-700">
+      {!hideBuyNow && (
+        <Button disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base disabled:opacity-60">
+          Buy Now
+        </Button>
+      )}
+      <Button
+        variant={hideBuyNow ? "default" : "outline"}
+        onClick={handleViewFull}
+        disabled={productUnavailable}
+        className={`h-11 rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 ${
+          hideBuyNow
+            ? "flex-1 px-8 max-w-[38rem] bg-brand-teal hover:bg-[#0C5D53] text-white"
+            : "flex-1 border-gray-300 text-gray-700 hover:bg-transparent hover:border-brand-teal hover:text-brand-teal disabled:hover:border-gray-300 disabled:hover:text-gray-700"
+        }`}
+      >
         <ExternalLink size={15} /> {productUnavailable ? "Product Unavailable" : "View Full Product"}
       </Button>
       {product.source === "cart" && (
@@ -375,7 +400,7 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22 }}
-            className="fixed inset-0 z-[99] bg-black/25"
+            className="fixed inset-0 z-[299] bg-black/25"
             onClick={onClose}
             aria-hidden="true"
           />
@@ -398,7 +423,7 @@ export default function QuickViewDrawer({ open, product, onClose }: QuickViewDra
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 32, stiffness: 380, mass: 0.8 }}
-            className={`fixed inset-x-0 bottom-0 z-[100] flex flex-col bg-white rounded-t-3xl shadow-2xl outline-none overflow-hidden ${
+            className={`fixed inset-x-0 bottom-0 z-[300] flex flex-col bg-white rounded-t-3xl shadow-2xl outline-none overflow-hidden ${
               isDesktop ? "max-h-[88vh]" : "max-h-[65vh]"
             }`}
             onClick={(e) => e.stopPropagation()}

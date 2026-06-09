@@ -14,12 +14,12 @@ import {
   ImagePlus,
   Save,
   Eye,
-  EyeOff,
+  ToggleRight,
+  ToggleLeft,
   Check,
   Loader2,
   PackageX,
   Pencil,
-  ExternalLink,
 } from "lucide-react";
 
 import UserNavbar from "@/components/home/UserNavbar";
@@ -27,7 +27,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadProductImage } from "@/lib/uploadImage";
-import { buildPdpPath } from "@/lib/pdpUrl";
+import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import {
   fetchAdminSections,
   saveSectionItems,
@@ -118,6 +118,28 @@ function toInput(d: DraftItem): SectionItemInput {
 const metaStr = (meta: Record<string, unknown>, key: string): string =>
   typeof meta[key] === "string" ? (meta[key] as string) : "";
 
+// Map a resolved curation product into the shape the storefront QuickViewDrawer wants.
+// source "order" gives a clean "View Full Product" CTA; productId is set non-null so the
+// drawer treats the PDP link as available.
+function toQuickView(p: ResolvedProductItem): QuickViewProduct {
+  return {
+    source: "order",
+    id: p.id,
+    productId: p.sku,
+    sku: p.sku,
+    slug: p.slug,
+    categorySlug: p.categorySlug,
+    title: p.title,
+    price: p.price,
+    originalPrice: p.originalPrice,
+    image: p.image ?? "",
+    images: p.image ? [p.image] : [],
+    color: { name: "", hex: "" },
+    badges: p.badges,
+    tags: [],
+  };
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Product picker modal
 // ═════════════════════════════════════════════════════════════════════════════
@@ -193,8 +215,9 @@ function ProductPickerModal({
                       className="group/qv relative w-12 h-12 rounded-md overflow-hidden bg-gray-100 shrink-0 my-1"
                     >
                       {p.image && <img src={p.image} alt={p.title} className="w-full h-full object-cover" />}
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover/qv:bg-black/45 transition-colors">
-                        <Eye className="w-4 h-4 text-white opacity-0 group-hover/qv:opacity-100 transition-opacity" />
+                      <span className="absolute inset-0 bg-black/0 group-hover/qv:bg-black/30 transition-colors" />
+                      <span className="absolute bottom-0.5 right-0.5 w-5 h-5 flex items-center justify-center rounded-md bg-black/55 group-hover/qv:bg-black/80 transition-colors">
+                        <Eye className="w-3 h-3 text-white" />
                       </span>
                     </button>
                     <button
@@ -370,74 +393,6 @@ function Field({ label, value, onChange, placeholder }: { label: string; value: 
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Product quick view (read-only — admin preview, no shopping actions)
-// ═════════════════════════════════════════════════════════════════════════════
-function ProductQuickView({ product, onClose }: { product: ResolvedProductItem; onClose: () => void }) {
-  const pdpUrl = buildPdpPath(product.categorySlug, product.slug, product.sku);
-  const discount =
-    product.originalPrice > product.price
-      ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-      : 0;
-  const category = product.categorySlug
-    .split("-")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-
-  return (
-    <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-          <span className="flex items-center gap-1.5 text-sm font-bold text-gray-700"><Eye className="w-4 h-4" /> Quick View</span>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X className="w-5 h-5" /></button>
-        </div>
-
-        <div className="aspect-[4/5] bg-gray-100 w-full overflow-hidden flex items-center justify-center">
-          {product.image
-            ? <img src={product.image} alt={product.title} className="w-full h-full object-cover" />
-            : <ImagePlus className="w-10 h-10 text-gray-300" />}
-        </div>
-
-        <div className="p-5 space-y-3">
-          <h3 className="text-lg font-bold text-gray-900 leading-snug">{product.title}</h3>
-
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="text-2xl font-bold" style={{ color: TEAL }}>₹{product.price}</span>
-            {discount > 0 && (
-              <>
-                <span className="text-base line-through text-gray-400">₹{product.originalPrice}</span>
-                <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-200">{discount}% off</span>
-              </>
-            )}
-          </div>
-
-          {product.badges.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {product.badges.map((b, i) => (
-                <span key={i} className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 border border-violet-100">{b}</span>
-              ))}
-            </div>
-          )}
-
-          <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-400">
-            <span>Category: <span className="text-gray-600 font-medium">{category}</span></span>
-            <span>SKU: <span className="text-gray-600 font-medium font-mono">{product.sku}</span></span>
-          </div>
-
-          <a
-            href={pdpUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-1 inline-flex items-center justify-center gap-1.5 w-full h-10 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:border-gray-900 transition-colors"
-          >
-            <ExternalLink className="w-4 h-4" /> Open full product page
-          </a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
 // Item row
 // ═════════════════════════════════════════════════════════════════════════════
 function ItemRow({
@@ -477,8 +432,9 @@ function ItemRow({
           className="group/qv relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0"
         >
           {img ? <img src={img} alt={title} className="w-full h-full object-cover" /> : <ImagePlus className="w-5 h-5 text-gray-300" />}
-          <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover/qv:bg-black/45 transition-colors">
-            <Eye className="w-4 h-4 text-white opacity-0 group-hover/qv:opacity-100 transition-opacity" />
+          <span className="absolute inset-0 bg-black/0 group-hover/qv:bg-black/30 transition-colors" />
+          <span className="absolute bottom-0.5 right-0.5 w-5 h-5 flex items-center justify-center rounded-md bg-black/55 group-hover/qv:bg-black/80 transition-colors">
+            <Eye className="w-3 h-3 text-white" />
           </span>
         </button>
       ) : (
@@ -710,9 +666,9 @@ const CurationPage = () => {
                                     onClick={(e) => { e.stopPropagation(); void toggleEnabled(s); }}
                                     onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); void toggleEnabled(s); } }}
                                     className={`shrink-0 ${s.isEnabled ? "text-green-600" : "text-gray-300"}`}
-                                    title={s.isEnabled ? "Visible — click to hide" : "Hidden — click to show"}
+                                    title={s.isEnabled ? "Visible on storefront — click to hide" : "Hidden — click to show"}
                                   >
-                                    {s.isEnabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                    {s.isEnabled ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2 mt-1 pl-5">
@@ -826,7 +782,12 @@ const CurationPage = () => {
         />
       )}
 
-      {quickView && <ProductQuickView product={quickView} onClose={() => setQuickView(null)} />}
+      <QuickViewDrawer
+        open={!!quickView}
+        product={quickView ? toQuickView(quickView) : null}
+        onClose={() => setQuickView(null)}
+        hideBuyNow
+      />
 
       {tileEditing && selected && (
         <EditorialTileModal
