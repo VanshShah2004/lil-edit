@@ -204,13 +204,42 @@ export async function fetchAdminOrderById(orderId: string): Promise<AdminOrderDe
   };
 }
 
+// Thrown when the server returns 409 — the admin's view was stale when they saved.
+// The caller should reload the order and show a warning rather than treating it as
+// a generic error.
+export class ConflictError extends Error {
+  readonly currentStatus: string;
+  constructor(currentStatus: string, noun = "Order") {
+    super(`${noun} was updated by another admin — current status is "${currentStatus}".`);
+    this.name = "ConflictError";
+    this.currentStatus = currentStatus;
+  }
+}
+
 // `override` = a deliberate correction of a finalized (terminal) order. The backend
 // requires a non-empty note when it's set and flags the change as a correction.
-export async function updateOrderStatus(orderId: string, status: OrderStatus, note?: string, override?: boolean): Promise<{ success: boolean }> {
+// `expectedStatus` = the status the admin read before editing; the server rejects the
+// write with a ConflictError if someone else changed it in between.
+export async function updateOrderStatus(
+  orderId: string,
+  status: OrderStatus,
+  note?: string,
+  override?: boolean,
+  expectedStatus?: OrderStatus,
+): Promise<{ success: boolean }> {
   const res = await authFetch(`/api/admin/orders/${orderId}/status`, {
     method: "PATCH",
-    body: JSON.stringify({ status, note: note ?? "", override: override ?? false }),
+    body: JSON.stringify({
+      status,
+      note: note ?? "",
+      override: override ?? false,
+      expectedStatus: expectedStatus ?? null,
+    }),
   });
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}));
+    throw new ConflictError((body as { currentStatus?: string }).currentStatus ?? status, "Order");
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     console.error("[adminOrdersApi] updateOrderStatus error:", body);
@@ -221,11 +250,26 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus, no
   return data as { success: boolean };
 }
 
-export async function updatePaymentStatus(orderId: string, paymentStatus: PaymentStatus, note?: string, override?: boolean): Promise<{ success: boolean }> {
+export async function updatePaymentStatus(
+  orderId: string,
+  paymentStatus: PaymentStatus,
+  note?: string,
+  override?: boolean,
+  expectedStatus?: PaymentStatus,
+): Promise<{ success: boolean }> {
   const res = await authFetch(`/api/admin/orders/${orderId}/payment-status`, {
     method: "PATCH",
-    body: JSON.stringify({ paymentStatus, note: note ?? "", override: override ?? false }),
+    body: JSON.stringify({
+      paymentStatus,
+      note: note ?? "",
+      override: override ?? false,
+      expectedStatus: expectedStatus ?? null,
+    }),
   });
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}));
+    throw new ConflictError((body as { currentStatus?: string }).currentStatus ?? paymentStatus, "Payment");
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     console.error("[adminOrdersApi] updatePaymentStatus error:", body);

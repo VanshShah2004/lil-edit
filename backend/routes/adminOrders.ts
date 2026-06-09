@@ -334,7 +334,10 @@ router.patch("/:id/status", async (req: Request, res: Response) => {
   // forward-only transition machine, so it's gated: a note is mandatory and the change
   // is flagged as a correction in the audit trail.
   const override = (req.body as { override?: unknown })?.override === true;
-  log.step(`admin=${adminId}  order=${orderId}  → status=${status}  override=${override}  note=${note ? `"${note.slice(0, 40)}…"` : "none"}`);
+  // Optimistic concurrency guard: the client sends the status it *read* before deciding
+  // to write. The RPC checks it under the row lock — mismatch → 'conflict' → 409.
+  const expectedStatus = (req.body as { expectedStatus?: unknown })?.expectedStatus as string | null ?? null;
+  log.step(`admin=${adminId}  order=${orderId}  → status=${status}  override=${override}  expected=${expectedStatus ?? "any"}  note=${note ? `"${note.slice(0, 40)}…"` : "none"}`);
 
   if (!VALID_STATUSES.includes(status)) {
     log.warn(`invalid status="${status}"`).end("ADMIN ORDER STATUS");
@@ -361,6 +364,7 @@ router.patch("/:id/status", async (req: Request, res: Response) => {
       p_admin_email: adminEmail,
       p_note: note,
       p_override: override,
+      p_expected_status: expectedStatus,
     });
 
     if (error) {
@@ -371,12 +375,21 @@ router.patch("/:id/status", async (req: Request, res: Response) => {
 
     // The function returns one row (or none for a missing order).
     const result = (Array.isArray(data) ? data[0] : data) as
-      | { owner_id: string; from_status: string; result: "changed" | "unchanged" | "invalid" }
+      | { owner_id: string; from_status: string; result: "changed" | "unchanged" | "invalid" | "conflict" }
       | undefined;
 
     if (!result) {
       log.warn(`not found  order=${orderId}`).end("ADMIN ORDER STATUS");
       res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    if (result.result === "conflict") {
+      log.warn(`stale edit  order=${orderId}  expected=${expectedStatus}  actual=${result.from_status}`).end("ADMIN ORDER STATUS");
+      res.status(409).json({
+        error: `Order was updated by another admin — current status is "${result.from_status}".`,
+        currentStatus: result.from_status,
+      });
       return;
     }
 
@@ -425,7 +438,9 @@ router.patch("/:id/payment-status", async (req: Request, res: Response) => {
   // Override = a deliberate correction; bypasses the normal payment transition machine
   // and flags the change as a correction in the audit trail.
   const override = (req.body as { override?: unknown })?.override === true;
-  log.step(`admin=${adminId}  order=${orderId}  → payment=${status}  override=${override}  note=${note ? `"${note.slice(0, 40)}…"` : "none"}`);
+  // Optimistic concurrency guard: matches the order-status endpoint.
+  const expectedStatus = (req.body as { expectedStatus?: unknown })?.expectedStatus as string | null ?? null;
+  log.step(`admin=${adminId}  order=${orderId}  → payment=${status}  override=${override}  expected=${expectedStatus ?? "any"}  note=${note ? `"${note.slice(0, 40)}…"` : "none"}`);
 
   if (!VALID_PAYMENT_STATUSES.includes(status)) {
     log.warn(`invalid payment status="${status}"`).end("ADMIN PAYMENT STATUS");
@@ -451,6 +466,7 @@ router.patch("/:id/payment-status", async (req: Request, res: Response) => {
       p_admin_email: adminEmail,
       p_note: note,
       p_override: override,
+      p_expected_status: expectedStatus,
     });
 
     if (error) {
@@ -460,12 +476,21 @@ router.patch("/:id/payment-status", async (req: Request, res: Response) => {
     }
 
     const result = (Array.isArray(data) ? data[0] : data) as
-      | { owner_id: string; from_status: string; result: "changed" | "unchanged" | "invalid" }
+      | { owner_id: string; from_status: string; result: "changed" | "unchanged" | "invalid" | "conflict" }
       | undefined;
 
     if (!result) {
       log.warn(`not found  order=${orderId}`).end("ADMIN PAYMENT STATUS");
       res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    if (result.result === "conflict") {
+      log.warn(`stale edit  order=${orderId}  expected=${expectedStatus}  actual=${result.from_status}`).end("ADMIN PAYMENT STATUS");
+      res.status(409).json({
+        error: `Payment status was updated by another admin — current status is "${result.from_status}".`,
+        currentStatus: result.from_status,
+      });
       return;
     }
 

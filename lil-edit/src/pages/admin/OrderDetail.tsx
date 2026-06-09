@@ -23,6 +23,7 @@ import {
   nextPaymentStatuses,
   SETTABLE_ORDER_STATUSES,
   SETTABLE_PAYMENT_STATUSES,
+  ConflictError,
   type AdminOrderDetail,
   type OrderStatus,
   type PaymentStatus,
@@ -147,11 +148,15 @@ const AdminOrderDetailPage = () => {
     if (!order || selectedStatus === order.status) return;
     setSaving(true);
     const previous = order.status;
+    // Capture expected status BEFORE the optimistic update so the server can detect
+    // if another admin changed the order between when this admin loaded the page and
+    // when they clicked Save.
+    const expectedStatus = order.status;
     const isCorrection = correcting;
     // Optimistic badge update.
     setOrder((prev) => (prev ? { ...prev, status: selectedStatus } : prev));
     try {
-      await updateOrderStatus(order.id, selectedStatus, note, isCorrection);
+      await updateOrderStatus(order.id, selectedStatus, note, isCorrection, expectedStatus);
       toast.success(
         isCorrection
           ? `Order status corrected to "${STATUS_LABELS[selectedStatus]}"`
@@ -161,10 +166,20 @@ const AdminOrderDetailPage = () => {
       setCorrecting(false);
       await loadOrder(order.id, false); // refresh from source of truth
     } catch (err) {
-      console.error("[AdminOrderDetail] status update failed", err);
-      toast.error(err instanceof Error ? err.message : "Failed to update status");
-      setOrder((prev) => (prev ? { ...prev, status: previous } : prev)); // rollback
-      if (!isCorrection) setSelectedStatus(previous); // keep the chosen target so a correction can be retried
+      if (err instanceof ConflictError) {
+        // Another admin saved first — roll back the optimistic update, reset
+        // correction state, and reload so the dropdown shows the real current status.
+        toast.warning("Order was updated by another admin — reloading…");
+        setNote("");
+        setCorrecting(false);
+        setOrder((prev) => (prev ? { ...prev, status: previous } : prev));
+        await loadOrder(order.id, false); // syncs selectedStatus to real current value
+      } else {
+        console.error("[AdminOrderDetail] status update failed", err);
+        toast.error(err instanceof Error ? err.message : "Failed to update status");
+        setOrder((prev) => (prev ? { ...prev, status: previous } : prev)); // rollback
+        if (!isCorrection) setSelectedStatus(previous); // keep the chosen target so a correction can be retried
+      }
     } finally {
       setSaving(false);
     }
@@ -189,11 +204,13 @@ const AdminOrderDetailPage = () => {
     if (!order || selectedPayment === order.paymentStatus) return;
     setSavingPayment(true);
     const previous = order.paymentStatus;
+    // Capture expected payment status BEFORE the optimistic update.
+    const expectedStatus = order.paymentStatus;
     const isCorrection = correctingPayment;
     // Optimistic badge update.
     setOrder((prev) => (prev ? { ...prev, paymentStatus: selectedPayment } : prev));
     try {
-      await updatePaymentStatus(order.id, selectedPayment, paymentNote, isCorrection);
+      await updatePaymentStatus(order.id, selectedPayment, paymentNote, isCorrection, expectedStatus);
       toast.success(
         isCorrection
           ? `Payment status corrected to "${PAYMENT_STATUS_LABELS[selectedPayment]}"`
@@ -203,10 +220,19 @@ const AdminOrderDetailPage = () => {
       setCorrectingPayment(false);
       await loadOrder(order.id, false); // refresh from source of truth
     } catch (err) {
-      console.error("[AdminOrderDetail] payment status update failed", err);
-      toast.error(err instanceof Error ? err.message : "Failed to update payment status");
-      setOrder((prev) => (prev ? { ...prev, paymentStatus: previous } : prev)); // rollback
-      if (!isCorrection) setSelectedPayment(previous); // keep the chosen target so a correction can be retried
+      if (err instanceof ConflictError) {
+        // Another admin saved first — roll back, reset correction state, reload.
+        toast.warning("Payment status was updated by another admin — reloading…");
+        setPaymentNote("");
+        setCorrectingPayment(false);
+        setOrder((prev) => (prev ? { ...prev, paymentStatus: previous } : prev));
+        await loadOrder(order.id, false); // syncs selectedPayment to real current value
+      } else {
+        console.error("[AdminOrderDetail] payment status update failed", err);
+        toast.error(err instanceof Error ? err.message : "Failed to update payment status");
+        setOrder((prev) => (prev ? { ...prev, paymentStatus: previous } : prev)); // rollback
+        if (!isCorrection) setSelectedPayment(previous); // keep the chosen target so a correction can be retried
+      }
     } finally {
       setSavingPayment(false);
     }
