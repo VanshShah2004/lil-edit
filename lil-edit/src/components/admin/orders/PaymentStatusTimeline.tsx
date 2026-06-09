@@ -6,12 +6,11 @@ import type { PaymentStatus, PaymentStatusEvent } from "@/lib/adminOrdersApi";
 const PAYMENT_LABEL: Record<PaymentStatus, string> = {
   pending: "Pending",
   paid: "Paid",
-  failed: "Failed",
   refunded: "Refunded",
 };
 
 // "Negative" outcomes get the rose ✕ treatment instead of the green tick.
-const NEGATIVE: PaymentStatus[] = ["failed", "refunded"];
+const NEGATIVE: PaymentStatus[] = ["refunded"];
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function formatStamp(iso: string): string {

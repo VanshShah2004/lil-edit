@@ -122,8 +122,7 @@ export function nextStatuses(from: OrderStatus): OrderStatus[] {
 // (20260612_admin_payment_status.sql). The backend is authoritative; this just keeps
 // the UI from offering moves the server will reject. `refunded` is terminal.
 export const PAYMENT_TRANSITIONS: Record<PaymentStatus, PaymentStatus[]> = {
-  pending:  ["paid", "failed"],
-  failed:   ["paid", "pending"],
+  pending:  ["paid"],
   paid:     ["refunded"],
   refunded: [],
 };
@@ -135,7 +134,7 @@ export function nextPaymentStatuses(from: PaymentStatus): PaymentStatus[] {
 
 // Every payment status an admin can correct TO (the override path offers all but the
 // current one).
-export const SETTABLE_PAYMENT_STATUSES: PaymentStatus[] = ["pending", "paid", "failed", "refunded"];
+export const SETTABLE_PAYMENT_STATUSES: PaymentStatus[] = ["pending", "paid", "refunded"];
 
 export interface AdminOrdersQuery {
   search?: string;

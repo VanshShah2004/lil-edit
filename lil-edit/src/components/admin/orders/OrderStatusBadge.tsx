@@ -15,7 +15,6 @@ const ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
 const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
   paid:     "bg-green-50 text-green-700 border-green-200",
   pending:  "bg-yellow-50 text-yellow-700 border-yellow-200",
-  failed:   "bg-red-50 text-red-700 border-red-200",
   refunded: "bg-gray-100 text-gray-600 border-gray-200",
 };
 

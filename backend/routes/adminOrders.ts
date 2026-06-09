@@ -15,7 +15,7 @@ const VALID_STATUSES = ["pending", "confirmed", "processing", "shipped", "delive
 type OrderStatus = (typeof VALID_STATUSES)[number];
 
 // Mirror the DB CHECK constraint on orders.payment_status.
-const VALID_PAYMENT_STATUSES = ["pending", "paid", "failed", "refunded"] as const;
+const VALID_PAYMENT_STATUSES = ["pending", "paid", "refunded"] as const;
 type PaymentStatus = (typeof VALID_PAYMENT_STATUSES)[number];
 
 // Every admin endpoint requires a valid token AND an admin role. requireAuth sets

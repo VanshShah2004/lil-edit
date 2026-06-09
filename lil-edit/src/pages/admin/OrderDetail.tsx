@@ -51,7 +51,6 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
 const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   pending: "Pending",
   paid: "Paid",
-  failed: "Failed",
   refunded: "Refunded",
 };
 

@@ -10,7 +10,7 @@ export type OrderStatus =
   | "cancelled";
 
 export type PaymentMethod = "cod" | "online";
-export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
+export type PaymentStatus = "pending" | "paid" | "refunded";
 
 export interface OrderItem {
   id: string;
