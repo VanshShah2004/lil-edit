@@ -77,11 +77,30 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    overflow-x: hidden;
+    /* Reserve the viewport scrollbar's gutter permanently so opening an overlay (which
+       hides the scrollbar) never changes the layout width — keeps the page and the
+       fixed navbar perfectly still.
+       NOTE: `overflow-x: hidden` is deliberately NOT here. On <html> it makes <html>
+       the scroll container, which breaks react-remove-scroll (used by every Radix
+       dropdown/dialog): it locks <body> and can't remove <html>'s scrollbar, so its
+       margin compensation shoves the page sideways on open. We clip horizontal overflow
+       on <body> instead (below), leaving normal scroll propagation intact. */
+    scrollbar-gutter: stable;
+  }
+
+  /* react-remove-scroll still adds a compensating margin/padding to <body> when it
+     locks scroll. With the gutter above already reserving the scrollbar's space, that
+     compensation is redundant and would shift the page — neutralize it. Higher
+     specificity + !important beats react-remove-scroll's own injected !important rule. */
+  html body[data-scroll-locked] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
   }
 
   body {
     @apply text-foreground font-body antialiased min-h-screen;
+    /* Clip horizontal overflow here (not on <html>) — see the note above. */
+    overflow-x: hidden;
     background-color: hsl(var(--background));
     background-image:
       radial-gradient(ellipse 120% 90% at 12% -5%, hsl(275 38% 94% / 0.5), transparent 55%),
