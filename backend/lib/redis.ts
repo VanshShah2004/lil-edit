@@ -11,6 +11,7 @@ export const CART_TTL_S           = 60;        // 60s   — per-user cart; inval
 export const WISHLIST_TTL_S       = 60;        // 60s   — per-user wishlist; invalidated on every mutation
 export const ORDER_TTL_S          = 60;        // 60s   — per-user orders; short so seeded/new rows surface quickly
 export const SUGGESTION_TTL_S     = 5 * 60;   // 5 min  — search auto-suggestions
+export const CURATION_TTL_S       = 5 * 60;   // 5 min  — resolved curated section (incl. random fallback)
 
 type RedisClient = InstanceType<typeof Redis>;
 let client: RedisClient | null = null;
@@ -120,7 +121,7 @@ export async function redisDel(log: OpLogger, ...keys: string[]): Promise<void> 
 }
 
 export function redisKey(
-  prefix: "pdp" | "rec" | "reviews" | "catalog-list" | "catalog-detail" | "cart" | "wishlist" | "suggestions" | "order",
+  prefix: "pdp" | "rec" | "reviews" | "catalog-list" | "catalog-detail" | "cart" | "wishlist" | "suggestions" | "order" | "curation",
   slug: string,
 ): string {
   return `${prefix}:${slug}`;

@@ -57,6 +57,7 @@ const EditProduct      = lazyWithLog("EditProduct",      () => import("./pages/E
 const ManageProducts   = lazyWithLog("ManageProducts",   () => import("./pages/ManageProducts"));
 const AdminOrders      = lazyWithLog("AdminOrders",      () => import("./pages/admin/Orders"));
 const AdminOrderDetail = lazyWithLog("AdminOrderDetail", () => import("./pages/admin/OrderDetail"));
+const AdminCuration    = lazyWithLog("AdminCuration",    () => import("./pages/admin/Curation"));
 
 const queryClient = new QueryClient();
 
@@ -94,6 +95,7 @@ const App = () => (
             <Route path="/admin/manage-products" element={<AdminRoute><ManageProducts /></AdminRoute>} />
             <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
             <Route path="/admin/orders/:orderId" element={<AdminRoute><AdminOrderDetail /></AdminRoute>} />
+            <Route path="/admin/curation" element={<AdminRoute><AdminCuration /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
