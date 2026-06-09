@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronRight, User, MapPin, Receipt, ShoppingBag, Save, History, Mail, Check } from "lucide-react";
+import { ArrowLeft, ChevronRight, User, MapPin, Receipt, ShoppingBag, Save, History, Mail, Check, CreditCard, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 import UserNavbar from "@/components/home/UserNavbar";
@@ -18,14 +18,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   fetchAdminOrderById,
   updateOrderStatus,
+  updatePaymentStatus,
   nextStatuses,
+  nextPaymentStatuses,
   type AdminOrderDetail,
   type OrderStatus,
+  type PaymentStatus,
 } from "@/lib/adminOrdersApi";
 import { OrderStatusBadge, PaymentStatusBadge } from "@/components/admin/orders/OrderStatusBadge";
 import OrderItemsTable from "@/components/admin/orders/OrderItemsTable";
 import OrderSummaryCard from "@/components/admin/orders/OrderSummaryCard";
 import OrderStatusTimeline from "@/components/admin/orders/OrderStatusTimeline";
+import PaymentStatusTimeline from "@/components/admin/orders/PaymentStatusTimeline";
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -40,6 +44,13 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   shipped: "Shipped",
   delivered: "Delivered",
   cancelled: "Cancelled",
+};
+
+const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  pending: "Pending",
+  paid: "Paid",
+  failed: "Failed",
+  refunded: "Refunded",
 };
 
 // ─── Reusable bits ────────────────────────────────────────────────────────────
@@ -90,6 +101,9 @@ const AdminOrderDetailPage = () => {
   const [note, setNote] = useState("");
   const [notifyByEmail, setNotifyByEmail] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentStatus>("pending");
+  const [paymentNote, setPaymentNote] = useState("");
+  const [savingPayment, setSavingPayment] = useState(false);
 
   const loadOrder = (id: string, withSpinner = true) => {
     if (withSpinner) setLoading(true);
@@ -99,6 +113,7 @@ const AdminOrderDetailPage = () => {
       .then((data) => {
         setOrder(data);
         setSelectedStatus(data.status);
+        setSelectedPayment(data.paymentStatus);
       })
       .catch((err) => {
         console.error("[AdminOrderDetail] fetch failed", err);
@@ -113,7 +128,7 @@ const AdminOrderDetailPage = () => {
     let active = true;
     setLoading(true);
     fetchAdminOrderById(orderId)
-      .then((data) => { if (active) { setOrder(data); setSelectedStatus(data.status); } })
+      .then((data) => { if (active) { setOrder(data); setSelectedStatus(data.status); setSelectedPayment(data.paymentStatus); } })
       .catch((err) => {
         if (!active) return;
         console.error("[AdminOrderDetail] fetch failed", err);
@@ -145,6 +160,27 @@ const AdminOrderDetailPage = () => {
     }
   };
 
+  const handleSavePayment = async () => {
+    if (!order || selectedPayment === order.paymentStatus) return;
+    setSavingPayment(true);
+    const previous = order.paymentStatus;
+    // Optimistic badge update.
+    setOrder((prev) => (prev ? { ...prev, paymentStatus: selectedPayment } : prev));
+    try {
+      await updatePaymentStatus(order.id, selectedPayment, paymentNote);
+      toast.success(`Payment status updated to "${PAYMENT_STATUS_LABELS[selectedPayment]}"`);
+      setPaymentNote(""); // clear after it's been recorded with the change
+      await loadOrder(order.id, false); // refresh from source of truth
+    } catch (err) {
+      console.error("[AdminOrderDetail] payment status update failed", err);
+      toast.error(err instanceof Error ? err.message : "Failed to update payment status");
+      setOrder((prev) => (prev ? { ...prev, paymentStatus: previous } : prev)); // rollback
+      setSelectedPayment(previous);
+    } finally {
+      setSavingPayment(false);
+    }
+  };
+
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -155,6 +191,10 @@ const AdminOrderDetailPage = () => {
   // moves left, so only its current status appears and the control locks.
   const statusOptions = order ? nextStatuses(order.status) : [];
   const terminal = statusOptions.length <= 1;
+  // Same idea for payment: legal next states (current first); `refunded` is terminal.
+  const paymentDirty = !!order && selectedPayment !== order.paymentStatus;
+  const paymentOptions = order ? nextPaymentStatuses(order.paymentStatus) : [];
+  const paymentTerminal = paymentOptions.length <= 1;
 
   return (
     <div className="min-h-screen bg-white text-[#1a1a1a] flex flex-col font-sans">
@@ -241,6 +281,11 @@ const AdminOrderDetailPage = () => {
                     onToggleNotify={() => setNotifyByEmail((v) => !v)}
                   />
                 </SectionCard>
+
+                {/* Payment History — immutable audit trail of every payment change */}
+                <SectionCard icon={CreditCard} title="Payment History">
+                  <PaymentStatusTimeline events={order.paymentStatusHistory ?? []} />
+                </SectionCard>
               </div>
 
               {/* ── Right column ─────────────────────────────────────────────── */}
@@ -315,6 +360,61 @@ const AdminOrderDetailPage = () => {
                     className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-white bg-gray-900 rounded-md px-4 py-2.5 hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-gray-900 transition-colors"
                   >
                     <Save className="w-4 h-4" /> {saving ? "Saving…" : "Save Changes"}
+                  </button>
+                </div>
+
+                {/* Payment Management */}
+                <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 sm:p-6">
+                  <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500 mb-4 flex items-center gap-2">
+                    <Wallet className="w-4 h-4" style={{ color: "#B19CD9" }} /> Payment Management
+                  </h2>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm text-gray-600">Current</span>
+                    <PaymentStatusBadge status={order.paymentStatus} />
+                  </div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Update payment status</label>
+                  <Select value={selectedPayment} onValueChange={(v) => setSelectedPayment(v as PaymentStatus)} disabled={paymentTerminal}>
+                    <SelectTrigger className="mt-1.5 h-10 w-full border-gray-200 bg-gray-50/50 text-sm disabled:opacity-60">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {paymentOptions.map((s) => (
+                        <SelectItem key={s} value={s} className="text-sm">{PAYMENT_STATUS_LABELS[s]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {paymentTerminal && (
+                    <p className="mt-2 text-xs text-gray-400">
+                      This payment is {PAYMENT_STATUS_LABELS[order.paymentStatus].toLowerCase()} — a final state. No further payment changes are allowed.
+                    </p>
+                  )}
+
+                  {/* Optional note/reminder recorded with this change and shown in the
+                      Payment History below (admin-only). */}
+                  {!paymentTerminal && (
+                    <div className="mt-4">
+                      <label htmlFor="payment-note" className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        Note / reminder <span className="font-medium normal-case text-gray-300">(optional)</span>
+                      </label>
+                      <Textarea
+                        id="payment-note"
+                        value={paymentNote}
+                        onChange={(e) => setPaymentNote(e.target.value.slice(0, 500))}
+                        placeholder="e.g. Refund processed via Razorpay — ref #RZP123"
+                        rows={2}
+                        className="mt-1.5 resize-none border-gray-200 bg-gray-50/50 text-sm"
+                      />
+                      <p className="mt-1 text-right text-[10px] text-gray-300">{paymentNote.length}/500</p>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleSavePayment}
+                    disabled={!paymentDirty || savingPayment}
+                    className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-white bg-gray-900 rounded-md px-4 py-2.5 hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-gray-900 transition-colors"
+                  >
+                    <CreditCard className="w-4 h-4" /> {savingPayment ? "Saving…" : "Save Payment"}
                   </button>
                 </div>
 

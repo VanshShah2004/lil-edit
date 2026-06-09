@@ -54,10 +54,24 @@ export interface OrderStatusEvent {
   createdAt: string;
 }
 
+// One immutable payment-audit entry — same shape as OrderStatusEvent, but the
+// from/to are payment statuses. `fromStatus` is null for the opening entry.
+export interface PaymentStatusEvent {
+  id: string;
+  fromStatus: PaymentStatus | null;
+  toStatus: PaymentStatus;
+  changedBy: string | null;
+  changedByName: string;
+  changedByEmail: string;
+  note: string | null;
+  createdAt: string;
+}
+
 export interface AdminOrderDetail extends AdminOrderSummary {
   transactionId: string | null;
   shippingAddress: AdminShippingAddress;
   statusHistory: OrderStatusEvent[];
+  paymentStatusHistory: PaymentStatusEvent[];
 }
 
 export interface AdminOrdersResponse {
@@ -98,6 +112,21 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 // selected), then its legal next states.
 export function nextStatuses(from: OrderStatus): OrderStatus[] {
   return [from, ...(ORDER_TRANSITIONS[from] ?? [])];
+}
+
+// Legal payment-status transitions — mirrors admin_set_payment_status in the DB
+// (20260612_admin_payment_status.sql). The backend is authoritative; this just keeps
+// the UI from offering moves the server will reject. `refunded` is terminal.
+export const PAYMENT_TRANSITIONS: Record<PaymentStatus, PaymentStatus[]> = {
+  pending:  ["paid", "failed"],
+  failed:   ["paid", "pending"],
+  paid:     ["refunded"],
+  refunded: [],
+};
+
+// Payment statuses an admin may move TO from `from` — current first, then legal next.
+export function nextPaymentStatuses(from: PaymentStatus): PaymentStatus[] {
+  return [from, ...(PAYMENT_TRANSITIONS[from] ?? [])];
 }
 
 export interface AdminOrdersQuery {
@@ -161,7 +190,11 @@ export async function fetchAdminOrderById(orderId: string): Promise<AdminOrderDe
   const data = await res.json();
   console.log("[adminOrdersApi] fetchAdminOrderById →", data.order?.orderNumber ?? "?");
   const order = data.order as AdminOrderDetail;
-  return { ...order, statusHistory: order.statusHistory ?? [] };
+  return {
+    ...order,
+    statusHistory: order.statusHistory ?? [],
+    paymentStatusHistory: order.paymentStatusHistory ?? [],
+  };
 }
 
 export async function updateOrderStatus(orderId: string, status: OrderStatus, note?: string): Promise<{ success: boolean }> {
@@ -176,5 +209,20 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus, no
   }
   const data = await res.json();
   console.log(`[adminOrdersApi] updateOrderStatus → ${orderId} = ${status}`, data);
+  return data as { success: boolean };
+}
+
+export async function updatePaymentStatus(orderId: string, paymentStatus: PaymentStatus, note?: string): Promise<{ success: boolean }> {
+  const res = await authFetch(`/api/admin/orders/${orderId}/payment-status`, {
+    method: "PATCH",
+    body: JSON.stringify({ paymentStatus, note: note ?? "" }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    console.error("[adminOrdersApi] updatePaymentStatus error:", body);
+    throw new Error((body as { error?: string }).error ?? `Payment status update failed (${res.status})`);
+  }
+  const data = await res.json();
+  console.log(`[adminOrdersApi] updatePaymentStatus → ${orderId} = ${paymentStatus}`, data);
   return data as { success: boolean };
 }

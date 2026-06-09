@@ -14,6 +14,10 @@ const db = () => supabaseAdmin ?? supabaseAnon;
 const VALID_STATUSES = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"] as const;
 type OrderStatus = (typeof VALID_STATUSES)[number];
 
+// Mirror the DB CHECK constraint on orders.payment_status.
+const VALID_PAYMENT_STATUSES = ["pending", "paid", "failed", "refunded"] as const;
+type PaymentStatus = (typeof VALID_PAYMENT_STATUSES)[number];
+
 // Every admin endpoint requires a valid token AND an admin role. requireAuth sets
 // req.userId; requireAdmin reads it and checks profiles.role server-side.
 router.use(requireAuth, requireAdmin);
@@ -59,6 +63,7 @@ interface OrderRow {
   shipping_address?: Record<string, unknown> | null;
   order_items?: OrderItemRow[];
   order_status_history?: StatusHistoryRow[];
+  payment_status_history?: StatusHistoryRow[];
 }
 
 interface ProfileRow {
@@ -145,6 +150,10 @@ function mapOrder(row: OrderRow, profile: ProfileRow | undefined, includeDetail:
     shippingAddress: row.shipping_address ?? {},
     // Newest change first — the timeline reads top-down from the latest action.
     statusHistory: (row.order_status_history ?? [])
+      .map(mapHistory)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    // Same shape/ordering as statusHistory — the payment audit trail.
+    paymentStatusHistory: (row.payment_status_history ?? [])
       .map(mapHistory)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
   };
@@ -273,6 +282,9 @@ router.get("/:id", async (req: Request, res: Response) => {
         order_items(${ORDER_ITEMS_SELECT}),
         order_status_history(
           id, from_status, to_status, changed_by, changed_by_name, changed_by_email, note, created_at
+        ),
+        payment_status_history(
+          id, from_status, to_status, changed_by, changed_by_name, changed_by_email, note, created_at
         )
       `,
       )
@@ -385,6 +397,90 @@ router.patch("/:id/status", async (req: Request, res: Response) => {
     res.json({ success: true });
   } catch (err) {
     log.error("unhandled error", err).end("ADMIN ORDER STATUS");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// ─── PATCH /api/admin/orders/:id/payment-status — update payment status ────────────
+// Mirrors the order-status endpoint: a locked, audited, transition-checked change via
+// admin_set_payment_status, busting the owner's cache on success.
+router.patch("/:id/payment-status", async (req: Request, res: Response) => {
+  const log = createLog().start("ADMIN PAYMENT STATUS");
+  const adminId = (req as AuthenticatedRequest).userId;
+  const orderId = req.params.id as string;
+  const status = String((req.body as { paymentStatus?: unknown })?.paymentStatus ?? "").toLowerCase() as PaymentStatus;
+  // Optional admin note/reminder attached to this change. Trim + cap so a stray huge
+  // payload can't bloat the audit row; empty becomes null.
+  const rawNote = String((req.body as { note?: unknown })?.note ?? "").trim();
+  const note = rawNote ? rawNote.slice(0, 500) : null;
+  log.step(`admin=${adminId}  order=${orderId}  → payment=${status}  note=${note ? `"${note.slice(0, 40)}…"` : "none"}`);
+
+  if (!VALID_PAYMENT_STATUSES.includes(status)) {
+    log.warn(`invalid payment status="${status}"`).end("ADMIN PAYMENT STATUS");
+    res.status(400).json({ error: `Invalid payment status. Must be one of: ${VALID_PAYMENT_STATUSES.join(", ")}` });
+    return;
+  }
+
+  try {
+    // Snapshot the acting admin's identity into the audit row so the trail stays
+    // readable even if this admin's profile is later changed or removed.
+    const adminProfiles = await loadProfiles([adminId]);
+    const admin = adminProfiles.get(adminId);
+    const adminName = [admin?.first_name, admin?.last_name].filter(Boolean).join(" ").trim() || "Admin";
+    const adminEmail = admin?.email ?? "";
+
+    // Atomic: locks the order row, validates the transition, updates payment_status,
+    // and appends the audit entry in a single transaction (admin_set_payment_status).
+    const { data, error } = await db().rpc("admin_set_payment_status", {
+      p_order_id: orderId,
+      p_status: status,
+      p_admin_id: adminId,
+      p_admin_name: adminName,
+      p_admin_email: adminEmail,
+      p_note: note,
+    });
+
+    if (error) {
+      log.error(`update failed  code=${error.code}  msg=${error.message}`, error).end("ADMIN PAYMENT STATUS");
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    const result = (Array.isArray(data) ? data[0] : data) as
+      | { owner_id: string; from_status: string; result: "changed" | "unchanged" | "invalid" }
+      | undefined;
+
+    if (!result) {
+      log.warn(`not found  order=${orderId}`).end("ADMIN PAYMENT STATUS");
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    if (result.result === "invalid") {
+      log.warn(`illegal transition  order=${orderId}  ${result.from_status}→${status}`).end("ADMIN PAYMENT STATUS");
+      res.status(400).json({ error: `Cannot change payment status from "${result.from_status}" to "${status}".` });
+      return;
+    }
+
+    if (result.result === "unchanged") {
+      log.success(`no change  order=${orderId}  already=${status}`).end("ADMIN PAYMENT STATUS");
+      res.json({ success: true, unchanged: true });
+      return;
+    }
+
+    // Bust the OWNER's cached order list + detail so the customer sees the new payment
+    // status immediately (same keys orders.ts writes).
+    const ownerId = result.owner_id;
+    await redisDel(
+      log,
+      redisKey("order", `list:${ownerId}`),
+      redisKey("order", `detail:${ownerId}:${orderId}`),
+    );
+
+    log.success(`updated  order=${orderId}  ${result.from_status}→${status}  by=${adminName}  owner=${ownerId}`).end("ADMIN PAYMENT STATUS");
+    res.json({ success: true });
+  } catch (err) {
+    log.error("unhandled error", err).end("ADMIN PAYMENT STATUS");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
