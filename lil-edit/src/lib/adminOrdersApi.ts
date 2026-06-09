@@ -119,11 +119,13 @@ export function nextStatuses(from: OrderStatus): OrderStatus[] {
 }
 
 // Legal payment-status transitions — mirrors admin_set_payment_status in the DB
-// (20260612_admin_payment_status.sql). The backend is authoritative; this just keeps
-// the UI from offering moves the server will reject. `refunded` is terminal.
+// (20260617_paid_is_terminal.sql). The backend is authoritative; this just keeps
+// the UI from offering moves the server will reject.
+// Both `paid` and `refunded` are terminal in the normal flow. Issuing a refund
+// requires the "Correct status" override path (audited, note mandatory).
 export const PAYMENT_TRANSITIONS: Record<PaymentStatus, PaymentStatus[]> = {
   pending:  ["paid"],
-  paid:     ["refunded"],
+  paid:     [],
   refunded: [],
 };
 
