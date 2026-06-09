@@ -11,7 +11,7 @@ import cartRouter from "./routes/cart.js";
 import wishlistRouter from "./routes/wishlist.js";
 import ordersRouter from "./routes/orders.js";
 import adminOrdersRouter from "./routes/adminOrders.js";
-import { rateLimit } from "express-rate-limit";
+import { globalLimiter, mutationLimiter } from "./middleware/rateLimiters.js";
 import { warmupRedis, startRedisKeepalive, getRedis, redisSet, redisKey, CATALOG_LIST_TTL_S } from "./lib/redis.js";
 import { fetchThinProductList } from "./lib/persistCatalog.js";
 import { supabaseAdmin, supabaseAnon } from "./lib/supabase.js";
@@ -29,40 +29,8 @@ const origin =
     "http://localhost:5175",
   ];
 
-// ─── Rate limiters ─────────────────────────────────────────────────────────────
-// Three tiers, applied at the point where specificity is needed:
-//
-//  globalLimiter         — every route; generous ceiling to stop hammering
-//  mutationLimiter       — user-facing writes (orders, cart, wishlist)
-//  adminMutationLimiter  — admin status/payment PATCH; tightest, since a stolen
-//                          admin token doing a few hundred RPCs would spam the
-//                          audit trail and cause significant DB write pressure
-//
-// windowMs=15 minutes is the standard; shorter windows mean faster reset after
-// a genuine spike but also weaker protection against sustained abuse.
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,   // 15 min
-  limit: 500,                  // 500 req / IP / window across all routes
-  standardHeaders: "draft-8",  // Return RateLimit-* headers (RFC 9110 draft)
-  legacyHeaders: false,
-  message: { error: "Too many requests — please slow down." },
-});
-
-const mutationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 100,                  // 100 writes / IP / 15 min
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
-  message: { error: "Too many requests — please slow down." },
-});
-
-const adminMutationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 60,                   // 60 admin writes / IP / 15 min (~1 every 15 s sustained)
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
-  message: { error: "Too many admin requests — please slow down." },
-});
+// Rate limiters live in ./middleware/rateLimiters.ts. The admin write-limiter is applied
+// inside the admin router on its PATCH handlers only (so admin GETs aren't throttled).
 
 const PORT = Number(process.env.PORT) || 5000;
 
@@ -79,10 +47,14 @@ app.use(globalLimiter);
 app.use("/api/auth",         authRouter);
 app.use("/api/products",     productsRouter);
 app.use("/api/sku",          skuRouter);
-app.use("/api/cart",         cartRouter,         mutationLimiter);
-app.use("/api/wishlist",     wishlistRouter,      mutationLimiter);
+// Limiter BEFORE the router so it actually gates the request (a router placed first
+// would handle + respond before the limiter ever ran).
+app.use("/api/cart",         mutationLimiter, cartRouter);
+app.use("/api/wishlist",     mutationLimiter, wishlistRouter);
 app.use("/api/orders",       ordersRouter);
-app.use("/api/admin/orders", adminMutationLimiter, adminOrdersRouter);
+// Admin GETs ride the global limiter; the tight write-limiter is applied to the PATCH
+// handlers inside the router (see adminOrders.ts).
+app.use("/api/admin/orders", adminOrdersRouter);
 
 app.get("/", (_req, res) => {
   res.json({ ok: true, message: "new-ecomm backend" });

@@ -3,6 +3,7 @@ import { Router, type Request, type Response } from "express";
 import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
+import { adminMutationLimiter } from "../middleware/rateLimiters.js";
 import { createLog, fms } from "../lib/logger.js";
 // redisDel/redisKey bust the OWNER's cached order list + detail on a status change.
 import { redisDel, redisKey } from "../lib/redis.js";
@@ -321,7 +322,7 @@ router.get("/:id", async (req: Request, res: Response) => {
 });
 
 // ─── PATCH /api/admin/orders/:id/status — update order status ─────────────────────
-router.patch("/:id/status", async (req: Request, res: Response) => {
+router.patch("/:id/status", adminMutationLimiter, async (req: Request, res: Response) => {
   const log = createLog().start("ADMIN ORDER STATUS");
   const adminId = (req as AuthenticatedRequest).userId;
   const orderId = req.params.id as string;
@@ -426,7 +427,7 @@ router.patch("/:id/status", async (req: Request, res: Response) => {
 // ─── PATCH /api/admin/orders/:id/payment-status — update payment status ────────────
 // Mirrors the order-status endpoint: a locked, audited, transition-checked change via
 // admin_set_payment_status, busting the owner's cache on success.
-router.patch("/:id/payment-status", async (req: Request, res: Response) => {
+router.patch("/:id/payment-status", adminMutationLimiter, async (req: Request, res: Response) => {
   const log = createLog().start("ADMIN PAYMENT STATUS");
   const adminId = (req as AuthenticatedRequest).userId;
   const orderId = req.params.id as string;
