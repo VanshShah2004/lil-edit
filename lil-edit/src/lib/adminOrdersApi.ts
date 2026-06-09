@@ -66,6 +66,8 @@ export interface PaymentStatusEvent {
   changedByName: string;
   changedByEmail: string;
   note: string | null;
+  // True when this row was written via the payment-status correction override.
+  isCorrection: boolean;
   createdAt: string;
 }
 
@@ -130,6 +132,10 @@ export const PAYMENT_TRANSITIONS: Record<PaymentStatus, PaymentStatus[]> = {
 export function nextPaymentStatuses(from: PaymentStatus): PaymentStatus[] {
   return [from, ...(PAYMENT_TRANSITIONS[from] ?? [])];
 }
+
+// Every payment status an admin can correct TO (the override path offers all but the
+// current one).
+export const SETTABLE_PAYMENT_STATUSES: PaymentStatus[] = ["pending", "paid", "failed", "refunded"];
 
 export interface AdminOrdersQuery {
   search?: string;
@@ -216,10 +222,10 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus, no
   return data as { success: boolean };
 }
 
-export async function updatePaymentStatus(orderId: string, paymentStatus: PaymentStatus, note?: string): Promise<{ success: boolean }> {
+export async function updatePaymentStatus(orderId: string, paymentStatus: PaymentStatus, note?: string, override?: boolean): Promise<{ success: boolean }> {
   const res = await authFetch(`/api/admin/orders/${orderId}/payment-status`, {
     method: "PATCH",
-    body: JSON.stringify({ paymentStatus, note: note ?? "" }),
+    body: JSON.stringify({ paymentStatus, note: note ?? "", override: override ?? false }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

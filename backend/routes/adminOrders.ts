@@ -288,7 +288,7 @@ router.get("/:id", async (req: Request, res: Response) => {
           id, from_status, to_status, changed_by, changed_by_name, changed_by_email, note, is_correction, created_at
         ),
         payment_status_history(
-          id, from_status, to_status, changed_by, changed_by_name, changed_by_email, note, created_at
+          id, from_status, to_status, changed_by, changed_by_name, changed_by_email, note, is_correction, created_at
         )
       `,
       )
@@ -422,7 +422,10 @@ router.patch("/:id/payment-status", async (req: Request, res: Response) => {
   // payload can't bloat the audit row; empty becomes null.
   const rawNote = String((req.body as { note?: unknown })?.note ?? "").trim();
   const note = rawNote ? rawNote.slice(0, 500) : null;
-  log.step(`admin=${adminId}  order=${orderId}  → payment=${status}  note=${note ? `"${note.slice(0, 40)}…"` : "none"}`);
+  // Override = a deliberate correction; bypasses the normal payment transition machine
+  // and flags the change as a correction in the audit trail.
+  const override = (req.body as { override?: unknown })?.override === true;
+  log.step(`admin=${adminId}  order=${orderId}  → payment=${status}  override=${override}  note=${note ? `"${note.slice(0, 40)}…"` : "none"}`);
 
   if (!VALID_PAYMENT_STATUSES.includes(status)) {
     log.warn(`invalid payment status="${status}"`).end("ADMIN PAYMENT STATUS");
@@ -447,6 +450,7 @@ router.patch("/:id/payment-status", async (req: Request, res: Response) => {
       p_admin_name: adminName,
       p_admin_email: adminEmail,
       p_note: note,
+      p_override: override,
     });
 
     if (error) {

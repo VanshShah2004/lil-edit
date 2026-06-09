@@ -1,4 +1,4 @@
-import { Check, X } from "lucide-react";
+import { Check, X, AlertTriangle } from "lucide-react";
 import type { PaymentStatus, PaymentStatusEvent } from "@/lib/adminOrdersApi";
 
 // Headline per resulting payment status. The opening entry (fromStatus === null) shows
@@ -22,7 +22,7 @@ function formatStamp(iso: string): string {
 }
 
 function Node({
-  label, fromLabel, toLabel, isOpening, actor, email, note, stamp, mostRecent, negative, isLast,
+  label, fromLabel, toLabel, isOpening, actor, email, note, stamp, mostRecent, negative, correction, isLast,
 }: {
   label: string;
   fromLabel?: string;
@@ -34,6 +34,7 @@ function Node({
   stamp: string;
   mostRecent: boolean;
   negative: boolean;
+  correction: boolean;
   isLast: boolean;
 }) {
   const dotBg = negative ? "bg-rose-400" : "bg-emerald-500";
@@ -56,8 +57,13 @@ function Node({
       </div>
 
       <div className={`flex-1 ${isLast ? "" : "pb-6"}`}>
-        <p className={`text-sm leading-4 ${mostRecent ? "font-bold text-gray-900" : "font-medium text-gray-700"}`}>
+        <p className={`text-sm leading-4 flex items-center gap-1.5 ${mostRecent ? "font-bold text-gray-900" : "font-medium text-gray-700"}`}>
           {label}
+          {correction && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+              <AlertTriangle className="h-2.5 w-2.5" /> Correction
+            </span>
+          )}
         </p>
         {/* Description: the change that was made + who made it. */}
         <p className="text-xs text-gray-500 mt-1">
@@ -107,6 +113,7 @@ export function PaymentStatusTimeline({ events }: { events: PaymentStatusEvent[]
             stamp={formatStamp(ev.createdAt)}
             mostRecent={i === 0}
             negative={NEGATIVE.includes(ev.toStatus)}
+            correction={ev.isCorrection}
             isLast={i === events.length - 1}
           />
         );

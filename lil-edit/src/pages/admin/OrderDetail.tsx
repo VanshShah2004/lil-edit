@@ -22,6 +22,7 @@ import {
   nextStatuses,
   nextPaymentStatuses,
   SETTABLE_ORDER_STATUSES,
+  SETTABLE_PAYMENT_STATUSES,
   type AdminOrderDetail,
   type OrderStatus,
   type PaymentStatus,
@@ -107,6 +108,7 @@ const AdminOrderDetailPage = () => {
   const [selectedPayment, setSelectedPayment] = useState<PaymentStatus>("pending");
   const [paymentNote, setPaymentNote] = useState("");
   const [savingPayment, setSavingPayment] = useState(false);
+  const [correctingPayment, setCorrectingPayment] = useState(false);
 
   const loadOrder = (id: string, withSpinner = true) => {
     if (withSpinner) setLoading(true);
@@ -188,21 +190,41 @@ const AdminOrderDetailPage = () => {
     if (!order || selectedPayment === order.paymentStatus) return;
     setSavingPayment(true);
     const previous = order.paymentStatus;
+    const isCorrection = correctingPayment;
     // Optimistic badge update.
     setOrder((prev) => (prev ? { ...prev, paymentStatus: selectedPayment } : prev));
     try {
-      await updatePaymentStatus(order.id, selectedPayment, paymentNote);
-      toast.success(`Payment status updated to "${PAYMENT_STATUS_LABELS[selectedPayment]}"`);
+      await updatePaymentStatus(order.id, selectedPayment, paymentNote, isCorrection);
+      toast.success(
+        isCorrection
+          ? `Payment status corrected to "${PAYMENT_STATUS_LABELS[selectedPayment]}"`
+          : `Payment status updated to "${PAYMENT_STATUS_LABELS[selectedPayment]}"`,
+      );
       setPaymentNote(""); // clear after it's been recorded with the change
+      setCorrectingPayment(false);
       await loadOrder(order.id, false); // refresh from source of truth
     } catch (err) {
       console.error("[AdminOrderDetail] payment status update failed", err);
       toast.error(err instanceof Error ? err.message : "Failed to update payment status");
       setOrder((prev) => (prev ? { ...prev, paymentStatus: previous } : prev)); // rollback
-      setSelectedPayment(previous);
+      if (!isCorrection) setSelectedPayment(previous); // keep the chosen target so a correction can be retried
     } finally {
       setSavingPayment(false);
     }
+  };
+
+  // Payment correction (override) — offer every payment status except the current one.
+  const paymentCorrectionOptions = order ? SETTABLE_PAYMENT_STATUSES.filter((s) => s !== order.paymentStatus) : [];
+  const startPaymentCorrection = () => {
+    if (!paymentCorrectionOptions.length) return;
+    setCorrectingPayment(true);
+    setPaymentNote("");
+    setSelectedPayment(paymentCorrectionOptions[0]);
+  };
+  const cancelPaymentCorrection = () => {
+    setCorrectingPayment(false);
+    setPaymentNote("");
+    if (order) setSelectedPayment(order.paymentStatus);
   };
 
   if (authLoading) {
@@ -367,13 +389,15 @@ const AdminOrderDetailPage = () => {
                           This order is {STATUS_LABELS[order.status].toLowerCase()} — a final state. No further status changes are allowed in the normal flow.
                         </p>
                       )}
-                      <button
-                        type="button"
-                        onClick={startCorrection}
-                        className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 hover:text-amber-800"
-                      >
-                        <AlertTriangle className="h-3.5 w-3.5" /> Correct status
-                      </button>
+                      <div className="mt-2 flex justify-start">
+                        <button
+                          type="button"
+                          onClick={startCorrection}
+                          className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-100 hover:border-amber-400 transition-colors"
+                        >
+                          <AlertTriangle className="h-3 w-3" /> Correct status
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -468,26 +492,76 @@ const AdminOrderDetailPage = () => {
                     <span className="text-sm text-gray-600">Current</span>
                     <PaymentStatusBadge status={order.paymentStatus} />
                   </div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Update payment status</label>
-                  <Select value={selectedPayment} onValueChange={(v) => setSelectedPayment(v as PaymentStatus)} disabled={paymentTerminal}>
-                    <SelectTrigger className="mt-1.5 h-10 w-full border-gray-200 bg-gray-50/50 text-sm disabled:opacity-60">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {paymentOptions.map((s) => (
-                        <SelectItem key={s} value={s} className="text-sm">{PAYMENT_STATUS_LABELS[s]}</SelectItem>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    {correctingPayment ? "Correct payment status to" : "Update payment status"}
+                  </label>
+                  {correctingPayment ? (
+                    // Button group instead of a dropdown — pick the corrected status directly.
+                    <div className="mt-1.5 grid grid-cols-2 gap-2">
+                      {paymentCorrectionOptions.map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setSelectedPayment(s)}
+                          aria-pressed={selectedPayment === s}
+                          className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                            selectedPayment === s
+                              ? "border-amber-500 bg-amber-50 text-amber-800"
+                              : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300"
+                          }`}
+                        >
+                          {PAYMENT_STATUS_LABELS[s]}
+                        </button>
                       ))}
-                    </SelectContent>
-                  </Select>
-                  {paymentTerminal && (
-                    <p className="mt-2 text-xs text-gray-400">
-                      This payment is {PAYMENT_STATUS_LABELS[order.paymentStatus].toLowerCase()} — a final state. No further payment changes are allowed.
-                    </p>
+                    </div>
+                  ) : (
+                    <Select value={selectedPayment} onValueChange={(v) => setSelectedPayment(v as PaymentStatus)} disabled={paymentTerminal}>
+                      <SelectTrigger className="mt-1.5 h-10 w-full border-gray-200 bg-gray-50/50 text-sm disabled:opacity-60">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {paymentOptions.map((s) => (
+                          <SelectItem key={s} value={s} className="text-sm">{PAYMENT_STATUS_LABELS[s]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
 
-                  {/* Optional note/reminder recorded with this change and shown in the
-                      Payment History below (admin-only). */}
-                  {!paymentTerminal && (
+                  {/* Correction / backpedal escape hatch — available in EVERY payment state
+                      so an admin can fix a mistaken payment status. */}
+                  {!correctingPayment && (
+                    <div className="mt-2">
+                      {paymentTerminal && (
+                        <p className="text-xs text-gray-400">
+                          This payment is {PAYMENT_STATUS_LABELS[order.paymentStatus].toLowerCase()} — a final state. No further payment changes are allowed in the normal flow.
+                        </p>
+                      )}
+                      <div className="mt-2 flex justify-start">
+                        <button
+                          type="button"
+                          onClick={startPaymentCorrection}
+                          className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-100 hover:border-amber-400 transition-colors"
+                        >
+                          <AlertTriangle className="h-3 w-3" /> Correct status
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Correction warning — overriding the normal flow is logged as a correction. */}
+                  {correctingPayment && (
+                    <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+                      <p className="font-semibold flex items-center gap-1.5">
+                        <AlertTriangle className="h-3.5 w-3.5" /> Correcting the payment status
+                      </p>
+                      <p className="mt-1 text-amber-700">
+                        This overrides the normal flow to fix a mistaken payment status (currently “{PAYMENT_STATUS_LABELS[order.paymentStatus].toLowerCase()}”). It's recorded as a correction in the payment history.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Note — optional for a normal change or a correction. */}
+                  {(!paymentTerminal || correctingPayment) && (
                     <div className="mt-4">
                       <label htmlFor="payment-note" className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                         Note / reminder <span className="font-medium normal-case text-gray-300">(optional)</span>
@@ -504,14 +578,35 @@ const AdminOrderDetailPage = () => {
                     </div>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={handleSavePayment}
-                    disabled={!paymentDirty || savingPayment}
-                    className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-white bg-gray-900 rounded-md px-4 py-2.5 hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-gray-900 transition-colors"
-                  >
-                    <CreditCard className="w-4 h-4" /> {savingPayment ? "Saving…" : "Save Payment"}
-                  </button>
+                  {correctingPayment ? (
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={cancelPaymentCorrection}
+                        disabled={savingPayment}
+                        className="flex-1 inline-flex items-center justify-center text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-md px-4 py-2.5 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSavePayment}
+                        disabled={!paymentDirty || savingPayment}
+                        className="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-white bg-amber-600 rounded-md px-4 py-2.5 hover:bg-amber-700 disabled:opacity-40 disabled:hover:bg-amber-600 transition-colors"
+                      >
+                        <AlertTriangle className="w-4 h-4" /> {savingPayment ? "Saving…" : "Save correction"}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSavePayment}
+                      disabled={!paymentDirty || savingPayment}
+                      className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-white bg-gray-900 rounded-md px-4 py-2.5 hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-gray-900 transition-colors"
+                    >
+                      <CreditCard className="w-4 h-4" /> {savingPayment ? "Saving…" : "Save Payment"}
+                    </button>
+                  )}
                 </div>
 
                 {/* Order Summary */}
