@@ -14,10 +14,13 @@
 -- p_expected_status TEXT DEFAULT NULL parameter appended (signature change requires
 -- DROP + CREATE).
 
--- ─── admin_set_order_status ──────────────────────────────────────────────────────
-DROP FUNCTION IF EXISTS public.admin_set_order_status(UUID, TEXT, UUID, TEXT, TEXT, TEXT, BOOLEAN);
+-- Drop ALL old overloads so no stale version survives alongside the new one.
+-- IF EXISTS makes every DROP safe even if that overload was never created.
+DROP FUNCTION IF EXISTS public.admin_set_order_status(UUID, TEXT, UUID, TEXT, TEXT);           -- 5-param (20260609)
+DROP FUNCTION IF EXISTS public.admin_set_order_status(UUID, TEXT, UUID, TEXT, TEXT, TEXT);        -- 6-param (20260611, added note)
+DROP FUNCTION IF EXISTS public.admin_set_order_status(UUID, TEXT, UUID, TEXT, TEXT, TEXT, BOOLEAN); -- 7-param (20260613, added override)
 
-CREATE FUNCTION public.admin_set_order_status(
+CREATE OR REPLACE FUNCTION public.admin_set_order_status(
   p_order_id        UUID,
   p_status          TEXT,
   p_admin_id        UUID,
@@ -88,9 +91,14 @@ END;
 $$;
 
 -- ─── admin_set_payment_status ────────────────────────────────────────────────────
-DROP FUNCTION IF EXISTS public.admin_set_payment_status(UUID, TEXT, UUID, TEXT, TEXT, TEXT, BOOLEAN);
+-- The 6-param version (20260612) contained 'failed' payment transitions that were
+-- removed in 20260615. If 20260614 added the override param as a new overload rather
+-- than replacing the 6-param one, both overloads could coexist — the 'failed' paths
+-- in the 6-param version would still be callable. Drop it explicitly here.
+DROP FUNCTION IF EXISTS public.admin_set_payment_status(UUID, TEXT, UUID, TEXT, TEXT, TEXT);           -- 6-param (20260612, had 'failed')
+DROP FUNCTION IF EXISTS public.admin_set_payment_status(UUID, TEXT, UUID, TEXT, TEXT, TEXT, BOOLEAN);  -- 7-param (20260615, removed 'failed')
 
-CREATE FUNCTION public.admin_set_payment_status(
+CREATE OR REPLACE FUNCTION public.admin_set_payment_status(
   p_order_id        UUID,
   p_status          TEXT,
   p_admin_id        UUID,
