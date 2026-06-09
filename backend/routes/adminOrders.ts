@@ -82,6 +82,9 @@ interface StatusHistoryRow {
   changed_by_name: string | null;
   changed_by_email: string | null;
   note: string | null;
+  // Only present on order_status_history (not payment_status_history) — marks a row
+  // written via the terminal-state override. Undefined for payment rows → false.
+  is_correction?: boolean;
   created_at: string;
 }
 
@@ -112,6 +115,7 @@ function mapHistory(row: StatusHistoryRow) {
     changedByName: row.changed_by_name || "",
     changedByEmail: row.changed_by_email || "",
     note: row.note ?? null,
+    isCorrection: row.is_correction ?? false,
     createdAt: row.created_at,
   };
 }
@@ -281,7 +285,7 @@ router.get("/:id", async (req: Request, res: Response) => {
         transaction_id, shipping_address,
         order_items(${ORDER_ITEMS_SELECT}),
         order_status_history(
-          id, from_status, to_status, changed_by, changed_by_name, changed_by_email, note, created_at
+          id, from_status, to_status, changed_by, changed_by_name, changed_by_email, note, is_correction, created_at
         ),
         payment_status_history(
           id, from_status, to_status, changed_by, changed_by_name, changed_by_email, note, created_at
@@ -326,7 +330,11 @@ router.patch("/:id/status", async (req: Request, res: Response) => {
   // huge payload can't bloat the audit row; empty becomes null.
   const rawNote = String((req.body as { note?: unknown })?.note ?? "").trim();
   const note = rawNote ? rawNote.slice(0, 500) : null;
-  log.step(`admin=${adminId}  order=${orderId}  → status=${status}  note=${note ? `"${note.slice(0, 40)}…"` : "none"}`);
+  // Override = a deliberate correction of a finalized (terminal) order. It bypasses the
+  // forward-only transition machine, so it's gated: a note is mandatory and the change
+  // is flagged as a correction in the audit trail.
+  const override = (req.body as { override?: unknown })?.override === true;
+  log.step(`admin=${adminId}  order=${orderId}  → status=${status}  override=${override}  note=${note ? `"${note.slice(0, 40)}…"` : "none"}`);
 
   if (!VALID_STATUSES.includes(status)) {
     log.warn(`invalid status="${status}"`).end("ADMIN ORDER STATUS");
@@ -352,6 +360,7 @@ router.patch("/:id/status", async (req: Request, res: Response) => {
       p_admin_name: adminName,
       p_admin_email: adminEmail,
       p_note: note,
+      p_override: override,
     });
 
     if (error) {

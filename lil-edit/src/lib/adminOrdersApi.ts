@@ -51,6 +51,8 @@ export interface OrderStatusEvent {
   changedByEmail: string;
   // Optional admin note/reminder left with this change (admin view only).
   note: string | null;
+  // True when this row was written via the terminal-state correction override.
+  isCorrection: boolean;
   createdAt: string;
 }
 
@@ -197,10 +199,12 @@ export async function fetchAdminOrderById(orderId: string): Promise<AdminOrderDe
   };
 }
 
-export async function updateOrderStatus(orderId: string, status: OrderStatus, note?: string): Promise<{ success: boolean }> {
+// `override` = a deliberate correction of a finalized (terminal) order. The backend
+// requires a non-empty note when it's set and flags the change as a correction.
+export async function updateOrderStatus(orderId: string, status: OrderStatus, note?: string, override?: boolean): Promise<{ success: boolean }> {
   const res = await authFetch(`/api/admin/orders/${orderId}/status`, {
     method: "PATCH",
-    body: JSON.stringify({ status, note: note ?? "" }),
+    body: JSON.stringify({ status, note: note ?? "", override: override ?? false }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

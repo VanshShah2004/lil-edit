@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronRight, User, MapPin, Receipt, ShoppingBag, Save, History, Mail, Check, CreditCard, Wallet } from "lucide-react";
+import { ArrowLeft, ChevronRight, User, MapPin, Receipt, ShoppingBag, Save, History, Mail, Check, CreditCard, Wallet, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 import UserNavbar from "@/components/home/UserNavbar";
@@ -21,6 +21,7 @@ import {
   updatePaymentStatus,
   nextStatuses,
   nextPaymentStatuses,
+  SETTABLE_ORDER_STATUSES,
   type AdminOrderDetail,
   type OrderStatus,
   type PaymentStatus,
@@ -101,6 +102,8 @@ const AdminOrderDetailPage = () => {
   const [note, setNote] = useState("");
   const [notifyByEmail, setNotifyByEmail] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Correction mode: the escape hatch for a mistakenly-finalized (terminal) order.
+  const [correcting, setCorrecting] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentStatus>("pending");
   const [paymentNote, setPaymentNote] = useState("");
   const [savingPayment, setSavingPayment] = useState(false);
@@ -143,21 +146,42 @@ const AdminOrderDetailPage = () => {
     if (!order || selectedStatus === order.status) return;
     setSaving(true);
     const previous = order.status;
+    const isCorrection = correcting;
     // Optimistic badge update.
     setOrder((prev) => (prev ? { ...prev, status: selectedStatus } : prev));
     try {
-      await updateOrderStatus(order.id, selectedStatus, note);
-      toast.success(`Order status updated to "${STATUS_LABELS[selectedStatus]}"`);
+      await updateOrderStatus(order.id, selectedStatus, note, isCorrection);
+      toast.success(
+        isCorrection
+          ? `Order status corrected to "${STATUS_LABELS[selectedStatus]}"`
+          : `Order status updated to "${STATUS_LABELS[selectedStatus]}"`,
+      );
       setNote(""); // clear after it's been recorded with the change
+      setCorrecting(false);
       await loadOrder(order.id, false); // refresh from source of truth
     } catch (err) {
       console.error("[AdminOrderDetail] status update failed", err);
       toast.error(err instanceof Error ? err.message : "Failed to update status");
       setOrder((prev) => (prev ? { ...prev, status: previous } : prev)); // rollback
-      setSelectedStatus(previous);
+      if (!isCorrection) setSelectedStatus(previous); // keep the chosen target so a correction can be retried
     } finally {
       setSaving(false);
     }
+  };
+
+  // Enter correction mode: offer every settable status except the current (terminal)
+  // one, and seed the dropdown with the first of them.
+  const correctionOptions = order ? SETTABLE_ORDER_STATUSES.filter((s) => s !== order.status) : [];
+  const startCorrection = () => {
+    if (!correctionOptions.length) return;
+    setCorrecting(true);
+    setNote("");
+    setSelectedStatus(correctionOptions[0]);
+  };
+  const cancelCorrection = () => {
+    setCorrecting(false);
+    setNote("");
+    if (order) setSelectedStatus(order.status);
   };
 
   const handleSavePayment = async () => {
@@ -297,26 +321,77 @@ const AdminOrderDetailPage = () => {
                     <span className="text-sm text-gray-600">Current</span>
                     <OrderStatusBadge status={order.status} />
                   </div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Update status</label>
-                  <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as OrderStatus)} disabled={terminal}>
-                    <SelectTrigger className="mt-1.5 h-10 w-full border-gray-200 bg-gray-50/50 text-sm disabled:opacity-60">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map((s) => (
-                        <SelectItem key={s} value={s} className="text-sm">{STATUS_LABELS[s]}</SelectItem>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    {correcting ? "Correct status to" : "Update status"}
+                  </label>
+                  {correcting ? (
+                    // Button group instead of a dropdown — pick the corrected status directly.
+                    <div className="mt-1.5 grid grid-cols-2 gap-2">
+                      {correctionOptions.map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setSelectedStatus(s)}
+                          aria-pressed={selectedStatus === s}
+                          className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                            selectedStatus === s
+                              ? "border-amber-500 bg-amber-50 text-amber-800"
+                              : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300"
+                          }`}
+                        >
+                          {STATUS_LABELS[s]}
+                        </button>
                       ))}
-                    </SelectContent>
-                  </Select>
-                  {terminal && (
-                    <p className="mt-2 text-xs text-gray-400">
-                      This order is {STATUS_LABELS[order.status].toLowerCase()} — a final state. No further status changes are allowed.
-                    </p>
+                    </div>
+                  ) : (
+                    <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as OrderStatus)} disabled={terminal}>
+                      <SelectTrigger className="mt-1.5 h-10 w-full border-gray-200 bg-gray-50/50 text-sm disabled:opacity-60">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {statusOptions.map((s) => (
+                          <SelectItem key={s} value={s} className="text-sm">{STATUS_LABELS[s]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
 
-                  {/* Optional note/reminder recorded with this change and shown in the
-                      Status History below (admin-only). */}
-                  {!terminal && (
+                  {/* Correction / backpedal escape hatch — available in EVERY state so an
+                      admin can undo a mistaken status. The normal flow is forward-only and
+                      terminal states can't move at all, so this is the only way back. For a
+                      terminal order it also explains the lock. */}
+                  {!correcting && (
+                    <div className="mt-2">
+                      {terminal && (
+                        <p className="text-xs text-gray-400">
+                          This order is {STATUS_LABELS[order.status].toLowerCase()} — a final state. No further status changes are allowed in the normal flow.
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={startCorrection}
+                        className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 hover:text-amber-800"
+                      >
+                        <AlertTriangle className="h-3.5 w-3.5" /> Correct status
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Correction warning — overriding the normal flow is deliberately
+                      friction-y and requires a note; it's logged as a correction. */}
+                  {correcting && (
+                    <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+                      <p className="font-semibold flex items-center gap-1.5">
+                        <AlertTriangle className="h-3.5 w-3.5" /> Correcting the order status
+                      </p>
+                      <p className="mt-1 text-amber-700">
+                        This overrides the normal flow to fix a mistaken status (currently “{STATUS_LABELS[order.status].toLowerCase()}”), including moving backward. It's recorded as a correction in the status history.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Note — optional for a normal change, required for a correction. */}
+                  {(!terminal || correcting) && (
                     <div className="mt-4">
                       <label htmlFor="status-note" className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                         Note / reminder <span className="font-medium normal-case text-gray-300">(optional)</span>
@@ -325,7 +400,7 @@ const AdminOrderDetailPage = () => {
                         id="status-note"
                         value={note}
                         onChange={(e) => setNote(e.target.value.slice(0, 500))}
-                        placeholder="e.g. Courier delayed — customer informed"
+                        placeholder={correcting ? "e.g. Marked delivered by mistake — order is still in transit" : "e.g. Courier delayed — customer informed"}
                         rows={2}
                         className="mt-1.5 resize-none border-gray-200 bg-gray-50/50 text-sm"
                       />
@@ -353,14 +428,35 @@ const AdminOrderDetailPage = () => {
                     </span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={!dirty || saving}
-                    className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-white bg-gray-900 rounded-md px-4 py-2.5 hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-gray-900 transition-colors"
-                  >
-                    <Save className="w-4 h-4" /> {saving ? "Saving…" : "Save Changes"}
-                  </button>
+                  {correcting ? (
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={cancelCorrection}
+                        disabled={saving}
+                        className="flex-1 inline-flex items-center justify-center text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-md px-4 py-2.5 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={!dirty || saving}
+                        className="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-white bg-amber-600 rounded-md px-4 py-2.5 hover:bg-amber-700 disabled:opacity-40 disabled:hover:bg-amber-600 transition-colors"
+                      >
+                        <AlertTriangle className="w-4 h-4" /> {saving ? "Saving…" : "Save correction"}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={!dirty || saving}
+                      className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-white bg-gray-900 rounded-md px-4 py-2.5 hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-gray-900 transition-colors"
+                    >
+                      <Save className="w-4 h-4" /> {saving ? "Saving…" : "Save Changes"}
+                    </button>
+                  )}
                 </div>
 
                 {/* Payment Management */}
