@@ -714,7 +714,7 @@ const CurationPage = () => {
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <GroupIcon className="w-4 h-4 text-gray-500 shrink-0" />
-                          <span className="text-sm font-bold text-gray-900 truncate">{group.label}</span>
+                          <span className="font-display text-sm font-bold text-gray-900 truncate">{group.label}</span>
                           <span className="text-[11px] font-semibold text-gray-400">{groupSections.length}</span>
                         </div>
                         <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -734,7 +734,7 @@ const CurationPage = () => {
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex items-center gap-2 min-w-0">
                                     <LayoutGrid className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                                    <span className="text-sm font-semibold text-gray-900 truncate">{s.title}</span>
+                                    <span className="font-display text-sm font-semibold text-gray-900 truncate">{s.title}</span>
                                   </div>
                                   <span
                                     role="button"
