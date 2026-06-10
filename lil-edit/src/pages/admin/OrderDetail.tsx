@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronRight, User, MapPin, Receipt, ShoppingBag, Save, History, Mail, Check, CreditCard, Wallet, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ChevronRight, User, MapPin, Receipt, ShoppingBag, Save, History, Mail, Check, CreditCard, Wallet, AlertTriangle, Download } from "lucide-react";
 import { toast } from "sonner";
+
+import logo from "@/assets/logo.png";
 
 import UserNavbar from "@/components/home/UserNavbar";
 import Navbar from "@/components/layout/Navbar";
@@ -38,6 +40,10 @@ function formatDateTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("en-IN", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+}
+
+function inr(n: number): string {
+  return `₹${Math.round(n).toLocaleString("en-IN")}`;
 }
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -250,6 +256,202 @@ const AdminOrderDetailPage = () => {
     if (order) setSelectedPayment(order.paymentStatus);
   };
 
+  // Build a printable order sheet (same approach as the ManageProducts product
+  // sheet): styled HTML in a new window, then window.print() → save as PDF.
+  const handleDownloadPdf = () => {
+    if (!order) return;
+    const a = order.shippingAddress ?? {};
+
+    const itemRows = order.items.map((it) => `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${it.image ? `<img src="${it.image}" style="width:36px;height:44px;object-fit:cover;border-radius:4px;border:1px solid #eee;" alt="${it.title}" />` : ""}
+            <div>
+              <div style="font-weight:700;">${it.title}</div>
+              <div style="color:#888;font-size:11px;">${[
+                it.size ? `Size: ${it.size}` : "",
+                it.color.name,
+              ].filter(Boolean).join(" · ")}</div>
+            </div>
+          </div>
+        </td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-family:monospace;font-size:11px;color:#888;">${it.sku}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:right;">${it.quantity}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:right;">${inr(it.unitPrice)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:700;">${inr(it.lineTotal)}</td>
+      </tr>`).join("");
+
+    const historyRows = (
+      events: { fromStatus: string | null; toStatus: string; changedByName: string; changedByEmail: string; note: string | null; isCorrection: boolean; createdAt: string }[],
+      labels: Record<string, string>,
+    ) => events.map((h) => `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;">
+          ${h.fromStatus === null ? "Opening entry" : `${labels[h.fromStatus]} → ${labels[h.toStatus]}`}
+          ${h.isCorrection ? `<span style="color:#b45309;font-weight:700;font-size:10px;"> (correction)</span>` : ""}
+        </td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;">${h.changedByName || "System"}${h.changedByEmail ? `<span style="color:#999;font-size:11px;"> · ${h.changedByEmail}</span>` : ""}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;color:#555;${h.note ? "font-style:italic;" : ""}">${h.note ?? "—"}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;white-space:nowrap;color:#888;">${formatDateTime(h.createdAt)}</td>
+      </tr>`).join("");
+
+    const statusRows = historyRows(order.statusHistory ?? [], STATUS_LABELS);
+    const paymentRows = historyRows(order.paymentStatusHistory ?? [], PAYMENT_STATUS_LABELS);
+
+    const formattedDateTime = new Date().toLocaleString("en-IN", {
+      day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true,
+    });
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Order Sheet — ${order.orderNumber}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+        <style>
+          @page {
+            size: auto;
+            margin: 0;
+          }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #111;
+            padding: 1.5cm 2cm;
+            font-size: 13px;
+            line-height: 1.6;
+          }
+          h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
+          .label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #999; margin-bottom: 3px; }
+          .value { font-size: 12px; font-weight: 700; color: #111; }
+          .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 6px; margin-bottom: 16px; }
+          .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px 32px; margin-bottom: 32px; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          th { background: #f8f8f8; padding: 8px 12px; text-align: left; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #999; }
+          .status-badge {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            display: inline-block;
+            background: #111;
+            color: #fff;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+          .footer { margin-top: 40px; border-top: 1px solid #eee; padding-top: 12px; color: #bbb; font-size: 10px; display: flex; justify-content: space-between; }
+          @media print {
+            body { padding: 1.5cm 2cm; }
+            img { break-inside: avoid; }
+            th {
+              background: #f8f8f8 !important;
+              print-color-adjust: exact;
+              -webkit-print-color-adjust: exact;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <!-- Row 1: Left-aligned Logo & Title -->
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
+          <img src="${logo}" style="height:48px;width:auto;print-color-adjust:exact;-webkit-print-color-adjust:exact;" alt="The Lil Edit Logo" />
+          <span style="font-size:24px;font-weight:600;color:#111;font-family:'Playfair Display', Georgia, serif;letter-spacing:-0.2px;">The Lil Edit</span>
+        </div>
+
+        <!-- Row 2: Order Sheet Details & Status -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #111;padding-bottom:16px;margin-bottom:28px;">
+          <div style="text-align:left;">
+            <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#999;margin-bottom:4px;">Order Data Sheet</p>
+            <h1 style="margin:0;">${order.orderNumber}</h1>
+          </div>
+          <div style="text-align:right;">
+            <div class="label" style="margin-bottom:6px;">Status</div>
+            <span class="status-badge">${STATUS_LABELS[order.status]}</span>
+          </div>
+        </div>
+
+        <div class="section-title">Order Information</div>
+        <div class="grid">
+          <div><div class="label">Order ID</div><div class="value" style="font-family:monospace;">${order.orderNumber}</div></div>
+          <div><div class="label">Created Date</div><div class="value">${formatDateTime(order.createdAt)}</div></div>
+          <div><div class="label">Order Status</div><div class="value">${STATUS_LABELS[order.status]}</div></div>
+          <div><div class="label">Payment Status</div><div class="value">${PAYMENT_STATUS_LABELS[order.paymentStatus]}</div></div>
+          <div><div class="label">Payment Method</div><div class="value">${order.paymentMethod?.toUpperCase() ?? "—"}</div></div>
+          <div><div class="label">Transaction ID</div><div class="value" style="font-family:monospace;">${order.transactionId ?? "—"}</div></div>
+        </div>
+
+        <div class="section-title">Customer Information</div>
+        <div class="grid">
+          <div><div class="label">Customer Name</div><div class="value">${order.customer.name}</div></div>
+          <div><div class="label">Email</div><div class="value">${order.customer.email || "—"}</div></div>
+          <div><div class="label">Phone Number</div><div class="value">${order.customer.phone || "—"}</div></div>
+          <div><div class="label">User ID</div><div class="value" style="font-family:monospace;font-size:10px;">${order.customer.userId}</div></div>
+        </div>
+
+        <div class="section-title">Shipping Address</div>
+        <div class="grid">
+          <div><div class="label">Full Name</div><div class="value">${a.fullName || order.customer.name}</div></div>
+          <div><div class="label">Address Line 1</div><div class="value">${a.line1 ?? "—"}</div></div>
+          <div><div class="label">Address Line 2</div><div class="value">${a.line2 ?? "—"}</div></div>
+          <div><div class="label">City</div><div class="value">${a.city ?? "—"}</div></div>
+          <div><div class="label">State</div><div class="value">${a.state ?? "—"}</div></div>
+          <div><div class="label">Postal Code</div><div class="value">${a.pincode ?? "—"}</div></div>
+          <div><div class="label">Country</div><div class="value">${a.country ?? "—"}</div></div>
+          <div><div class="label">Phone Number</div><div class="value">${a.phone || order.customer.phone || "—"}</div></div>
+        </div>
+
+        <div class="section-title">Ordered Products (${order.itemCount})</div>
+        <table style="margin-bottom:32px;">
+          <thead><tr><th>Product</th><th>SKU</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Unit Price</th><th style="text-align:right;">Total</th></tr></thead>
+          <tbody>${itemRows}</tbody>
+        </table>
+
+        <div class="section-title">Payment Summary</div>
+        <table style="width:320px;margin-left:auto;margin-bottom:32px;">
+          <tbody>
+            <tr><td style="padding:6px 12px;color:#888;">Subtotal</td><td style="padding:6px 12px;text-align:right;">${inr(order.subtotal)}</td></tr>
+            ${order.discount > 0 ? `<tr><td style="padding:6px 12px;color:#888;">Discount</td><td style="padding:6px 12px;text-align:right;">−${inr(order.discount)}</td></tr>` : ""}
+            <tr><td style="padding:6px 12px;color:#888;">Shipping</td><td style="padding:6px 12px;text-align:right;">${order.shippingFee > 0 ? inr(order.shippingFee) : "Free"}</td></tr>
+            ${order.tax > 0 ? `<tr><td style="padding:6px 12px;color:#888;">Tax</td><td style="padding:6px 12px;text-align:right;">${inr(order.tax)}</td></tr>` : ""}
+            <tr><td style="padding:8px 12px;font-weight:800;border-top:1px solid #eee;">Total</td><td style="padding:8px 12px;text-align:right;font-weight:800;border-top:1px solid #eee;">${inr(order.total)}</td></tr>
+          </tbody>
+        </table>
+
+        ${statusRows ? `
+        <div class="section-title">Status History</div>
+        <table style="margin-bottom:32px;">
+          <thead><tr><th>Change</th><th>By</th><th>Note</th><th>When</th></tr></thead>
+          <tbody>${statusRows}</tbody>
+        </table>` : ""}
+
+        ${paymentRows ? `
+        <div class="section-title">Payment History</div>
+        <table style="margin-bottom:32px;">
+          <thead><tr><th>Change</th><th>By</th><th>Note</th><th>When</th></tr></thead>
+          <tbody>${paymentRows}</tbody>
+        </table>` : ""}
+
+        <div class="footer">
+          <span>The Lil Edit — Order Management</span>
+          <span>Generated: ${formattedDateTime}</span>
+        </div>
+      </body>
+      </html>`;
+
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 600);
+  };
+
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -276,9 +478,20 @@ const AdminOrderDetailPage = () => {
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-gray-800 font-medium font-mono">{order?.orderNumber ?? "Order"}</span>
           </div>
-          <Link to="/admin/orders" className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="w-4 h-4" /> Back to orders
-          </Link>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Link to="/admin/orders" className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900">
+              <ArrowLeft className="w-4 h-4" /> Back to orders
+            </Link>
+            {order && (
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-gray-900 rounded-md px-4 py-2 hover:bg-gray-800 transition-colors"
+              >
+                <Download className="w-4 h-4" /> Download PDF
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
