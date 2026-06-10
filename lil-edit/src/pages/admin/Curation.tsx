@@ -841,7 +841,7 @@ const CurationPage = () => {
                     </div>
 
                     {/* Live preview — the real storefront component, fed the current draft */}
-                    <div className="border-t border-gray-100">
+                    <div className="mt-40 border-t border-gray-100">
                       <div className="flex items-center gap-2 px-5 py-3 bg-gray-50/60">
                         <Eye className="w-4 h-4 text-gray-500 shrink-0" />
                         <span className="text-sm font-semibold text-gray-700">Live preview</span>
