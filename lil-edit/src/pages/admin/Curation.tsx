@@ -850,16 +850,16 @@ const CurationPage = () => {
                           tabIndex={0}
                           onKeyDown={(e) => { if (e.key === "Enter") setActiveKey(key); }}
                           title="Middle-click to close"
-                          className={`group/tab flex items-center gap-2 pl-3 pr-1.5 py-2 rounded-t-lg border border-b-0 cursor-pointer whitespace-nowrap transition-colors max-w-[220px] ${isActive ? "bg-white border-gray-200 shadow-sm" : "bg-gray-100/70 border-transparent hover:bg-gray-100"}`}
+                          className={`group/tab flex items-center gap-1.5 pl-2.5 pr-1 py-1.5 rounded-t-lg border border-b-0 cursor-pointer whitespace-nowrap transition-colors max-w-[180px] ${isActive ? "bg-white border-gray-200 shadow-sm" : "bg-gray-100/70 border-transparent hover:bg-gray-100"}`}
                         >
-                          <span className={`font-display text-sm truncate ${isActive ? "font-semibold text-gray-900" : "font-medium text-gray-500"}`}>{sec.title}</span>
+                          <span className={`font-display text-xs truncate ${isActive ? "font-semibold text-gray-900" : "font-medium text-gray-500"}`}>{sec.title}</span>
                           {isTabDirty(key) && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title="Unsaved changes" />}
                           <button
                             onClick={(e) => closeTab(key, e)}
-                            className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-700 shrink-0"
+                            className="w-4 h-4 flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-700 shrink-0"
                             aria-label={`Close ${sec.title}`}
                           >
-                            <X className="w-3.5 h-3.5" />
+                            <X className="w-3 h-3" />
                           </button>
                         </div>
                       );
