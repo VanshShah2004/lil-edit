@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { toast } from "sonner";
 import {
   LayoutGrid,
@@ -506,6 +506,13 @@ function ItemRow({
   );
 }
 
+// Per-tab editing state: the working draft plus the snapshot it was last saved at
+// (used to detect unsaved changes). One entry per open tab.
+interface TabState {
+  draft: DraftItem[];
+  snapshot: string;
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Page
 // ═════════════════════════════════════════════════════════════════════════════
@@ -516,20 +523,45 @@ const CurationPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [selectedKey, setSelectedKey] = useState<SectionKey | null>(null);
+  // Chrome-style tabs: several sections can be open at once, each keeping its own
+  // working draft + saved snapshot. `openTabs` is the ordered tab strip, `activeKey`
+  // the focused tab, `tabs` the per-section editing state.
+  const [openTabs, setOpenTabs] = useState<SectionKey[]>([]);
+  const [activeKey, setActiveKey] = useState<SectionKey | null>(null);
+  const [tabs, setTabs] = useState<Record<string, TabState>>({});
   // Which page groups are expanded in the sidebar. Multiple can be open at once;
   // Dashboard open by default.
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(["Dashboard"]));
-  const [draft, setDraft] = useState<DraftItem[]>([]);
-  const [savedSnapshot, setSavedSnapshot] = useState<string>("[]");
   const [saving, setSaving] = useState(false);
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [tileEditing, setTileEditing] = useState<{ item: DraftItem | null } | null>(null);
   const [quickView, setQuickView] = useState<ResolvedProductItem | null>(null);
 
-  const selected = useMemo(() => sections.find((s) => s.key === selectedKey) ?? null, [sections, selectedKey]);
-  const dirty = useMemo(() => JSON.stringify(draft.map(toInput)) !== savedSnapshot, [draft, savedSnapshot]);
+  const selected = useMemo(() => sections.find((s) => s.key === activeKey) ?? null, [sections, activeKey]);
+  const activeTab = activeKey ? tabs[activeKey] : undefined;
+  const draft = useMemo(() => activeTab?.draft ?? [], [activeTab]);
+  const savedSnapshot = activeTab?.snapshot ?? "[]";
+  const dirty = useMemo(
+    () => !!activeTab && JSON.stringify(draft.map(toInput)) !== savedSnapshot,
+    [activeTab, draft, savedSnapshot],
+  );
+
+  // True when a (possibly inactive) tab has unsaved edits — drives the tab's dot.
+  const isTabDirty = (key: SectionKey): boolean => {
+    const t = tabs[key];
+    return !!t && JSON.stringify(t.draft.map(toInput)) !== t.snapshot;
+  };
+
+  // Mutate the active tab's draft in place.
+  const updateActiveDraft = (updater: (prev: DraftItem[]) => DraftItem[]) => {
+    if (!activeKey) return;
+    setTabs((prev) => {
+      const t = prev[activeKey];
+      if (!t) return prev;
+      return { ...prev, [activeKey]: { ...t, draft: updater(t.draft) } };
+    });
+  };
 
   // The live preview is resolved by the backend so it matches the storefront exactly,
   // including the product top-up (curated picks + catalog fill). `draftResolved` is the
@@ -561,15 +593,6 @@ const CurationPage = () => {
 
   useEffect(loadSections, []);
 
-  // Load the selected section's items into the local draft whenever the selection changes.
-  useEffect(() => {
-    if (!selected) return;
-    const items = selected.items.map(toDraft);
-    setDraft(items);
-    setSavedSnapshot(JSON.stringify(items.map(toInput)));
-    console.log(`[Curation] selected ${selected.key} — ${items.length} item(s)`);
-  }, [selected]);
-
   // Resolve the live preview on the backend (debounced) so it shows the real storefront
   // output — curated picks plus the auto-filled catalog products — for the current draft.
   useEffect(() => {
@@ -590,15 +613,35 @@ const CurationPage = () => {
     return () => clearTimeout(t);
   }, [selected, draft]);
 
-  const selectSection = (key: SectionKey) => {
-    if (dirty && !window.confirm("Discard unsaved changes to this section?")) return;
-    setSelectedKey(key);
+  // Open a section in a tab (or focus it if already open). Drafts of other open tabs
+  // are preserved, so you can switch freely without losing work.
+  const openSection = (key: SectionKey) => {
+    setOpenTabs((prev) => (prev.includes(key) ? prev : [...prev, key]));
+    setTabs((prev) => {
+      if (prev[key]) return prev; // keep an already-open tab's edits
+      const section = sections.find((s) => s.key === key);
+      const items = (section?.items ?? []).map(toDraft);
+      console.log(`[Curation] opened ${key} — ${items.length} item(s)`);
+      return { ...prev, [key]: { draft: items, snapshot: JSON.stringify(items.map(toInput)) } };
+    });
+    setActiveKey(key);
     const g = groupOf(key);
     if (g) setOpenGroups((prev) => (prev.has(g) ? prev : new Set(prev).add(g)));
   };
 
+  // Close a tab; confirm first if it has unsaved edits. Falls back to a neighbour tab.
+  const closeTab = (key: SectionKey, e?: MouseEvent) => {
+    e?.stopPropagation();
+    if (isTabDirty(key) && !window.confirm("Discard unsaved changes to this section?")) return;
+    const idx = openTabs.indexOf(key);
+    const nextTabs = openTabs.filter((k) => k !== key);
+    setOpenTabs(nextTabs);
+    setTabs((prev) => { const n = { ...prev }; delete n[key]; return n; });
+    if (key === activeKey) setActiveKey(nextTabs[idx] ?? nextTabs[idx - 1] ?? null);
+  };
+
   const move = (index: number, dir: -1 | 1) => {
-    setDraft((prev) => {
+    updateActiveDraft((prev) => {
       const next = [...prev];
       const target = index + dir;
       if (target < 0 || target >= next.length) return prev;
@@ -607,10 +650,10 @@ const CurationPage = () => {
     });
   };
 
-  const removeAt = (index: number) => setDraft((prev) => prev.filter((_, i) => i !== index));
+  const removeAt = (index: number) => updateActiveDraft((prev) => prev.filter((_, i) => i !== index));
 
   const addProduct = (p: ResolvedProductItem) => {
-    setDraft((prev) => [
+    updateActiveDraft((prev) => [
       ...prev,
       {
         tempId: nextTempId(),
@@ -624,7 +667,7 @@ const CurationPage = () => {
   };
 
   const upsertTile = (d: DraftItem) => {
-    setDraft((prev) => {
+    updateActiveDraft((prev) => {
       const idx = prev.findIndex((x) => x.tempId === d.tempId);
       if (idx === -1) return [...prev, d];
       const next = [...prev];
@@ -635,11 +678,12 @@ const CurationPage = () => {
   };
 
   const save = async () => {
-    if (!selected) return;
+    if (!selected || !activeKey) return;
     setSaving(true);
     try {
+      const snapshot = JSON.stringify(draft.map(toInput));
       await saveSectionItems(selected.key, draft.map(toInput));
-      setSavedSnapshot(JSON.stringify(draft.map(toInput)));
+      setTabs((prev) => (prev[activeKey] ? { ...prev, [activeKey]: { ...prev[activeKey], snapshot } } : prev));
       // Reflect the new count in the sidebar without a full refetch.
       setSections((prev) => prev.map((s) => (s.key === selected.key ? { ...s, items: draft.map((d, i) => ({
         id: d.tempId, sortOrder: i, kind: d.kind, productBaseSku: d.productBaseSku,
@@ -731,17 +775,19 @@ const CurationPage = () => {
                       {isOpen && (
                         <div className="p-2 space-y-1.5 border-t border-gray-100">
                           {groupSections.map((s) => {
-                            const active = s.key === selectedKey;
+                            const active = s.key === activeKey;
+                            const open = openTabs.includes(s.key);
                             return (
                               <button
                                 key={s.key}
-                                onClick={() => selectSection(s.key)}
+                                onClick={() => openSection(s.key)}
                                 className={`w-full text-left p-3 rounded-lg border transition-all ${active ? "border-gray-900 bg-gray-50 shadow-sm" : "border-gray-100 hover:border-gray-300"}`}
                               >
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex items-center gap-2 min-w-0">
                                     <LayoutGrid className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                                     <span className="font-display text-sm font-semibold text-gray-900 truncate">{s.title}</span>
+                                    {open && <span className="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0" title="Open in a tab" />}
                                   </div>
                                   <span
                                     role="button"
@@ -771,10 +817,40 @@ const CurationPage = () => {
 
               {/* ── Editor ── */}
               <section className="min-w-0">
+                {/* Chrome-style tab strip for the open sections */}
+                {openTabs.length > 0 && (
+                  <div className="flex items-end gap-1 overflow-x-auto no-scrollbar">
+                    {openTabs.map((key) => {
+                      const sec = sections.find((s) => s.key === key);
+                      if (!sec) return null;
+                      const isActive = key === activeKey;
+                      return (
+                        <div
+                          key={key}
+                          onClick={() => setActiveKey(key)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === "Enter") setActiveKey(key); }}
+                          className={`group/tab flex items-center gap-2 pl-3 pr-1.5 py-2 rounded-t-lg border border-b-0 cursor-pointer whitespace-nowrap transition-colors max-w-[220px] ${isActive ? "bg-white border-gray-200 shadow-sm" : "bg-gray-100/70 border-transparent hover:bg-gray-100"}`}
+                        >
+                          <span className={`font-display text-sm truncate ${isActive ? "font-semibold text-gray-900" : "font-medium text-gray-500"}`}>{sec.title}</span>
+                          {isTabDirty(key) && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title="Unsaved changes" />}
+                          <button
+                            onClick={(e) => closeTab(key, e)}
+                            className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-700 shrink-0"
+                            aria-label={`Close ${sec.title}`}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
                 {!selected ? (
-                  <div className="py-20 text-center text-gray-400">Select a section to edit.</div>
+                  <div className="py-20 text-center text-gray-400">Select a section from the sidebar to open it in a tab.</div>
                 ) : (
-                  <div className="border border-gray-100 rounded-2xl bg-white shadow-sm overflow-hidden">
+                  <div className="border border-gray-100 rounded-2xl rounded-tl-none bg-white shadow-sm overflow-hidden">
                     {/* Editor header */}
                     <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-gray-100">
                       <div className="min-w-0">
