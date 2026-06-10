@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { ChevronRight, Heart, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
+import FeaturedCollectionsGrid from "@/components/collections/FeaturedCollectionsGrid";
 import Footer from "@/components/layout/Footer";
 
 import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
@@ -16,64 +16,6 @@ import img5 from "@/assets/searchbar-frequent_searches/le-5.png";
 import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
 
 // Mock Data
-const featuredCollections = [
-  {
-    id: "col-1",
-    name: "Summer Escape",
-    description: "Vibrant & Adventurous",
-    image: img1,
-    productCount: 48,
-    badge: "New",
-    size: "large", // large, medium, small
-  },
-  {
-    id: "col-2",
-    name: "Tiny Trendsetters",
-    description: "Chic & Playful",
-    image: img2,
-    productCount: 36,
-    badge: "Trending",
-    size: "medium",
-  },
-  {
-    id: "col-3",
-    name: "Cozy Classics",
-    description: "Timeless Comfort",
-    image: img3,
-    productCount: 42,
-    badge: null,
-    size: "medium",
-  },
-  {
-    id: "col-4",
-    name: "Playdate Essentials",
-    description: "Edgy & Distinctive",
-    image: img4,
-    productCount: 35,
-    badge: "Best Seller",
-    size: "small",
-  },
-  {
-    id: "col-5",
-    name: "Party Picks",
-    description: "Elegant Celebrations",
-    image: img5,
-    productCount: 28,
-    badge: null,
-    size: "small",
-  },
-  {
-    id: "col-6",
-    name: "Mini Streetwear",
-    description: "Contemporary urban styles for mini fashionistas",
-    image: img6,
-    productCount: 32,
-    badge: "New",
-    size: "large",
-  },
-];
-
-
 const occasionCategories = [
   { id: "occ-1", name: "Birthday Party", gradient: "from-pink-200 to-rose-200", icon: "🎉" },
   { id: "occ-2", name: "Casual Wear", gradient: "from-blue-200 to-cyan-200", icon: "👟" },
@@ -425,81 +367,7 @@ export default function Collections() {
           {/* RIGHT CONTENT */}
           <div className="flex-1 w-full min-w-0 space-y-10 sm:space-y-12 md:space-y-16">
             {/* FEATURED COLLECTIONS GRID */}
-            <section>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
-                Featured Collections
-              </h2>
-
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4 auto-rows-[180px] sm:auto-rows-[200px] lg:auto-rows-[220px] grid-flow-row-dense">
-                {featuredCollections.map((collection, index) => {
-                  let spanClass = "";
-
-                  if (index === 0) {
-                    spanClass = "col-span-2 row-span-1 lg:col-span-2 lg:row-span-2";
-                  } else if (index === 1) {
-                    spanClass = "col-span-1 row-span-1 lg:col-span-1 lg:row-span-2";
-                  } else if (index === 2) {
-                    spanClass = "col-span-1 row-span-1 lg:col-span-1 lg:row-span-2";
-                  } else if (index === 3) {
-                    spanClass = "col-span-1 row-span-1 lg:col-span-1 lg:row-span-1";
-                  } else if (index === 4) {
-                    spanClass = "col-span-1 row-span-1 lg:col-span-1 lg:row-span-1";
-                  } else if (index === 5) {
-                    spanClass = "col-span-2 row-span-1 lg:col-span-2 lg:row-span-1";
-                  }
-
-                  return (
-                    <div
-                      key={collection.id}
-                      className={`${spanClass} group relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 cursor-pointer transition-all duration-500 h-full min-h-[180px]`}
-                    >
-                      {/* Image */}
-                      <img
-                        src={collection.image}
-                        alt={collection.name}
-                        loading="lazy"
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                      />
-                      <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-all duration-300" />
-
-
-                      {/* Overlay Content */}
-                      <div className="absolute inset-0 flex flex-col justify-between p-3 sm:p-5 md:p-6">
-                        {/* Badge */}
-                        {collection.badge && (
-                          <div className="self-start">
-                            <Badge
-                              className="text-[9px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg text-white border-0"
-                              style={{ backgroundColor: "hsl(268, 45%, 65%)" }}
-                            >
-                              {collection.badge}
-                            </Badge>
-                          </div>
-                        )}
-
-                        {/* Bottom Content */}
-                        <div className="text-white space-y-2 sm:space-y-3">
-                          <div>
-                            <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold mb-0.5 sm:mb-1 line-clamp-2">
-                              {collection.name}
-                            </h3>
-                            <p className="text-xs sm:text-sm opacity-90 line-clamp-2">
-                              {collection.description}
-                            </p>
-                          </div>
-
-                          <div className="flex items-center justify-end pt-1 sm:pt-2">
-                            <button className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
+            <FeaturedCollectionsGrid />
 
             {/* SHOP BY OCCASION */}
             <section>

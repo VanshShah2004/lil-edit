@@ -186,17 +186,29 @@ async function resolveProductsBySku(skus: string[], log: OpLogger): Promise<Map<
   return resolveProductRows((data ?? []) as ProductRow[], log);
 }
 
-// Random/recent published products for the empty-section fallback. For the trending
+// Random/recent published products used both for the empty-section fallback AND to
+// top up a partially-curated product section up to its max_items. For the trending
 // section we prefer is_trending=true and guarantee a "Trending" badge; if too few
 // trending products exist we top up with any published product (still trending-tagged).
+// `excludeSkus` keeps already-curated products from being repeated in the top-up.
 async function fallbackProducts(
   limit: number,
-  opts: { trendingOnly?: boolean },
+  opts: { trendingOnly?: boolean; excludeSkus?: Set<string> },
   log: OpLogger,
 ): Promise<ResolvedProduct[]> {
+  if (limit <= 0) return [];
   const tagTrending = !!opts.trendingOnly;
+  const exclude = opts.excludeSkus ?? new Set<string>();
   const collected: ProductRow[] = [];
   const seen = new Set<string>();
+  const take = (p: ProductRow): void => {
+    if (seen.has(p.id) || exclude.has(p.base_sku)) return;
+    seen.add(p.id);
+    collected.push(p);
+  };
+
+  // Fetch a little extra headroom so excluded SKUs don't starve the result.
+  const headroom = limit + exclude.size;
 
   if (opts.trendingOnly) {
     const { data } = await db()
@@ -204,10 +216,8 @@ async function fallbackProducts(
       .select(PRODUCT_SELECT)
       .eq("status", "PUBLISHED")
       .eq("is_trending", true)
-      .limit(limit);
-    for (const p of (data ?? []) as ProductRow[]) {
-      if (!seen.has(p.id)) { seen.add(p.id); collected.push(p); }
-    }
+      .limit(headroom);
+    for (const p of (data ?? []) as ProductRow[]) take(p);
   }
 
   if (collected.length < limit) {
@@ -217,10 +227,10 @@ async function fallbackProducts(
       .select(PRODUCT_SELECT)
       .eq("status", "PUBLISHED")
       .order("created_at", { ascending: false })
-      .limit(limit * 2);
+      .limit(headroom * 2);
     for (const p of (data ?? []) as ProductRow[]) {
       if (collected.length >= limit) break;
-      if (!seen.has(p.id)) { seen.add(p.id); collected.push(p); }
+      take(p);
     }
   }
 
@@ -234,6 +244,67 @@ async function fallbackProducts(
     })
     .filter((x): x is ResolvedProduct => x !== null)
     .slice(0, limit);
+}
+
+// Resolve a section's raw item rows into storefront items, applying the empty-section
+// fallback and the partial-curation top-up. Shared by the cached storefront read
+// (getResolvedSection, DB rows) and the admin preview (unsaved draft rows).
+async function resolveItems(section: SectionRow, itemRows: ItemRow[], log: OpLogger): Promise<ResolvedItem[]> {
+  const key = section.section_key;
+
+  if (itemRows.length === 0) {
+    // ── Empty section → random published products (your configured fallback) ──
+    // Editorial-only sections have no product fallback; they simply render empty.
+    if (section.item_type === "editorial") {
+      log.step(`section ${key} - empty editorial, no fallback`);
+      return [];
+    }
+    const trendingOnly = key === "home_trending";
+    const items = await fallbackProducts(section.max_items, { trendingOnly }, log);
+    log.step(`section ${key} - fallback products=${items.length}  trending=${trendingOnly}`);
+    return items;
+  }
+
+  // Resolve product items against the live catalog; pass editorial items through.
+  const skus = itemRows.filter((r) => r.kind === "product" && r.product_base_sku).map((r) => r.product_base_sku as string);
+  const productMap = await resolveProductsBySku(skus, log);
+
+  let items = itemRows
+    .map((r): ResolvedItem | null => {
+      if (r.kind === "product") {
+        const resolved = r.product_base_sku ? productMap.get(r.product_base_sku) : undefined;
+        if (!resolved) return null; // product unpublished/deleted → skip
+        // A per-item badge override (if set) is added on top of the product's own badges.
+        return r.badge ? { ...resolved, id: r.id, badges: [...new Set([...resolved.badges, r.badge])] } : { ...resolved, id: r.id };
+      }
+      return {
+        kind: "editorial",
+        id: r.id,
+        title: r.custom_title,
+        subtitle: r.custom_subtitle,
+        image: r.custom_image_url,
+        link: r.link_url,
+        badge: r.badge,
+        meta: r.meta ?? {},
+      };
+    })
+    .filter((x): x is ResolvedItem => x !== null);
+  log.step(`section ${key} - curated items=${items.length}`);
+
+  // Product sections auto-fill the remaining slots from the catalog, so a section
+  // the admin only partially curated (e.g. 1 of 10) is never left sparse. The
+  // admin's picks keep their order at the front; the rest are topped up below.
+  if (section.item_type === "product" && items.length < section.max_items) {
+    const haveSkus = new Set(
+      items.filter((i): i is ResolvedProduct => i.kind === "product").map((i) => i.sku),
+    );
+    const need = section.max_items - items.length;
+    const trendingOnly = key === "home_trending";
+    const filler = await fallbackProducts(need, { trendingOnly, excludeSkus: haveSkus }, log);
+    items = [...items, ...filler];
+    log.step(`section ${key} - topped up with ${filler.length} fallback product(s) → total=${items.length}`);
+  }
+  return items;
 }
 
 // ─── Core: resolve a single section (cached) ─────────────────────────────────
@@ -270,47 +341,7 @@ async function getResolvedSection(key: SectionKey, log: OpLogger): Promise<Resol
     .order("sort_order", { ascending: true });
   if (iErr) log.warn(`section ${key} items fetch failed: ${iErr.message}`);
   const itemRows = (itemData ?? []) as ItemRow[];
-
-  let items: ResolvedItem[];
-
-  if (itemRows.length === 0) {
-    // ── Empty section → random published products (your configured fallback) ──
-    // Editorial-only sections have no product fallback; they simply render empty.
-    if (section.item_type === "editorial") {
-      items = [];
-      log.step(`section ${key} - empty editorial, no fallback`);
-    } else {
-      const trendingOnly = key === "home_trending";
-      items = await fallbackProducts(section.max_items, { trendingOnly }, log);
-      log.step(`section ${key} - fallback products=${items.length}  trending=${trendingOnly}`);
-    }
-  } else {
-    // Resolve product items against the live catalog; pass editorial items through.
-    const skus = itemRows.filter((r) => r.kind === "product" && r.product_base_sku).map((r) => r.product_base_sku as string);
-    const productMap = await resolveProductsBySku(skus, log);
-
-    items = itemRows
-      .map((r): ResolvedItem | null => {
-        if (r.kind === "product") {
-          const resolved = r.product_base_sku ? productMap.get(r.product_base_sku) : undefined;
-          if (!resolved) return null; // product unpublished/deleted → skip
-          // A per-item badge override (if set) is added on top of the product's own badges.
-          return r.badge ? { ...resolved, id: r.id, badges: [...new Set([...resolved.badges, r.badge])] } : { ...resolved, id: r.id };
-        }
-        return {
-          kind: "editorial",
-          id: r.id,
-          title: r.custom_title,
-          subtitle: r.custom_subtitle,
-          image: r.custom_image_url,
-          link: r.link_url,
-          badge: r.badge,
-          meta: r.meta ?? {},
-        };
-      })
-      .filter((x): x is ResolvedItem => x !== null);
-    log.step(`section ${key} - curated items=${items.length}`);
-  }
+  const items = await resolveItems(section, itemRows, log);
 
   const resolved: ResolvedSection = {
     key: section.section_key,
@@ -480,6 +511,71 @@ router.put("/sections/:key/items", adminMutationLimiter, async (req: Request, re
     res.json({ success: true });
   } catch (err) {
     log.error("failed", err).end("CURATION SET ITEMS");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// POST /api/curation/admin/sections/:key/preview — resolve an UNSAVED draft exactly
+// as the storefront would render it (incl. the partial-curation product top-up), so
+// the admin editor's live preview matches the live page. Does not write anything.
+router.post("/sections/:key/preview", async (req: Request, res: Response) => {
+  const log = createLog().start("CURATION PREVIEW");
+  const key = req.params.key as string;
+
+  if (!isKnownKey(key)) {
+    log.warn(`unknown key=${key}`).end("CURATION PREVIEW");
+    res.status(400).json({ error: `Unknown section key: ${key}` });
+    return;
+  }
+
+  const body = req.body as { items?: unknown };
+  if (!Array.isArray(body.items)) {
+    log.warn("items not an array").end("CURATION PREVIEW");
+    res.status(400).json({ error: "Body must be { items: [...] }" });
+    return;
+  }
+
+  try {
+    const { data: sectionData, error: sErr } = await db()
+      .from("curated_sections")
+      .select("id, section_key, title, subtitle, item_type, is_enabled, max_items")
+      .eq("section_key", key)
+      .maybeSingle();
+    if (sErr) throw sErr;
+    if (!sectionData) {
+      res.status(404).json({ error: `Section not seeded: ${key}` });
+      return;
+    }
+    const section = sectionData as SectionRow;
+
+    // Turn the draft (camelCase, like the save payload) into ItemRow shape. Only active
+    // items count; sort_order follows array position, mirroring the save RPC.
+    const itemRows: ItemRow[] = body.items
+      .map((raw, idx): ItemRow => {
+        const it = raw as Record<string, unknown>;
+        return {
+          id: `preview-${idx}`,
+          section_id: section.id,
+          sort_order: idx,
+          kind: it.kind === "editorial" ? "editorial" : "product",
+          product_base_sku: (it.productBaseSku ?? it.product_base_sku ?? null) as string | null,
+          custom_title: (it.customTitle ?? it.custom_title ?? null) as string | null,
+          custom_subtitle: (it.customSubtitle ?? it.custom_subtitle ?? null) as string | null,
+          custom_image_url: (it.customImageUrl ?? it.custom_image_url ?? null) as string | null,
+          link_url: (it.linkUrl ?? it.link_url ?? null) as string | null,
+          badge: (it.badge ?? null) as string | null,
+          meta: (it.meta ?? {}) as Record<string, unknown>,
+          is_active: (it.isActive ?? it.is_active ?? true) as boolean,
+        };
+      })
+      .filter((r) => r.is_active);
+
+    log.step(`key=${key}  draft items=${itemRows.length}`);
+    const items = await resolveItems(section, itemRows, log);
+    log.success(`resolved ${items.length} item(s)`).end("CURATION PREVIEW");
+    res.json({ items });
+  } catch (err) {
+    log.error("failed", err).end("CURATION PREVIEW");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });

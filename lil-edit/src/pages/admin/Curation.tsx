@@ -28,13 +28,23 @@ import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadProductImage } from "@/lib/uploadImage";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
+import TrendingSection from "@/components/home/TrendingSection";
+import RecommendedForYou from "@/components/home/RecommendedForYou";
+import ShopTheLook from "@/components/home/ShopTheLook";
+import FeaturedCategories from "@/components/home/FeaturedCategories";
+import HomeCollage from "@/components/home/HomeCollage";
+import FrequentSearches from "@/components/search/FrequentSearches";
+import CollageGrid from "@/components/search/CollageGrid";
+import FeaturedCollectionsGrid from "@/components/collections/FeaturedCollectionsGrid";
 import {
   fetchAdminSections,
   saveSectionItems,
   updateSection,
   searchProducts,
+  previewSection,
   type AdminSection,
   type AdminSectionItem,
+  type ResolvedItem,
   type ResolvedProductItem,
   type SectionItemInput,
   type SectionKey,
@@ -139,6 +149,40 @@ function toQuickView(p: ResolvedProductItem): QuickViewProduct {
     tags: [],
   };
 }
+
+// Map a working draft item to the resolved shape the storefront components consume,
+// so the live preview renders exactly what shoppers will see (incl. per-item badge
+// overrides). Product drafts whose product is missing/unpublished are dropped, just
+// as the backend skips them at read time.
+function draftToResolved(d: DraftItem): ResolvedItem | null {
+  if (d.kind === "product") {
+    if (!d.product) return null;
+    const badges = d.badge ? [...new Set([...d.product.badges, d.badge])] : d.product.badges;
+    return { ...d.product, id: d.tempId, badges };
+  }
+  return {
+    kind: "editorial",
+    id: d.tempId,
+    title: d.customTitle,
+    subtitle: d.customSubtitle,
+    image: d.customImageUrl,
+    link: d.linkUrl,
+    badge: d.badge,
+    meta: d.meta ?? {},
+  };
+}
+
+// One real storefront component per section, fed the draft items as previewItems.
+const PREVIEW_RENDERERS: Record<SectionKey, (items: ResolvedItem[]) => JSX.Element> = {
+  home_trending: (items) => <TrendingSection previewItems={items} />,
+  home_recommended: (items) => <RecommendedForYou previewItems={items} />,
+  search_popular: (items) => <FrequentSearches previewItems={items} onSelect={() => {}} />,
+  search_discover: (items) => <CollageGrid previewItems={items} />,
+  home_shop_the_look: (items) => <ShopTheLook previewItems={items} />,
+  home_featured_categories: (items) => <FeaturedCategories previewItems={items} />,
+  home_collage: (items) => <HomeCollage previewItems={items} />,
+  collections_featured: (items) => <FeaturedCollectionsGrid previewItems={items} />,
+};
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Product picker modal
@@ -486,6 +530,18 @@ const CurationPage = () => {
   const selected = useMemo(() => sections.find((s) => s.key === selectedKey) ?? null, [sections, selectedKey]);
   const dirty = useMemo(() => JSON.stringify(draft.map(toInput)) !== savedSnapshot, [draft, savedSnapshot]);
 
+  // The live preview is resolved by the backend so it matches the storefront exactly,
+  // including the product top-up (curated picks + catalog fill). `draftResolved` is the
+  // client-side curated-only view, shown instantly while the backend resolves and used
+  // as a fallback if the preview request fails. `filled` is tagged with its section key
+  // so a stale result from a previous section is never rendered.
+  const draftResolved = useMemo(
+    () => draft.map(draftToResolved).filter((x): x is ResolvedItem => x !== null),
+    [draft],
+  );
+  const [filled, setFilled] = useState<{ key: SectionKey; items: ResolvedItem[] } | null>(null);
+  const previewItems = filled && selected && filled.key === selected.key ? filled.items : draftResolved;
+
   const loadSections = () => {
     setLoading(true);
     setError(null);
@@ -512,6 +568,26 @@ const CurationPage = () => {
     setSavedSnapshot(JSON.stringify(items.map(toInput)));
     console.log(`[Curation] selected ${selected.key} — ${items.length} item(s)`);
   }, [selected]);
+
+  // Resolve the live preview on the backend (debounced) so it shows the real storefront
+  // output — curated picks plus the auto-filled catalog products — for the current draft.
+  useEffect(() => {
+    if (!selected) return;
+    const key = selected.key;
+    const payload = draft.map(toInput);
+    const t = setTimeout(() => {
+      previewSection(key, payload)
+        .then((items) => {
+          console.log(`[Curation] preview ${key} → ${items.length} resolved item(s)`);
+          setFilled({ key, items });
+        })
+        .catch((err) => {
+          // Keep the instant client-side (curated-only) view on failure.
+          console.warn(`[Curation] preview ${key} failed — showing curated only`, err);
+        });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [selected, draft]);
 
   const selectSection = (key: SectionKey) => {
     if (dirty && !window.confirm("Discard unsaved changes to this section?")) return;
@@ -762,6 +838,23 @@ const CurationPage = () => {
                           />
                         ))
                       )}
+                    </div>
+
+                    {/* Live preview — the real storefront component, fed the current draft */}
+                    <div className="border-t border-gray-100">
+                      <div className="flex items-center gap-2 px-5 py-3 bg-gray-50/60">
+                        <Eye className="w-4 h-4 text-gray-500 shrink-0" />
+                        <span className="text-sm font-semibold text-gray-700">Live preview</span>
+                        <span className="text-xs text-gray-400 truncate hidden sm:inline">
+                          How this section appears on the storefront — reflects unsaved changes.
+                        </span>
+                      </div>
+                      <div className="max-h-[70vh] overflow-auto bg-white">
+                        {/* Capture clicks so previewing never navigates away or mutates state. */}
+                        <div onClickCapture={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                          {PREVIEW_RENDERERS[selected.key](previewItems)}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

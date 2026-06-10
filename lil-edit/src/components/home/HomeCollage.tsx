@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useCuratedSection, metaStr } from "@/hooks/useCuratedSection";
+import type { ResolvedItem, ResolvedEditorialItem } from "@/lib/curationApi";
 import img1 from "@/assets/collage/collage-main-mobile-01.jpg";
 import img1Desktop from "@/assets/collage/collage-main-desktop-01.jpg";
 import img2 from "@/assets/collage/collage-main-mobile-02.jpg";
@@ -13,11 +15,16 @@ import lecD003 from "@/assets/collage/collage-slide-desktop-03.png";
 
 const AUTO_SWIPE_MS = 4500;
 
-const HomeCollage = () => {
+const HomeCollage = ({ previewItems }: { previewItems?: ResolvedItem[] }) => {
+  const preview = previewItems !== undefined;
   const [activePart, setActivePart] = useState(0);
   const [isDesktop, setIsDesktop] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const touchDeltaX = useRef(0);
+  const { editorials: fetchedEditorials } = useCuratedSection("home_collage", { skip: preview });
+  const editorials = preview
+    ? previewItems.filter((i): i is ResolvedEditorialItem => i.kind === "editorial")
+    : fetchedEditorials;
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
@@ -28,49 +35,67 @@ const HomeCollage = () => {
   }, []);
 
   const parts = useMemo(() => {
-    const secondImage = isDesktop ? lecD002 : lec002;
-    const thirdImage = isDesktop ? lecD003 : lec003;
+    // Each of the six collage image slots maps to a curated editorial item (in
+    // order). A slot uses the item's image (custom_image_url) for mobile and
+    // meta.desktop_image_url for desktop, falling back to the bundled assets when
+    // the section isn't curated / the migration hasn't been applied.
+    const slot = (idx: number, mob: string, desk: string) => {
+      const it = editorials[idx];
+      return {
+        mobile: it?.image || mob,
+        desktop: metaStr(it?.meta, "desktop_image_url") || it?.image || desk,
+      };
+    };
+    const s0 = slot(0, img1, img1Desktop);
+    const s1 = slot(1, img2, img2Desktop);
+    const s2 = slot(2, img3, img3Desktop);
+    const s3 = slot(3, img4, img4);
+    const s4 = slot(4, lec002, lecD002);
+    const s5 = slot(5, lec003, lecD003);
+
+    const secondImage = isDesktop ? s4.desktop : s4.mobile;
+    const thirdImage = isDesktop ? s5.desktop : s5.mobile;
     return [
       <div key="part-collage" className="w-full h-full grid grid-cols-7 md:grid-cols-5 grid-rows-2 gap-2 md:gap-1.5 px-2 sm:px-4">
         <div className="col-span-3 md:col-span-2 row-span-1 overflow-hidden rounded-none">
           <img
-            src={img1}
+            src={s0.mobile}
             alt="Collage 1 Mobile"
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-in-out md:hidden"
           />
           <img
-            src={img1Desktop}
+            src={s0.desktop}
             alt="Collage 1 Desktop"
             className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-700 ease-in-out hidden md:block"
           />
         </div>
         <div className="col-span-4 md:col-span-3 row-span-1 overflow-hidden rounded-none">
           <img
-            src={img2}
+            src={s1.mobile}
             alt="Collage 2 Mobile"
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-in-out md:hidden"
           />
           <img
-            src={img2Desktop}
+            src={s1.desktop}
             alt="Collage 2 Desktop"
             className="w-full h-full object-cover object-[50%_35%] hover:scale-105 transition-transform duration-700 ease-in-out hidden md:block"
           />
         </div>
         <div className="col-span-4 md:col-span-3 row-span-1 overflow-hidden rounded-none">
           <img
-            src={img3}
+            src={s2.mobile}
             alt="Collage 3 Mobile"
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-in-out md:hidden"
           />
           <img
-            src={img3Desktop}
+            src={s2.desktop}
             alt="Collage 3 Desktop"
             className="w-full h-full object-cover object-[50%_55%] hover:scale-105 transition-transform duration-700 ease-in-out hidden md:block"
           />
         </div>
         <div className="col-span-3 md:col-span-2 row-span-1 overflow-hidden rounded-none">
           <img
-            src={img4}
+            src={isDesktop ? s3.desktop : s3.mobile}
             alt="Collage 4"
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-in-out"
           />
@@ -95,7 +120,7 @@ const HomeCollage = () => {
         </div>
       </div>,
     ];
-  }, [isDesktop]);
+  }, [isDesktop, editorials]);
 
   useEffect(() => {
     const currentSlideDelay = activePart === 0 ? AUTO_SWIPE_MS * 2 : AUTO_SWIPE_MS;

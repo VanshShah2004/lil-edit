@@ -1,43 +1,49 @@
 import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useCuratedSection } from "@/hooks/useCuratedSection";
+import type { ResolvedItem, ResolvedEditorialItem } from "@/lib/curationApi";
 import le0 from "@/assets/searchbar-frequent_searches/le-0.png";
 import le1 from "@/assets/searchbar-frequent_searches/le-1.png";
 import le3 from "@/assets/searchbar-frequent_searches/le-3.png";
 import le4 from "@/assets/searchbar-frequent_searches/le-4.png";
 
-const looks = [
-  {
-    id: 1,
-    label: "FESTIVE EDIT",
-    title: "Celebration Look",
-    img: le3,
-    to: "/collections",
-  },
-  {
-    id: 2,
-    label: "EVERYDAY CHIC",
-    title: "School Day Look",
-    img: le0,
-    to: "/collections",
-  },
-  {
-    id: 3,
-    label: "PARTY READY",
-    title: "Birthday Look",
-    img: le4,
-    to: "/collections",
-  },
-  {
-    id: 4,
-    label: "BOHO BABY",
-    title: "Weekend Look",
-    img: le1,
-    to: "/collections",
-  },
+interface Look {
+  id: string;
+  label: string;
+  title: string;
+  img: string;
+  to: string;
+}
+
+// Local content shown until the curation engine returns tiles.
+const FALLBACK: Look[] = [
+  { id: "1", label: "FESTIVE EDIT", title: "Celebration Look", img: le3, to: "/collections" },
+  { id: "2", label: "EVERYDAY CHIC", title: "School Day Look", img: le0, to: "/collections" },
+  { id: "3", label: "PARTY READY", title: "Birthday Look", img: le4, to: "/collections" },
+  { id: "4", label: "BOHO BABY", title: "Weekend Look", img: le1, to: "/collections" },
 ];
 
-const ShopTheLook = () => {
+const ShopTheLook = ({ previewItems }: { previewItems?: ResolvedItem[] }) => {
+  const preview = previewItems !== undefined;
   const navigate = useNavigate();
+  const { editorials: fetchedEditorials } = useCuratedSection("home_shop_the_look", { skip: preview });
+  const editorials = preview
+    ? previewItems.filter((i): i is ResolvedEditorialItem => i.kind === "editorial")
+    : fetchedEditorials;
+
+  const go = (link: string) => {
+    if (/^https?:\/\//i.test(link)) window.location.assign(link);
+    else navigate(link);
+  };
+
+  const curated: Look[] = editorials.map((it) => ({
+    id: it.id,
+    label: it.subtitle ?? "",
+    title: it.title ?? "",
+    img: it.image ?? "",
+    to: it.link ?? "/collections",
+  }));
+  const looks = curated.length > 0 ? curated : FALLBACK;
 
   return (
     <section className="pt-2 pb-8 md:pt-4 md:pb-12 bg-white">
@@ -65,7 +71,7 @@ const ShopTheLook = () => {
           {looks.map((look) => (
             <div
               key={look.id}
-              onClick={() => navigate(look.to)}
+              onClick={() => go(look.to)}
               className="group relative h-[260px] sm:h-[340px] md:h-[380px] cursor-pointer"
             >
               {/* Main Card Container with Organic Shapes */}

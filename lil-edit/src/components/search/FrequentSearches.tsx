@@ -1,3 +1,5 @@
+import { useCuratedSection } from "@/hooks/useCuratedSection";
+import type { ResolvedItem, ResolvedProductItem } from "@/lib/curationApi";
 import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
 import img2 from "@/assets/searchbar-frequent_searches/le-2.png";
 import img3 from "@/assets/searchbar-frequent_searches/le-3.png";
@@ -7,18 +9,40 @@ import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
 
 interface FrequentSearchesProps {
   onSelect: (term: string) => void;
+  previewItems?: ResolvedItem[];
 }
 
-const dummySearches = [
-  { id: 1, name: "Lehenga Sets", image: img1 },
-  { id: 2, name: "Kurtis", image: img2 },
-  { id: 3, name: "Shararas & Palazzos", image: img3 },
-  { id: 4, name: "Jackets", image: img4 },
-  { id: 5, name: "Kurtas & Pajamas", image: img5 },
-  { id: 6, name: "Blazers & Tuxedos", image: img6 },
+interface Choice {
+  id: string;
+  name: string;
+  image: string;
+}
+
+// Local content shown until the curation engine returns items (or if it's
+// unavailable / the migration hasn't been applied).
+const FALLBACK: Choice[] = [
+  { id: "1", name: "Lehenga Sets", image: img1 },
+  { id: "2", name: "Kurtis", image: img2 },
+  { id: "3", name: "Shararas & Palazzos", image: img3 },
+  { id: "4", name: "Jackets", image: img4 },
+  { id: "5", name: "Kurtas & Pajamas", image: img5 },
+  { id: "6", name: "Blazers & Tuxedos", image: img6 },
 ];
 
-export default function FrequentSearches({ onSelect }: FrequentSearchesProps) {
+export default function FrequentSearches({ onSelect, previewItems }: FrequentSearchesProps) {
+  const preview = previewItems !== undefined;
+  const { products: fetchedProducts } = useCuratedSection("search_popular", { skip: preview });
+  const products = preview
+    ? previewItems.filter((i): i is ResolvedProductItem => i.kind === "product")
+    : fetchedProducts;
+
+  const curated: Choice[] = products.map((p) => ({
+    id: p.id,
+    name: p.title,
+    image: p.image ?? "",
+  }));
+  const choices = curated.length > 0 ? curated : FALLBACK;
+
   return (
     <section className="pt-6 pb-3 px-4 sm:px-6 md:px-8 animate-fade-in">
       <div className="flex items-center justify-between mb-4">
@@ -29,7 +53,7 @@ export default function FrequentSearches({ onSelect }: FrequentSearchesProps) {
 
       {/* Mobile & Desktop: Grid */}
       <div className="grid grid-flow-col grid-rows-3 lg:grid-flow-row lg:grid-cols-3 lg:grid-rows-2 gap-2 sm:gap-3 pb-2 md:pb-0">
-        {dummySearches.map((item) => (
+        {choices.map((item) => (
           <button
             key={item.id}
             onClick={() => onSelect(item.name)}
@@ -42,7 +66,7 @@ export default function FrequentSearches({ onSelect }: FrequentSearchesProps) {
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               />
             </div>
-            <span className="flex-1 text-sm sm:text-base font-semibold text-foreground/80 group-hover:text-teal-700 transition-colors">
+            <span className="flex-1 text-sm sm:text-base font-semibold text-foreground/80 group-hover:text-teal-700 transition-colors line-clamp-2">
               {item.name}
             </span>
           </button>

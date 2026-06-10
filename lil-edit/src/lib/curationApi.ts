@@ -170,6 +170,21 @@ export async function updateSection(
   }
 }
 
+// Resolve an unsaved draft exactly as the storefront would render it (incl. the
+// product top-up), so the editor's live preview matches the live page. Read-only.
+export async function previewSection(key: SectionKey, items: SectionItemInput[]): Promise<ResolvedItem[]> {
+  const res = await authFetch(`/api/curation/sections/${key}/preview`, {
+    method: "POST",
+    body: JSON.stringify({ items }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error ?? `Preview failed (${res.status})`);
+  }
+  const data = (await res.json()) as { items: ResolvedItem[] };
+  return data.items ?? [];
+}
+
 export async function searchProducts(q: string): Promise<ResolvedProductItem[]> {
   const res = await authFetch(`/api/curation/admin/product-search?q=${encodeURIComponent(q)}`);
   if (!res.ok) {
