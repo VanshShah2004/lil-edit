@@ -56,9 +56,11 @@ const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
 };
 
 // ─── Reusable bits ────────────────────────────────────────────────────────────
+// One titled segment inside an outer card — no border of its own; the parent
+// rectangle draws the box and divides the segments.
 function SectionCard({ icon: Icon, title, children }: { icon: typeof User; title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 sm:p-6">
+    <div className="p-5 sm:p-6">
       <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500 mb-4 flex items-center gap-2">
         <Icon className="w-4 h-4" style={{ color: "#B19CD9" }} /> {title}
       </h2>
@@ -79,14 +81,10 @@ function Field({ label, value, mono }: { label: string; value?: string | null; m
 function DetailSkeleton() {
   return (
     <div className="grid lg:grid-cols-3 gap-6 animate-pulse">
-      <div className="lg:col-span-2 space-y-6">
-        <div className="h-40 bg-gray-100 rounded-xl" />
-        <div className="h-48 bg-gray-100 rounded-xl" />
-        <div className="h-64 bg-gray-100 rounded-xl" />
-      </div>
+      <div className="lg:col-span-2 h-[32rem] bg-gray-100 rounded-xl" />
       <div className="space-y-6">
+        <div className="h-80 bg-gray-100 rounded-xl" />
         <div className="h-44 bg-gray-100 rounded-xl" />
-        <div className="h-56 bg-gray-100 rounded-xl" />
       </div>
     </div>
   );
@@ -296,8 +294,9 @@ const AdminOrderDetailPage = () => {
             </div>
           ) : (
             <div className="grid lg:grid-cols-3 gap-6 items-start">
-              {/* ── Left column ──────────────────────────────────────────────── */}
-              <div className="lg:col-span-2 space-y-6">
+              {/* ── Left column: ONE rectangle holding every order-detail section,
+                     separated by dividers (no nested boxes) ─────────────────────── */}
+              <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl shadow-sm divide-y divide-gray-100">
                 {/* Order Information */}
                 <SectionCard icon={Receipt} title="Order Information">
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-5">
@@ -361,8 +360,10 @@ const AdminOrderDetailPage = () => {
 
               {/* ── Right column ─────────────────────────────────────────────── */}
               <div className="space-y-6 lg:sticky lg:top-[148px]">
+                {/* Status + Payment Management — ONE rectangle, two divided sections */}
+                <div className="bg-white border border-gray-200 rounded-xl shadow-sm divide-y divide-gray-100">
                 {/* Status Management */}
-                <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 sm:p-6">
+                <div className="p-5 sm:p-6">
                   <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500 mb-4">Status Management</h2>
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm text-gray-600">Current</span>
@@ -509,7 +510,7 @@ const AdminOrderDetailPage = () => {
                 </div>
 
                 {/* Payment Management */}
-                <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 sm:p-6">
+                <div className="p-5 sm:p-6">
                   <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500 mb-4 flex items-center gap-2">
                     <Wallet className="w-4 h-4" style={{ color: "#B19CD9" }} /> Payment Management
                   </h2>
@@ -633,8 +634,9 @@ const AdminOrderDetailPage = () => {
                     </button>
                   )}
                 </div>
+                </div>
 
-                {/* Order Summary */}
+                {/* Order Summary — its own rectangle, last */}
                 <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 sm:p-6">
                   <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500 mb-4">Order Summary</h2>
                   <OrderSummaryCard order={order} />
