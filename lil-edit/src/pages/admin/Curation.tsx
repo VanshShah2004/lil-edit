@@ -517,8 +517,9 @@ const CurationPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [selectedKey, setSelectedKey] = useState<SectionKey | null>(null);
-  // Which page group is expanded in the sidebar (accordion). Dashboard open by default.
-  const [openGroup, setOpenGroup] = useState<string | null>("Dashboard");
+  // Which page groups are expanded in the sidebar. Multiple can be open at once;
+  // Dashboard open by default.
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(["Dashboard"]));
   const [draft, setDraft] = useState<DraftItem[]>([]);
   const [savedSnapshot, setSavedSnapshot] = useState<string>("[]");
   const [saving, setSaving] = useState(false);
@@ -592,7 +593,8 @@ const CurationPage = () => {
   const selectSection = (key: SectionKey) => {
     if (dirty && !window.confirm("Discard unsaved changes to this section?")) return;
     setSelectedKey(key);
-    setOpenGroup(groupOf(key));
+    const g = groupOf(key);
+    if (g) setOpenGroups((prev) => (prev.has(g) ? prev : new Set(prev).add(g)));
   };
 
   const move = (index: number, dir: -1 | 1) => {
@@ -703,13 +705,18 @@ const CurationPage = () => {
                     .map((k) => sections.find((s) => s.key === k))
                     .filter((s): s is AdminSection => !!s);
                   if (groupSections.length === 0) return null;
-                  const isOpen = openGroup === group.label;
+                  const isOpen = openGroups.has(group.label);
                   const GroupIcon = group.icon;
                   return (
                     <div key={group.label} className="rounded-xl border border-gray-100 overflow-hidden bg-white">
                       {/* Page header */}
                       <button
-                        onClick={() => setOpenGroup((prev) => (prev === group.label ? null : group.label))}
+                        onClick={() => setOpenGroups((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(group.label)) next.delete(group.label);
+                          else next.add(group.label);
+                          return next;
+                        })}
                         className="w-full flex items-center justify-between gap-2 px-3.5 py-3 bg-gray-50/70 hover:bg-gray-100 transition-colors"
                       >
                         <div className="flex items-center gap-2 min-w-0">
