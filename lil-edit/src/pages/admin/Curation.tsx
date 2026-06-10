@@ -570,7 +570,7 @@ const CurationPage = () => {
   // "ready" message; after that, every draft change is pushed into it.
   const previewFrameRef = useRef<HTMLIFrameElement>(null);
   const [previewReady, setPreviewReady] = useState(false);
-  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("mobile");
 
   // Scale-to-fit: the iframe is laid out at the device's true viewport size and
   // shrunk visually with transform. Media queries inside respond to the layout
@@ -990,18 +990,18 @@ const CurationPage = () => {
                         </span>
                         <div className="ml-auto flex items-center gap-1 shrink-0">
                           <button
-                            onClick={() => setPreviewDevice("desktop")}
-                            title="Desktop preview"
-                            className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${previewDevice === "desktop" ? "bg-gray-900 text-white" : "text-gray-400 hover:text-gray-700 hover:bg-gray-200"}`}
-                          >
-                            <Monitor className="w-4 h-4" />
-                          </button>
-                          <button
                             onClick={() => setPreviewDevice("mobile")}
                             title="Mobile preview"
                             className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${previewDevice === "mobile" ? "bg-gray-900 text-white" : "text-gray-400 hover:text-gray-700 hover:bg-gray-200"}`}
                           >
                             <Smartphone className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setPreviewDevice("desktop")}
+                            title="Desktop preview"
+                            className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${previewDevice === "desktop" ? "bg-gray-900 text-white" : "text-gray-400 hover:text-gray-700 hover:bg-gray-200"}`}
+                          >
+                            <Monitor className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
