@@ -20,6 +20,8 @@ import {
   Loader2,
   PackageX,
   Pencil,
+  Monitor,
+  Smartphone,
 } from "lucide-react";
 
 import UserNavbar from "@/components/home/UserNavbar";
@@ -28,14 +30,6 @@ import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadProductImage } from "@/lib/uploadImage";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
-import TrendingSection from "@/components/home/TrendingSection";
-import RecommendedForYou from "@/components/home/RecommendedForYou";
-import ShopTheLook from "@/components/home/ShopTheLook";
-import FeaturedCategories from "@/components/home/FeaturedCategories";
-import HomeCollage from "@/components/home/HomeCollage";
-import FrequentSearches from "@/components/search/FrequentSearches";
-import CollageGrid from "@/components/search/CollageGrid";
-import FeaturedCollectionsGrid from "@/components/collections/FeaturedCollectionsGrid";
 import {
   fetchAdminSections,
   saveSectionItems,
@@ -171,18 +165,6 @@ function draftToResolved(d: DraftItem): ResolvedItem | null {
     meta: d.meta ?? {},
   };
 }
-
-// One real storefront component per section, fed the draft items as previewItems.
-const PREVIEW_RENDERERS: Record<SectionKey, (items: ResolvedItem[]) => JSX.Element> = {
-  home_trending: (items) => <TrendingSection previewItems={items} />,
-  home_recommended: (items) => <RecommendedForYou previewItems={items} />,
-  search_popular: (items) => <FrequentSearches previewItems={items} onSelect={() => {}} />,
-  search_discover: (items) => <CollageGrid previewItems={items} />,
-  home_shop_the_look: (items) => <ShopTheLook previewItems={items} />,
-  home_featured_categories: (items) => <FeaturedCategories previewItems={items} />,
-  home_collage: (items) => <HomeCollage previewItems={items} />,
-  collections_featured: (items) => <FeaturedCollectionsGrid previewItems={items} />,
-};
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Product picker modal
@@ -575,6 +557,33 @@ const CurationPage = () => {
   const [filled, setFilled] = useState<{ key: SectionKey; items: ResolvedItem[] } | null>(null);
   const previewItems = filled && selected && filled.key === selected.key ? filled.items : draftResolved;
 
+  // The preview renders in an <iframe> (own viewport → real responsive breakpoints,
+  // and no clipping from the editor column). The frame announces itself with a
+  // "ready" message; after that, every draft change is pushed into it.
+  const previewFrameRef = useRef<HTMLIFrameElement>(null);
+  const [previewReady, setPreviewReady] = useState(false);
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      if ((e.data as { type?: string } | null)?.type === "curation-preview-ready") {
+        console.log("[Curation] preview frame ready");
+        setPreviewReady(true);
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  useEffect(() => {
+    if (!previewReady || !selected) return;
+    previewFrameRef.current?.contentWindow?.postMessage(
+      { type: "curation-preview-items", key: selected.key, items: previewItems },
+      window.location.origin,
+    );
+  }, [previewReady, selected, previewItems]);
+
   const loadSections = () => {
     setLoading(true);
     setError(null);
@@ -941,7 +950,9 @@ const CurationPage = () => {
                       )}
                     </div>
 
-                    {/* Live preview — the real storefront component, fed the current draft */}
+                    {/* Live preview — the real storefront component rendered inside an
+                        iframe, so its viewport (and therefore the mobile/desktop styles)
+                        matches the chosen device width instead of the editor column. */}
                     <div className="mt-40 border-t border-gray-100">
                       <div className="flex items-center gap-2 px-5 py-3 bg-gray-50/60">
                         <Eye className="w-4 h-4 text-gray-500 shrink-0" />
@@ -949,12 +960,34 @@ const CurationPage = () => {
                         <span className="text-xs text-gray-400 truncate hidden sm:inline">
                           How this section appears on the storefront — reflects unsaved changes.
                         </span>
-                      </div>
-                      <div className="max-h-[70vh] overflow-auto bg-white">
-                        {/* Capture clicks so previewing never navigates away or mutates state. */}
-                        <div onClickCapture={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                          {PREVIEW_RENDERERS[selected.key](previewItems)}
+                        <div className="ml-auto flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => setPreviewDevice("desktop")}
+                            title="Desktop preview"
+                            className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${previewDevice === "desktop" ? "bg-gray-900 text-white" : "text-gray-400 hover:text-gray-700 hover:bg-gray-200"}`}
+                          >
+                            <Monitor className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setPreviewDevice("mobile")}
+                            title="Mobile preview"
+                            className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${previewDevice === "mobile" ? "bg-gray-900 text-white" : "text-gray-400 hover:text-gray-700 hover:bg-gray-200"}`}
+                          >
+                            <Smartphone className="w-4 h-4" />
+                          </button>
                         </div>
+                      </div>
+                      <div className="bg-gray-100/60 p-3 sm:p-4 flex justify-center overflow-x-auto">
+                        <iframe
+                          ref={previewFrameRef}
+                          src="/admin/curation/preview"
+                          title="Section live preview"
+                          className={`bg-white transition-all duration-300 ${
+                            previewDevice === "mobile"
+                              ? "w-[390px] max-w-full h-[700px] rounded-[1.75rem] border-[6px] border-gray-900 shadow-xl"
+                              : "w-full h-[640px] rounded-xl border border-gray-200 shadow-sm"
+                          }`}
+                        />
                       </div>
                     </div>
                   </div>

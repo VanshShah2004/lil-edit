@@ -58,6 +58,7 @@ const ManageProducts   = lazyWithLog("ManageProducts",   () => import("./pages/M
 const AdminOrders      = lazyWithLog("AdminOrders",      () => import("./pages/admin/Orders"));
 const AdminOrderDetail = lazyWithLog("AdminOrderDetail", () => import("./pages/admin/OrderDetail"));
 const AdminCuration    = lazyWithLog("AdminCuration",    () => import("./pages/admin/Curation"));
+const AdminCurationPreview = lazyWithLog("AdminCurationPreview", () => import("./pages/admin/CurationPreview"));
 
 const queryClient = new QueryClient();
 
@@ -96,6 +97,8 @@ const App = () => (
             <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
             <Route path="/admin/orders/:orderId" element={<AdminRoute><AdminOrderDetail /></AdminRoute>} />
             <Route path="/admin/curation" element={<AdminRoute><AdminCuration /></AdminRoute>} />
+            {/* Loaded inside the Curation Studio's preview iframe — not user-navigable UI. */}
+            <Route path="/admin/curation/preview" element={<AdminRoute><AdminCurationPreview /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
