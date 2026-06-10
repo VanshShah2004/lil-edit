@@ -488,6 +488,14 @@ function ItemRow({
   );
 }
 
+// True device viewports the preview iframe renders at. The frame is laid out at this
+// exact size (so the components see a real desktop/phone viewport and render exactly
+// as on the live site) and is then visually scaled down to fit the editor pane.
+const PREVIEW_VIEWPORTS = {
+  desktop: { w: 1440, h: 900 },
+  mobile:  { w: 390,  h: 844 },
+} as const;
+
 // Per-tab editing state: the working draft plus the snapshot it was last saved at
 // (used to detect unsaved changes). One entry per open tab.
 interface TabState {
@@ -563,6 +571,26 @@ const CurationPage = () => {
   const previewFrameRef = useRef<HTMLIFrameElement>(null);
   const [previewReady, setPreviewReady] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+
+  // Scale-to-fit: the iframe is laid out at the device's true viewport size and
+  // shrunk visually with transform. Media queries inside respond to the layout
+  // width, so the desktop preview shows the genuine desktop rendering.
+  const previewWrapRef = useRef<HTMLDivElement>(null);
+  const [previewScale, setPreviewScale] = useState(1);
+
+  useEffect(() => {
+    const el = previewWrapRef.current;
+    if (!el) return;
+    // ResizeObserver fires once on observe, so no synchronous initial measure needed.
+    const ro = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? 0;
+      if (!width) return;
+      const target = PREVIEW_VIEWPORTS[previewDevice].w;
+      setPreviewScale(Math.min(1, width / target));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [previewDevice, selected]);
 
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
@@ -977,17 +1005,37 @@ const CurationPage = () => {
                           </button>
                         </div>
                       </div>
-                      <div className="bg-gray-100/60 p-3 sm:p-4 flex justify-center overflow-x-auto">
-                        <iframe
-                          ref={previewFrameRef}
-                          src="/admin/curation/preview"
-                          title="Section live preview"
-                          className={`bg-white transition-all duration-300 ${
-                            previewDevice === "mobile"
-                              ? "w-[390px] max-w-full h-[700px] rounded-[1.75rem] border-[6px] border-gray-900 shadow-xl"
-                              : "w-full h-[640px] rounded-xl border border-gray-200 shadow-sm"
-                          }`}
-                        />
+                      <div className="bg-gray-100/60 p-3 sm:p-4">
+                        <div ref={previewWrapRef} className="flex justify-center">
+                          {/* Sized box = scaled footprint; the iframe inside is laid out at
+                              the true viewport size and transform-scaled to fit. The phone
+                              bezel uses a ring (box-shadow) so it doesn't eat into the
+                              viewport width. */}
+                          <div
+                            className={`overflow-hidden bg-white ${
+                              previewDevice === "mobile"
+                                ? "rounded-[1.75rem] ring-[6px] ring-gray-900 shadow-xl my-2"
+                                : "rounded-lg ring-1 ring-gray-200 shadow-sm"
+                            }`}
+                            style={{
+                              width: PREVIEW_VIEWPORTS[previewDevice].w * previewScale,
+                              height: PREVIEW_VIEWPORTS[previewDevice].h * previewScale,
+                            }}
+                          >
+                            <iframe
+                              ref={previewFrameRef}
+                              src="/admin/curation/preview"
+                              title="Section live preview"
+                              className="border-0 bg-white"
+                              style={{
+                                width: PREVIEW_VIEWPORTS[previewDevice].w,
+                                height: PREVIEW_VIEWPORTS[previewDevice].h,
+                                transform: `scale(${previewScale})`,
+                                transformOrigin: "top left",
+                              }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
