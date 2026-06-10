@@ -640,6 +640,14 @@ const CurationPage = () => {
     if (key === activeKey) setActiveKey(nextTabs[idx] ?? nextTabs[idx - 1] ?? null);
   };
 
+  const closeAllTabs = () => {
+    const dirtyCount = openTabs.filter(isTabDirty).length;
+    if (dirtyCount > 0 && !window.confirm(`Discard unsaved changes in ${dirtyCount} tab(s)?`)) return;
+    setOpenTabs([]);
+    setTabs({});
+    setActiveKey(null);
+  };
+
   const move = (index: number, dir: -1 | 1) => {
     updateActiveDraft((prev) => {
       const next = [...prev];
@@ -828,9 +836,11 @@ const CurationPage = () => {
                         <div
                           key={key}
                           onClick={() => setActiveKey(key)}
+                          onAuxClick={(e) => { if (e.button === 1) closeTab(key, e); }}
                           role="button"
                           tabIndex={0}
                           onKeyDown={(e) => { if (e.key === "Enter") setActiveKey(key); }}
+                          title="Middle-click to close"
                           className={`group/tab flex items-center gap-2 pl-3 pr-1.5 py-2 rounded-t-lg border border-b-0 cursor-pointer whitespace-nowrap transition-colors max-w-[220px] ${isActive ? "bg-white border-gray-200 shadow-sm" : "bg-gray-100/70 border-transparent hover:bg-gray-100"}`}
                         >
                           <span className={`font-display text-sm truncate ${isActive ? "font-semibold text-gray-900" : "font-medium text-gray-500"}`}>{sec.title}</span>
@@ -845,6 +855,14 @@ const CurationPage = () => {
                         </div>
                       );
                     })}
+                    {openTabs.length > 1 && (
+                      <button
+                        onClick={closeAllTabs}
+                        className="ml-1 mb-2 self-end shrink-0 text-xs font-semibold text-gray-500 hover:text-red-600 px-2 py-1 rounded transition-colors"
+                      >
+                        Close all
+                      </button>
+                    )}
                   </div>
                 )}
                 {!selected ? (
