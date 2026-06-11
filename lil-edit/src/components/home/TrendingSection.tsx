@@ -3,16 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useCuratedSection, pdpUrlFor } from "@/hooks/useCuratedSection";
 import type { ResolvedItem, ResolvedProductItem } from "@/lib/curationApi";
-import le0 from "@/assets/searchbar-frequent_searches/le-0.png";
-import le1 from "@/assets/searchbar-frequent_searches/le-1.png";
-import le2 from "@/assets/searchbar-frequent_searches/le-2.png";
-import le3 from "@/assets/searchbar-frequent_searches/le-3.png";
-import le4 from "@/assets/searchbar-frequent_searches/le-4.png";
-import le5 from "@/assets/searchbar-frequent_searches/le-5.png";
-import le6 from "@/assets/searchbar-frequent_searches/le-6.png";
-import feat1 from "@/assets/featured-1.jpg";
-import feat2 from "@/assets/featured-2.jpg";
-import feat3 from "@/assets/featured-3.jpg";
 
 interface Card {
   key: string;
@@ -23,21 +13,6 @@ interface Card {
   // Set only for real curated products → enables PDP navigation + wishlist.
   product?: ResolvedProductItem;
 }
-
-// Local content shown until the curation engine returns items (or if it's
-// unavailable / the migration hasn't been applied). Non-navigable, like before.
-const FALLBACK: Card[] = [
-  { key: "f0", name: "Halter Top and Pleated Skirt Set", price: "4200", img: le0, badge: "Bestseller" },
-  { key: "f1", name: "Yellow One-Shoulder Jumpsuit", price: "3600", img: le1, badge: "Trending" },
-  { key: "f2", name: "Tiered Dress with Embroidered Vest", price: "5000", img: le2 },
-  { key: "f3", name: "Embroidered Kurta and Sharara Set", price: "4800", img: le3, badge: "Trending" },
-  { key: "f4", name: "Floral Print Vest (or Nehru Jacket)", price: "3800", img: le4, badge: "New" },
-  { key: "f5", name: "Embroidered Tunic Top", price: "4400", img: le5 },
-  { key: "f6", name: "Velvet Party Dress", price: "5500", img: le6, badge: "Bestseller" },
-  { key: "f7", name: "Striped Dungarees", price: "4000", img: feat1 },
-  { key: "f8", name: "Boho Maxi Skirt", price: "4600", img: feat2, badge: "Trending" },
-  { key: "f9", name: "Ruffled Blouse Set", price: "5200", img: feat3, badge: "New" },
-];
 
 const TrendingSection = ({ previewItems }: { previewItems?: ResolvedItem[] }) => {
   const preview = previewItems !== undefined;
@@ -56,13 +31,21 @@ const TrendingSection = ({ previewItems }: { previewItems?: ResolvedItem[] }) =>
     badge: p.badges[0],
     product: p,
   }));
-  const cards = curated.length > 0 ? curated : FALLBACK;
+  // No local mock fill for product sections: the backend already tops product
+  // sections up with real catalog items, so empty here means curation is
+  // unavailable — hide the strip rather than show placeholder products.
+  const cards = curated;
 
   const toggleWishlist = (p: ResolvedProductItem) => {
     const existing = wishlistItems.find((i) => i.slug === p.slug && i.sku === p.sku);
     if (existing) void removeFromWishlist(existing.id);
     else void addToWishlist(p.slug, p.sku);
   };
+
+  if (cards.length === 0) {
+    console.log("[TrendingSection] no products — section hidden");
+    return null;
+  }
 
   return (
     <section className="pt-0 pb-12 md:pt-0 md:pb-14 px-0">

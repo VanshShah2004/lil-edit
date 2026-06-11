@@ -78,7 +78,15 @@ export default function CollageGrid({ previewItems }: { previewItems?: ResolvedI
       onClick: () => navigate(pdpUrlFor(it)),
     };
   });
-  const tiles = curated.length > 0 ? curated : FALLBACK;
+  // The masonry always shows 9 tiles: curated items first (products or tiles),
+  // remaining slots topped up from the local mocks. A filler's span is recomputed
+  // for the position it actually lands in, keeping the hand-tuned mosaic rhythm.
+  const fill = FALLBACK.slice(0, Math.max(0, 9 - curated.length)).map((t, i) => ({
+    ...t,
+    span: SPANS[(curated.length + i) % SPANS.length],
+  }));
+  const tiles = [...curated, ...fill].slice(0, 9);
+  console.log(`[CollageGrid] curated=${curated.length} → rendering ${tiles.length} (mock fill=${tiles.length - Math.min(curated.length, 9)})`);
 
   return (
     <section className="pt-2 pb-3 px-4 sm:px-6 md:px-8 border-t border-border/50 animate-fade-in" style={{ animationDelay: "100ms" }}>

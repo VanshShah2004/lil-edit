@@ -41,7 +41,9 @@ const FeaturedCategories = ({ previewItems }: { previewItems?: ResolvedItem[] })
     objectPos: metaStr(it.meta, "object_position") || "center 50%",
     to: it.link ?? "/collections",
   }));
-  const categories = curated.length > 0 ? curated : FALLBACK;
+  // Always show 2 categories: admin tiles first, remaining slots from the local mocks.
+  const categories = [...curated, ...FALLBACK.slice(0, Math.max(0, 2 - curated.length))].slice(0, 2);
+  console.log(`[FeaturedCategories] curated=${curated.length} → rendering ${categories.length} (mock fill=${categories.length - Math.min(curated.length, 2)})`);
 
   return (
     <section className="relative py-12 md:py-16 bg-white overflow-hidden">

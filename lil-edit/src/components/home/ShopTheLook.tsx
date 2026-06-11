@@ -43,7 +43,10 @@ const ShopTheLook = ({ previewItems }: { previewItems?: ResolvedItem[] }) => {
     img: it.image ?? "",
     to: it.link ?? "/collections",
   }));
-  const looks = curated.length > 0 ? curated : FALLBACK;
+  // The grid always shows 4 looks: admin tiles first (in their order), remaining
+  // slots topped up from the local mock looks. Zero curated = full mock, as before.
+  const looks = [...curated, ...FALLBACK.slice(0, Math.max(0, 4 - curated.length))].slice(0, 4);
+  console.log(`[ShopTheLook] curated=${curated.length} → rendering ${looks.length} (mock fill=${looks.length - Math.min(curated.length, 4)})`);
 
   return (
     <section className="pt-2 pb-8 md:pt-4 md:pb-12 bg-white">

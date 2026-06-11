@@ -44,17 +44,18 @@ export default function FeaturedCollectionsGrid({ previewItems }: { previewItems
     else navigate(link);
   };
 
-  const featured: FeaturedCard[] =
-    editorials.length > 0
-      ? editorials.map((it) => ({
-          id: it.id,
-          name: it.title ?? "",
-          description: it.subtitle ?? "",
-          image: it.image ?? "",
-          badge: it.badge,
-          link: it.link,
-        }))
-      : FALLBACK;
+  const curated: FeaturedCard[] = editorials.map((it) => ({
+    id: it.id,
+    name: it.title ?? "",
+    description: it.subtitle ?? "",
+    image: it.image ?? "",
+    badge: it.badge,
+    link: it.link,
+  }));
+  // The mosaic always shows 6 cards (the index-based spans assume it): admin tiles
+  // first, remaining slots topped up from the local mocks.
+  const featured = [...curated, ...FALLBACK.slice(0, Math.max(0, 6 - curated.length))].slice(0, 6);
+  console.log(`[FeaturedCollectionsGrid] curated=${curated.length} → rendering ${featured.length} (mock fill=${featured.length - Math.min(curated.length, 6)})`);
 
   return (
     <section>
