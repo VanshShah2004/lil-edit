@@ -188,14 +188,49 @@ async function resolveProductsBySku(skus: string[], log: OpLogger): Promise<Map<
   return resolveProductRows((data ?? []) as ProductRow[], log);
 }
 
-// Random/recent published products used both for the empty-section fallback AND to
-// top up a partially-curated product section up to its max_items. For the trending
-// section we prefer is_trending=true and guarantee a "Trending" badge; if too few
-// trending products exist we top up with any published product (still trending-tagged).
+// ─── Seeded per-window shuffle ────────────────────────────────────────────────
+// The fallback/top-up products are genuinely random, but seeded on (section key,
+// current cache-TTL window) rather than Math.random(): the admin live preview and
+// the cached storefront read then agree on the same fill within a window, each
+// section gets a different mix (instead of every strip showing the same
+// newest-first products), and the selection rotates every CURATION_TTL_S.
+function mulberry32(seed: number): () => number {
+  return () => {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seededShuffle<T>(arr: T[], seedKey: string): T[] {
+  let h = Math.floor(Date.now() / (CURATION_TTL_S * 1000));
+  for (const c of seedKey) h = Math.imul(h ^ c.charCodeAt(0), 0x01000193);
+  const rand = mulberry32(h);
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    const tmp = out[i] as T;
+    out[i] = out[j] as T;
+    out[j] = tmp;
+  }
+  return out;
+}
+
+// How many candidates to pull per pool before shuffling. Big enough that small
+// catalogs rotate through everything; cheap either way.
+const FALLBACK_POOL_SIZE = 60;
+
+// Random published products used both for the empty-section fallback AND to top up
+// a partially-curated product section up to its max_items. For the trending section
+// we prefer is_trending=true and guarantee a "Trending" badge; if too few trending
+// products exist we top up with any published product (still trending-tagged).
 // `excludeSkus` keeps already-curated products from being repeated in the top-up.
+// `seedKey` (the section key) drives the per-window shuffle above.
 async function fallbackProducts(
   limit: number,
-  opts: { trendingOnly?: boolean; excludeSkus?: Set<string> },
+  opts: { trendingOnly?: boolean; excludeSkus?: Set<string>; seedKey: string },
   log: OpLogger,
 ): Promise<ResolvedProduct[]> {
   if (limit <= 0) return [];
@@ -209,28 +244,28 @@ async function fallbackProducts(
     collected.push(p);
   };
 
-  // Fetch a little extra headroom so excluded SKUs don't starve the result.
-  const headroom = limit + exclude.size;
-
   if (opts.trendingOnly) {
     const { data } = await db()
       .from("products")
       .select(PRODUCT_SELECT)
       .eq("status", "PUBLISHED")
       .eq("is_trending", true)
-      .limit(headroom);
-    for (const p of (data ?? []) as ProductRow[]) take(p);
+      .limit(FALLBACK_POOL_SIZE);
+    for (const p of seededShuffle((data ?? []) as ProductRow[], opts.seedKey)) {
+      if (collected.length >= limit) break;
+      take(p);
+    }
   }
 
   if (collected.length < limit) {
-    // Top up with the most recent published products (newest first).
+    // Pool of the most recent published products, shuffled per section + window.
     const { data } = await db()
       .from("products")
       .select(PRODUCT_SELECT)
       .eq("status", "PUBLISHED")
       .order("created_at", { ascending: false })
-      .limit(headroom * 2);
-    for (const p of (data ?? []) as ProductRow[]) {
+      .limit(FALLBACK_POOL_SIZE);
+    for (const p of seededShuffle((data ?? []) as ProductRow[], opts.seedKey)) {
       if (collected.length >= limit) break;
       take(p);
     }
@@ -262,7 +297,7 @@ async function resolveItems(section: SectionRow, itemRows: ItemRow[], log: OpLog
       return [];
     }
     const trendingOnly = key === "home_trending";
-    const items = await fallbackProducts(section.max_items, { trendingOnly }, log);
+    const items = await fallbackProducts(section.max_items, { trendingOnly, seedKey: key }, log);
     log.step(`section ${key} - fallback products=${items.length}  trending=${trendingOnly}`);
     return items;
   }
@@ -309,7 +344,7 @@ async function resolveItems(section: SectionRow, itemRows: ItemRow[], log: OpLog
     );
     const need = section.max_items - items.length;
     const trendingOnly = key === "home_trending";
-    const filler = await fallbackProducts(need, { trendingOnly, excludeSkus: haveSkus }, log);
+    const filler = await fallbackProducts(need, { trendingOnly, excludeSkus: haveSkus, seedKey: key }, log);
     items = [...items, ...filler];
     log.step(`section ${key} - topped up with ${filler.length} fallback product(s) → total=${items.length}`);
   }
