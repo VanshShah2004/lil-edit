@@ -422,53 +422,98 @@ function ItemRow({
   const img = isProduct ? item.product?.image ?? null : item.customImageUrl;
   const missing = isProduct && !item.product; // product unpublished/deleted
   const title = isProduct ? item.product?.title ?? item.productBaseSku ?? "Unknown product" : item.customTitle ?? "Untitled tile";
-  const sub = isProduct ? `${item.productBaseSku ?? ""}${item.product ? ` · ₹${item.product.price}` : ""}` : item.customSubtitle ?? "";
+  const sub = isProduct ? item.productBaseSku ?? "" : item.customSubtitle ?? "";
+
+  // Chips are rendered in two places (inline with the title on desktop, on their own
+  // row on mobile), so the styles live here once.
+  const kindChip = "shrink-0 whitespace-nowrap text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-50 text-violet-700";
+  const badgeChip = "shrink-0 max-w-[120px] truncate text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700";
+
+  // The slot number is overlaid on the thumbnail's corner (instead of a floating
+  // circle beside the card), so the card spans the full row width.
+  const slotBadge = (
+    <span className="absolute top-0 left-0 min-w-5 h-5 px-1 flex items-center justify-center rounded-br-lg bg-black/70 text-[10px] font-bold text-white tabular-nums pointer-events-none">
+      {index + 1}
+    </span>
+  );
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="w-6 h-6 flex items-center justify-center rounded-full bg-white border border-gray-300 text-xs font-bold text-black tabular-nums shrink-0">{index + 1}</span>
-      <div className={`flex-1 min-w-0 flex items-center gap-3 p-2.5 rounded-xl border shadow-sm ${missing ? "border-red-300 bg-red-50" : "border-gray-200 bg-white"}`}>
-      <div className="flex flex-col">
-        <button onClick={() => onMove(-1)} disabled={index === 0} className="text-gray-400 hover:text-gray-900 disabled:opacity-25"><ArrowUp className="w-4 h-4" /></button>
-        <button onClick={() => onMove(1)} disabled={index === total - 1} className="text-gray-400 hover:text-gray-900 disabled:opacity-25"><ArrowDown className="w-4 h-4" /></button>
+    <div className={`rounded-xl border shadow-sm overflow-hidden ${missing ? "border-red-300 bg-red-50" : "border-gray-200 bg-white"}`}>
+      <div className="flex items-center gap-3 p-3">
+        {/* Reorder arrows sit inline on desktop; on mobile they move into the
+            action bar below, where they get real touch targets. */}
+        <div className="hidden sm:flex flex-col">
+          <button onClick={() => onMove(-1)} disabled={index === 0} className="text-gray-400 hover:text-gray-900 disabled:opacity-25"><ArrowUp className="w-4 h-4" /></button>
+          <button onClick={() => onMove(1)} disabled={index === total - 1} className="text-gray-400 hover:text-gray-900 disabled:opacity-25"><ArrowDown className="w-4 h-4" /></button>
+        </div>
+
+        {isProduct && item.product ? (
+          <button
+            onClick={() => onQuickView(item.product as ResolvedProductItem)}
+            title="Quick view"
+            className="group/qv relative w-20 h-20 sm:w-16 sm:h-16 rounded-lg overflow-hidden bg-gray-200 shrink-0"
+          >
+            {img ? <img src={img} alt={title} className="w-full h-full object-cover" /> : <ImagePlus className="w-5 h-5 text-gray-300" />}
+            <span className="absolute inset-0 bg-black/0 group-hover/qv:bg-black/30 transition-colors" />
+            <span className="absolute bottom-0.5 right-0.5 w-5 h-5 flex items-center justify-center rounded-md bg-black/55 group-hover/qv:bg-black/80 transition-colors">
+              <Eye className="w-3 h-3 text-white" />
+            </span>
+            {slotBadge}
+          </button>
+        ) : (
+          <div className="relative w-20 h-20 sm:w-16 sm:h-16 rounded-lg overflow-hidden bg-gray-200 shrink-0 flex items-center justify-center">
+            {img ? <img src={img} alt={title} className="w-full h-full object-cover" /> : <ImagePlus className="w-5 h-5 text-gray-300" />}
+            {slotBadge}
+          </div>
+        )}
+
+        <div className="flex-1 min-w-0">
+          {/* Mobile reads top-down: title, subtitle, then the meta chips on their own
+              row. From sm: up the chips sit inline after the title as before. */}
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="flex-1 min-w-0 text-sm font-semibold text-gray-900 truncate">{title}</p>
+            <span className={`hidden sm:inline-flex justify-center w-16 ${kindChip}`}>{isProduct ? "Product" : "Tile"}</span>
+            {item.badge && <span className={`hidden sm:inline-flex ${badgeChip}`}>{item.badge}</span>}
+          </div>
+          {(missing || sub || (isProduct && item.product)) && (
+            <div className="flex items-baseline justify-between gap-2 mt-0.5 min-w-0">
+              <p className="text-xs text-gray-500 truncate">{missing ? "⚠ Product no longer published — will be skipped" : sub}</p>
+              {isProduct && item.product && (
+                <span className="shrink-0 text-sm font-bold text-teal-700 tabular-nums">₹{item.product.price}</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="hidden sm:flex items-center">
+          {!isProduct && (
+            <button onClick={onEdit} className="text-gray-400 hover:text-gray-900 p-1.5"><Pencil className="w-4 h-4" /></button>
+          )}
+          <button onClick={onRemove} className="text-gray-400 hover:text-red-600 p-1.5"><Trash2 className="w-4 h-4" /></button>
+        </div>
       </div>
 
-      {isProduct && item.product ? (
-        <button
-          onClick={() => onQuickView(item.product as ResolvedProductItem)}
-          title="Quick view"
-          className="group/qv relative w-12 h-12 rounded-lg overflow-hidden bg-gray-200 shrink-0"
-        >
-          {img ? <img src={img} alt={title} className="w-full h-full object-cover" /> : <ImagePlus className="w-5 h-5 text-gray-300" />}
-          <span className="absolute inset-0 bg-black/0 group-hover/qv:bg-black/30 transition-colors" />
-          <span className="absolute bottom-0.5 right-0.5 w-5 h-5 flex items-center justify-center rounded-md bg-black/55 group-hover/qv:bg-black/80 transition-colors">
-            <Eye className="w-3 h-3 text-white" />
-          </span>
-        </button>
-      ) : (
-        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200 shrink-0 flex items-center justify-center">
-          {img ? <img src={img} alt={title} className="w-full h-full object-cover" /> : <ImagePlus className="w-5 h-5 text-gray-300" />}
+      {/* Mobile action bar: the kind/badge chips sit on the left, the grouped
+          controls on the right — one row for everything below the text. The reorder
+          pair only renders when there's actually something to reorder, so a
+          single-item section never shows a row of dead gray arrows. */}
+      <div className={`flex sm:hidden items-center gap-2 px-3 py-2 border-t ${missing ? "border-red-200 bg-red-100/40" : "border-gray-100 bg-gray-50/70"}`}>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className={`inline-flex justify-center w-20 ${kindChip}`}>{isProduct ? "Product" : "Tile"}</span>
+          {item.badge && <span className={badgeChip}>{item.badge}</span>}
         </div>
-      )}
-
-      <div className="flex-1 min-w-0">
-        {/* On narrow screens the chips would leave the title only a character or two,
-            so the row wraps: title takes its own full line (truncating), chips drop to
-            a second line. From sm: up everything sits inline as before. */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
-          <p className="w-full sm:w-auto sm:flex-1 sm:min-w-0 text-sm font-semibold text-gray-900 truncate">{title}</p>
-          <span className={`shrink-0 whitespace-nowrap text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${isProduct ? "bg-teal-50 text-teal-700" : "bg-violet-50 text-violet-700"}`}>
-            {isProduct ? "Product" : "Tile"}
-          </span>
-          {item.badge && <span className="shrink-0 max-w-[120px] truncate text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">{item.badge}</span>}
-        </div>
-        <p className="text-xs text-gray-500 truncate">{missing ? "⚠ Product no longer published — will be skipped" : sub}</p>
-      </div>
-
-      {!isProduct && (
-        <button onClick={onEdit} className="text-gray-400 hover:text-gray-900 p-1.5"><Pencil className="w-4 h-4" /></button>
-      )}
-      <button onClick={onRemove} className="text-gray-400 hover:text-red-600 p-1.5"><Trash2 className="w-4 h-4" /></button>
+        <span className="flex-1" />
+        {total > 1 && (
+          <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
+            <button onClick={() => onMove(-1)} disabled={index === 0} className="px-3.5 py-1.5 text-gray-600 active:bg-gray-100 disabled:opacity-25"><ArrowUp className="w-4 h-4" /></button>
+            <span className="w-px self-stretch bg-gray-200" />
+            <button onClick={() => onMove(1)} disabled={index === total - 1} className="px-3.5 py-1.5 text-gray-600 active:bg-gray-100 disabled:opacity-25"><ArrowDown className="w-4 h-4" /></button>
+          </div>
+        )}
+        {!isProduct && (
+          <button onClick={onEdit} className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 bg-white shadow-sm text-gray-600 active:bg-gray-100"><Pencil className="w-4 h-4" /></button>
+        )}
+        <button onClick={onRemove} className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 bg-white shadow-sm text-red-500 active:bg-red-50"><Trash2 className="w-4 h-4" /></button>
       </div>
     </div>
   );
