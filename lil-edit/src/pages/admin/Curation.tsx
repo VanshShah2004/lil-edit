@@ -289,6 +289,10 @@ function EditorialTileModal({
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Shop the Look cards never render a badge (label/title/link only), so don't
+  // offer the field there — it would be a dead input.
+  const showBadge = sectionKey !== "home_shop_the_look";
+
   const handleUpload = async (file: File) => {
     setUploading(true);
     try {
@@ -315,7 +319,9 @@ function EditorialTileModal({
       customSubtitle: subtitle.trim() || null,
       customImageUrl: imageUrl,
       linkUrl: link.trim() || null,
-      badge: badge.trim() || null,
+      // Sections without a badge slot (Shop the Look) also clear any badge a tile
+      // may have carried from before.
+      badge: showBadge ? badge.trim() || null : null,
       meta,
       isActive: initial?.isActive ?? true,
       product: null,
@@ -366,7 +372,7 @@ function EditorialTileModal({
           <Field label="Title" value={title} onChange={setTitle} placeholder="e.g. Celebration Look" />
           <Field label="Subtitle / label" value={subtitle} onChange={setSubtitle} placeholder="e.g. FESTIVE EDIT" />
           <Field label="Link URL" value={link} onChange={setLink} placeholder="/collections" />
-          <Field label="Badge" value={badge} onChange={setBadge} placeholder="e.g. New, Trending" />
+          {showBadge && <Field label="Badge" value={badge} onChange={setBadge} placeholder="e.g. New, Trending" />}
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100">
@@ -405,6 +411,7 @@ function ItemRow({
   item,
   index,
   total,
+  showBadge = true,
   onMove,
   onRemove,
   onEdit,
@@ -413,6 +420,8 @@ function ItemRow({
   item: DraftItem;
   index: number;
   total: number;
+  /** Sections whose storefront card has no badge slot (Shop the Look) hide the chip. */
+  showBadge?: boolean;
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
   onEdit: () => void;
@@ -473,7 +482,7 @@ function ItemRow({
           <div className="flex items-center gap-2 min-w-0">
             <p className="flex-1 min-w-0 text-sm font-semibold text-gray-900 truncate">{title}</p>
             <span className={`hidden sm:inline-flex justify-center w-16 ${kindChip}`}>{isProduct ? "Product" : "Tile"}</span>
-            {item.badge && <span className={`hidden sm:inline-flex ${badgeChip}`}>{item.badge}</span>}
+            {showBadge && item.badge && <span className={`hidden sm:inline-flex ${badgeChip}`}>{item.badge}</span>}
           </div>
           {(missing || sub || (isProduct && item.product)) && (
             <div className="flex items-baseline justify-between gap-2 mt-0.5 min-w-0">
@@ -500,7 +509,7 @@ function ItemRow({
       <div className={`flex sm:hidden items-center gap-2 px-3 py-2 border-t ${missing ? "border-red-200 bg-red-100/40" : "border-gray-100 bg-gray-50/70"}`}>
         <div className="flex items-center gap-1.5 min-w-0">
           <span className={`inline-flex justify-center w-20 ${kindChip}`}>{isProduct ? "Product" : "Tile"}</span>
-          {item.badge && <span className={badgeChip}>{item.badge}</span>}
+          {showBadge && item.badge && <span className={badgeChip}>{item.badge}</span>}
         </div>
         <span className="flex-1" />
         {total > 1 && (
@@ -898,9 +907,11 @@ const CurationPage = () => {
                         <div className="flex items-center gap-2 min-w-0">
                           <GroupIcon className="w-4 h-4 text-gray-700 shrink-0" />
                           <span className="font-display text-sm font-bold text-gray-900 truncate">{group.label}</span>
-                          <span className="text-[11px] font-semibold text-gray-600">{groupSections.length}</span>
                         </div>
-                        <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-[11px] font-bold text-black tabular-nums">{groupSections.length}</span>
+                          <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                        </div>
                       </button>
 
                       {/* Sections inside the page */}
@@ -914,7 +925,7 @@ const CurationPage = () => {
                                 <ChevronRight className="w-3.5 h-3.5 text-gray-500 shrink-0" />
                                 <button
                                   onClick={() => openSection(s.key)}
-                                  className={`flex-1 min-w-0 text-left p-3 rounded-lg border-2 bg-gray-200 transition-all ${active ? "border-gray-900 shadow-sm" : "border-transparent hover:border-[#B19CD9]"}`}
+                                  className={`flex-1 min-w-0 text-left p-3 rounded-lg border-2 bg-gray-200 transition-all ${active ? "border-gray-900 shadow-sm" : "border-transparent hover:bg-gray-300/70"}`}
                                 >
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex items-center gap-2 min-w-0">
@@ -1060,6 +1071,7 @@ const CurationPage = () => {
                             item={item}
                             index={i}
                             total={draft.length}
+                            showBadge={selected.key !== "home_shop_the_look"}
                             onMove={(dir) => move(i, dir)}
                             onRemove={() => removeAt(i)}
                             onEdit={() => setTileEditing({ item })}

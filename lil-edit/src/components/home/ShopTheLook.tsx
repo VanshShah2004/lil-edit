@@ -91,13 +91,6 @@ const ShopTheLook = ({ previewItems }: { previewItems?: ResolvedItem[] }) => {
                 {/* Aesthetic Vignette Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 transition-opacity duration-500 opacity-60 group-hover:opacity-80" />
 
-                {/* Vertical Side Label */}
-                <div className="absolute top-8 sm:top-10 -left-1 origin-top-left -rotate-90 scale-90 sm:scale-100">
-                  <span className="text-[10px] font-black tracking-[0.3em] uppercase transition-colors duration-500 bg-black/20 backdrop-blur-md px-4 py-1 rounded-full border border-white/10 text-white/40 group-hover:text-white/90">
-                    {look.label}
-                  </span>
-                </div>
-
                 {/* Floating Glass Info Card - Redesigned with Organic Shape */}
                 <div className="absolute bottom-4 left-4 right-4 p-3 sm:p-4 transition-all duration-700 flex flex-col justify-between bg-white/20 backdrop-blur-2xl border border-white/30 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.4)] rounded-[1.5rem_0.5rem_1.5rem_0.5rem] h-[68px] sm:h-[70px] group-hover:h-[120px] sm:group-hover:h-[130px] group-hover:-translate-y-2">
                   <div className="flex justify-between items-center">
