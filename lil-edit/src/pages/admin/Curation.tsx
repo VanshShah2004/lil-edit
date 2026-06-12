@@ -908,7 +908,8 @@ const CurationPage = () => {
               <section className="min-w-0">
                 {/* Chrome-style tab strip for the open sections */}
                 {openTabs.length > 0 && (
-                  <div className="flex items-end gap-1 overflow-x-auto no-scrollbar">
+                  <div className="flex items-end gap-2">
+                    <div className="flex items-end gap-1 overflow-x-auto no-scrollbar flex-1 min-w-0">
                     {openTabs.map((key) => {
                       const sec = sections.find((s) => s.key === key);
                       if (!sec) return null;
@@ -936,10 +937,11 @@ const CurationPage = () => {
                         </div>
                       );
                     })}
+                    </div>
                     {openTabs.length > 1 && (
                       <button
                         onClick={closeAllTabs}
-                        className="ml-1 mb-2 self-end shrink-0 text-xs font-semibold text-gray-500 hover:text-red-600 px-2 py-1 rounded transition-colors"
+                        className="shrink-0 mb-1 text-xs font-semibold text-gray-500 hover:text-red-600 px-2 py-1 rounded transition-colors whitespace-nowrap"
                       >
                         Close all
                       </button>
