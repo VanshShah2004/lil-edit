@@ -73,7 +73,17 @@ export interface AdminSection {
   itemType: "product" | "editorial" | "mixed";
   isEnabled: boolean;
   maxItems: number;
+  /** Optimistic-lock version — echoed back on save so concurrent edits 409 instead of clobbering. */
+  updatedAt: string | null;
   items: AdminSectionItem[];
+}
+
+/** Thrown when a save is rejected because someone else modified the section first (HTTP 409). */
+export class StaleSaveError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StaleSaveError";
+  }
 }
 
 // Payload shape accepted by PUT /sections/:key/items. All fields optional except kind.
@@ -145,21 +155,35 @@ export async function fetchAdminSections(): Promise<AdminSection[]> {
   return data.sections ?? [];
 }
 
-export async function saveSectionItems(key: SectionKey, items: SectionItemInput[]): Promise<void> {
+// `expectedUpdatedAt` is the section version this draft was loaded against (pass the
+// raw string — never round-trip it through Date, microsecond precision must survive).
+// A 409 means someone else saved first; returns the NEW version so the caller can
+// save again without a refetch.
+export async function saveSectionItems(
+  key: SectionKey,
+  items: SectionItemInput[],
+  expectedUpdatedAt: string | null = null,
+): Promise<{ updatedAt: string | null }> {
   const res = await authFetch(`/api/curation/sections/${key}/items`, {
     method: "PUT",
-    body: JSON.stringify({ items }),
+    body: JSON.stringify({ items, expectedUpdatedAt }),
   });
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}));
+    throw new StaleSaveError((body as { error?: string }).error ?? "Section was modified by someone else");
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { error?: string }).error ?? `Save failed (${res.status})`);
   }
+  const data = (await res.json().catch(() => ({}))) as { updatedAt?: string | null };
+  return { updatedAt: data.updatedAt ?? null };
 }
 
 export async function updateSection(
   key: SectionKey,
   patch: { isEnabled?: boolean; title?: string; subtitle?: string },
-): Promise<void> {
+): Promise<{ updatedAt: string | null }> {
   const res = await authFetch(`/api/curation/sections/${key}`, {
     method: "PATCH",
     body: JSON.stringify(patch),
@@ -168,6 +192,8 @@ export async function updateSection(
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { error?: string }).error ?? `Update failed (${res.status})`);
   }
+  const data = (await res.json().catch(() => ({}))) as { updatedAt?: string | null };
+  return { updatedAt: data.updatedAt ?? null };
 }
 
 // Resolve an unsaved draft exactly as the storefront would render it (incl. the

@@ -29,6 +29,7 @@ import {
   SUGGESTION_TTL_S,
 } from "../lib/redis.js";
 import { createLog, type OpLogger } from "../lib/logger.js";
+import { invalidateAllCurationSections } from "./curation.js";
 import { supabaseAdmin } from "../lib/supabase.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
@@ -446,6 +447,8 @@ router.post("/preview", requireAuth, requireAdmin, async (req: Request, res: Res
         void invalidateCatalogCaches(log, sku);
         invalidateSearchCatalog();
         log.step("Search catalog - invalidated (product launched)");
+        void invalidateAllCurationSections(log);
+        log.step("Curation sections - invalidated (product launched)");
         database = { ok: true, publishedProductId };
         log.success(`product launched  publishedId=${publishedProductId}`);
       }
@@ -601,6 +604,8 @@ router.delete("/:id", requireAuth, requireAdmin, async (req: Request, res: Respo
     if (status === "PUBLISHED") {
       invalidateSearchCatalog();
       log.step("Search catalog - invalidated (published product deleted)");
+      void invalidateAllCurationSections(log);
+      log.step("Curation sections - invalidated (published product deleted)");
     }
     log.success(`deleted  id=${id}  status=${status}`).end("PRODUCT DELETE");
     res.json({ success: true, message: `Successfully deleted ${status} product ${id}.` });

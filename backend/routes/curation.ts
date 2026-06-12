@@ -35,6 +35,8 @@ interface SectionRow {
   item_type: "product" | "editorial" | "mixed";
   is_enabled: boolean;
   max_items: number;
+  /** Only selected on the admin list — the optimistic-lock version echoed back on save. */
+  updated_at?: string;
 }
 
 interface ItemRow {
@@ -367,6 +369,14 @@ async function invalidateSection(key: string, log: OpLogger): Promise<void> {
   await redisDel(log, redisKey("curation", key));
 }
 
+// Cached resolved sections embed live product data (title/price/image/badges) plus
+// the catalog top-up, so a published-product change anywhere can stale every strip.
+// Called from the product mutation routes (launch / published delete) so a dead or
+// edited product never lingers in a strip for the cache TTL.
+export async function invalidateAllCurationSections(log: OpLogger): Promise<void> {
+  await redisDel(log, ...KNOWN_SECTION_KEYS.map((k) => redisKey("curation", k)));
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PUBLIC: GET /api/curation/sections?keys=home_trending,home_recommended
 // Returns resolved, enabled sections for the storefront. Unknown keys are ignored.
@@ -409,7 +419,7 @@ router.get("/admin/sections", async (_req: Request, res: Response) => {
   try {
     const { data: sections, error: sErr } = await db()
       .from("curated_sections")
-      .select("id, section_key, title, subtitle, item_type, is_enabled, max_items")
+      .select("id, section_key, title, subtitle, item_type, is_enabled, max_items, updated_at")
       .order("section_key", { ascending: true });
     if (sErr) throw sErr;
 
@@ -441,6 +451,7 @@ router.get("/admin/sections", async (_req: Request, res: Response) => {
       itemType: s.item_type,
       isEnabled: s.is_enabled,
       maxItems: s.max_items,
+      updatedAt: s.updated_at ?? null,
       items: (itemsBySection.get(s.id) ?? []).map((r) => ({
         id: r.id,
         sortOrder: r.sort_order,
@@ -479,12 +490,16 @@ router.put("/sections/:key/items", adminMutationLimiter, async (req: Request, re
     return;
   }
 
-  const body = req.body as { items?: unknown };
+  const body = req.body as { items?: unknown; expectedUpdatedAt?: unknown };
   if (!Array.isArray(body.items)) {
     log.warn("items not an array").end("CURATION SET ITEMS");
     res.status(400).json({ error: "Body must be { items: [...] }" });
     return;
   }
+  // Optimistic-lock version the editor loaded this draft against. Forwarded verbatim
+  // (never parsed through Date — microsecond precision must round-trip exactly).
+  // null = no check, so older clients keep working.
+  const expectedUpdatedAt = typeof body.expectedUpdatedAt === "string" ? body.expectedUpdatedAt : null;
 
   // Normalise each item to the snake_case shape the RPC reads. Unknown fields are dropped.
   const items = body.items.map((raw) => {
@@ -538,18 +553,26 @@ router.put("/sections/:key/items", adminMutationLimiter, async (req: Request, re
       }
     }
 
-    const { error } = await db().rpc("curation_set_section_items", {
+    const { data: newUpdatedAt, error } = await db().rpc("curation_set_section_items", {
       p_section_key: key,
       p_items: items,
+      p_expected_updated_at: expectedUpdatedAt,
     });
     if (error) {
+      // P0409 = stale optimistic-lock version (raised by the RPC): someone else
+      // saved this section after the caller loaded it.
+      if (error.code === "P0409") {
+        log.warn(`stale save rejected  key=${key}  expected=${expectedUpdatedAt}`).end("CURATION SET ITEMS");
+        res.status(409).json({ error: "This section was modified by someone else since you opened it." });
+        return;
+      }
       log.error(`rpc failed code=${error.code} msg=${error.message}`, error).end("CURATION SET ITEMS");
       res.status(500).json({ error: error.message });
       return;
     }
     await invalidateSection(key, log);
-    log.success(`replaced items  key=${key}  count=${items.length}`).end("CURATION SET ITEMS");
-    res.json({ success: true });
+    log.success(`replaced items  key=${key}  count=${items.length}  newVersion=${newUpdatedAt}`).end("CURATION SET ITEMS");
+    res.json({ success: true, updatedAt: (newUpdatedAt as string | null) ?? null });
   } catch (err) {
     log.error("failed", err).end("CURATION SET ITEMS");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -644,7 +667,15 @@ router.patch("/sections/:key", adminMutationLimiter, async (req: Request, res: R
   log.step(`key=${key}  patch=${Object.keys(patch).join(",")}`);
 
   try {
-    const { error } = await db().from("curated_sections").update(patch).eq("section_key", key);
+    // Return the post-update updated_at: the touch trigger bumps it, and any open
+    // editor tab must adopt the new version or its next save would 409 on the
+    // admin's own toggle.
+    const { data, error } = await db()
+      .from("curated_sections")
+      .update(patch)
+      .eq("section_key", key)
+      .select("updated_at")
+      .maybeSingle();
     if (error) {
       log.error(`update failed: ${error.message}`, error).end("CURATION PATCH SECTION");
       res.status(500).json({ error: error.message });
@@ -652,7 +683,7 @@ router.patch("/sections/:key", adminMutationLimiter, async (req: Request, res: R
     }
     await invalidateSection(key, log);
     log.success(`updated  key=${key}`).end("CURATION PATCH SECTION");
-    res.json({ success: true });
+    res.json({ success: true, updatedAt: (data as { updated_at?: string } | null)?.updated_at ?? null });
   } catch (err) {
     log.error("failed", err).end("CURATION PATCH SECTION");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });

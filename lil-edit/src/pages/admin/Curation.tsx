@@ -37,6 +37,7 @@ import {
   updateSection,
   searchProducts,
   previewSection,
+  StaleSaveError,
   type AdminSection,
   type AdminSectionItem,
   type ResolvedItem,
@@ -482,10 +483,13 @@ const PREVIEW_VIEWPORTS = {
 } as const;
 
 // Per-tab editing state: the working draft plus the snapshot it was last saved at
-// (used to detect unsaved changes). One entry per open tab.
+// (used to detect unsaved changes). One entry per open tab. `updatedAt` is the
+// section version the draft is based on — sent with the save so a concurrent edit
+// by another tab/admin is rejected (409) instead of silently overwritten.
 interface TabState {
   draft: DraftItem[];
   snapshot: string;
+  updatedAt: string | null;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -671,8 +675,8 @@ const CurationPage = () => {
       if (prev[key]) return prev; // keep an already-open tab's edits
       const section = sections.find((s) => s.key === key);
       const items = (section?.items ?? []).map(toDraft);
-      console.log(`[Curation] opened ${key} — ${items.length} item(s)`);
-      return { ...prev, [key]: { draft: items, snapshot: JSON.stringify(items.map(toInput)) } };
+      console.log(`[Curation] opened ${key} — ${items.length} item(s)  version=${section?.updatedAt ?? "?"}`);
+      return { ...prev, [key]: { draft: items, snapshot: JSON.stringify(items.map(toInput)), updatedAt: section?.updatedAt ?? null } };
     });
     setActiveKey(key);
     const g = groupOf(key);
@@ -740,17 +744,35 @@ const CurationPage = () => {
     setSaving(true);
     try {
       const snapshot = JSON.stringify(draft.map(toInput));
-      await saveSectionItems(selected.key, draft.map(toInput));
-      setTabs((prev) => (prev[activeKey] ? { ...prev, [activeKey]: { ...prev[activeKey], snapshot } } : prev));
-      // Reflect the new count in the sidebar without a full refetch.
-      setSections((prev) => prev.map((s) => (s.key === selected.key ? { ...s, items: draft.map((d, i) => ({
+      const { updatedAt } = await saveSectionItems(selected.key, draft.map(toInput), activeTab?.updatedAt ?? null);
+      setTabs((prev) => (prev[activeKey] ? { ...prev, [activeKey]: { ...prev[activeKey], snapshot, updatedAt } } : prev));
+      // Reflect the new count + version in the sidebar without a full refetch.
+      setSections((prev) => prev.map((s) => (s.key === selected.key ? { ...s, updatedAt: updatedAt ?? s.updatedAt, items: draft.map((d, i) => ({
         id: d.tempId, sortOrder: i, kind: d.kind, productBaseSku: d.productBaseSku,
         customTitle: d.customTitle, customSubtitle: d.customSubtitle, customImageUrl: d.customImageUrl,
         linkUrl: d.linkUrl, badge: d.badge, meta: d.meta, isActive: d.isActive, product: d.product,
       })) } : s)));
       toast.success(`Saved "${selected.title}"`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Save failed");
+      if (err instanceof StaleSaveError) {
+        // Someone else (another tab/admin) saved this section after this tab loaded it.
+        // Keep the draft, refresh the sidebar + this tab's base version — a deliberate
+        // second Save then overwrites with full knowledge.
+        console.warn(`[Curation] stale save rejected for ${selected.key} — adopting latest version`, err);
+        try {
+          const fresh = await fetchAdminSections();
+          setSections(fresh);
+          const latest = fresh.find((s) => s.key === selected.key);
+          if (latest) {
+            setTabs((prev) => (prev[activeKey] ? { ...prev, [activeKey]: { ...prev[activeKey], updatedAt: latest.updatedAt } } : prev));
+          }
+        } catch (refetchErr) {
+          console.warn("[Curation] refetch after stale save failed", refetchErr);
+        }
+        toast.error("This section was changed by another tab or admin. Your draft is kept — review it, then Save again to overwrite their version.", { duration: 8000 });
+      } else {
+        toast.error(err instanceof Error ? err.message : "Save failed");
+      }
     } finally {
       setSaving(false);
     }
@@ -760,7 +782,14 @@ const CurationPage = () => {
     const next = !section.isEnabled;
     setSections((prev) => prev.map((s) => (s.key === section.key ? { ...s, isEnabled: next } : s)));
     try {
-      await updateSection(section.key, { isEnabled: next });
+      const { updatedAt } = await updateSection(section.key, { isEnabled: next });
+      // The toggle bumps the section's updated_at (touch trigger) — adopt the new
+      // version in the sidebar and any open tab, or that tab's next save would 409
+      // on the admin's own toggle.
+      if (updatedAt) {
+        setSections((prev) => prev.map((s) => (s.key === section.key ? { ...s, updatedAt } : s)));
+        setTabs((prev) => (prev[section.key] ? { ...prev, [section.key]: { ...prev[section.key], updatedAt } } : prev));
+      }
       toast.success(`${section.title} ${next ? "enabled" : "hidden"}`);
     } catch (err) {
       setSections((prev) => prev.map((s) => (s.key === section.key ? { ...s, isEnabled: !next } : s)));
