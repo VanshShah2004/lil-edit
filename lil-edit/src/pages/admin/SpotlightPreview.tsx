@@ -54,7 +54,7 @@ interface PreviewState {
   items: ResolvedItem[];
 }
 
-const CurationPreviewPage = () => {
+const SpotlightPreviewPage = () => {
   const [state, setState] = useState<PreviewState | null>(null);
 
   useEffect(() => {
@@ -99,4 +99,4 @@ const CurationPreviewPage = () => {
   );
 };
 
-export default CurationPreviewPage;
+export default SpotlightPreviewPage;

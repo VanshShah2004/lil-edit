@@ -48,17 +48,20 @@ const UserNavbar = () => {
   const userInitial = firstNameCandidate.charAt(0).toUpperCase();
   const role = profile?.role ?? "customer";
   const isAdmin = role === "admin";
-  const dashboardMenuItems = [
-    { to: "/profile", label: "Profile", icon: User, adminOnly: false },
-    { to: "/orders", label: "Orders", icon: Package, adminOnly: false },
-    // Keep this role-aware list so admin-only options can be expanded easily.
-    { to: "/admin/add-product", label: "Add Product", icon: Plus, adminOnly: true },
-    { to: "/admin/manage-products", label: "View/Edit Products", icon: Shirt, adminOnly: true },
-    { to: "/admin/orders", label: "Manage Orders", icon: ClipboardList, adminOnly: true },
-    { to: "/admin/curation", label: "Curation Studio", icon: LayoutGrid, adminOnly: true },
-    { to: "#", label: "Admin Settings", icon: Settings, adminOnly: true },
+  // The profile dropdown is grouped: personal account items first, then (for
+  // admins) a labelled Admin section in workflow order — catalog, merchandising,
+  // orders, settings.
+  const accountMenuItems = [
+    { to: "/profile", label: "Profile", icon: User },
+    { to: "/orders", label: "My Orders", icon: Package },
   ];
-  const visibleMenuItems = dashboardMenuItems.filter((item) => !item.adminOnly || isAdmin);
+  const adminMenuItems = [
+    { to: "/admin/add-product", label: "Add Product", icon: Plus },
+    { to: "/admin/manage-products", label: "Manage Products", icon: Shirt },
+    { to: "/admin/orders", label: "Manage Orders", icon: ClipboardList },
+    { to: "/admin/spotlight", label: "The Spotlight", icon: LayoutGrid },
+    { to: "#", label: "Admin Settings", icon: Settings },
+  ];
 
 
   useLayoutEffect(() => {
@@ -232,7 +235,7 @@ const UserNavbar = () => {
                       <div className="h-px bg-border my-1" />
                     </>
                   )}
-                  {visibleMenuItems.map((item) => {
+                  {accountMenuItems.map((item) => {
                     const Icon = item.icon;
                     return (
                       <Link
@@ -242,10 +245,30 @@ const UserNavbar = () => {
                         className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
                       >
                         <Icon className="w-4 h-4" /> {item.label}
-                        {item.adminOnly && <Shield className="w-3.5 h-3.5 ml-auto text-primary" />}
                       </Link>
                     );
                   })}
+                  {isAdmin && (
+                    <>
+                      <div className="h-px bg-border my-1" />
+                      <div className="flex items-center gap-1.5 px-4 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <Shield className="w-3 h-3 text-primary" /> Admin
+                      </div>
+                      {adminMenuItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <Link
+                            key={item.label}
+                            to={item.to}
+                            onClick={() => setIsProfileOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
+                          >
+                            <Icon className="w-4 h-4" /> {item.label}
+                          </Link>
+                        );
+                      })}
+                    </>
+                  )}
                   <div className="h-px bg-border my-1" />
                   <button
                     onClick={async () => {

@@ -549,7 +549,7 @@ interface TabState {
 // ═════════════════════════════════════════════════════════════════════════════
 // Page
 // ═════════════════════════════════════════════════════════════════════════════
-const CurationPage = () => {
+const SpotlightPage = () => {
   const { user, loading: authLoading } = useAuth();
 
   const [sections, setSections] = useState<AdminSection[]>([]);
@@ -866,7 +866,7 @@ const CurationPage = () => {
       <div className="pt-[160px] md:pt-[128px] px-6 lg:px-12 bg-white border-b border-gray-100 pb-8">
         <div className="max-w-screen-2xl mx-auto space-y-1">
           <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>Merchandising</p>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Curation Studio</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">The Spotlight</h1>
           <p className="text-sm text-gray-500">Control which products and tiles appear across the storefront.</p>
         </div>
       </div>
@@ -1127,7 +1127,7 @@ const CurationPage = () => {
                           >
                             <iframe
                               ref={previewFrameRef}
-                              src="/admin/curation/preview"
+                              src="/admin/spotlight/preview"
                               title="Section live preview"
                               className="border-0 bg-white"
                               style={{
@@ -1179,4 +1179,4 @@ const CurationPage = () => {
   );
 };
 
-export default CurationPage;
+export default SpotlightPage;
