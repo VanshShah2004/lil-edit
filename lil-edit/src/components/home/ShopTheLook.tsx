@@ -69,13 +69,14 @@ const ShopTheLook = ({ previewItems }: { previewItems?: ResolvedItem[] }) => {
           </div>
         </div>
 
-        {/* Placards Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 lg:gap-10">
+        {/* Placards — mobile: swipeable carousel with a peek of the next card (the
+            2x2 grid squeezed the placards together); sm+: the original grid. */}
+        <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2 sm:mx-0 sm:px-0 sm:pb-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 md:gap-8 lg:gap-10">
           {looks.map((look) => (
             <div
               key={look.id}
               onClick={() => go(look.to)}
-              className="group relative h-[260px] sm:h-[340px] md:h-[380px] cursor-pointer"
+              className="group relative w-[72%] shrink-0 snap-start sm:w-auto sm:shrink h-[380px] sm:h-[340px] md:h-[380px] cursor-pointer"
             >
               {/* Main Card Container with Organic Shapes */}
               <div className="relative w-full h-full rounded-[2rem_0.5rem_2rem_0.5rem] sm:rounded-[3rem_1rem_3rem_1rem] overflow-hidden shadow-[0_10px_30px_-10px_rgba(0,0,0,0.2)] border border-white/20 transition-all duration-700 group-hover:shadow-[0_20px_50px_-12px_rgba(15,118,110,0.3)]">
@@ -91,20 +92,20 @@ const ShopTheLook = ({ previewItems }: { previewItems?: ResolvedItem[] }) => {
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 transition-opacity duration-500 opacity-60 group-hover:opacity-80" />
 
                 {/* Vertical Side Label */}
-                <div className="absolute top-8 sm:top-10 -left-1 origin-top-left -rotate-90 scale-75 sm:scale-100">
+                <div className="absolute top-8 sm:top-10 -left-1 origin-top-left -rotate-90 scale-90 sm:scale-100">
                   <span className="text-[10px] font-black tracking-[0.3em] uppercase transition-colors duration-500 bg-black/20 backdrop-blur-md px-4 py-1 rounded-full border border-white/10 text-white/40 group-hover:text-white/90">
                     {look.label}
                   </span>
                 </div>
 
                 {/* Floating Glass Info Card - Redesigned with Organic Shape */}
-                <div className="absolute bottom-4 left-4 right-4 p-3 sm:p-4 transition-all duration-700 flex flex-col justify-between bg-white/20 backdrop-blur-2xl border border-white/30 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.4)] rounded-[1.5rem_0.5rem_1.5rem_0.5rem] h-[55px] sm:h-[70px] group-hover:h-[105px] sm:group-hover:h-[130px] group-hover:-translate-y-2">
+                <div className="absolute bottom-4 left-4 right-4 p-3 sm:p-4 transition-all duration-700 flex flex-col justify-between bg-white/20 backdrop-blur-2xl border border-white/30 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.4)] rounded-[1.5rem_0.5rem_1.5rem_0.5rem] h-[68px] sm:h-[70px] group-hover:h-[120px] sm:group-hover:h-[130px] group-hover:-translate-y-2">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-white font-black text-[11px] sm:text-base leading-tight tracking-tight pr-2 drop-shadow-sm">
+                    <h3 className="text-white font-black text-sm sm:text-base leading-tight tracking-tight pr-2 drop-shadow-sm">
                       {look.title}
                     </h3>
-                    <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-white flex items-center justify-center text-black shadow-lg transform transition-all duration-700 shrink-0 group-hover:rotate-[360deg]">
-                      <ArrowRight className="w-3.5 h-3.5 sm:w-5 sm:h-5" strokeWidth={3} />
+                    <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-black shadow-lg transform transition-all duration-700 shrink-0 group-hover:rotate-[360deg]">
+                      <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={3} />
                     </div>
                   </div>
 

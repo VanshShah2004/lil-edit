@@ -96,12 +96,15 @@ export default function CollageGrid({ previewItems }: { previewItems?: ResolvedI
         </h3>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 auto-rows-[60px] sm:auto-rows-[80px] md:auto-rows-[110px]">
+      {/* Mobile: swipeable carousel with a peek of the next tile (the 3-col masonry
+          squeezed tiles tiny); sm+: the original masonry grid (span classes only
+          apply once the container becomes a grid). */}
+      <div className="flex gap-2.5 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2 sm:mx-0 sm:px-0 sm:pb-0 sm:grid sm:grid-cols-3 sm:gap-3 sm:auto-rows-[80px] md:auto-rows-[110px]">
         {tiles.map((item) => (
           <button
             key={item.key}
             onClick={item.onClick}
-            className={`group relative rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-teal-600/50 ${item.span}`}
+            className={`group relative w-[44%] shrink-0 snap-start h-[200px] sm:w-auto sm:shrink sm:h-auto rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-teal-600/50 ${item.span}`}
           >
             <img
               src={item.image}
