@@ -528,6 +528,25 @@ const CurationPage = () => {
     return !!t && JSON.stringify(t.draft.map(toInput)) !== t.snapshot;
   };
 
+  // In-app tab close confirms before discarding, but a browser refresh/back/close
+  // would silently drop every tab's draft — hook beforeunload while anything is dirty.
+  const anyTabDirty = useMemo(
+    () => openTabs.some((k) => {
+      const t = tabs[k];
+      return !!t && JSON.stringify(t.draft.map(toInput)) !== t.snapshot;
+    }),
+    [openTabs, tabs],
+  );
+  useEffect(() => {
+    if (!anyTabDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = ""; // legacy requirement for the browser prompt to show
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [anyTabDirty]);
+
   // Mutate the active tab's draft in place.
   const updateActiveDraft = (updater: (prev: DraftItem[]) => DraftItem[]) => {
     if (!activeKey) return;
@@ -617,13 +636,22 @@ const CurationPage = () => {
 
   // Resolve the live preview on the backend (debounced) so it shows the real storefront
   // output — curated picks plus the auto-filled catalog products — for the current draft.
+  // The debounce only cancels pending timers, not in-flight requests, so two quick edits
+  // can produce overlapping requests whose responses land out of order. Each request is
+  // stamped with a sequence number and only the latest one may set state.
+  const previewSeq = useRef(0);
   useEffect(() => {
     if (!selected) return;
     const key = selected.key;
     const payload = draft.map(toInput);
+    const seq = ++previewSeq.current;
     const t = setTimeout(() => {
       previewSection(key, payload)
         .then((items) => {
+          if (seq !== previewSeq.current) {
+            console.log(`[Curation] preview ${key} (seq ${seq}) superseded — dropped`);
+            return;
+          }
           console.log(`[Curation] preview ${key} → ${items.length} resolved item(s)`);
           setFilled({ key, items });
         })
@@ -934,7 +962,7 @@ const CurationPage = () => {
                         </button>
                       )}
                       {draft.length > selected.maxItems && (
-                        <span className="text-xs text-amber-600 ml-auto">Over the {selected.maxItems}-item cap — extras may not all render.</span>
+                        <span className="text-xs text-amber-600 ml-auto">Over the {selected.maxItems}-item cap — only the first {selected.maxItems} will show on the storefront.</span>
                       )}
                     </div>
 

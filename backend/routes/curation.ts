@@ -291,6 +291,13 @@ async function resolveItems(section: SectionRow, itemRows: ItemRow[], log: OpLog
     .filter((x): x is ResolvedItem => x !== null);
   log.step(`section ${key} - curated items=${items.length}`);
 
+  // max_items is a soft cap at save time (the editor only warns), so enforce it here
+  // at read time — storefront, cache, and admin preview all agree on what renders.
+  if (items.length > section.max_items) {
+    items = items.slice(0, section.max_items);
+    log.step(`section ${key} - capped to max_items=${section.max_items}`);
+  }
+
   // Product sections auto-fill the remaining slots from the catalog, so a section
   // the admin only partially curated (e.g. 1 of 10) is never left sparse. The
   // admin's picks keep their order at the front; the rest are topped up below.
@@ -497,6 +504,40 @@ router.put("/sections/:key/items", adminMutationLimiter, async (req: Request, re
   log.step(`admin=${adminId}  key=${key}  items=${items.length}`);
 
   try {
+    // The editor only offers add buttons matching the section's type, but the API
+    // shouldn't trust the client: reject kinds the section doesn't allow, and item
+    // shapes the DB check constraint would otherwise bounce as an opaque 500.
+    const { data: sectionData, error: sErr } = await db()
+      .from("curated_sections")
+      .select("item_type")
+      .eq("section_key", key)
+      .maybeSingle();
+    if (sErr) throw sErr;
+    if (!sectionData) {
+      log.warn(`section not seeded key=${key}`).end("CURATION SET ITEMS");
+      res.status(404).json({ error: `Section not seeded: ${key}` });
+      return;
+    }
+    const itemType = (sectionData as { item_type: string }).item_type;
+
+    for (const [i, it] of items.entries()) {
+      if (itemType !== "mixed" && it.kind !== itemType) {
+        log.warn(`item ${i} kind=${it.kind} rejected — section is ${itemType}-only`).end("CURATION SET ITEMS");
+        res.status(400).json({ error: `Item ${i + 1} is a ${it.kind} item, but this section only allows ${itemType} items` });
+        return;
+      }
+      if (it.kind === "product" && !it.product_base_sku) {
+        log.warn(`item ${i} product without base_sku`).end("CURATION SET ITEMS");
+        res.status(400).json({ error: `Item ${i + 1}: product items need a base SKU` });
+        return;
+      }
+      if (it.kind === "editorial" && !it.custom_image_url) {
+        log.warn(`item ${i} editorial without image`).end("CURATION SET ITEMS");
+        res.status(400).json({ error: `Item ${i + 1}: editorial tiles need an image` });
+        return;
+      }
+    }
+
     const { error } = await db().rpc("curation_set_section_items", {
       p_section_key: key,
       p_items: items,
