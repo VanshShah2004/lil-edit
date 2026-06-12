@@ -159,6 +159,15 @@ begin
 end;
 $$;
 
+-- SECURITY DEFINER bypasses RLS, and Supabase exposes public-schema functions to
+-- anon/authenticated through PostgREST by default — without this revoke, anyone
+-- holding the anon key from the frontend bundle could rewrite sections directly.
+-- Only the backend's service-role client may call it.
+revoke execute on function public.curation_set_section_items(text, jsonb)
+  from public, anon, authenticated;
+grant execute on function public.curation_set_section_items(text, jsonb)
+  to service_role;
+
 -- ─── Seed the known sections ─────────────────────────────────────────────────
 -- One row per storefront strip. Re-applying is a no-op (ON CONFLICT DO NOTHING).
 insert into public.curated_sections (section_key, title, subtitle, item_type, max_items) values
