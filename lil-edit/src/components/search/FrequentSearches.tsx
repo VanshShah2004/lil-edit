@@ -57,7 +57,7 @@ export default function FrequentSearches({ onSelect, previewItems }: FrequentSea
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               />
             </div>
-            <span className="flex-1 text-sm sm:text-base font-semibold text-foreground/80 group-hover:text-teal-700 transition-colors line-clamp-2">
+            <span className="flex-1 text-xs sm:text-sm font-semibold text-foreground/80 group-hover:text-teal-700 transition-colors line-clamp-2">
               {item.name}
             </span>
           </button>

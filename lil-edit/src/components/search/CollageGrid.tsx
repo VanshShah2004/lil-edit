@@ -116,10 +116,10 @@ export default function CollageGrid({ previewItems }: { previewItems?: ResolvedI
 
             {/* Text Content */}
             <div className="absolute inset-x-0 bottom-0 p-4 flex flex-col items-start justify-end h-full">
-              <span className="text-[10px] sm:text-xs font-semibold tracking-wider text-white/90 uppercase mb-0.5 sm:mb-1 drop-shadow-md">
+              <span className="text-[9px] sm:text-[11px] font-semibold tracking-wider text-white/90 uppercase mb-0.5 sm:mb-1 drop-shadow-md">
                 {item.subtitle}
               </span>
-              <h4 className="text-sm sm:text-lg md:text-xl font-bold text-white leading-tight drop-shadow-md group-hover:-translate-y-1 transition-transform duration-300">
+              <h4 className="text-xs sm:text-base md:text-lg font-bold text-white leading-tight drop-shadow-md group-hover:-translate-y-1 transition-transform duration-300">
                 {item.title}
               </h4>
             </div>
