@@ -252,7 +252,7 @@ const UserNavbar = () => {
                     <>
                       <div className="h-px bg-border my-1" />
                       <div className="flex items-center gap-1.5 px-4 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                        <Shield className="w-3 h-3 text-primary" /> Admin
+                        <Shield className="w-3 h-3 text-primary" strokeWidth={5} /> Admin
                       </div>
                       {adminMenuItems.map((item) => {
                         const Icon = item.icon;
