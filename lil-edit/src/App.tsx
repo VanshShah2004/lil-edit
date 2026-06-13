@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
 import AdminRoute from "./components/AdminRoute";
+import PageTitle from "./components/PageTitle";
 
 // Home is the landing route (/ and /dashboard) — keep it eager so the first
 // paint never waits on a chunk fetch. Every other page is split into its own
@@ -74,6 +75,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <PageTitle />
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<Home />} />
