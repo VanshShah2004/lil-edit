@@ -31,7 +31,9 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     }
   }, [isOpen]);
 
-  // Body-scroll lock + Escape to close.
+  // Body-scroll lock + Escape to close + close on any click/tap outside the panel
+  // (incl. the navbar, profile icon, and mega menu, which the backdrop doesn't
+  // cover on mobile since the panel sits below the navbar).
   useEffect(() => {
     if (!isOpen) {
       document.body.style.overflow = "";
@@ -44,9 +46,20 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
       if (e.key === "Escape") onClose();
     };
 
+    const handleOutsidePointer = (e: MouseEvent | TouchEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        console.log("[SearchPanel] outside pointer — closing");
+        onClose();
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleOutsidePointer);
+    document.addEventListener("touchstart", handleOutsidePointer);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleOutsidePointer);
+      document.removeEventListener("touchstart", handleOutsidePointer);
       document.body.style.overflow = "";
     };
   }, [isOpen, onClose]);
