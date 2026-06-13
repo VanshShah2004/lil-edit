@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { ChevronRight, Heart, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +14,6 @@ import img4 from "@/assets/searchbar-frequent_searches/le-4.png";
 import img5 from "@/assets/searchbar-frequent_searches/le-5.png";
 import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
 
-// Mock Data
 const occasionCategories = [
   { id: "occ-1", name: "Birthday Party", gradient: "from-pink-200 to-rose-200", icon: "🎉" },
   { id: "occ-2", name: "Casual Wear", gradient: "from-blue-200 to-cyan-200", icon: "👟" },
@@ -36,63 +34,8 @@ const galleryImages = [
   { id: "gal-8", image: img1, caption: "Mini Chic", price: "2600" },
 ];
 
-const filterOptions = {
-  age: [
-    { label: "0-6 Months", count: 24 },
-    { label: "6-12 Months", count: 31 },
-    { label: "1-2 Years", count: 45 },
-    { label: "2-3 Years", count: 52 },
-    { label: "3-4 Years", count: 48 },
-    { label: "4+ Years", count: 38 },
-  ],
-  occasion: [
-    { label: "Casual", count: 89 },
-    { label: "Party", count: 56 },
-    { label: "Festive", count: 42 },
-    { label: "Sports", count: 34 },
-    { label: "Sleepwear", count: 28 },
-  ],
-  color: [
-    { label: "White", count: 45, hex: "#FFFFFF" },
-    { label: "Black", count: 38, hex: "#000000" },
-    { label: "Pink", count: 52, hex: "#FFC0CB" },
-    { label: "Blue", count: 48, hex: "#0087BE" },
-    { label: "Yellow", count: 31, hex: "#FFED4E" },
-    { label: "Green", count: 27, hex: "#90EE90" },
-  ],
-  priceRanges: [
-    { label: "Under ₹1,000", count: 45 },
-    { label: "₹1,000 - ₹2,000", count: 68 },
-    { label: "₹2,000 - ₹4,000", count: 52 },
-    { label: "₹4,000+", count: 31 },
-  ],
-};
-
 export default function Collections() {
   const { user, loading: authLoading } = useAuth();
-  const [selectedFilters, setSelectedFilters] = useState<{
-    age: string[];
-    occasion: string[];
-    color: string[];
-    price: string[];
-  }>({
-    age: [],
-    occasion: [],
-    color: [],
-    price: [],
-  });
-
-  const [sortBy, setSortBy] = useState("newest");
-  const [showFilters, setShowFilters] = useState(false);
-
-  const toggleFilter = (category: keyof typeof selectedFilters, value: string) => {
-    setSelectedFilters((prev) => ({
-      ...prev,
-      [category]: prev[category].includes(value)
-        ? prev[category].filter((item) => item !== value)
-        : [...prev[category], value],
-    }));
-  };
 
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -111,86 +54,6 @@ export default function Collections() {
           <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           <span className="text-gray-900 font-medium">Collections</span>
         </div>
-      </div>
-
-      {/* MOBILE SORT & SEARCH BAR (Moved above Hero) */}
-      <div className="lg:hidden w-full px-4 sm:px-6 pb-6 pt-2">
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-2">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="flex-1 px-3 py-2.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all duration-200 bg-white"
-            >
-              <option value="newest">Newest</option>
-              <option value="popular">Popular</option>
-              <option value="price-low">Price ↑</option>
-              <option value="price-high">Price ↓</option>
-            </select>
-            <Button
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-              className="px-3 py-2.5 border-gray-300 text-xs font-medium bg-white"
-            >
-              {showFilters ? "Hide" : "Filter"}
-            </Button>
-          </div>
-        </div>
-
-        {/* MOBILE FILTER PANEL */}
-        {showFilters && (
-          <div className="w-full border border-gray-200 rounded-xl p-4 mt-3 space-y-5 bg-white shadow-sm">
-            {/* AGE */}
-            <div className="pb-4 border-b border-gray-200">
-              <h3 className="text-xs font-semibold text-gray-900 mb-2.5">Age</h3>
-              <div className="space-y-2">
-                {filterOptions.age.slice(0, 3).map((option) => (
-                  <label key={option.label} className="flex items-center gap-2 cursor-pointer text-xs">
-                    <input
-                      type="checkbox"
-                      checked={selectedFilters.age.includes(option.label)}
-                      onChange={() => toggleFilter("age", option.label)}
-                      className="w-4 h-4 accent-gray-900 rounded"
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* OCCASION */}
-            <div className="pb-4 border-b border-gray-200">
-              <h3 className="text-xs font-semibold text-gray-900 mb-2.5">Occasion</h3>
-              <div className="space-y-2">
-                {filterOptions.occasion.slice(0, 3).map((option) => (
-                  <label key={option.label} className="flex items-center gap-2 cursor-pointer text-xs">
-                    <input
-                      type="checkbox"
-                      checked={selectedFilters.occasion.includes(option.label)}
-                      onChange={() => toggleFilter("occasion", option.label)}
-                      className="w-4 h-4 accent-gray-900 rounded"
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* CLEAR */}
-            {Object.values(selectedFilters).some((arr) => arr.length > 0) && (
-              <Button
-                variant="outline"
-                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 text-xs py-2"
-                onClick={() => {
-                  setSelectedFilters({ age: [], occasion: [], color: [], price: [] });
-                  setShowFilters(false);
-                }}
-              >
-                Clear Filters
-              </Button>
-            )}
-          </div>
-        )}
       </div>
 
       {/* HERO SECTION */}
@@ -222,150 +85,10 @@ export default function Collections() {
       </section>
 
       {/* MAIN CONTENT */}
-      <main className="w-full px-3 sm:px-6 py-6 sm:py-12 md:py-16">
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6 lg:gap-8">
-          {/* SIDEBAR FILTERS - Hidden on mobile, visible on desktop */}
-          <aside className="hidden lg:block w-full lg:w-64 flex-shrink-0">
-            <div className="sticky top-20 space-y-5 sm:space-y-6">
-              {/* Sort */}
-              <div>
-                <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2.5 sm:mb-3">Sort By</h3>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all duration-200"
-                >
-                  <option value="newest">Newest First</option>
-                  <option value="popular">Most Popular</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                </select>
-              </div>
-
-              {/* AGE FILTER */}
-              <div className="pb-4 sm:pb-5 border-b border-gray-200">
-                <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2.5 sm:mb-3">Age</h3>
-                <div className="space-y-2">
-                  {filterOptions.age.map((option) => (
-                    <label
-                      key={option.label}
-                      className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedFilters.age.includes(option.label)}
-                        onChange={() => toggleFilter("age", option.label)}
-                        className="w-4 h-4 sm:w-4.5 sm:h-4.5 accent-gray-900 rounded cursor-pointer"
-                      />
-                      <span className="text-xs sm:text-sm text-gray-700 group-hover:text-gray-900 flex-1 transition-colors duration-150">
-                        {option.label}
-                      </span>
-                      <span className="text-xs text-gray-500 flex-shrink-0">({option.count})</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* OCCASION FILTER */}
-              <div className="pb-4 sm:pb-5 border-b border-gray-200">
-                <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2.5 sm:mb-3">Occasion</h3>
-                <div className="space-y-2">
-                  {filterOptions.occasion.map((option) => (
-                    <label
-                      key={option.label}
-                      className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedFilters.occasion.includes(option.label)}
-                        onChange={() => toggleFilter("occasion", option.label)}
-                        className="w-4 h-4 sm:w-4.5 sm:h-4.5 accent-gray-900 rounded cursor-pointer"
-                      />
-                      <span className="text-xs sm:text-sm text-gray-700 group-hover:text-gray-900 flex-1 transition-colors duration-150">
-                        {option.label}
-                      </span>
-                      <span className="text-xs text-gray-500 flex-shrink-0">({option.count})</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* COLOR FILTER */}
-              <div className="pb-4 sm:pb-5 border-b border-gray-200">
-                <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2.5 sm:mb-3">Color</h3>
-                <div className="space-y-2">
-                  {filterOptions.color.map((option) => (
-                    <label
-                      key={option.label}
-                      className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedFilters.color.includes(option.label)}
-                        onChange={() => toggleFilter("color", option.label)}
-                        className="w-4 h-4 sm:w-4.5 sm:h-4.5 accent-gray-900 rounded cursor-pointer flex-shrink-0"
-                      />
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <div
-                          className="w-4 h-4 rounded-full border border-gray-300 flex-shrink-0"
-                          style={{ backgroundColor: option.hex }}
-                        />
-                        <span className="text-xs sm:text-sm text-gray-700 group-hover:text-gray-900 transition-colors duration-150 truncate">
-                          {option.label}
-                        </span>
-                      </div>
-                      <span className="text-xs text-gray-500 flex-shrink-0">({option.count})</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* PRICE FILTER */}
-              <div className="pb-4 sm:pb-5">
-                <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2.5 sm:mb-3">Price</h3>
-                <div className="space-y-2">
-                  {filterOptions.priceRanges.map((option) => (
-                    <label
-                      key={option.label}
-                      className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedFilters.price.includes(option.label)}
-                        onChange={() => toggleFilter("price", option.label)}
-                        className="w-4 h-4 sm:w-4.5 sm:h-4.5 accent-gray-900 rounded cursor-pointer"
-                      />
-                      <span className="text-xs sm:text-sm text-gray-700 group-hover:text-gray-900 flex-1 transition-colors duration-150">
-                        {option.label}
-                      </span>
-                      <span className="text-xs text-gray-500 flex-shrink-0">({option.count})</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* CLEAR FILTERS */}
-              {Object.values(selectedFilters).some((arr) => arr.length > 0) && (
-                <Button
-                  variant="outline"
-                  className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 text-xs sm:text-sm py-2.5 sm:py-3 transition-colors duration-200"
-                  onClick={() =>
-                    setSelectedFilters({
-                      age: [],
-                      occasion: [],
-                      color: [],
-                      price: [],
-                    })
-                  }
-                >
-                  Clear All Filters
-                </Button>
-              )}
-            </div>
-          </aside>
-
-          {/* RIGHT CONTENT */}
-          <div className="flex-1 w-full min-w-0 space-y-10 sm:space-y-12 md:space-y-16">
+      <main className="w-full py-6 sm:py-12 md:py-16">
+        {/* FEATURED COLLECTIONS & SHOP BY OCCASION */}
+        <div className="px-4 sm:px-8 md:px-12 lg:px-16">
+          <div className="max-w-5xl mx-auto space-y-10 sm:space-y-12 md:space-y-16">
             {/* FEATURED COLLECTIONS GRID */}
             <FeaturedCollectionsGrid />
 
@@ -395,34 +118,37 @@ export default function Collections() {
                 ))}
               </div>
             </section>
+          </div>
+        </div>
 
+        {/* SEASON HIGHLIGHT BANNER - FULL WIDTH */}
+        <section className="w-full py-12 sm:py-14 md:py-16">
+          <div className="relative overflow-hidden bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 py-32 sm:py-36 md:py-40 px-4 sm:px-8 md:px-12 lg:px-16 flex items-center justify-center text-center">
+            <div className="absolute inset-0 opacity-15 sm:opacity-20">
+              <div className="absolute top-0 left-0 w-64 sm:w-96 h-64 sm:h-96 bg-white rounded-full blur-3xl"></div>
+            </div>
 
+            <div className="relative z-10 max-w-3xl">
+              <span className="inline-block text-xs sm:text-sm font-bold text-gray-700 mb-2 sm:mb-3 md:mb-4 bg-white/70 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
+                Limited Edition
+              </span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-4">
+                Spring/Summer '26
+              </h2>
+              <p className="text-sm sm:text-base md:text-lg text-gray-800 mb-5 sm:mb-6 md:mb-8">
+                Designed for comfort, crafted for style. Discover our latest collection.
+              </p>
+              <Button className="bg-gray-900 hover:bg-gray-800 text-white px-6 sm:px-8 h-10 sm:h-11 md:h-12 rounded-full font-semibold text-sm sm:text-base transition-colors duration-200">
+                Shop Now
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </div>
+        </section>
 
-            {/* SEASON HIGHLIGHT BANNER */}
-            <section>
-              <div className="relative overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 py-28 sm:py-20 md:py-24 px-4 sm:px-8 md:px-12 flex items-center justify-center text-center">
-                <div className="absolute inset-0 opacity-15 sm:opacity-20">
-                  <div className="absolute top-0 left-0 w-64 sm:w-96 h-64 sm:h-96 bg-white rounded-full blur-3xl"></div>
-                </div>
-
-                <div className="relative z-10 max-w-3xl">
-                  <span className="inline-block text-xs sm:text-sm font-bold text-gray-700 mb-2 sm:mb-3 md:mb-4 bg-white/70 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
-                    Limited Edition
-                  </span>
-                  <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-4">
-                    Spring/Summer '26
-                  </h2>
-                  <p className="text-sm sm:text-base md:text-lg text-gray-800 mb-5 sm:mb-6 md:mb-8">
-                    Designed for comfort, crafted for style. Discover our latest collection.
-                  </p>
-                  <Button className="bg-gray-900 hover:bg-gray-800 text-white px-6 sm:px-8 h-10 sm:h-11 md:h-12 rounded-full font-semibold text-sm sm:text-base transition-colors duration-200">
-                    Shop Now
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            </section>
-
+        {/* STYLED BY OUR COMMUNITY & NEWSLETTER */}
+        <div className="px-4 sm:px-8 md:px-12 lg:px-16">
+          <div className="max-w-5xl mx-auto space-y-10 sm:space-y-12 md:space-y-16">
             {/* STYLED BY OUR COMMUNITY */}
             <section>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
