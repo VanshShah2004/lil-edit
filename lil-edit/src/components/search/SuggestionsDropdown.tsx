@@ -1,7 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  ShoppingBag,
+  LayoutGrid,
+  PartyPopper,
+  TrendingUp,
+  Palette,
+  Layers,
+  Shirt,
+  Hash,
+  Award,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { buildPdpPath } from "@/lib/pdpUrl";
-import type { Suggestion } from "@/services/searchService";
+import type { Suggestion, SuggestionType } from "@/services/searchService";
 
 type Tab = "all" | "products" | "suggestions";
 
@@ -12,6 +25,47 @@ interface Props {
   onClose: () => void;
   onSelectTerm: (term: string) => void;
 }
+
+// Icon + section label for each suggestion type, used to give every result a
+// distinguishing visual cue (group header in "Suggestions", chip icon in "All").
+const TYPE_CONFIG: Record<SuggestionType, { label: string; icon: LucideIcon }> = {
+  product:  { label: "Products",      icon: ShoppingBag },
+  category: { label: "Categories",    icon: LayoutGrid },
+  occasion: { label: "Occasions",     icon: PartyPopper },
+  trend:    { label: "Trending",      icon: TrendingUp },
+  color:    { label: "Colors",        icon: Palette },
+  fabric:   { label: "Fabrics",       icon: Layers },
+  fit:      { label: "Styles & Fits", icon: Shirt },
+  tag:      { label: "Tags",          icon: Hash },
+  badge:    { label: "Badges",        icon: Award },
+  keyword:  { label: "For You",       icon: Users },
+};
+
+// Render order for grouped metadata sections — most useful filters first.
+const META_TYPE_ORDER: SuggestionType[] = ["category", "occasion", "trend", "color", "fabric", "fit", "keyword", "tag", "badge"];
+
+// Swatch colors for "color" suggestions, keyed by the lexicon's canonical label (lowercased).
+const COLOR_SWATCH: Record<string, string> = {
+  red: "#ef4444",
+  maroon: "#7f1d1d",
+  pink: "#ec4899",
+  blue: "#3b82f6",
+  teal: "#14b8a6",
+  green: "#22c55e",
+  yellow: "#eab308",
+  orange: "#f97316",
+  peach: "#ffb88c",
+  purple: "#a855f7",
+  white: "#ffffff",
+  black: "#27272a",
+  grey: "#9ca3af",
+  gray: "#9ca3af",
+  gold: "#d4af37",
+  silver: "#c0c0c0",
+  beige: "#e8dcc8",
+  pastel: "linear-gradient(135deg, #fbcfe8, #bfdbfe, #fef9c3)",
+  multicolor: "linear-gradient(135deg, #ef4444, #eab308, #22c55e, #3b82f6, #a855f7)",
+};
 
 function Highlighted({ text, query }: { text: string; query: string }) {
   if (!query) return <>{text}</>;
@@ -26,6 +80,20 @@ function Highlighted({ text, query }: { text: string; query: string }) {
   );
 }
 
+// Buckets metadata suggestions by type, in META_TYPE_ORDER, preserving each
+// type's existing (score-sorted) order.
+function groupMetaItems(items: Suggestion[]): Array<{ type: SuggestionType; items: Suggestion[] }> {
+  const byType = new Map<SuggestionType, Suggestion[]>();
+  for (const item of items) {
+    const arr = byType.get(item.type);
+    if (arr) arr.push(item);
+    else byType.set(item.type, [item]);
+  }
+  return META_TYPE_ORDER
+    .filter((t) => byType.has(t))
+    .map((t) => ({ type: t, items: byType.get(t)! }));
+}
+
 export default function SuggestionsDropdown({ suggestions, loading, query, onClose, onSelectTerm }: Props) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("all");
@@ -33,12 +101,28 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
 
   const productItems = suggestions.filter(s => s.type === "product");
   const metaItems    = suggestions.filter(s => s.type !== "product");
-  // Flat list used for keyboard nav / empty-state. "All" lists products first,
-  // then suggestions — the same order they render in below.
+  const groupedMeta  = groupMetaItems(metaItems);
+  const groupedMetaFlat = groupedMeta.flatMap(g => g.items);
+  // "All" tab leads with a compact 2x2 grid of top product matches; the rest
+  // live in the Products tab.
+  const topProducts = productItems.slice(0, 4);
+
+  // Flat list used for keyboard nav / empty-state. Order must match the render
+  // order for the active tab so arrow-key highlighting lines up visually.
   const visibleItems =
-    activeTab === "products"      ? productItems
-    : activeTab === "suggestions" ? metaItems
-    : [...productItems, ...metaItems];
+    activeTab === "products"    ? productItems
+    : activeTab === "suggestions" ? groupedMetaFlat
+    : [...topProducts, ...groupedMetaFlat];
+
+  // Starting flat-index for each metadata group, given the active tab's leading items.
+  const groupStarts: number[] = [];
+  {
+    let idx = activeTab === "all" ? topProducts.length : 0;
+    for (const g of groupedMeta) {
+      groupStarts.push(idx);
+      idx += g.items.length;
+    }
+  }
 
   // Reset selection when tab or suggestions list changes.
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -103,57 +187,82 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
     }
   }
 
-  // Image card for a product result. `i` is the index into `visibleItems` so the
-  // keyboard highlight lines up across the mixed "All" tab.
+  // Image card for a product result, laid out for a 2-column grid. `i` is the
+  // index into `visibleItems` so the keyboard highlight lines up correctly.
   function renderProductCard(s: Suggestion, i: number) {
+    const isSelected = i === selectedIndex;
     return (
       <button
         key={s.id}
         onClick={() => handleSelect(s)}
-        className={`flex items-center gap-3 px-3 py-2 rounded-xl text-left w-full transition-colors border ${
-          i === selectedIndex
-            ? "bg-teal-50 border-teal-200"
-            : "border-transparent hover:bg-secondary"
+        className={`flex flex-col rounded-xl text-left overflow-hidden border transition-colors ${
+          isSelected
+            ? "border-teal-400 ring-2 ring-teal-200 bg-teal-50/40"
+            : "border-border/60 hover:border-teal-600/40 hover:bg-secondary/30"
         }`}
       >
-        <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-secondary">
+        <div className="aspect-square w-full bg-secondary overflow-hidden">
           {s.image ? (
             <img src={s.image} alt={s.label} className="w-full h-full object-cover" loading="lazy" />
           ) : (
             <div className="w-full h-full bg-secondary" />
           )}
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="px-2 py-1.5">
           <p className="text-sm font-semibold text-foreground truncate">
             <Highlighted text={s.label} query={query} />
           </p>
-          <p className="text-xs text-muted-foreground">{s.sublabel}</p>
+          <p className="text-xs text-muted-foreground truncate">{s.sublabel}</p>
         </div>
       </button>
     );
   }
 
-  // Text autocomplete row for a non-product (metadata) result.
-  function renderMetaRow(s: Suggestion, i: number) {
+  // Pill for a non-product (metadata) result — icon (or color swatch) + label,
+  // grouped under its type's section header.
+  function renderMetaChip(s: Suggestion, i: number) {
+    const isSelected = i === selectedIndex;
+    const Icon = TYPE_CONFIG[s.type].icon;
     return (
       <button
         key={s.id}
         onClick={() => handleSelect(s)}
-        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left w-full transition-colors border ${
-          i === selectedIndex
-            ? "bg-teal-50 border-teal-200"
-            : "border-transparent hover:bg-secondary"
+        className={`flex items-center gap-1.5 pl-2 pr-3 py-1.5 rounded-full text-sm font-medium border transition-colors max-w-full ${
+          isSelected
+            ? "bg-teal-50 border-teal-300 text-teal-800"
+            : "border-border bg-secondary/40 text-foreground/80 hover:border-teal-600/40 hover:bg-teal-50/60"
         }`}
       >
-        <span className="flex-1 text-sm font-semibold text-foreground truncate">
-          <Highlighted text={s.label} query={query} />
-        </span>
-        <span className="text-xs text-muted-foreground shrink-0">{s.sublabel}</span>
+        {s.type === "color" ? (
+          <span
+            className="w-3.5 h-3.5 rounded-full border border-border/60 shrink-0"
+            style={{ background: COLOR_SWATCH[s.label.toLowerCase()] ?? "#d1d5db" }}
+          />
+        ) : (
+          <Icon className="w-3.5 h-3.5 shrink-0 text-teal-700/70" />
+        )}
+        <span className="truncate"><Highlighted text={s.label} query={query} /></span>
       </button>
     );
   }
 
-  const sectionLabel = "px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground";
+  // One labeled section of metadata chips (e.g. "Categories", "Colors").
+  function renderMetaGroup(type: SuggestionType, items: Suggestion[], startIndex: number) {
+    const { label, icon: Icon } = TYPE_CONFIG[type];
+    return (
+      <div key={type}>
+        <p className={sectionLabel}>
+          <Icon className="w-3 h-3" />
+          {label}
+        </p>
+        <div className="px-3 sm:px-4 md:px-8 pb-2.5 flex flex-wrap gap-2">
+          {items.map((s, j) => renderMetaChip(s, startIndex + j))}
+        </div>
+      </div>
+    );
+  }
+
+  const sectionLabel = "px-3 sm:px-4 md:px-8 pt-2 pb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground";
   const isEmpty = visibleItems.length === 0;
 
   return (
@@ -189,18 +298,27 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
         })}
       </div>
 
-      {/* Loading skeletons adapt to active tab size */}
+      {/* Loading skeletons adapt to active tab */}
       {loading ? (
-        <div className="px-3 sm:px-4 md:px-8 pb-3 flex flex-col gap-2">
-          {[0, 1, 2].map(i => (
-            <div key={i} className={`flex items-center gap-3 animate-pulse ${activeTab === "products" ? "px-3 py-2.5" : "px-3 py-2"}`}>
-              {activeTab === "products" && <div className="w-14 h-14 rounded-lg bg-secondary shrink-0" />}
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-secondary rounded w-3/4" />
-                <div className="h-3.5 bg-secondary rounded w-1/3" />
-              </div>
+        <div className="px-3 sm:px-4 md:px-8 pb-3">
+          {activeTab !== "suggestions" && (
+            <div className={`grid grid-cols-2 gap-2 sm:gap-3 animate-pulse ${activeTab === "all" ? "mb-4" : ""}`}>
+              {[0, 1, 2, 3].map(i => (
+                <div key={i}>
+                  <div className="aspect-square rounded-xl bg-secondary mb-1.5" />
+                  <div className="h-3.5 bg-secondary rounded w-3/4 mb-1" />
+                  <div className="h-3 bg-secondary rounded w-1/2" />
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+          {activeTab !== "products" && (
+            <div className="flex flex-wrap gap-2 animate-pulse">
+              {[68, 84, 56, 96, 72, 60].map((w, i) => (
+                <div key={i} className="h-7 bg-secondary rounded-full" style={{ width: `${w}px` }} />
+              ))}
+            </div>
+          )}
         </div>
       ) : isEmpty ? (
         <div className="px-3 sm:px-4 md:px-8 pb-4 pt-1">
@@ -210,30 +328,30 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
           </p>
         </div>
       ) : activeTab === "products" ? (
-        /* Products tab — image cards */
-        <div className="px-3 sm:px-4 md:px-8 pb-3 flex flex-col gap-1">
+        /* Products tab — 2-column image grid */
+        <div className="px-3 sm:px-4 md:px-8 pb-3 grid grid-cols-2 gap-2 sm:gap-3">
           {productItems.map((s, i) => renderProductCard(s, i))}
         </div>
       ) : activeTab === "suggestions" ? (
-        /* Suggestions tab — text autocomplete rows (metadata only) */
-        <div className="px-3 sm:px-4 md:px-8 pb-3 flex flex-col gap-1">
-          {metaItems.map((s, i) => renderMetaRow(s, i))}
+        /* Suggestions tab — metadata grouped by type */
+        <div className="pb-1">
+          {groupedMeta.map((g, gi) => renderMetaGroup(g.type, g.items, groupStarts[gi]))}
         </div>
       ) : (
-        /* All tab — products first, then suggestions (indices match visibleItems) */
-        <div className="px-3 sm:px-4 md:px-8 pb-3 flex flex-col gap-1">
-          {productItems.length > 0 && (
-            <>
-              <p className={sectionLabel}>Products</p>
-              {productItems.map((s, i) => renderProductCard(s, i))}
-            </>
+        /* All tab — best-match products up top, then grouped suggestion chips */
+        <div className="pb-1">
+          {topProducts.length > 0 && (
+            <div>
+              <p className={sectionLabel}>
+                <ShoppingBag className="w-3 h-3" />
+                Best Matches
+              </p>
+              <div className="px-3 sm:px-4 md:px-8 pb-2.5 grid grid-cols-2 gap-2 sm:gap-3">
+                {topProducts.map((s, i) => renderProductCard(s, i))}
+              </div>
+            </div>
           )}
-          {metaItems.length > 0 && (
-            <>
-              <p className={sectionLabel}>Suggestions</p>
-              {metaItems.map((s, i) => renderMetaRow(s, productItems.length + i))}
-            </>
-          )}
+          {groupedMeta.map((g, gi) => renderMetaGroup(g.type, g.items, groupStarts[gi]))}
         </div>
       )}
     </div>
