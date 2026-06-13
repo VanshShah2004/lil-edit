@@ -63,10 +63,7 @@ export default function FeaturedCollectionsGrid({ previewItems }: { previewItems
         Featured Collections
       </h2>
 
-      {/* Mobile: swipeable carousel with a peek of the next card (the 2-col mosaic
-          squeezed the cards together); sm+: the original mosaic grid (span classes
-          only apply once the container becomes a grid). */}
-      <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2 sm:pb-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-2 md:gap-3 lg:gap-4 sm:auto-rows-[200px] lg:auto-rows-[220px] grid-flow-row-dense">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4 auto-rows-[180px] sm:auto-rows-[200px] lg:auto-rows-[220px] grid-flow-row-dense">
         {featured.map((collection, index) => {
           let spanClass = "";
 
@@ -88,7 +85,7 @@ export default function FeaturedCollectionsGrid({ previewItems }: { previewItems
             <div
               key={collection.id}
               onClick={() => go(collection.link)}
-              className={`${spanClass} group relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 cursor-pointer transition-all duration-500 w-[70%] shrink-0 snap-start h-[230px] sm:w-auto sm:shrink sm:h-full min-h-[180px]`}
+              className={`${spanClass} group relative overflow-hidden rounded-xl sm:rounded-2xl bg-gray-100 cursor-pointer transition-all duration-500 h-full min-h-[180px]`}
             >
               {/* Image */}
               <img
