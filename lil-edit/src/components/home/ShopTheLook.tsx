@@ -69,14 +69,13 @@ const ShopTheLook = ({ previewItems }: { previewItems?: ResolvedItem[] }) => {
           </div>
         </div>
 
-        {/* Placards — mobile: swipeable carousel with a peek of the next card (the
-            2x2 grid squeezed the placards together); sm+: the original grid. */}
-        <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2 sm:mx-0 sm:px-0 sm:pb-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 md:gap-8 lg:gap-10">
+        {/* Placards Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 lg:gap-10">
           {looks.map((look) => (
             <div
               key={look.id}
               onClick={() => go(look.to)}
-              className="group relative w-[72%] shrink-0 snap-start sm:w-auto sm:shrink h-[380px] sm:h-[340px] md:h-[380px] cursor-pointer"
+              className="group relative h-[260px] sm:h-[340px] md:h-[380px] cursor-pointer"
             >
               {/* Main Card Container with Organic Shapes */}
               <div className="relative w-full h-full rounded-[2rem_0.5rem_2rem_0.5rem] sm:rounded-[3rem_1rem_3rem_1rem] overflow-hidden shadow-[0_10px_30px_-10px_rgba(0,0,0,0.2)] border border-white/20 transition-all duration-700 group-hover:shadow-[0_20px_50px_-12px_rgba(15,118,110,0.3)]">
