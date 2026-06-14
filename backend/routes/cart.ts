@@ -54,7 +54,7 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
     const { data: products, error: prodErr } = await db()
       .from("products")
       .select(`
-        title, slug, category_slug, price, original_price, tags, badges, sizes, is_unlimited,
+        title, slug, category_slug, base_sku, price, original_price, tags, badges, sizes, is_unlimited,
         is_featured, is_new_arrival, is_trending, is_bestseller,
         product_images(id, image_url, is_primary, sort_order, variant_id),
         product_variants(id, variant_sku, color_name, color_hex, stock, is_unlimited, sort_order)
@@ -70,13 +70,17 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
 
     // ── Item mapping ──────────────────────────────────────────────────────────
     const t0Map = performance.now();
-    const productMap = new Map<string, ProductRow>(
-      ((products ?? []) as unknown as ProductRow[]).map((p) => [p.slug as string, p])
-    );
+    // Index by SKU, not slug: slugs are non-unique, so resolve each cart line to its
+    // exact product by the (globally unique) base_sku / variant_sku it was added with.
+    const skuToProduct = new Map<string, ProductRow>();
+    for (const p of (products ?? []) as unknown as ProductRow[]) {
+      if (p.base_sku) skuToProduct.set(p.base_sku as string, p);
+      for (const v of p.product_variants ?? []) skuToProduct.set(v.variant_sku, p);
+    }
 
     const items = cartRows
       .map((row) => {
-        const product = productMap.get(row.product_slug as string);
+        const product = skuToProduct.get(row.sku as string);
         if (!product) return null;
 
         const variants: VariantRow[] = [...(product.product_variants ?? [])].sort(
@@ -192,33 +196,39 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
   log.step(`user=${userId}  slug=${product_slug}  sku=${sku}  size="${sizeVal}"  qty=${qty}  client=${supabaseAdmin ? "admin" : "anon"}`);
 
   try {
+    // Validate by SKU, not slug: slugs are non-unique now, so .eq("slug").maybeSingle()
+    // would throw when two products share a slug. The sku (variant_sku or base_sku) is
+    // globally unique and self-identifying, so existence of the sku is the validation.
     const t0Validate = performance.now();
-    const { data: product, error: prodErr } = await db()
-      .from("products")
-      .select("base_sku, product_variants(variant_sku)")
-      .eq("slug", product_slug)
+    const { data: variantRow, error: vErr } = await db()
+      .from("product_variants")
+      .select("variant_sku")
+      .eq("variant_sku", sku)
       .maybeSingle();
-    log.step(`DB product validate: ${fms(performance.now() - t0Validate)}`);
-
-    if (prodErr) {
-      log.error(`product validation failed  code=${prodErr.code}  msg=${prodErr.message}`, prodErr).end("CART ADD");
+    if (vErr) {
+      log.error(`variant validation failed  code=${vErr.code}  msg=${vErr.message}`, vErr).end("CART ADD");
       res.status(500).json({ error: "Could not validate product" });
       return;
     }
-    if (!product) {
-      log.warn(`product not found  slug=${product_slug}`).end("CART ADD");
-      res.status(404).json({ error: "Product not found" });
-      return;
+    let skuExists = !!variantRow;
+    if (!skuExists) {
+      const { data: baseRow, error: bErr } = await db()
+        .from("products")
+        .select("base_sku")
+        .eq("base_sku", sku)
+        .maybeSingle();
+      if (bErr) {
+        log.error(`base-sku validation failed  code=${bErr.code}  msg=${bErr.message}`, bErr).end("CART ADD");
+        res.status(500).json({ error: "Could not validate product" });
+        return;
+      }
+      skuExists = !!baseRow;
     }
-    log.step(`product found  base_sku=${product.base_sku}`);
+    log.step(`DB sku validate: ${fms(performance.now() - t0Validate)}  exists=${skuExists}`);
 
-    const validSkus: string[] = [
-      product.base_sku as string,
-      ...((product.product_variants as { variant_sku: string }[] ?? []).map((v) => v.variant_sku)),
-    ];
-    if (!validSkus.includes(sku)) {
-      log.warn(`sku not on product  sku=${sku}  valid=[${validSkus.join(",")}]`).end("CART ADD");
-      res.status(400).json({ error: "SKU does not belong to this product" });
+    if (!skuExists) {
+      log.warn(`sku not found  sku=${sku}`).end("CART ADD");
+      res.status(404).json({ error: "Product not found" });
       return;
     }
 

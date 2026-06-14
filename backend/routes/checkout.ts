@@ -200,32 +200,32 @@ async function priceOrder(
   if (prodErr) { log.error(`products read failed  ${prodErr.message}`, prodErr); throw new PriceError(500, "Could not price order"); }
   log.step(`DB products read: ${fms(performance.now() - t0Prod)}  slugs=${slugs.length}  rows=${products?.length ?? 0}`);
 
-  const productMap = new Map<string, CheckoutProduct>(
-    ((products ?? []) as unknown as CheckoutProduct[]).map((p) => [p.slug as string, p]),
-  );
+  // Index by SKU, not slug: slugs are non-unique, so two fetched products can share a
+  // slug — a slug-keyed map would collapse them and mis-price. Every base_sku and every
+  // variant_sku is globally unique, so a per-sku index resolves each line to the exact
+  // product even when slugs collide.
+  const skuToProduct = new Map<string, CheckoutProduct>();
+  for (const p of (products ?? []) as unknown as CheckoutProduct[]) {
+    if (p.base_sku) skuToProduct.set(p.base_sku as string, p);
+    for (const v of p.product_variants ?? []) skuToProduct.set(v.variant_sku, p);
+  }
 
   const items: PricedLine[] = [];
   const unavailable: UnavailableLine[] = [];
   for (const line of rawLines) {
-    const product = productMap.get(line.product_slug);
+    const product = skuToProduct.get(line.sku);
     if (!product) {
-      // A direct buy of a missing product is an error; a stale cart line is flagged
-      // unavailable (NOT silently dropped — that would undercharge vs. the cart).
+      // The line's sku no longer resolves to a product (its variant/sku was removed, the
+      // product was deleted, or its slug changed since add-to-cart). A direct buy is an
+      // error; a stale cart line is flagged unavailable — NOT silently dropped, which
+      // would undercharge vs. what the cart shows.
       if (source.mode === "direct") throw new PriceError(404, "Product not found");
-      log.warn(`unavailable cart line — product gone  slug=${line.product_slug}`);
+      log.warn(`unavailable cart line — sku no longer resolves  slug=${line.product_slug}  sku=${line.sku}`);
       unavailable.push({ product_slug: line.product_slug, sku: line.sku, title: line.product_slug });
       continue;
     }
 
     const variants: VariantRow[] = [...(product.product_variants ?? [])];
-    const validSkus = [product.base_sku as string, ...variants.map((v) => v.variant_sku)];
-    if (!validSkus.includes(line.sku)) {
-      if (source.mode === "direct") throw new PriceError(400, "SKU does not belong to this product");
-      log.warn(`unavailable cart line — sku not on product  sku=${line.sku}`);
-      unavailable.push({ product_slug: line.product_slug, sku: line.sku, title: (product.title as string) ?? line.product_slug });
-      continue;
-    }
-
     const variant = variants.find((v) => v.variant_sku === line.sku) ?? null;
     const isUnlimited = variant ? !!variant.is_unlimited : !!product.is_unlimited;
     const stock: number | null = isUnlimited ? null : (variant?.stock ?? 0);

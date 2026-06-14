@@ -79,8 +79,10 @@ interface RecommendedProduct {
   originalPrice: number;
 }
 
-// ⚡ Module-level product cache — persists across route changes within the session.
-// Key = product slug. Capped at 30 entries each; oldest slug evicted when exceeded.
+// ⚡ Module-level caches — persist across route changes within the session, capped at
+// 30 entries (oldest evicted). productCache is keyed by SKU: slugs are non-unique now
+// (two products can share one), so the sku is the identifier. recommendations and
+// reviews are slug-grained on the backend, so those two stay keyed by slug.
 const productCache        = new LRUCache<{ product: Product;         cachedAt: number }>(30, "product");
 const recommendationCache = new LRUCache<{ recommended: RecommendedProduct[]; cachedAt: number }>(30, "recs");
 const reviewsCache        = new LRUCache<{ reviewsData: ReviewsData; cachedAt: number }>(30, "reviews");
@@ -90,35 +92,38 @@ const prefetchInFlight = new Set<string>();
 
 function prefetchProductDetail(slug: string, sku: string, categorySlug: string): void {
   if (!slug || !sku) return;
-  const cached = productCache.get(slug);
+  const cached = productCache.get(sku);
   if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
-    console.log(`[Prefetch] SKIP  slug=${slug}  reason=cache_fresh`);
+    console.log(`[Prefetch] SKIP  sku=${sku}  reason=cache_fresh`);
     return;
   }
-  if (prefetchInFlight.has(slug)) {
-    console.log(`[Prefetch] SKIP  slug=${slug}  reason=in_flight`);
+  if (prefetchInFlight.has(sku)) {
+    console.log(`[Prefetch] SKIP  sku=${sku}  reason=in_flight`);
     return;
   }
   console.log(`[Prefetch] START  slug=${slug}  sku=${sku}`);
-  prefetchInFlight.add(slug);
+  prefetchInFlight.add(sku);
   const base = getBackendBaseUrl();
   const t0 = performance.now();
   fetch(`${base}/api/products/detail?slug=${encodeURIComponent(slug)}&sku=${encodeURIComponent(sku)}&category=${encodeURIComponent(categorySlug)}`)
     .then(async (res) => {
       if (!res.ok) {
-        console.warn(`[Prefetch] FAIL  slug=${slug}  status=${res.status}`);
+        console.warn(`[Prefetch] FAIL  sku=${sku}  status=${res.status}`);
         return;
       }
       const data = await res.json();
       if (data?.product) {
-        productCache.set(slug, { product: data.product, cachedAt: Date.now() });
-        console.log(`[Prefetch] DONE  slug=${slug}  ${Math.round(performance.now() - t0)}ms  cached=true`);
+        // Cache under every sku this product is reachable by (base + each colour).
+        const p = data.product as Product;
+        const skus = [p.sku, ...((p.colors ?? []).map((c) => c.sku))].filter(Boolean) as string[];
+        for (const s of skus) productCache.set(s, { product: p, cachedAt: Date.now() });
+        console.log(`[Prefetch] DONE  sku=${sku}  ${Math.round(performance.now() - t0)}ms  cached=${skus.length} sku(s)`);
       }
     })
     .catch((err) => {
-      console.warn(`[Prefetch] ERROR  slug=${slug}`, err);
+      console.warn(`[Prefetch] ERROR  sku=${sku}`, err);
     })
-    .finally(() => { prefetchInFlight.delete(slug); });
+    .finally(() => { prefetchInFlight.delete(sku); });
 }
 
 function scheduleIdleTask(task: () => void): void {
@@ -141,7 +146,7 @@ export default function ProductDetail() {
 
   // Seed state from module cache immediately — renders in one frame if visited before
   // peek() — no LRU promotion, no log (runs on every render; get() is for effects only)
-  const productCached = productSlug ? productCache.peek(productSlug) : undefined;
+  const productCached = skuId ? productCache.peek(skuId) : undefined;
   const recCached = productSlug ? recommendationCache.peek(productSlug) : undefined;
   const reviewsCached = productSlug ? reviewsCache.peek(productSlug) : undefined;
 
@@ -162,6 +167,10 @@ export default function ProductDetail() {
   const [reviewsError, setReviewsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const lazyLoadSlugRef = useRef<string | undefined>(undefined);
+  // SKUs of the currently-loaded product (base + every colour). Lets a colour switch —
+  // which changes the URL sku — skip the refetch, while navigating to a different
+  // product that merely shares the slug (a sku we don't hold) still triggers one.
+  const loadedSkusRef = useRef<Set<string>>(new Set());
   const cacheHitRef = useRef(!!isProductCacheFresh);
 
   // ── Review sorting (client-side) ──────────────────────────────────────────
@@ -235,23 +244,34 @@ export default function ProductDetail() {
   useEffect(() => {
     if (!productSlug || !skuId) return;
 
+    // Colour switch within the SAME product changes the URL sku but not the payload
+    // (the loaded product already carries every colour), so skip the refetch. A
+    // different product that merely shares the slug won't be in loadedSkusRef and
+    // falls through to a real fetch — which is why we key on sku now that slugs aren't
+    // unique.
+    if (loadedSkusRef.current.has(skuId)) {
+      console.log(`[DepLoop] sku=${skuId} already in loaded product — no refetch`);
+      cacheHitRef.current = true;
+      return;
+    }
+
     const controller = new AbortController();
     let cancelled = false;
 
     // Snapshot cache at effect run time — keeps isProductCacheFresh out of deps (it changing after
-    // the first fetch set the cache was causing the double-fetch loop)
-    const cached = productCache.get(productSlug);
+    // the first fetch set the cache was causing the double-fetch loop). Keyed by sku.
+    const cached = productCache.get(skuId);
     const cacheHit = !!cached && (Date.now() - cached.cachedAt < CACHE_TTL_MS);
     cacheHitRef.current = cacheHit;
 
-    console.log(`[DepLoop] product effect RAN  slug=${productSlug}  cacheHit=${cacheHit}`);
+    console.log(`[DepLoop] product effect RAN  slug=${productSlug}  sku=${skuId}  cacheHit=${cacheHit}`);
 
     if (!cacheHit) setLoading(true);
     setError(null);
 
     const base = getBackendBaseUrl();
 
-    console.log(`[AbortController] product fetch START  slug=${productSlug}`);
+    console.log(`[AbortController] product fetch START  slug=${productSlug}  sku=${skuId}`);
     perf.mark("fetchStart");
     fetch(`${base}/api/products/detail?slug=${encodeURIComponent(productSlug)}&sku=${encodeURIComponent(skuId)}&category=${encodeURIComponent(categoryParam ?? "")}`, { signal: controller.signal })
       .then(async (res) => {
@@ -268,9 +288,14 @@ export default function ProductDetail() {
       .then((data) => {
         if (cancelled || !data) return;
         perf.mark("renderStart");
-        // Update module cache with product data only
-        productCache.set(productSlug, { product: data.product, cachedAt: Date.now() });
-        setProduct(data.product);
+        // Cache under EVERY sku this product is reachable by (base + each colour) so a
+        // colour switch is a cache hit (and the guard above skips its refetch). Keyed
+        // by sku because slugs are non-unique.
+        const p: Product = data.product;
+        const skus = [p.sku, ...((p.colors ?? []).map((c) => c.sku))].filter(Boolean) as string[];
+        loadedSkusRef.current = new Set(skus);
+        for (const s of skus) productCache.set(s, { product: p, cachedAt: Date.now() });
+        setProduct(p);
       })
       .catch((err) => {
         if (err.name === 'AbortError') {
@@ -293,9 +318,10 @@ export default function ProductDetail() {
       cancelled = true;
       controller.abort();
     };
-    // SKU in URL is for display/validation only — same product slug = same payload (no refetch on color change)
+    // Keyed on sku: a colour switch (sku change, same product) is handled by the guard
+    // above; a different same-slug product (new sku) refetches.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productSlug, categoryParam]);
+  }, [skuId, categoryParam]);
 
   // Canonicalize base-SKU URLs to primary variant SKU without remounting or refetching
   useEffect(() => {

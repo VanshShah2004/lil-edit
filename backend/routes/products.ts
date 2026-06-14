@@ -8,7 +8,7 @@ import {
   launchProductToDatabase,
   saveDraftToDatabase,
   deleteProductFromDatabase,
-  fetchProductBySlug,
+  fetchProductBySku,
   fetchRecommendedProducts,
   fetchReviewsDataBySlug,
   fetchSuggestions,
@@ -59,9 +59,12 @@ function setL1(key: string, payload: object, log: OpLogger) {
   log.step(`L1 cache - SET  key=${key}  size=${detailCache.size}/${DETAIL_CACHE_MAX}`);
 }
 
-export async function invalidateDetailCache(slug: string, log: OpLogger): Promise<void> {
-  detailCache.delete(slug);
-  await redisDel(log, redisKey("pdp", slug), redisKey("rec", slug));
+export async function invalidateDetailCache(slug: string, skus: string[], log: OpLogger): Promise<void> {
+  // PDP detail caches are keyed by SKU (a product is resolved by sku now that slugs are
+  // non-unique); the recommendation cache is still keyed by slug. Bust every sku the
+  // product is reachable by — its base_sku plus each variant_sku.
+  for (const s of skus) detailCache.delete(s);
+  await redisDel(log, redisKey("rec", slug), ...skus.map((s) => redisKey("pdp", s)));
 }
 
 // ─── Catalog Redis key helpers ────────────────────────────────────────────────
@@ -264,9 +267,10 @@ router.get("/detail", async (req: Request, res: Response) => {
 
   log.step(`slug=${slug}  sku=${sku}  category=${category || "any"}`);
 
-  // L1 in-process cache
+  // Slugs are non-unique (two products can share a title → slug), so the SKU is the
+  // resolver and the PDP caches are keyed by SKU, not slug.
   log.step("L1 cache - checking");
-  const l1Hit = getL1(slug);
+  const l1Hit = getL1(sku);
   if (l1Hit) {
     log.success("L1 cache - HIT  served from memory").end("PDP DETAIL");
     res.json(l1Hit);
@@ -275,9 +279,9 @@ router.get("/detail", async (req: Request, res: Response) => {
   log.step("L1 cache - MISS");
 
   // L2 Redis cache
-  const l2Hit = await redisGet<object>(redisKey("pdp", slug), log);
+  const l2Hit = await redisGet<object>(redisKey("pdp", sku), log);
   if (l2Hit) {
-    setL1(slug, l2Hit, log);
+    setL1(sku, l2Hit, log);
     log.step("L1 cache - warmed from Redis");
     log.success("L2 Redis - HIT  served from Redis").end("PDP DETAIL");
     res.json(l2Hit);
@@ -285,15 +289,18 @@ router.get("/detail", async (req: Request, res: Response) => {
   }
 
   try {
-    const product = await fetchProductBySlug(slug, log);
+    const product = await fetchProductBySku(sku, log);
 
     if (!product) {
-      log.warn(`product not found  slug=${slug}`).end("PDP DETAIL");
+      log.warn(`product not found  sku=${sku}`).end("PDP DETAIL");
       res.status(404).json({ error: "Product not found." });
       return;
     }
 
-    // Validation
+    // Canonical-URL validation: the product resolved by sku must match the slug (and
+    // category, when supplied) in the URL. A stale slug (e.g. after a title edit) → 404,
+    // exactly as before. Because resolution is by sku, this never rejects a correct
+    // slug+sku pair — and the "SKU belongs to product" check is now implicit.
     log.step("Validate - slug match");
     if (product.slug !== slug) {
       log.warn(`slug mismatch  expected=${slug}  got=${product.slug}`).end("PDP DETAIL");
@@ -310,22 +317,13 @@ router.get("/detail", async (req: Request, res: Response) => {
       }
     }
 
-    log.step("Validate - SKU belongs to product");
-    const hasBaseSkuMatch    = product.base_sku === sku;
-    const hasVariantSkuMatch = product.product_variants?.some((v) => v.variant_sku === sku);
-    if (!hasBaseSkuMatch && !hasVariantSkuMatch) {
-      log.warn(`SKU not found on product  sku=${sku}`).end("PDP DETAIL");
-      res.status(404).json({ error: "SKU does not belong to this product." });
-      return;
-    }
-
     const mappedProduct  = mapDatabaseProductToFrontend(product, false);
     const responsePayload = { product: mappedProduct };
 
-    setL1(slug, responsePayload, log);
-    void redisSet(redisKey("pdp", slug), responsePayload, PRODUCT_TTL_S, log);
+    setL1(sku, responsePayload, log);
+    void redisSet(redisKey("pdp", sku), responsePayload, PRODUCT_TTL_S, log);
 
-    log.success(`served from DB  slug=${slug}`).end("PDP DETAIL");
+    log.success(`served from DB  slug=${slug}  sku=${sku}`).end("PDP DETAIL");
     res.json(responsePayload);
   } catch (err) {
     log.error("unhandled error", err).end("PDP DETAIL");
@@ -443,7 +441,11 @@ router.post("/preview", requireAuth, requireAdmin, async (req: Request, res: Res
         log.success(`draft saved  draftId=${draftProductId}`);
       } else {
         const { publishedProductId } = await launchProductToDatabase(data, log);
-        void invalidateDetailCache(slug, log);
+        // PDP caches are keyed by sku — bust the base_sku plus every variant (colour) sku.
+        const variantSkus = Array.isArray((data as { selectedColors?: Array<{ sku?: unknown }> }).selectedColors)
+          ? (data as { selectedColors: Array<{ sku?: unknown }> }).selectedColors.map((c) => String(c.sku ?? "")).filter(Boolean)
+          : [];
+        void invalidateDetailCache(slug, [sku, ...variantSkus], log);
         void invalidateCatalogCaches(log, sku);
         invalidateSearchCatalog();
         log.step("Search catalog - invalidated (product launched)");

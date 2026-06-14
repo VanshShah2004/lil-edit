@@ -176,13 +176,17 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
 
     // ── Item mapping ──────────────────────────────────────────────────────────
     const t0Map = performance.now();
-    const productMap = new Map<string, ProductRow>(
-      ((products ?? []) as unknown as ProductRow[]).map((p) => [p.slug as string, p])
-    );
+    // Index by SKU, not slug: slugs are non-unique, so resolve each wishlist row to its
+    // exact product by the (globally unique) base_sku / variant_sku it was saved with.
+    const skuToProduct = new Map<string, ProductRow>();
+    for (const p of (products ?? []) as unknown as ProductRow[]) {
+      if (p.base_sku) skuToProduct.set(p.base_sku as string, p);
+      for (const v of p.product_variants ?? []) skuToProduct.set(v.variant_sku, p);
+    }
 
     const items = rows
       .map((row) => {
-        const product = productMap.get(row.product_slug as string);
+        const product = skuToProduct.get(row.sku as string);
         if (!product) return null;
         return enrichWishlistRow(row, product);
       })
@@ -224,33 +228,39 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
   log.step(`user=${userId}  slug=${product_slug}  sku=${sku}`);
 
   try {
-    // Validate product + SKU
+    // Validate by SKU, not slug: slugs are non-unique now, so .eq("slug").maybeSingle()
+    // would throw when two products share a slug. The sku (variant_sku or base_sku) is
+    // globally unique and self-identifying, so existence of the sku is the validation.
     const t0Validate = performance.now();
-    const { data: product, error: prodErr } = await db()
-      .from("products")
-      .select("base_sku, product_variants(variant_sku)")
-      .eq("slug", product_slug)
+    const { data: variantRow, error: vErr } = await db()
+      .from("product_variants")
+      .select("variant_sku")
+      .eq("variant_sku", sku)
       .maybeSingle();
-    log.step(`DB product validate: ${fms(performance.now() - t0Validate)}`);
-
-    if (prodErr) {
-      log.error(`product validation failed  code=${prodErr.code}`, prodErr).end("WISHLIST ADD");
+    if (vErr) {
+      log.error(`variant validation failed  code=${vErr.code}`, vErr).end("WISHLIST ADD");
       res.status(500).json({ error: "Could not validate product" });
       return;
     }
-    if (!product) {
-      log.warn(`product not found  slug=${product_slug}`).end("WISHLIST ADD");
-      res.status(404).json({ error: "Product not found" });
-      return;
+    let skuExists = !!variantRow;
+    if (!skuExists) {
+      const { data: baseRow, error: bErr } = await db()
+        .from("products")
+        .select("base_sku")
+        .eq("base_sku", sku)
+        .maybeSingle();
+      if (bErr) {
+        log.error(`base-sku validation failed  code=${bErr.code}`, bErr).end("WISHLIST ADD");
+        res.status(500).json({ error: "Could not validate product" });
+        return;
+      }
+      skuExists = !!baseRow;
     }
+    log.step(`DB sku validate: ${fms(performance.now() - t0Validate)}  exists=${skuExists}`);
 
-    const validSkus: string[] = [
-      product.base_sku as string,
-      ...((product.product_variants as { variant_sku: string }[] ?? []).map((v) => v.variant_sku)),
-    ];
-    if (!validSkus.includes(sku)) {
-      log.warn(`invalid sku=${sku}  valid=[${validSkus.join(",")}]`).end("WISHLIST ADD");
-      res.status(400).json({ error: "SKU does not belong to this product" });
+    if (!skuExists) {
+      log.warn(`sku not found  sku=${sku}`).end("WISHLIST ADD");
+      res.status(404).json({ error: "Product not found" });
       return;
     }
 

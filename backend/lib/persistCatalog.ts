@@ -687,8 +687,10 @@ export async function saveDraftToDatabase(
   const hasPublished = !!pubRow;
   log.step(`DB check - is_published=${hasPublished}`);
 
-  log.step(`DB delete - existing draft  slug=${slug}`);
-  const { error: delErr } = await sb.from("draft_products").delete().eq("slug", slug);
+  // Replace by base_sku (unique), NOT slug: slugs are non-unique now, so deleting by
+  // slug would wipe a different product's draft that happens to share the slug.
+  log.step(`DB delete - existing draft  base_sku=${base_sku}  (slug=${slug})`);
+  const { error: delErr } = await sb.from("draft_products").delete().eq("base_sku", base_sku);
   if (delErr) throw delErr;
 
   log.step("DB insert - draft product row");
@@ -1082,6 +1084,7 @@ export async function fetchProductTitleBySlug(
     .from("products")
     .select("title")
     .eq("slug", slug)
+    .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
   log.step(`DB fetch - title="${data?.title ?? "not found"}"`);
@@ -1099,9 +1102,59 @@ export async function fetchProductBySlug(
     .from("products")
     .select(PDP_PRODUCT_SELECT)
     .eq("slug", slug)
+    .limit(1)
     .maybeSingle();
   if (pubErr) throw pubErr;
   log.step(`DB fetch - complete  ${fms(performance.now() - t0)}  found=${!!published}`);
+  return published as PdpProductRow | null;
+}
+
+// Resolve a product by SKU — the real identifier now that slugs are non-unique
+// (two products can share a slug; see migration 20260619_slug_not_unique.sql). The
+// sku is either a product's base_sku or one of its variants' variant_sku, both of
+// which ARE globally unique. We resolve to the product id first (a variant sku is the
+// common PDP case), then fetch the full product by id so ALL its variants come back
+// — not the join-filtered subset a single embedded filter would return.
+export async function fetchProductBySku(
+  sku: string,
+  log: OpLogger,
+): Promise<PdpProductRow | null> {
+  const sb = requireAdmin();
+  const t0 = performance.now();
+  log.step(`DB resolve - product id by sku=${sku}`);
+
+  let productId: string | null = null;
+
+  const { data: variant, error: vErr } = await sb
+    .from("product_variants")
+    .select("product_id")
+    .eq("variant_sku", sku)
+    .maybeSingle();
+  if (vErr) throw vErr;
+  productId = (variant?.product_id as string | undefined) ?? null;
+
+  if (!productId) {
+    const { data: base, error: bErr } = await sb
+      .from("products")
+      .select("id")
+      .eq("base_sku", sku)
+      .maybeSingle();
+    if (bErr) throw bErr;
+    productId = (base?.id as string | undefined) ?? null;
+  }
+
+  if (!productId) {
+    log.step(`DB resolve - no product for sku=${sku}  ${fms(performance.now() - t0)}`);
+    return null;
+  }
+
+  const { data: published, error } = await sb
+    .from("products")
+    .select(PDP_PRODUCT_SELECT)
+    .eq("id", productId)
+    .maybeSingle();
+  if (error) throw error;
+  log.step(`DB fetch - product by sku complete  ${fms(performance.now() - t0)}  found=${!!published}`);
   return published as PdpProductRow | null;
 }
 
@@ -1133,6 +1186,7 @@ export async function fetchRecommendedProducts(
       .from("products")
       .select("gender, price")
       .eq("slug", slug)
+      .limit(1)
       .maybeSingle();
     if (anchorGender === null) anchorGender = anchor?.gender ?? null;
     if (anchorPrice === null) anchorPrice = Number(anchor?.price) || 0;
