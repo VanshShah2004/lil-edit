@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ChevronRight, Package, MapPin, ArrowLeft, RotateCcw } from "lucide-react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import { ChevronRight, Package, MapPin, ArrowLeft, RotateCcw, CheckCircle2 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import Navbar from "@/components/layout/Navbar";
@@ -67,6 +67,21 @@ const OrderDetailPage = () => {
   const [recsLoading, setRecsLoading] = useState(false);
 
   const userId = user?.id ?? null;
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Capture ?placed=1 once on mount (set by checkout on success). Reading it in the
+  // useState initializer — not an effect — avoids a cascading re-render; the effect
+  // below only strips the param from the URL (an external system) so a refresh/back
+  // doesn't resurface the banner.
+  const [showPlaced] = useState(() => searchParams.get("placed") === "1");
+
+  useEffect(() => {
+    if (searchParams.get("placed") === "1") {
+      const next = new URLSearchParams(searchParams);
+      next.delete("placed");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Buy Again — deduplicated items from this order, most-recent variant per product slug.
   const buyAgainItems = useMemo<SidebarProduct[]>(() => {
@@ -296,6 +311,16 @@ const OrderDetailPage = () => {
           <Link to="/orders" className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-brand-teal mb-5">
             <ArrowLeft className="w-4 h-4" /> Back to orders
           </Link>
+
+          {showPlaced && (
+            <div className="mb-5 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-emerald-800">Order placed successfully!</p>
+                <p className="text-xs text-emerald-700 mt-0.5">Thank you for your purchase — a confirmation will follow shortly.</p>
+              </div>
+            </div>
+          )}
 
           {loading ? (
             <DetailSkeleton />

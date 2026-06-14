@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   ChevronRight,
   Heart,
@@ -48,6 +49,7 @@ import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
 
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import type { CartItem } from "@/lib/cartApi";
+import { computeCartTotals } from "@/lib/pricing";
 
 const abbreviateSize = (size: string) =>
   size.replace(/months?/gi, "M").replace(/years?/gi, "Y").trim();
@@ -147,20 +149,12 @@ export default function Cart() {
 
   const [selectedProduct, setSelectedProduct] = useState<QuickViewProduct | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const navigate = useNavigate();
 
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-  const originalTotal = cartItems.reduce(
-    (sum, item) => sum + item.originalPrice * item.quantity,
-    0
-  );
-  const totalSavings = originalTotal - subtotal;
-  const deliveryFee = subtotal > 0 && subtotal <= 5000 ? 199 : 0;
-  const discount = 0;
-  const total = subtotal + deliveryFee - discount;
-  const freeShippingRemaining = Math.max(0, 5000 - subtotal);
+  // Shared pricing math (Checkout + backend use the same rule); deliveryFee keeps its
+  // local name for the JSX below.
+  const { subtotal, originalTotal, totalSavings, shippingFee: deliveryFee, discount, total, freeShippingRemaining } =
+    computeCartTotals(cartItems);
 
   const deliveryDate = new Date();
   deliveryDate.setDate(deliveryDate.getDate() + 3);
@@ -549,6 +543,10 @@ export default function Cart() {
               </div>
 
               <Button
+                onClick={() => {
+                  if (!user) { toast.error("Please log in to checkout"); return; }
+                  navigate("/checkout");
+                }}
                 className="w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-full font-semibold text-sm sm:text-base transition-colors flex items-center justify-center gap-2"
                 disabled={cartItems.length === 0}
               >

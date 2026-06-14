@@ -15,6 +15,7 @@ import { preconnectProductImageOrigin } from "@/lib/productImage";
 import type { Product } from "@/types/product";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ProductPreviewViewProps {
   product: Product;
@@ -42,6 +43,7 @@ const ProductPreviewView = ({
   const [wishlistBusy, setWishlistBusy] = useState(false);
   const { addToCart } = useCart();
   const { isWishlisted, addToWishlist, removeFromWishlist, wishlistItems } = useWishlist();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -187,24 +189,36 @@ const ProductPreviewView = ({
     }
   };
 
-  const handleBuyNow = async () => {
+  // Direct "Buy Now": go straight to checkout with just this item (the cart is never
+  // touched). The backend re-prices from {slug, sku, size, quantity}; the extra fields
+  // are display-only so the checkout summary renders without a round-trip.
+  const handleBuyNow = () => {
     if (previewMode) return;
     if (!selectedSize && product.sizes.length > 0) {
       toast.error("Please select a size before buying");
       return;
     }
-    setCartBusy(true);
-    try {
-      await addToCart({
-        product_slug: product.slug,
-        sku: currentSku,
-        size: selectedSize ?? "",
-        quantity,
-      });
-      navigate("/cart");
-    } finally {
-      setCartBusy(false);
+    if (!user) {
+      toast.error("Please log in to continue");
+      navigate("/login");
+      return;
     }
+    navigate("/checkout", {
+      state: {
+        mode: "direct",
+        item: {
+          product_slug: product.slug,
+          sku: currentSku,
+          size: selectedSize ?? "",
+          quantity,
+          title: product.title,
+          price: product.price,
+          originalPrice: product.originalPrice ?? product.price,
+          image: galleryImages[0] ?? "",
+          colorName: activeColor?.name ?? "",
+        },
+      },
+    });
   };
 
   return (
@@ -447,7 +461,7 @@ const ProductPreviewView = ({
               {cartBusy ? "Adding…" : "ADD TO CART"}
             </button>
             <button
-              onClick={() => void handleBuyNow()}
+              onClick={handleBuyNow}
               disabled={cartBusy || previewMode}
               className="w-full text-white py-3 rounded-full font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
               style={{ backgroundColor: "#0B5B55" }}

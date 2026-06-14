@@ -21,6 +21,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "ioredis": "^5.10.1",
+    "razorpay": "^2.9.6",
     "resend": "^6.10.0"
   },
   "devDependencies": {

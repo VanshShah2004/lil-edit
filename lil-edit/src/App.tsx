@@ -49,6 +49,7 @@ const Wishlist       = lazyWithLog("Wishlist",        () => import("./pages/Wish
 const Collections    = lazyWithLog("Collections",     () => import("./pages/Collections"));
 const Orders         = lazyWithLog("Orders",          () => import("./pages/Orders"));
 const OrderDetail    = lazyWithLog("OrderDetail",     () => import("./pages/OrderDetail"));
+const Checkout       = lazyWithLog("Checkout",        () => import("./pages/Checkout"));
 
 // Admin pages pull in heavy deps (charts, upload tooling) that normal shoppers
 // never need — splitting them keeps that weight off the customer-facing bundle.
@@ -87,6 +88,7 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/collections/:category/product/:productPath/*" element={<ProductDetail />} />
             <Route path="/cart" element={<Cart />} />
+            <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/collections" element={<Collections />} />
             <Route path="/about" element={<About />} />

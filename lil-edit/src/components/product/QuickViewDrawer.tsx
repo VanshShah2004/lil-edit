@@ -151,6 +151,27 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
       : !product.availability?.toLowerCase().includes("out");
 
   const handleViewFull = () => { if (productUnavailable) return; onClose(); navigate(pdpUrl); };
+  // Direct "Buy Now": straight to checkout with just this item (cart untouched). The
+  // backend re-prices from {slug, sku, size, quantity}; the rest is display-only.
+  const handleBuyNow = () => {
+    onClose();
+    navigate("/checkout", {
+      state: {
+        mode: "direct",
+        item: {
+          product_slug: product.slug,
+          sku: product.sku,
+          size: product.size ?? "",
+          quantity: liveQty,
+          title: product.title,
+          price: product.price,
+          originalPrice: product.originalPrice,
+          image: product.image,
+          colorName: product.color?.name ?? "",
+        },
+      },
+    });
+  };
   const handleMoveToCart = async () => { await moveToCart(product.id); onClose(); };
   const handleWishlistToggle = () => {
     if (wishlisted && wishlistItemForProduct) {
@@ -344,7 +365,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
         </Button>
       )}
       {!hideBuyNow && (
-        <Button disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base disabled:opacity-60">
+        <Button onClick={handleBuyNow} disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base disabled:opacity-60">
           Buy Now
         </Button>
       )}
@@ -364,7 +385,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
         </Button>
       )}
       {!hideBuyNow && (
-        <Button disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base disabled:opacity-60">
+        <Button onClick={handleBuyNow} disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base disabled:opacity-60">
           Buy Now
         </Button>
       )}

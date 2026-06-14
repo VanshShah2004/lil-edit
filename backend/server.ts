@@ -12,6 +12,7 @@ import wishlistRouter from "./routes/wishlist.js";
 import ordersRouter from "./routes/orders.js";
 import adminOrdersRouter from "./routes/adminOrders.js";
 import curationRouter from "./routes/curation.js";
+import checkoutRouter, { webhookHandler } from "./routes/checkout.js";
 import { globalLimiter, mutationLimiter } from "./middleware/rateLimiters.js";
 import { warmupRedis, startRedisKeepalive, getRedis, redisSet, redisKey, CATALOG_LIST_TTL_S } from "./lib/redis.js";
 import { fetchThinProductList } from "./lib/persistCatalog.js";
@@ -37,6 +38,14 @@ const PORT = Number(process.env.PORT) || 5000;
 
 app.use(compression());
 app.use(cors({ origin, credentials: true }));
+
+// Razorpay webhook HMAC is computed over the RAW request bytes, so the webhook must
+// be registered with a raw parser on its exact path BEFORE the global JSON middleware
+// (which would otherwise consume the stream and leave nothing to verify the signature
+// against). It also sits ahead of every limiter so Razorpay's retries are never
+// throttled. Everything else on /api/checkout rides the JSON parser + router below.
+app.use("/api/checkout/webhook", express.raw({ type: "*/*" }), webhookHandler);
+
 // Global JSON body limit: 1 MB is ample for any API payload here. The only
 // exception is product image uploads (base64 encoded), which get their own
 // higher limit applied directly on the products router.
@@ -59,6 +68,10 @@ app.use("/api/admin/orders", adminOrdersRouter);
 // Public GET /sections rides the global limiter; admin writes get the tight
 // write-limiter applied to the PUT/PATCH handlers inside the router (see curation.ts).
 app.use("/api/curation",     curationRouter);
+// Checkout: /initiate + /verify apply mutationLimiter inside the router (so the
+// webhook above and the /coupon GET aren't throttled). Placement runs through the
+// service-role client + the place_order RPC.
+app.use("/api/checkout",     checkoutRouter);
 
 app.get("/", (_req, res) => {
   res.json({ ok: true, message: "new-ecomm backend" });
