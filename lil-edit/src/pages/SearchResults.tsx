@@ -92,37 +92,28 @@ export default function SearchResults() {
           {/* CENTERED, PRE-FILLED SEARCH BAR (remounts per query to reset its draft) */}
           <SearchField key={query} initial={query} onSubmit={goSearch} />
 
-          {/* HEADING */}
-          <div className="mt-6 mb-5">
-            <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">
-              {query ? (
-                <>Results for <span className="text-brand-teal">“{query}”</span></>
-              ) : (
-                "Search"
-              )}
-            </h1>
-          </div>
-
           {/* BODY */}
-          {loading ? (
-            <ResultsSkeleton />
-          ) : !query ? (
-            <EmptyState
-              title="What are you looking for?"
-              subtitle="Search for products, categories, fabrics, colours and more."
-              onSearch={goSearch}
-            />
-          ) : products.length === 0 ? (
-            <EmptyState
-              title={`No results for “${query}”`}
-              subtitle="Try a different spelling or a broader term — or explore one of these."
-              onSearch={goSearch}
-              onBrowse={() => navigate("/collections")}
-            />
-          ) : (
-            /* keyed by query → sort/filter state resets on a new search */
-            <ResultsView key={query} products={products} />
-          )}
+          <div className="mt-5 sm:mt-7">
+            {loading ? (
+              <ResultsSkeleton />
+            ) : !query ? (
+              <EmptyState
+                title="What are you looking for?"
+                subtitle="Search for products, categories, fabrics, colours and more."
+                onSearch={goSearch}
+              />
+            ) : products.length === 0 ? (
+              <EmptyState
+                title={`No results for “${query}”`}
+                subtitle="Try a different spelling or a broader term — or explore one of these."
+                onSearch={goSearch}
+                onBrowse={() => navigate("/collections")}
+              />
+            ) : (
+              /* keyed by query → sort/filter state resets on a new search */
+              <ResultsView key={query} products={products} />
+            )}
+          </div>
         </div>
       </main>
 
@@ -250,22 +241,22 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
   return (
     <>
       {/* TOOLBAR: count · filters · sort */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-        <p className="text-sm text-gray-500">
+      <div className="flex items-center justify-between gap-2 mb-5 pb-4 border-b border-gray-200">
+        <p className="text-xs sm:text-sm text-gray-500 truncate">
           {visible.length === products.length
             ? `${products.length} ${products.length === 1 ? "product" : "products"}`
             : `${visible.length} of ${products.length} products`}
         </p>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {/* FILTERS */}
           <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
             <SheetTrigger asChild>
-              <button className="inline-flex items-center gap-2 h-10 px-4 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:border-brand-teal hover:text-brand-teal transition-colors">
-                <SlidersHorizontal className="w-4 h-4" />
+              <button className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-md border border-gray-300 bg-white text-xs sm:text-sm font-medium text-gray-700 hover:border-brand-teal hover:text-brand-teal transition-colors">
+                <SlidersHorizontal className="w-3.5 h-3.5" />
                 Filters
                 {activeCount > 0 && (
-                  <span className="ml-0.5 inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-brand-teal text-white text-xs font-bold">
+                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-teal text-white text-[10px] font-bold">
                     {activeCount}
                   </span>
                 )}
@@ -343,8 +334,8 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
 
           {/* SORT */}
           <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-            <SelectTrigger className="h-10 w-[170px] bg-white border-gray-300 rounded-md">
-              <span className="text-gray-500 mr-1 hidden sm:inline">Sort:</span>
+            <SelectTrigger className="h-9 w-auto justify-start gap-1.5 bg-white border-gray-300 rounded-md text-xs sm:text-sm font-medium text-gray-700">
+              <span className="text-gray-500">Sort:</span>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -392,7 +383,7 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
               <div
                 key={p.id}
                 onClick={() => navigate(buildPdpPath(p.categorySlug, p.slug, p.sku))}
-                className="group bg-white p-2 md:p-1.5 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer"
+                className="group bg-white p-2 md:p-1.5 rounded-2xl shadow-md border border-gray-300 hover:shadow-xl hover:border-gray-400 hover:-translate-y-0.5 transition-all cursor-pointer"
               >
                 <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5 bg-gray-100">
                   {p.image ? (
@@ -463,7 +454,7 @@ function ResultsSkeleton() {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
       {Array.from({ length: 10 }).map((_, i) => (
-        <div key={i} className="bg-white p-2 md:p-1.5 rounded-2xl border border-gray-200 shadow-sm animate-pulse">
+        <div key={i} className="bg-white p-2 md:p-1.5 rounded-2xl border border-gray-300 shadow-md animate-pulse">
           <div className="aspect-[3/4] md:aspect-[4/5] rounded-xl bg-gray-200 mb-2 md:mb-1.5" />
           <div className="px-1 pb-0.5 space-y-1.5">
             <div className="h-3.5 bg-gray-200 rounded w-3/4" />
