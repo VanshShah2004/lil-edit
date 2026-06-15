@@ -123,7 +123,7 @@ function CartSkeleton() {
       {[1, 2].map((n) => (
         <Card
           key={n}
-          className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm"
+          className="bg-white border border-gray-300 rounded-xl overflow-hidden shadow-md ring-1 ring-black/5"
         >
           <CardContent className="p-4 flex gap-4">
             <Skeleton className="w-32 flex-shrink-0 aspect-[4/5] rounded-lg" />
@@ -283,7 +283,7 @@ export default function Cart() {
               cartItems.map((item) => (
                 <Card
                   key={item.id}
-                  className="bg-white border border-gray-200 border-l-8 border-l-brand-teal rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[160px] md:min-h-[140px]"
+                  className="bg-white border border-gray-300 border-l-8 border-l-brand-teal rounded-lg sm:rounded-xl overflow-hidden shadow-md ring-1 ring-black/5 hover:shadow-xl hover:ring-black/10 transition-all duration-300 min-h-[160px] md:min-h-[140px]"
                 >
                   <CardContent
                     className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-1.5 relative cursor-pointer"

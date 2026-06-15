@@ -106,7 +106,7 @@ function WishlistSkeleton() {
       {[1, 2, 3].map((n) => (
         <div
           key={n}
-          className="bg-white border border-gray-200 border-l-8 border-l-primary rounded-xl overflow-hidden shadow-sm animate-pulse"
+          className="bg-white border border-gray-300 border-l-8 border-l-primary rounded-xl overflow-hidden shadow-md ring-1 ring-black/5 animate-pulse"
         >
           <div className="p-4 flex gap-4 min-h-[200px]">
             <div className="w-28 flex-shrink-0 bg-gray-200 rounded-lg" />
@@ -301,7 +301,7 @@ const WishlistPage = () => {
               filteredItems.map((item) => (
                 <Card
                   key={item.id}
-                  className="bg-white border border-gray-200 border-l-8 border-l-primary rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 min-h-[160px] md:min-h-[140px]"
+                  className="bg-white border border-gray-300 border-l-8 border-l-primary rounded-lg sm:rounded-xl overflow-hidden shadow-md ring-1 ring-black/5 hover:shadow-xl hover:ring-black/10 transition-all duration-300 min-h-[160px] md:min-h-[140px]"
                 >
                   <CardContent
                     className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-2.5 relative cursor-pointer"
