@@ -12,8 +12,10 @@ import {
   fetchRecommendedProducts,
   fetchReviewsDataBySlug,
   fetchSuggestions,
+  searchProducts,
   invalidateSearchCatalog,
   type SuggestionRow,
+  type SearchProductRow,
 } from "../lib/persistCatalog.js";
 import type { ProductRow, ImageRow } from "../lib/catalogRowTypes.js";
 import {
@@ -578,6 +580,41 @@ router.get("/suggestions", async (req: Request, res: Response) => {
     log.error("failed — returning empty suggestions", err);
     res.status(200).json({ suggestions: [] });
     log.end("SEARCH SUGGESTIONS");
+  }
+});
+
+// ─── GET /api/products/search — full search results page ─────────────────────
+router.get("/search", async (req: Request, res: Response) => {
+  const log = createLog().start("SEARCH RESULTS");
+  const raw = (req.query.q as string | undefined) ?? "";
+  const q   = raw.trim();
+
+  if (q.length < 1 || q.length > 100) {
+    log.step(`q.length=${q.length} — skipped`).end("SEARCH RESULTS");
+    res.json({ query: q, count: 0, products: [] });
+    return;
+  }
+
+  const cacheKey = redisKey("search", q.toLowerCase());
+
+  try {
+    const cached = await redisGet<{ query: string; count: number; products: SearchProductRow[] }>(cacheKey, log);
+    if (cached) {
+      log.success("L2 Redis - HIT  served from cache").end("SEARCH RESULTS");
+      res.json(cached);
+      return;
+    }
+
+    const products = await searchProducts(q, log);
+    const payload = { query: q, count: products.length, products };
+    void redisSet(cacheKey, payload, SUGGESTION_TTL_S, log);
+
+    log.success(`${products.length} results returned for "${q}"`).end("SEARCH RESULTS");
+    res.json(payload);
+  } catch (err) {
+    log.error("failed — returning empty results", err);
+    res.status(200).json({ query: q, count: 0, products: [] });
+    log.end("SEARCH RESULTS");
   }
 });
 

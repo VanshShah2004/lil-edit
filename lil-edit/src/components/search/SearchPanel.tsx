@@ -1,5 +1,6 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import SearchBar from "./SearchBar";
 import FrequentSearches from "./FrequentSearches";
 import CollageGrid from "./CollageGrid";
@@ -15,9 +16,19 @@ interface SearchPanelProps {
 export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const { suggestions, loading } = useSearchSuggestions(searchTerm);
   const hasQuery = searchTerm.trim().length >= 1;
+
+  // Go to the full search results page for a term, then close the panel.
+  const submitSearch = useCallback((term: string) => {
+    const trimmed = term.trim();
+    if (!trimmed) return;
+    console.log("[SearchPanel] submit search →", trimmed);
+    navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+    onClose();
+  }, [navigate, onClose]);
 
   // Clear state when panel closes so re-opening starts fresh.
   useEffect(() => {
@@ -100,13 +111,10 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               loading={loading}
               query={searchTerm}
               onClose={onClose}
-              onSelectTerm={(term) => {
-                console.log("[SearchPanel] autocomplete term selected:", term);
-                setSearchTerm(term);
-              }}
+              onSubmit={submitSearch}
             />
           )}
-          <FrequentSearches onSelect={(term) => setSearchTerm(term)} />
+          <FrequentSearches onSelect={submitSearch} />
           <CollageGrid />
           <CategoriesList />
         </div>

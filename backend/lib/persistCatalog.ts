@@ -767,6 +767,8 @@ interface SearchCatalogEntry {
   fit: string;
   gender: string;
   image: string;
+  price: number;
+  original_price: number;
 }
 
 let _searchCatalog: SearchCatalogEntry[] | null = null;
@@ -792,12 +794,14 @@ interface SearchCatalogDbRow {
   fabric: string | null;
   fit: string | null;
   gender: string | null;
+  price: number | null;
+  original_price: number | null;
   product_images: Array<{ image_url: string; is_primary: boolean }> | null;
 }
 
 const SEARCH_CATALOG_SELECT = `
   id, title, slug, base_sku, category, category_slug,
-  tags, badges, occasion, fabric, fit, gender,
+  tags, badges, occasion, fabric, fit, gender, price, original_price,
   product_images(image_url, is_primary)
 `.trim();
 
@@ -835,6 +839,8 @@ async function loadSearchCatalog(log: OpLogger): Promise<SearchCatalogEntry[]> {
       fit: p.fit ?? "",
       gender: p.gender ?? "",
       image,
+      price: p.price ?? 0,
+      original_price: p.original_price ?? p.price ?? 0,
     };
   });
 
@@ -1071,6 +1077,53 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
 
   log.step(`Suggestions - ${metaSuggestions.length} metadata + ${productSuggestions.length} products`);
   return [...metaSuggestions, ...productSuggestions];
+}
+
+// ─── searchProducts (full results page) ───────────────────────────────────────
+
+export interface SearchProductRow {
+  id: string;
+  title: string;
+  slug: string;
+  sku: string;
+  category: string;
+  categorySlug: string;
+  price: number;
+  originalPrice: number;
+  image: string;
+  badges: string[];
+}
+
+/**
+ * Returns every catalog product matching `q`, ranked highest-relevance first —
+ * the data behind the full search results page. Same scoring engine as
+ * fetchSuggestions, but uncapped (the suggestions dropdown shows the top 8;
+ * the results page shows them all).
+ */
+export async function searchProducts(q: string, log: OpLogger): Promise<SearchProductRow[]> {
+  const lower = q.toLowerCase();
+  const catalog = await loadSearchCatalog(log);
+
+  const scored: Array<{ entry: SearchCatalogEntry; score: number }> = [];
+  for (const entry of catalog) {
+    const { score } = scoreEntry(entry, lower);
+    if (score > 0) scored.push({ entry, score });
+  }
+  scored.sort((a, b) => b.score - a.score || a.entry.title.localeCompare(b.entry.title));
+  log.step(`Search - ${scored.length}/${catalog.length} products matched "${q}"`);
+
+  return scored.map(({ entry }) => ({
+    id: entry.id,
+    title: entry.title,
+    slug: entry.slug,
+    sku: entry.base_sku,
+    category: entry.category,
+    categorySlug: entry.category_slug,
+    price: entry.price,
+    originalPrice: entry.original_price,
+    image: entry.image,
+    badges: entry.badges,
+  }));
 }
 
 /** Minimal lookup for lazy-loaded reviews (title only). */

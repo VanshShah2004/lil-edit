@@ -31,3 +31,39 @@ export async function fetchSuggestions(q: string, signal?: AbortSignal): Promise
   console.log("[searchService] suggestions →", filtered.length, "results for:", q, "(raw:", data.suggestions?.length ?? 0, ")");
   return filtered;
 }
+
+export interface SearchProduct {
+  id:           string;
+  title:        string;
+  slug:         string;
+  sku:          string;
+  category:     string;
+  categorySlug: string;
+  price:        number;
+  originalPrice: number;
+  image:        string;
+  badges:       string[];
+}
+
+export interface SearchResultsResponse {
+  query:    string;
+  count:    number;
+  products: SearchProduct[];
+}
+
+export async function searchProducts(q: string, signal?: AbortSignal): Promise<SearchResultsResponse> {
+  const url = `${getBackendBaseUrl()}/api/products/search?q=${encodeURIComponent(q)}`;
+  console.log("[searchService] GET", url);
+
+  const res = await fetch(url, { signal });
+  console.log("[searchService] GET", url, "→", res.status);
+
+  if (!res.ok) {
+    console.error("[searchService] search error:", res.status);
+    return { query: q, count: 0, products: [] };
+  }
+
+  const data = (await res.json()) as SearchResultsResponse;
+  console.log("[searchService] search →", data.products?.length ?? 0, "results for:", q);
+  return { query: data.query ?? q, count: data.count ?? 0, products: data.products ?? [] };
+}

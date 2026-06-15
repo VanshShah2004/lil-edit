@@ -23,7 +23,9 @@ interface Props {
   loading: boolean;
   query: string;
   onClose: () => void;
-  onSelectTerm: (term: string) => void;
+  // Navigate to the full search results page for a term (metadata chip, or
+  // Enter with no product highlighted).
+  onSubmit: (term: string) => void;
 }
 
 // Icon + section label for each suggestion type, used to give every result a
@@ -94,7 +96,7 @@ function groupMetaItems(items: Suggestion[]): Array<{ type: SuggestionType; item
     .map((t) => ({ type: t, items: byType.get(t)! }));
 }
 
-export default function SuggestionsDropdown({ suggestions, loading, query, onClose, onSelectTerm }: Props) {
+export default function SuggestionsDropdown({ suggestions, loading, query, onClose, onSubmit }: Props) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("all");
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -132,9 +134,11 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
   // Written in an effect (after render) so refs are never mutated during render.
   const visibleRef = useRef(visibleItems);
   const selectedRef = useRef(selectedIndex);
+  const queryRef = useRef(query);
   useEffect(() => {
     visibleRef.current = visibleItems;
     selectedRef.current = selectedIndex;
+    queryRef.current = query;
   });
 
   useEffect(() => {
@@ -155,7 +159,9 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
           e.preventDefault();
           const s = visibleRef.current[selectedRef.current];
           if (!s) {
-            console.log("[SuggestionsDropdown] Enter with no selection — no action");
+            // Nothing highlighted → search the raw query text.
+            console.log("[SuggestionsDropdown] Enter with no selection → search:", queryRef.current);
+            if (queryRef.current.trim()) onSubmit(queryRef.current.trim());
             break;
           }
           if (s.type === "product") {
@@ -164,8 +170,8 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
             navigate(path);
             onClose();
           } else {
-            console.log("[SuggestionsDropdown] Enter → autocomplete term:", s.label);
-            onSelectTerm(s.label);
+            console.log("[SuggestionsDropdown] Enter → search term:", s.label);
+            onSubmit(s.label);
           }
           break;
         }
@@ -174,7 +180,7 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [navigate, onClose, onSelectTerm]);
+  }, [navigate, onClose, onSubmit]);
 
   function handleSelect(s: Suggestion) {
     if (s.type === "product") {
@@ -182,8 +188,8 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
       navigate(buildPdpPath(s.categorySlug, s.slug, s.sku));
       onClose();
     } else {
-      console.log("[SuggestionsDropdown] click → autocomplete term:", s.label, `(${s.type})`);
-      onSelectTerm(s.label);
+      console.log("[SuggestionsDropdown] click → search term:", s.label, `(${s.type})`);
+      onSubmit(s.label);
     }
   }
 
