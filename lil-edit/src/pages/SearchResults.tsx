@@ -166,7 +166,7 @@ function SearchField({ initial, onSubmit }: { initial: string; onSubmit: (term: 
 // ─── Results + toolbar + filters ────────────────────────────────────────────
 function ResultsView({ products }: { products: SearchProduct[] }) {
   const navigate = useNavigate();
-  const { isWishlisted, addToWishlist, removeFromWishlist, wishlistItems } = useWishlist();
+  const { addToWishlist, removeFromWishlist, wishlistItems } = useWishlist();
 
   const [sort, setSort] = useState<SortKey>("relevance");
   const [catSel, setCatSel] = useState<Set<string>>(new Set());
@@ -224,7 +224,7 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
   };
 
   const toggleWishlist = (p: SearchProduct) => {
-    const existing = wishlistItems.find((i) => i.slug === p.slug && i.sku === p.sku);
+    const existing = wishlistItems.find((i) => i.sku === p.sku);
     if (existing) void removeFromWishlist(existing.id);
     else void addToWishlist(p.slug, p.sku);
   };
@@ -379,11 +379,11 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
           {visible.map((p) => {
-            const wishlisted = isWishlisted(p.slug, p.sku);
+            const wishlisted = wishlistItems.some((i) => i.sku === p.sku);
             const onSale = p.originalPrice > p.price;
             return (
               <div
-                key={p.id}
+                key={p.sku}
                 onClick={() => navigate(buildPdpPath(p.categorySlug, p.slug, p.sku))}
                 className="group bg-white p-2 md:p-1.5 rounded-2xl shadow-md border border-gray-300 hover:shadow-xl hover:border-gray-400 hover:-translate-y-0.5 transition-all cursor-pointer"
               >
@@ -406,16 +406,29 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
                   )}
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleWishlist(p); }}
-                    className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-600 hover:text-brand-teal hover:bg-white transition-all shadow-sm"
+                    className={`absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-all shadow-sm ${
+                      wishlisted ? "text-primary" : "text-gray-600 hover:text-brand-teal"
+                    }`}
                     aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}
                   >
                     <Heart className="w-3.5 h-3.5" fill={wishlisted ? "currentColor" : "none"} />
                   </button>
                 </div>
                 <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
-                  <h3 className="text-xs md:text-sm font-medium text-gray-900 leading-snug line-clamp-2">
-                    {p.title}
-                  </h3>
+                  <div className="min-w-0">
+                    <h3 className="text-xs md:text-sm font-medium text-gray-900 leading-snug line-clamp-2">
+                      {p.title}
+                    </h3>
+                    {p.color?.name && (
+                      <span className="mt-1 flex items-center gap-1.5 text-[10px] md:text-xs text-gray-500">
+                        <span
+                          className="w-3 h-3 rounded-full border border-gray-300 shadow-sm flex-shrink-0"
+                          style={{ backgroundColor: p.color.hex }}
+                        />
+                        <span className="truncate">{p.color.name}</span>
+                      </span>
+                    )}
+                  </div>
                   <div className="shrink-0 text-right">
                     <p className="text-xs md:text-sm font-semibold text-brand-teal">₹{p.price}</p>
                     {onSale && (

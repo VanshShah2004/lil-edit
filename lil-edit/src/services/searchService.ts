@@ -43,6 +43,8 @@ export interface SearchProduct {
   originalPrice: number;
   image:        string;
   badges:       string[];
+  color:        { name: string; hex: string };
+  inStock:      boolean;
 }
 
 export interface SearchResultsResponse {

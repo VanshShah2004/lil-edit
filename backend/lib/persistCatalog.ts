@@ -753,6 +753,14 @@ export interface SuggestionRow {
 
 // ─── In-memory search catalog (rebuilt from DB, 10 min TTL) ──────────────────
 
+interface SearchCatalogVariant {
+  sku: string;
+  colorName: string;
+  colorHex: string;
+  image: string;
+  inStock: boolean;
+}
+
 interface SearchCatalogEntry {
   id: string;
   title: string;
@@ -769,6 +777,7 @@ interface SearchCatalogEntry {
   image: string;
   price: number;
   original_price: number;
+  variants: SearchCatalogVariant[];
 }
 
 let _searchCatalog: SearchCatalogEntry[] | null = null;
@@ -796,13 +805,23 @@ interface SearchCatalogDbRow {
   gender: string | null;
   price: number | null;
   original_price: number | null;
-  product_images: Array<{ image_url: string; is_primary: boolean }> | null;
+  product_images: Array<{ image_url: string; is_primary: boolean; variant_id: string | null; sort_order: number | null }> | null;
+  product_variants: Array<{
+    id: string;
+    color_name: string | null;
+    color_hex: string | null;
+    variant_sku: string;
+    stock: number | null;
+    is_unlimited: boolean | null;
+    sort_order: number | null;
+  }> | null;
 }
 
 const SEARCH_CATALOG_SELECT = `
   id, title, slug, base_sku, category, category_slug,
   tags, badges, occasion, fabric, fit, gender, price, original_price,
-  product_images(image_url, is_primary)
+  product_images(image_url, is_primary, variant_id, sort_order),
+  product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
 `.trim();
 
 async function loadSearchCatalog(log: OpLogger): Promise<SearchCatalogEntry[]> {
@@ -823,8 +842,29 @@ async function loadSearchCatalog(log: OpLogger): Promise<SearchCatalogEntry[]> {
 
   const rows = (data ?? []) as unknown as SearchCatalogDbRow[];
   _searchCatalog = rows.map((p) => {
-    const imgs: Array<{ image_url: string; is_primary: boolean }> = p.product_images ?? [];
-    const image = imgs.find((i) => i.is_primary)?.image_url || imgs[0]?.image_url || "";
+    const imgs = [...(p.product_images ?? [])].sort(
+      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+    );
+    const productImage = imgs.find((i) => i.is_primary)?.image_url || imgs[0]?.image_url || "";
+
+    const variants: SearchCatalogVariant[] = [...(p.product_variants ?? [])]
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      .map((v) => {
+        const variantImgs = imgs.filter((i) => i.variant_id === v.id);
+        const variantImage =
+          variantImgs.find((i) => i.is_primary)?.image_url ||
+          variantImgs[0]?.image_url ||
+          productImage;
+        const inStock = v.is_unlimited ? true : (v.stock ?? 0) > 0;
+        return {
+          sku: v.variant_sku,
+          colorName: v.color_name ?? "",
+          colorHex: v.color_hex ?? "#cccccc",
+          image: variantImage,
+          inStock,
+        };
+      });
+
     return {
       id: p.id,
       title: p.title,
@@ -838,9 +878,10 @@ async function loadSearchCatalog(log: OpLogger): Promise<SearchCatalogEntry[]> {
       fabric: p.fabric ?? "",
       fit: p.fit ?? "",
       gender: p.gender ?? "",
-      image,
+      image: productImage,
       price: p.price ?? 0,
       original_price: p.original_price ?? p.price ?? 0,
+      variants,
     };
   });
 
@@ -1092,6 +1133,8 @@ export interface SearchProductRow {
   originalPrice: number;
   image: string;
   badges: string[];
+  color: { name: string; hex: string };
+  inStock: boolean;
 }
 
 /**
@@ -1112,18 +1155,41 @@ export async function searchProducts(q: string, log: OpLogger): Promise<SearchPr
   scored.sort((a, b) => b.score - a.score || a.entry.title.localeCompare(b.entry.title));
   log.step(`Search - ${scored.length}/${catalog.length} products matched "${q}"`);
 
-  return scored.map(({ entry }) => ({
-    id: entry.id,
-    title: entry.title,
-    slug: entry.slug,
-    sku: entry.base_sku,
-    category: entry.category,
-    categorySlug: entry.category_slug,
-    price: entry.price,
-    originalPrice: entry.original_price,
-    image: entry.image,
-    badges: entry.badges,
-  }));
+  // Flatten to one row per variant (colour) — each becomes its own results card.
+  // Products with no variants fall back to a single base-sku row.
+  const rows: SearchProductRow[] = [];
+  for (const { entry } of scored) {
+    const base = {
+      id: entry.id,
+      title: entry.title,
+      slug: entry.slug,
+      category: entry.category,
+      categorySlug: entry.category_slug,
+      price: entry.price,
+      originalPrice: entry.original_price,
+      badges: entry.badges,
+    };
+    if (entry.variants.length === 0) {
+      rows.push({
+        ...base,
+        sku: entry.base_sku,
+        image: entry.image,
+        color: { name: "", hex: "#cccccc" },
+        inStock: true,
+      });
+      continue;
+    }
+    for (const v of entry.variants) {
+      rows.push({
+        ...base,
+        sku: v.sku,
+        image: v.image,
+        color: { name: v.colorName, hex: v.colorHex },
+        inStock: v.inStock,
+      });
+    }
+  }
+  return rows;
 }
 
 /** Minimal lookup for lazy-loaded reviews (title only). */
