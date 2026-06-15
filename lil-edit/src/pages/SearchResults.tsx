@@ -18,12 +18,11 @@ import { searchProducts, type SearchProduct } from "@/services/searchService";
 
 const POPULAR_TERMS = ["Lehenga", "Dress", "Girls", "Boys", "Festive", "Co-ord Set"];
 
-type SortKey = "relevance" | "price-asc" | "price-desc" | "name-asc";
+type SortKey = "relevance" | "price-asc" | "price-desc";
 const SORT_LABELS: Record<SortKey, string> = {
   relevance: "Relevance",
   "price-asc": "Price: Low to High",
   "price-desc": "Price: High to Low",
-  "name-asc": "Name: A to Z",
 };
 
 interface PriceBucket { id: string; label: string; test: (p: SearchProduct) => boolean; }
@@ -207,7 +206,6 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
     switch (sort) {
       case "price-asc":  return [...list].sort((a, b) => a.price - b.price);
       case "price-desc": return [...list].sort((a, b) => b.price - a.price);
-      case "name-asc":   return [...list].sort((a, b) => a.title.localeCompare(b.title));
       default:           return list; // relevance = backend order
     }
   }, [products, catSel, badgeSel, onSaleOnly, priceBucket, sort]);
@@ -334,9 +332,13 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
 
           {/* SORT */}
           <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-            <SelectTrigger className="h-9 w-auto justify-start gap-1.5 bg-white border-gray-300 rounded-md text-xs sm:text-sm font-medium text-gray-700">
-              <span className="text-gray-500">Sort:</span>
-              <SelectValue />
+            <SelectTrigger className="h-9 w-[185px] sm:w-[205px] justify-between gap-1.5 bg-white border-gray-300 rounded-md text-xs sm:text-sm font-medium text-gray-700">
+              <span className="flex items-center gap-1.5 min-w-0 flex-1">
+                <span className="text-gray-500 shrink-0">Sort&nbsp;:&nbsp;</span>
+                <span className="flex-1 text-center min-w-0">
+                  <SelectValue />
+                </span>
+              </span>
             </SelectTrigger>
             <SelectContent>
               {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
