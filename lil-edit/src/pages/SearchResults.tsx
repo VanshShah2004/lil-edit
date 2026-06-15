@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { ChevronRight, Heart, SearchX, Search, SlidersHorizontal, X } from "lucide-react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { Heart, SearchX, Search, SlidersHorizontal, X } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
@@ -84,31 +84,21 @@ export default function SearchResults() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col font-body selection:bg-primary/20">
+    <div className="min-h-screen bg-[#FAF9F7] flex flex-col text-gray-900 overflow-x-hidden">
       {user ? <UserNavbar /> : <Navbar />}
 
-      <main className="flex-1 pt-[150px] md:pt-[112px] pb-16">
-        <div className="page-container">
-          {/* BREADCRUMB */}
-          <nav className="flex items-center text-xs sm:text-sm text-muted-foreground gap-1.5 sm:gap-2 mb-6">
-            <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
-            <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="text-foreground font-medium">Search</span>
-          </nav>
-
+      <main className="flex-1 w-full pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)] pb-14">
+        <div className="page-container px-4 sm:px-6 pt-1 sm:pt-2">
           {/* CENTERED, PRE-FILLED SEARCH BAR (remounts per query to reset its draft) */}
           <SearchField key={query} initial={query} onSubmit={goSearch} />
 
-          {/* CONTEXT LINE */}
-          <div className="text-center mt-4 mb-7 sm:mb-8">
-            <p className="text-xs sm:text-sm font-black tracking-[0.2em] uppercase text-[#0F766E] mb-1">
-              Search Results
-            </p>
-            <h1 className="font-display text-2xl sm:text-3xl font-black text-foreground leading-tight">
+          {/* HEADING */}
+          <div className="mt-6 mb-5">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">
               {query ? (
-                <>Showing results for <span className="text-[#0F766E]">“{query}”</span></>
+                <>Results for <span className="text-brand-teal">“{query}”</span></>
               ) : (
-                "Search the edit"
+                "Search"
               )}
             </h1>
           </div>
@@ -149,23 +139,23 @@ function SearchField({ initial, onSubmit }: { initial: string; onSubmit: (term: 
       onSubmit={(e) => { e.preventDefault(); onSubmit(draft); }}
       className="mx-auto w-full max-w-2xl"
     >
-      <div className="relative group">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-[#0F766E] transition-colors">
-          <Search className="w-5 h-5" />
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+          <Search className="w-4 h-4" />
         </div>
         <input
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Search products, categories, or trends..."
-          className="w-full bg-card border border-border rounded-full py-3.5 pl-12 pr-32 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E]/30 focus:border-[#0F766E] transition-all placeholder:text-muted-foreground/70"
+          className="w-full bg-white border border-gray-300 rounded-md py-2 pl-11 pr-28 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/30 focus:border-brand-teal transition-all placeholder:text-gray-400"
         />
         <div className="absolute inset-y-0 right-1.5 flex items-center gap-1">
           {draft && (
             <button
               type="button"
               onClick={() => setDraft("")}
-              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              className="p-1.5 text-gray-400 hover:text-gray-700 transition-colors"
               aria-label="Clear search"
             >
               <X className="w-4 h-4" />
@@ -173,7 +163,7 @@ function SearchField({ initial, onSubmit }: { initial: string; onSubmit: (term: 
           )}
           <button
             type="submit"
-            className="px-5 h-10 rounded-full bg-[#0F766E] hover:bg-[#0c5f58] text-white font-semibold text-sm transition-colors"
+            className="px-4 h-8 rounded-md bg-brand-teal hover:bg-[#0C5D53] text-white font-bold text-sm transition-colors"
           >
             Search
           </button>
@@ -250,11 +240,18 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
     else void addToWishlist(p.slug, p.sku);
   };
 
+  const chipClass = (active: boolean) =>
+    `px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+      active
+        ? "bg-brand-teal border-brand-teal text-white"
+        : "border-gray-300 bg-white text-gray-700 hover:border-brand-teal hover:text-brand-teal"
+    }`;
+
   return (
     <>
       {/* TOOLBAR: count · filters · sort */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-gray-500">
           {visible.length === products.length
             ? `${products.length} ${products.length === 1 ? "product" : "products"}`
             : `${visible.length} of ${products.length} products`}
@@ -264,19 +261,19 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
           {/* FILTERS */}
           <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
             <SheetTrigger asChild>
-              <button className="inline-flex items-center gap-2 h-10 px-4 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:border-[#0F766E]/40 hover:text-[#0F766E] transition-colors">
+              <button className="inline-flex items-center gap-2 h-10 px-4 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:border-brand-teal hover:text-brand-teal transition-colors">
                 <SlidersHorizontal className="w-4 h-4" />
                 Filters
                 {activeCount > 0 && (
-                  <span className="ml-0.5 inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-[#0F766E] text-white text-xs font-bold">
+                  <span className="ml-0.5 inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-brand-teal text-white text-xs font-bold">
                     {activeCount}
                   </span>
                 )}
               </button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0">
-              <SheetHeader className="px-6 pt-6 pb-4 border-b border-border">
-                <SheetTitle className="font-display text-xl font-black">Filters</SheetTitle>
+            <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0 bg-white">
+              <SheetHeader className="px-6 pt-6 pb-4 border-b border-gray-200">
+                <SheetTitle className="text-xl font-semibold text-gray-900">Filters</SheetTitle>
               </SheetHeader>
 
               <div className="flex-1 overflow-y-auto px-6 py-5 space-y-7">
@@ -286,7 +283,7 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
                       {categories.map((c) => (
                         <label key={c.slug} className="flex items-center gap-2.5 cursor-pointer group">
                           <Checkbox checked={catSel.has(c.slug)} onCheckedChange={() => toggleSet(setCatSel, c.slug)} />
-                          <span className="text-sm text-foreground/80 group-hover:text-foreground transition-colors">{c.label}</span>
+                          <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">{c.label}</span>
                         </label>
                       ))}
                     </div>
@@ -296,22 +293,11 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
                 {priceBuckets.length > 0 && (
                   <FilterGroup label="Price">
                     <div className="flex flex-wrap gap-2">
-                      {priceBuckets.map((b) => {
-                        const active = priceBucket === b.id;
-                        return (
-                          <button
-                            key={b.id}
-                            onClick={() => setPriceBucket(active ? null : b.id)}
-                            className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                              active
-                                ? "bg-[#0F766E] border-[#0F766E] text-white"
-                                : "border-border bg-card text-foreground/80 hover:border-[#0F766E]/40 hover:text-[#0F766E]"
-                            }`}
-                          >
-                            {b.label}
-                          </button>
-                        );
-                      })}
+                      {priceBuckets.map((b) => (
+                        <button key={b.id} onClick={() => setPriceBucket(priceBucket === b.id ? null : b.id)} className={chipClass(priceBucket === b.id)}>
+                          {b.label}
+                        </button>
+                      ))}
                     </div>
                   </FilterGroup>
                 )}
@@ -319,22 +305,11 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
                 {badges.length > 0 && (
                   <FilterGroup label="Collections">
                     <div className="flex flex-wrap gap-2">
-                      {badges.map((b) => {
-                        const active = badgeSel.has(b);
-                        return (
-                          <button
-                            key={b}
-                            onClick={() => toggleSet(setBadgeSel, b)}
-                            className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                              active
-                                ? "bg-[#0F766E] border-[#0F766E] text-white"
-                                : "border-border bg-card text-foreground/80 hover:border-[#0F766E]/40 hover:text-[#0F766E]"
-                            }`}
-                          >
-                            {b}
-                          </button>
-                        );
-                      })}
+                      {badges.map((b) => (
+                        <button key={b} onClick={() => toggleSet(setBadgeSel, b)} className={chipClass(badgeSel.has(b))}>
+                          {b}
+                        </button>
+                      ))}
                     </div>
                   </FilterGroup>
                 )}
@@ -343,22 +318,22 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
                   <FilterGroup label="Offers">
                     <label className="flex items-center gap-2.5 cursor-pointer group">
                       <Checkbox checked={onSaleOnly} onCheckedChange={(v) => setOnSaleOnly(!!v)} />
-                      <span className="text-sm text-foreground/80 group-hover:text-foreground transition-colors">On sale only</span>
+                      <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">On sale only</span>
                     </label>
                   </FilterGroup>
                 )}
               </div>
 
-              <SheetFooter className="px-6 py-4 border-t border-border flex-row gap-3">
+              <SheetFooter className="px-6 py-4 border-t border-gray-200 flex-row gap-3">
                 <button
                   onClick={clearFilters}
                   disabled={activeCount === 0}
-                  className="flex-1 h-11 rounded-full border border-border text-sm font-semibold text-foreground hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                  className="flex-1 h-11 rounded-full border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
                 >
                   Clear all
                 </button>
                 <SheetClose asChild>
-                  <button className="flex-1 h-11 rounded-full bg-[#0F766E] hover:bg-[#0c5f58] text-white text-sm font-semibold transition-colors">
+                  <button className="flex-1 h-11 rounded-full bg-brand-teal hover:bg-[#0C5D53] text-white text-sm font-bold transition-colors">
                     Show {visible.length} {visible.length === 1 ? "result" : "results"}
                   </button>
                 </SheetClose>
@@ -368,8 +343,8 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
 
           {/* SORT */}
           <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-            <SelectTrigger className="h-10 w-[170px] bg-card rounded-md">
-              <span className="text-muted-foreground mr-1 hidden sm:inline">Sort:</span>
+            <SelectTrigger className="h-10 w-[170px] bg-white border-gray-300 rounded-md">
+              <span className="text-gray-500 mr-1 hidden sm:inline">Sort:</span>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -394,7 +369,7 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
             <ActiveChip key={`b-${b}`} label={b} onRemove={() => toggleSet(setBadgeSel, b)} />
           ))}
           {onSaleOnly && <ActiveChip label="On sale" onRemove={() => setOnSaleOnly(false)} />}
-          <button onClick={clearFilters} className="text-xs font-semibold text-[#0F766E] hover:underline ml-1">
+          <button onClick={clearFilters} className="text-xs font-semibold text-brand-teal hover:underline ml-1">
             Clear all
           </button>
         </div>
@@ -402,9 +377,9 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
 
       {/* GRID */}
       {visible.length === 0 ? (
-        <div className="text-center py-16 sm:py-20">
-          <p className="text-foreground font-medium mb-1">No products match these filters</p>
-          <button onClick={clearFilters} className="text-sm font-semibold text-[#0F766E] hover:underline">
+        <div className="w-full py-16 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
+          <p className="text-base font-semibold text-gray-800 mb-1">No products match these filters</p>
+          <button onClick={clearFilters} className="text-sm font-medium text-primary underline underline-offset-2">
             Clear all filters
           </button>
         </div>
@@ -417,40 +392,41 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
               <div
                 key={p.id}
                 onClick={() => navigate(buildPdpPath(p.categorySlug, p.slug, p.sku))}
-                className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer"
+                className="group bg-white p-2 md:p-1.5 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer"
               >
-                <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5 bg-secondary">
+                <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5 bg-gray-100">
                   {p.image ? (
                     <img
                       src={p.image}
                       alt={p.title}
                       loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
-                    <div className="w-full h-full bg-secondary" />
+                    <div className="w-full h-full bg-gray-100" />
                   )}
                   {p.badges[0] && (
-                    <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/90 text-[#0F766E] shadow-sm">
+                    <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/90 text-brand-teal shadow-sm">
                       {p.badges[0]}
                     </span>
                   )}
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleWishlist(p); }}
-                    className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-primary transition-all"
+                    className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-600 hover:text-brand-teal hover:bg-white transition-all shadow-sm"
                     aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}
                   >
                     <Heart className="w-3.5 h-3.5" fill={wishlisted ? "currentColor" : "none"} />
                   </button>
                 </div>
-                <div className="px-1 pb-0.5">
-                  <h3 className="font-display text-xs md:text-sm font-medium text-foreground leading-snug line-clamp-2">
+                <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
+                  <h3 className="text-xs md:text-sm font-medium text-gray-900 leading-snug line-clamp-2">
                     {p.title}
                   </h3>
-                  <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <p className="font-body text-xs md:text-sm font-semibold text-[#0F766E]">₹{p.price}</p>
+                  <div className="shrink-0 text-right">
+                    <p className="text-xs md:text-sm font-semibold text-brand-teal">₹{p.price}</p>
                     {onSale && (
-                      <p className="font-body text-[10px] text-muted-foreground line-through">₹{p.originalPrice}</p>
+                      <p className="text-[10px] text-gray-400 line-through">₹{p.originalPrice}</p>
                     )}
                   </div>
                 </div>
@@ -466,7 +442,7 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
 function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">{label}</p>
+      <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-3">{label}</p>
       {children}
     </div>
   );
@@ -474,9 +450,9 @@ function FilterGroup({ label, children }: { label: string; children: React.React
 
 function ActiveChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
-    <span className="inline-flex items-center gap-1 pl-3 pr-1.5 py-1 rounded-full bg-[#0F766E]/10 text-[#0F766E] text-xs font-semibold">
+    <span className="inline-flex items-center gap-1 pl-3 pr-1.5 py-1 rounded-full bg-brand-teal/10 text-brand-teal text-xs font-semibold">
       {label}
-      <button onClick={onRemove} className="p-0.5 rounded-full hover:bg-[#0F766E]/20 transition-colors" aria-label={`Remove ${label}`}>
+      <button onClick={onRemove} className="p-0.5 rounded-full hover:bg-brand-teal/20 transition-colors" aria-label={`Remove ${label}`}>
         <X className="w-3 h-3" />
       </button>
     </span>
@@ -487,11 +463,11 @@ function ResultsSkeleton() {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
       {Array.from({ length: 10 }).map((_, i) => (
-        <div key={i} className="bg-card p-2 md:p-1.5 rounded-2xl border border-border shadow-sm">
-          <div className="aspect-[3/4] md:aspect-[4/5] rounded-xl bg-secondary animate-pulse mb-2 md:mb-1.5" />
+        <div key={i} className="bg-white p-2 md:p-1.5 rounded-2xl border border-gray-200 shadow-sm animate-pulse">
+          <div className="aspect-[3/4] md:aspect-[4/5] rounded-xl bg-gray-200 mb-2 md:mb-1.5" />
           <div className="px-1 pb-0.5 space-y-1.5">
-            <div className="h-3.5 bg-secondary rounded animate-pulse w-3/4" />
-            <div className="h-3 bg-secondary rounded animate-pulse w-1/3" />
+            <div className="h-3.5 bg-gray-200 rounded w-3/4" />
+            <div className="h-3 bg-gray-200 rounded w-1/3" />
           </div>
         </div>
       ))}
@@ -508,19 +484,17 @@ function EmptyState({
   onBrowse?: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center text-center py-16 sm:py-24">
-      <div className="w-16 h-16 rounded-full bg-[#0F766E]/10 flex items-center justify-center mb-5">
-        <SearchX className="w-8 h-8 text-[#0F766E]" />
-      </div>
-      <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground mb-1.5">{title}</h2>
-      <p className="text-sm text-muted-foreground max-w-sm">{subtitle}</p>
+    <div className="w-full py-14 sm:py-20 flex flex-col items-center justify-center text-center bg-white border border-gray-200 rounded-xl px-4">
+      <SearchX size={48} className="text-primary mb-4 opacity-40" />
+      <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-1.5">{title}</p>
+      <p className="text-sm text-gray-500 max-w-sm mb-6">{subtitle}</p>
 
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-2 max-w-md">
+      <div className="flex flex-wrap items-center justify-center gap-2 max-w-md">
         {POPULAR_TERMS.map((term) => (
           <button
             key={term}
             onClick={() => onSearch(term)}
-            className="px-4 py-1.5 rounded-full border border-border bg-card text-sm font-medium text-foreground/80 hover:border-[#0F766E]/40 hover:bg-[#0F766E]/5 hover:text-[#0F766E] transition-colors"
+            className="px-4 py-1.5 rounded-full border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:border-brand-teal hover:text-brand-teal transition-colors"
           >
             {term}
           </button>
@@ -528,11 +502,8 @@ function EmptyState({
       </div>
 
       {onBrowse && (
-        <button
-          onClick={onBrowse}
-          className="mt-7 px-6 h-11 rounded-full bg-[#0F766E] hover:bg-[#0c5f58] text-white font-semibold text-sm transition-colors shadow-sm"
-        >
-          Browse Collections
+        <button onClick={onBrowse} className="mt-6 text-sm font-medium text-primary underline underline-offset-2">
+          Browse all collections
         </button>
       )}
     </div>
