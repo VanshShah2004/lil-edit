@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ChevronRight, Package, MapPin, ArrowLeft, RotateCcw, CheckCircle2, MessageSquare } from "lucide-react";
+import { ChevronRight, Package, MapPin, ArrowLeft, RotateCcw, CheckCircle2 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import Navbar from "@/components/layout/Navbar";
@@ -14,8 +14,7 @@ import { BuyAgainSection, YouMayLikeSection, type SidebarProduct } from "@/compo
 import OrderTimeline from "@/components/orders/OrderTimeline";
 import { useBuyAgainBadges } from "@/hooks/useBuyAgainBadges";
 import { composeProductBadges } from "@/lib/productBadges";
-import ReviewForm from "@/components/reviews/ReviewForm";
-import CustomerReviewsSection from "@/components/reviews/CustomerReviewsSection";
+import OrderReviewsSection from "@/components/reviews/OrderReviewsSection";
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
   pending:    "bg-indigo-50 text-indigo-700 border-indigo-200",
@@ -67,8 +66,6 @@ const OrderDetailPage = () => {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [recommendations, setRecommendations] = useState<SidebarProduct[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
-  const [expandedReviewItem, setExpandedReviewItem] = useState<string | null>(null);
-  const [featuredReviewProduct, setFeaturedReviewProduct] = useState<{ slug: string; category: string; title: string } | null>(null);
 
   const userId = user?.id ?? null;
 
@@ -225,14 +222,6 @@ const OrderDetailPage = () => {
       .then((data) => {
         if (!cancelled) {
           setOrder(data);
-          if (data.items.length > 0) {
-            const first = data.items[0];
-            setFeaturedReviewProduct({
-              slug: first.productSlug,
-              category: first.categorySlug,
-              title: first.title,
-            });
-          }
         }
       })
       .catch((err) => {
@@ -444,22 +433,6 @@ const OrderDetailPage = () => {
                         </div>
                       </div>
 
-                      {/* Inline review form */}
-                      {expandedReviewItem === item.id ? (
-                        <ReviewForm
-                          productSlug={item.productSlug}
-                          onSuccess={() => setExpandedReviewItem(null)}
-                          onCancel={() => setExpandedReviewItem(null)}
-                          compact
-                        />
-                      ) : (
-                        <button
-                          onClick={() => setExpandedReviewItem(item.id)}
-                          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-brand-teal hover:text-brand-teal/80 transition-colors"
-                        >
-                          <MessageSquare className="w-3.5 h-3.5" /> Write a review
-                        </button>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -521,15 +494,13 @@ const OrderDetailPage = () => {
           )}
           </div>
 
-          {/* ── Right sidebar: Reviews + Buy Again + You May Like ───────────── */}
+          {/* ── Right sidebar: Customer Reviews + Buy Again + You May Like ──── */}
           {showSidebar && (
             <aside className="w-full sm:w-[35%] sm:shrink-0 space-y-6 mt-8 sm:mt-7 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
-              {featuredReviewProduct && (
-                <CustomerReviewsSection
-                  productSlug={featuredReviewProduct.slug}
-                  categorySlug={featuredReviewProduct.category}
-                  title={featuredReviewProduct.title}
-                />
+              {order && !loading && !error && (
+                <div style={{ marginTop: '12px' }}>
+                  <OrderReviewsSection items={order.items} />
+                </div>
               )}
               <BuyAgainSection items={buyAgainItemsWithBadges} onItemClick={openSidebarQuickView} />
               <YouMayLikeSection items={recommendations} loading={recsLoading} onItemClick={openSidebarQuickView} />
