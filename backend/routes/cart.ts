@@ -156,6 +156,20 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
       .filter(Boolean);
     log.step(`item mapping: ${fms(performance.now() - t0Map)}  items=${items.length}`);
 
+    // ── Self-heal: prune rows whose product no longer exists ──────────────────
+    // A cart row can outlive its product (the product was deleted, or its variant SKU was
+    // removed/renamed). The mapping above just hides such rows (`if (!product) return null`),
+    // which silently leaves an invisible ghost row in cart_items forever — it never shows in
+    // the bag yet still trips up checkout. Delete them here (by id, precise) so the DB matches
+    // what the customer sees. Best-effort: a failed prune just means we retry next read.
+    const deadRows = cartRows.filter((r) => !skuToProduct.has(r.sku as string));
+    if (deadRows.length > 0) {
+      const deadIds = deadRows.map((r) => r.id as string);
+      log.warn(`pruning ${deadRows.length} dead cart row(s) — product no longer exists: ${deadRows.map((r) => r.sku).join(", ")}`);
+      const { error: pruneErr } = await db().from("cart_items").delete().in("id", deadIds);
+      if (pruneErr) log.warn(`cart prune failed (non-fatal): ${pruneErr.message}`);
+    }
+
     // ── Cache + respond ───────────────────────────────────────────────────────
     const payload = { items };
     await redisSet(cacheKey, payload, CART_TTL_S, log);
