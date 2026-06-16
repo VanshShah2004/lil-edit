@@ -109,6 +109,32 @@ export async function redisSet(
   }
 }
 
+/**
+ * Atomic single-use claim — `SET key value EX ttl NX`. Returns:
+ *   "acquired"    — the key did not exist and is now set (caller holds the claim),
+ *   "held"        — the key already existed (someone else holds it),
+ *   "unavailable" — Redis is disabled or errored (caller should fail OPEN).
+ * Used for short-lived reservations, e.g. "only one in-flight first-order coupon per user".
+ */
+export async function redisSetNX(
+  key: string,
+  value: string,
+  ttlSeconds: number,
+  log: OpLogger,
+): Promise<"acquired" | "held" | "unavailable"> {
+  try {
+    const redis = getRedis();
+    if (!redis) return "unavailable";
+    const res = await redis.set(key, value, "EX", ttlSeconds, "NX");
+    const acquired = res === "OK";
+    log.step(`L2 Redis - SETNX  key=${key}  TTL=${ttlSeconds}s  → ${acquired ? "ACQUIRED" : "HELD"}`);
+    return acquired ? "acquired" : "held";
+  } catch (err) {
+    log.warn(`L2 Redis - SETNX failed  key=${key} : ${(err as Error).message}`);
+    return "unavailable";
+  }
+}
+
 /** Delete one or more keys. log is first so rest-params spread stays clean. */
 export async function redisDel(log: OpLogger, ...keys: string[]): Promise<void> {
   try {

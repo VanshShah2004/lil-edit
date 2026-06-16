@@ -6,7 +6,7 @@ import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth.js";
 import { mutationLimiter } from "../middleware/rateLimiters.js";
 import { createLog, fms, type OpLogger } from "../lib/logger.js";
-import { redisGet, redisSet, redisDel, redisKey, CHECKOUT_TTL_S } from "../lib/redis.js";
+import { redisGet, redisSet, redisDel, redisSetNX, redisKey, CHECKOUT_TTL_S } from "../lib/redis.js";
 import { sendOrderConfirmation } from "../lib/orderEmail.js";
 import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
 
@@ -21,6 +21,9 @@ const router = Router();
 const db = () => supabaseAdmin ?? supabaseAnon;
 
 const checkoutKey = (razorpayOrderId: string) => redisKey("checkout", razorpayOrderId);
+// A per-user reservation of the first-order coupon, held only while a checkout is in flight
+// so two concurrent /initiate calls can't both mint a discounted order (see /initiate).
+const couponHoldKey = (userId: string, code: string) => redisKey("checkout", `coupon-hold:${userId}:${code}`);
 const orderListKey = (userId: string) => redisKey("order", `list:${userId}`);
 const orderDetailKey = (userId: string, orderId: string) => redisKey("order", `detail:${userId}:${orderId}`);
 const cartKey = (userId: string) => redisKey("cart", userId);
@@ -506,18 +509,19 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
 
     const priced = await priceOrder(userId, source, log);
 
-    // Block if any cart line can no longer be priced (its variant/SKU was removed, or the
-    // product was deleted). The cart page still shows such a line at the product price, so
-    // silently dropping it here would bill LESS than the cart shows — the exact mismatch
-    // this guards against. The customer removes it and retries; what they see == what they pay.
-    if (priced.unavailable.length > 0) {
-      const names = [...new Set(priced.unavailable.map((u) => u.title))].join(", ");
-      log.warn(`blocking checkout — ${priced.unavailable.length} unavailable line(s): ${priced.unavailable.map((u) => u.sku).join(", ")}`).end("CHECKOUT INITIATE");
-      res.status(409).json({
-        error: `Some items in your cart are no longer available (${names}). Please remove them and try again.`,
-        unavailable: priced.unavailable,
-      });
-      return;
+    // Some cart lines no longer resolve to a live product (deleted product, or a removed/
+    // renamed variant SKU). The cart GET hides these exact lines via the SAME skuToProduct
+    // lookup (cart.ts → `if (!product) return null`), so the customer never saw them — which
+    // means blocking here just dead-ends checkout on an item they can't see to remove. Instead
+    // prune the dead lines from the cart (best-effort, cart mode only) and continue with the
+    // items the cart actually shows, so what they see == what they pay. (Direct mode never
+    // reaches here: priceOrder throws 404 for an unavailable direct item.)
+    if (priced.unavailable.length > 0 && mode === "cart") {
+      const deadSkus = [...new Set(priced.unavailable.map((u) => u.sku))];
+      log.warn(`pruning ${priced.unavailable.length} dead cart line(s) the cart already hides: ${deadSkus.join(", ")}`);
+      const { error: pruneErr } = await db().from("cart_items").delete().eq("user_id", userId).in("sku", deadSkus);
+      if (pruneErr) log.warn(`cart prune failed (non-fatal): ${pruneErr.message}`);
+      else await redisDel(log, cartKey(userId));
     }
 
     if (priced.items.length === 0) {
@@ -526,22 +530,37 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
       return;
     }
 
-    // Coupon: FIRST10 = 10% off subtotal, first order only.
-    const firstOrder = await isFirstOrder(userId, log);
-    const couponValid = couponCode === COUPON_CODE && firstOrder;
-    const discount = couponValid ? Math.round(priced.subtotal * COUPON_RATE) : 0;
-    const total = priced.subtotal + priced.shippingFee - discount;
-    log.step(`coupon "${couponCode || "none"}" → ${couponValid ? "VALID (FIRST10, 10% off)" : couponCode ? "rejected" : "none"}`);
-    log.step(`subtotal=₹${priced.subtotal}  shipping=₹${priced.shippingFee}  discount=₹${discount}  total=₹${total}  firstOrder=${firstOrder}`);
-
     // Early (non-locking) stock pre-check — catch the common OOS case before the
-    // customer pays. The authoritative lock+decrement is still in the RPC at /verify.
+    // customer pays (and before we reserve the coupon below). The authoritative
+    // lock+decrement is still in the RPC at /verify.
     const oversold = findOversold(priced.items);
     if (oversold) {
       log.warn(`pre-check oversold  sku=${oversold.sku}  stock=${oversold.stock}  qty=${oversold.quantity}`).end("CHECKOUT INITIATE");
       res.status(409).json({ error: `"${oversold.title}" is out of stock.`, sku: oversold.sku });
       return;
     }
+
+    // Coupon: FIRST10 = 10% off subtotal, first order only. `isFirstOrder` reads the
+    // user's placed-order count, but orders aren't written until /verify — so two
+    // /initiate calls fired before either pays would BOTH read zero and BOTH mint a
+    // discounted Razorpay order (the customer then pays both and keeps the discount on
+    // each). To close that pre-payment window we take a short-lived per-user hold on the
+    // coupon here: only one in-flight checkout can hold FIRST10 at a time; a concurrent
+    // one is priced at full price. The DB still re-asserts first-order authoritatively in
+    // place_order (sequential reuse was always blocked there). Redis down ⇒ "unavailable"
+    // ⇒ fail OPEN to the prior, rare race rather than ever denying a legit discount.
+    const firstOrder = await isFirstOrder(userId, log);
+    const wantsCoupon = couponCode === COUPON_CODE && firstOrder;
+    let couponApplied = wantsCoupon;
+    if (wantsCoupon) {
+      const hold = await redisSetNX(couponHoldKey(userId, COUPON_CODE), String(log.sr), CHECKOUT_TTL_S, log);
+      couponApplied = hold !== "held"; // acquired / unavailable → apply; held → a concurrent checkout already has it
+      if (hold === "held") log.warn("FIRST10 already held by another in-flight checkout for this user — pricing at full price");
+    }
+    const discount = couponApplied ? Math.round(priced.subtotal * COUPON_RATE) : 0;
+    const total = priced.subtotal + priced.shippingFee - discount;
+    log.step(`coupon "${couponCode || "none"}" → ${couponApplied ? "VALID (FIRST10, 10% off)" : couponCode ? "rejected" : "none"}`);
+    log.step(`subtotal=₹${priced.subtotal}  shipping=₹${priced.shippingFee}  discount=₹${discount}  total=₹${total}  firstOrder=${firstOrder}`);
 
     // Create the Razorpay order. Notes are the durable fallback the webhook can read
     // even if Redis evicted the snapshot (direct item stashed as JSON).
@@ -559,7 +578,7 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
       item: directItem,
       items: priced.items, subtotal: priced.subtotal, discount,
       shippingFee: priced.shippingFee, total, itemCount: priced.itemCount,
-      expectFirstOrder: couponValid, // only assert first-order when the discount was applied
+      expectFirstOrder: couponApplied, // only assert first-order when the discount was applied
     };
     await redisSet(checkoutKey(rzpOrder.id), snapshot, CHECKOUT_TTL_S, log);
 
@@ -576,13 +595,20 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
         shippingFee: priced.shippingFee,
         total,
         itemCount: priced.itemCount,
-        couponApplied: couponValid ? COUPON_CODE : null,
+        couponApplied: couponApplied ? COUPON_CODE : null,
       },
     });
   } catch (err) {
-    const status = err instanceof PriceError ? err.status : 500;
+    // PriceError messages are deliberate + safe to surface ("Your cart is empty", etc.).
+    // Anything else is unexpected — return a generic message + a correlation ref (the
+    // logger's serial) so the raw error/DB internals are logged server-side only.
+    if (err instanceof PriceError) {
+      log.warn(`initiate rejected (${err.status})  ${err.message}`).end("CHECKOUT INITIATE");
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
     log.error("initiate failed", err).end("CHECKOUT INITIATE");
-    res.status(status).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: "Something went wrong starting checkout. Please try again.", ref: String(log.sr) });
   }
 });
 
@@ -667,8 +693,15 @@ router.post("/verify", requireAuth, mutationLimiter, async (req: Request, res: R
     log.success(`placed  order=${result.order_number}  result=${result.result}  ${fms(log.elapsed())}`).end("CHECKOUT VERIFY");
     res.json({ orderId: result.order_id, orderNumber: result.order_number });
   } catch (err) {
+    if (err instanceof PriceError) {
+      log.warn(`verify rejected (${err.status})  ${err.message}`).end("CHECKOUT VERIFY");
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    // Don't leak internals on an unexpected failure. The webhook backstop still places the
+    // order if the payment was captured, so reassure rather than alarm — with a ref to log.
     log.error("verify failed", err).end("CHECKOUT VERIFY");
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: "We couldn't confirm your payment right now. If you were charged, your order will be created automatically — please check your Orders in a few minutes.", ref: String(log.sr) });
   }
 });
 
@@ -696,8 +729,13 @@ router.get("/coupon", requireAuth, async (req: Request, res: Response) => {
     log.success(`valid  discount=₹${discount}`).end("CHECKOUT COUPON");
     res.json({ valid: true, discount, reason: "10% off your first order!" });
   } catch (err) {
+    if (err instanceof PriceError) {
+      log.warn(`coupon check rejected (${err.status})  ${err.message}`).end("CHECKOUT COUPON");
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
     log.error("coupon check failed", err).end("CHECKOUT COUPON");
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: "Could not check the coupon right now. Please try again.", ref: String(log.sr) });
   }
 });
 

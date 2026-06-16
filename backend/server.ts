@@ -24,6 +24,12 @@ dotenv.config({ path: path.join(__dirname, ".env") });
 
 const app = express();
 
+// Trust ONE proxy hop (the platform LB / reverse proxy in front of us) so req.ip is the
+// real client IP from X-Forwarded-For instead of the proxy's. Without this, rate limiting
+// keys every request to the same proxy IP (one shared bucket for all users). Kept at `1`
+// (not `true`) so clients can't spoof X-Forwarded-For to dodge the limiter.
+app.set("trust proxy", 1);
+
 const origin =
   process.env.CORS_ORIGIN?.split(",").map((o) => o.trim()).filter(Boolean) ?? [
     "http://localhost:5173",
