@@ -8,6 +8,7 @@ import { mutationLimiter } from "../middleware/rateLimiters.js";
 import { createLog, fms, type OpLogger } from "../lib/logger.js";
 import { redisGet, redisSet, redisDel, redisSetNX, redisKey, CHECKOUT_TTL_S } from "../lib/redis.js";
 import { sendOrderConfirmation } from "../lib/orderEmail.js";
+import { verifyReviewsForOrder } from "../lib/reviewsVerification.js";
 import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
 
 // ─── Razorpay-prepaid checkout: cart → order placement ──────────────────────────
@@ -324,7 +325,7 @@ async function callPlaceOrder(
 }
 
 // Post-placement: bust the owner's order + cart caches and drop the snapshot, then
-// fire-and-forget the confirmation email. Shared by /verify and /webhook.
+// fire-and-forget the confirmation email and review verification. Shared by /verify and /webhook.
 async function afterPlacement(snap: CheckoutSnapshot, razorpayOrderId: string, result: { order_id: string | null; order_number: string | null }, log: OpLogger): Promise<void> {
   const keys = [orderListKey(snap.userId), checkoutKey(razorpayOrderId)];
   if (result.order_id) keys.push(orderDetailKey(snap.userId, result.order_id));
@@ -332,8 +333,8 @@ async function afterPlacement(snap: CheckoutSnapshot, razorpayOrderId: string, r
   log.step(`post-placement: busting ${keys.length} cache key(s)${snap.mode === "cart" ? " (incl. cart)" : ""} + dropping checkout snapshot`);
   await redisDel(log, ...keys);
 
-  // Fire-and-forget — a slow/failing email must never affect a paid, placed order.
-  log.step(`queuing confirmation email (fire-and-forget)  order=${result.order_number ?? "—"}`);
+  // Fire-and-forget — slow/failing tasks must never affect a paid, placed order.
+  log.step(`queuing post-placement tasks: confirmation email + review verification`);
   void (async () => {
     let email = "";
     try {
@@ -347,6 +348,9 @@ async function afterPlacement(snap: CheckoutSnapshot, razorpayOrderId: string, r
       total: snap.total,
       itemCount: snap.itemCount,
     });
+
+    // Mark any pending reviews for products in this order as verified.
+    await verifyReviewsForOrder(snap.userId, snap.items, log);
   })();
 }
 

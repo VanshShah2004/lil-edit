@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ChevronRight, Package, MapPin, ArrowLeft, RotateCcw, CheckCircle2 } from "lucide-react";
+import { ChevronRight, Package, MapPin, ArrowLeft, RotateCcw, CheckCircle2, MessageSquare } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import Navbar from "@/components/layout/Navbar";
@@ -14,6 +14,8 @@ import { BuyAgainSection, YouMayLikeSection, type SidebarProduct } from "@/compo
 import OrderTimeline from "@/components/orders/OrderTimeline";
 import { useBuyAgainBadges } from "@/hooks/useBuyAgainBadges";
 import { composeProductBadges } from "@/lib/productBadges";
+import ReviewForm from "@/components/reviews/ReviewForm";
+import CustomerReviewsSection from "@/components/reviews/CustomerReviewsSection";
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
   pending:    "bg-indigo-50 text-indigo-700 border-indigo-200",
@@ -65,6 +67,8 @@ const OrderDetailPage = () => {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [recommendations, setRecommendations] = useState<SidebarProduct[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
+  const [expandedReviewItem, setExpandedReviewItem] = useState<string | null>(null);
+  const [featuredReviewProduct, setFeaturedReviewProduct] = useState<{ slug: string; category: string; title: string } | null>(null);
 
   const userId = user?.id ?? null;
 
@@ -218,7 +222,19 @@ const OrderDetailPage = () => {
     setLoading(true);
     setError(null);
     fetchOrderById(orderId)
-      .then((data) => { if (!cancelled) setOrder(data); })
+      .then((data) => {
+        if (!cancelled) {
+          setOrder(data);
+          if (data.items.length > 0) {
+            const first = data.items[0];
+            setFeaturedReviewProduct({
+              slug: first.productSlug,
+              category: first.categorySlug,
+              title: first.title,
+            });
+          }
+        }
+      })
       .catch((err) => {
         if (!cancelled) {
           console.error("[OrderDetailPage] fetch failed", err);
@@ -373,59 +389,77 @@ const OrderDetailPage = () => {
                 <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">
                   Items ({order.itemCount})
                 </h2>
-                <div className="divide-y divide-gray-500">
+                <div className="space-y-4">
                   {order.items.map((item) => (
-                    <div
-                      key={item.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => openQuickView(item)}
-                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openQuickView(item); } }}
-                      className="flex gap-3 sm:gap-4 py-3 first:pt-0 last:pb-0 cursor-pointer group -mx-2 px-2 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
-                        {item.image ? (
-                          <img
-                            src={item.image}
-                            alt={item.title}
-                            loading="lazy"
-                            onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300">
-                            <Package size={22} />
+                    <div key={item.id} className="space-y-3 pb-4 border-b border-gray-200 last:border-0 last:pb-0">
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openQuickView(item)}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openQuickView(item); } }}
+                        className="flex gap-3 sm:gap-4 cursor-pointer group -mx-2 px-2 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+                          {item.image ? (
+                            <img
+                              src={item.image}
+                              alt={item.title}
+                              loading="lazy"
+                              onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-300">
+                              <Package size={22} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm sm:text-base font-semibold text-gray-900 line-clamp-2">{item.title}</p>
+                          <div className="mt-1 text-xs text-gray-500 space-y-1">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                              {item.size && <span>Size: {item.size}</span>}
+                              {item.color.name && (
+                                <span className="flex items-center gap-1">
+                                  <span className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: item.color.hex }} />
+                                  {item.color.name}
+                                </span>
+                              )}
+                            </div>
+                            <div>Qty: {item.quantity}</div>
                           </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm sm:text-base font-semibold text-gray-900 line-clamp-2">{item.title}</p>
-                        <div className="mt-1 text-xs text-gray-500 space-y-1">
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                            {item.size && <span>Size: {item.size}</span>}
-                            {item.color.name && (
-                              <span className="flex items-center gap-1">
-                                <span className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: item.color.hex }} />
-                                {item.color.name}
+                        </div>
+                        <div className="text-right shrink-0">
+                          {/* Price paid, represented as unit price × quantity — on top. */}
+                          <p className="text-sm sm:text-base font-bold text-gray-900">{inr(item.unitPrice)} × {item.quantity}</p>
+                          {/* Original (MRP) struck below, with % off — only when discounted. */}
+                          {item.originalPrice > item.unitPrice && (
+                            <div className="mt-0.5 flex items-center justify-end gap-1.5">
+                              <span className="text-[11px] text-gray-400 line-through">{inr(item.originalPrice)} × {item.quantity}</span>
+                              <span className="text-[11px] font-semibold text-emerald-600">
+                                {Math.round((1 - item.unitPrice / item.originalPrice) * 100)}% off
                               </span>
-                            )}
-                          </div>
-                          <div>Qty: {item.quantity}</div>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        {/* Price paid, represented as unit price × quantity — on top. */}
-                        <p className="text-sm sm:text-base font-bold text-gray-900">{inr(item.unitPrice)} × {item.quantity}</p>
-                        {/* Original (MRP) struck below, with % off — only when discounted. */}
-                        {item.originalPrice > item.unitPrice && (
-                          <div className="mt-0.5 flex items-center justify-end gap-1.5">
-                            <span className="text-[11px] text-gray-400 line-through">{inr(item.originalPrice)} × {item.quantity}</span>
-                            <span className="text-[11px] font-semibold text-emerald-600">
-                              {Math.round((1 - item.unitPrice / item.originalPrice) * 100)}% off
-                            </span>
-                          </div>
-                        )}
-                      </div>
+
+                      {/* Inline review form */}
+                      {expandedReviewItem === item.id ? (
+                        <ReviewForm
+                          productSlug={item.productSlug}
+                          onSuccess={() => setExpandedReviewItem(null)}
+                          onCancel={() => setExpandedReviewItem(null)}
+                          compact
+                        />
+                      ) : (
+                        <button
+                          onClick={() => setExpandedReviewItem(item.id)}
+                          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-brand-teal hover:text-brand-teal/80 transition-colors"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" /> Write a review
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -487,9 +521,16 @@ const OrderDetailPage = () => {
           )}
           </div>
 
-          {/* ── Right sidebar: Buy Again + You May Like ───────────────────── */}
+          {/* ── Right sidebar: Reviews + Buy Again + You May Like ───────────── */}
           {showSidebar && (
-            <aside className="w-full sm:w-[35%] sm:shrink-0 space-y-14 mt-8 sm:mt-7 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
+            <aside className="w-full sm:w-[35%] sm:shrink-0 space-y-6 mt-8 sm:mt-7 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
+              {featuredReviewProduct && (
+                <CustomerReviewsSection
+                  productSlug={featuredReviewProduct.slug}
+                  categorySlug={featuredReviewProduct.category}
+                  title={featuredReviewProduct.title}
+                />
+              )}
               <BuyAgainSection items={buyAgainItemsWithBadges} onItemClick={openSidebarQuickView} />
               <YouMayLikeSection items={recommendations} loading={recsLoading} onItemClick={openSidebarQuickView} />
             </aside>
