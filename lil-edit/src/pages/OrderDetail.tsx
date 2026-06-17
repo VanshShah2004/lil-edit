@@ -494,20 +494,26 @@ const OrderDetailPage = () => {
           )}
           </div>
 
-          {/* ── Right sidebar: Customer Reviews + Buy Again + You May Like ──── */}
-          {showSidebar && (
-            <aside className="w-full sm:w-[35%] sm:shrink-0 space-y-6 mt-8 sm:mt-7 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
-              {order && !loading && !error && (
-                <div style={{ marginTop: '12px' }}>
-                  <YourReviewsSection items={order.items} />
-                </div>
-              )}
-              <BuyAgainSection items={buyAgainItemsWithBadges} onItemClick={openSidebarQuickView} />
-              <YouMayLikeSection items={recommendations} loading={recsLoading} onItemClick={openSidebarQuickView} />
+          {/* ── Right sidebar: Your Reviews ──────────────────────────────── */}
+          {showSidebar && order && (
+            <aside className="w-full sm:w-[35%] sm:shrink-0 mt-8 sm:mt-7 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
+              <div style={{ marginTop: '12px' }}>
+                <YourReviewsSection items={order.items} />
+              </div>
             </aside>
           )}
           </div>
         </section>
+
+        {/* ── Buy Again + You May Like — full-width lavender band ─────── */}
+        {showSidebar && (
+          <div className="w-full bg-[#E8DDF7] mt-2">
+            <section className="container py-10 space-y-7">
+              <BuyAgainSection items={buyAgainItemsWithBadges} onItemClick={openSidebarQuickView} />
+              <YouMayLikeSection items={recommendations} loading={recsLoading} onItemClick={openSidebarQuickView} />
+            </section>
+          </div>
+        )}
       </main>
 
       <Footer />
