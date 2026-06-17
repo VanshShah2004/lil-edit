@@ -35,7 +35,7 @@ export default function YourReviewsSection({ items }: YourReviewsSectionProps) {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden p-6">
+      <div className="bg-white rounded-2xl border border-gray-400 shadow-lg ring-1 ring-black/10 overflow-hidden p-6">
         <div className="flex justify-center">
           <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
         </div>
@@ -44,7 +44,7 @@ export default function YourReviewsSection({ items }: YourReviewsSectionProps) {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-gray-400 shadow-lg ring-1 ring-black/10 overflow-hidden">
         {/* Header */}
         <div className="p-4 sm:p-6 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-4">
