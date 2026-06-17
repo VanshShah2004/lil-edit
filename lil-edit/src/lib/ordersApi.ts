@@ -119,3 +119,14 @@ export async function fetchOrderById(orderId: string): Promise<OrderDetail> {
   const order = data.order as OrderDetail;
   return { ...order, statusHistory: order.statusHistory ?? [] };
 }
+
+export async function fetchBoughtItems(): Promise<OrderItem[]> {
+  const res = await authFetch("/api/orders/bought-items");
+  if (!res.ok) {
+    console.error("[ordersApi] fetchBoughtItems error:", res.status);
+    return [];
+  }
+  const data = await res.json();
+  console.log("[ordersApi] fetchBoughtItems →", (data.items ?? []).length, "items");
+  return (data.items ?? []) as OrderItem[];
+}

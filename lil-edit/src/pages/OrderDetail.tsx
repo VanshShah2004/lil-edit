@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ChevronRight, Package, MapPin, ArrowLeft, RotateCcw, CheckCircle2 } from "lucide-react";
 
@@ -7,7 +7,7 @@ import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchOrderById, type OrderDetail, type OrderItem, type OrderStatus } from "@/lib/ordersApi";
+import { fetchOrderById, fetchBoughtItems, type OrderDetail, type OrderItem, type OrderStatus } from "@/lib/ordersApi";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import { getBackendBaseUrl } from "@/lib/backend";
 import { BuyAgainSection, YouMayLikeSection, type SidebarProduct } from "@/components/orders/OrdersSidebar";
@@ -84,15 +84,12 @@ const OrderDetailPage = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  // Buy Again — deduplicated items from this order, most-recent variant per product slug.
-  const buyAgainItems = useMemo<SidebarProduct[]>(() => {
-    if (!order) return [];
-    const seen = new Set<string>();
-    const items: SidebarProduct[] = [];
-    for (const item of order.items) {
-      if (seen.has(item.productSlug)) continue;
-      seen.add(item.productSlug);
-      items.push({
+  // Buy Again — deduplicated items across ALL of the user's orders, newest first.
+  const [buyAgainItems, setBuyAgainItems] = useState<SidebarProduct[]>([]);
+  useEffect(() => {
+    if (!userId) return;
+    fetchBoughtItems().then((items) => {
+      setBuyAgainItems(items.map((item) => ({
         title: item.title,
         slug: item.productSlug,
         categorySlug: item.categorySlug,
@@ -101,11 +98,9 @@ const OrderDetailPage = () => {
         image: item.image,
         sku: item.sku,
         productId: item.productId,
-      });
-      if (items.length >= 5) break;
-    }
-    return items;
-  }, [order]);
+      })));
+    }).catch((err) => console.error("[OrderDetailPage] fetchBoughtItems failed", err));
+  }, [userId]);
   const buyAgainItemsWithBadges = useBuyAgainBadges(buyAgainItems);
 
   // Map an order-line snapshot into the shared quick-view shape. The snapshot only

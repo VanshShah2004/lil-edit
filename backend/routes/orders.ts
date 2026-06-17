@@ -160,6 +160,49 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
   }
 });
 
+// ─── GET /api/orders/bought-items — deduplicated items across all user orders ────
+// Must be registered before /:id so the literal path wins.
+router.get("/bought-items", requireAuth, async (req: Request, res: Response) => {
+  const log = createLog().start("BOUGHT ITEMS");
+  const userId = (req as AuthenticatedRequest).userId;
+  log.step(`user=${userId}`);
+
+  try {
+    const t0 = performance.now();
+    const { data, error } = await db()
+      .from("orders")
+      .select(`created_at, order_items(${ORDER_ITEMS_SELECT})`)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    log.step(`DB: ${fms(performance.now() - t0)}  orders=${data?.length ?? 0}`);
+
+    if (error) {
+      log.error("query failed", error).end("BOUGHT ITEMS");
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    // Flatten all items, newest order first, deduplicate by product_slug.
+    const seen = new Set<string>();
+    const items: ReturnType<typeof mapItem>[] = [];
+    for (const order of (data ?? []) as unknown as { created_at: string; order_items: OrderItemRow[] }[]) {
+      for (const item of order.order_items ?? []) {
+        if (seen.has(item.product_slug)) continue;
+        seen.add(item.product_slug);
+        items.push(mapItem(item));
+        if (items.length >= 10) break;
+      }
+      if (items.length >= 10) break;
+    }
+
+    log.success(`items=${items.length}  total=${fms(log.elapsed())}`).end("BOUGHT ITEMS");
+    res.json({ items });
+  } catch (err) {
+    log.error("unhandled error", err).end("BOUGHT ITEMS");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 // ─── GET /api/orders/:id — single order detail (ownership-scoped) ─────────────────
 router.get("/:id", requireAuth, async (req: Request, res: Response) => {
   const log = createLog().start("ORDER DETAIL");
