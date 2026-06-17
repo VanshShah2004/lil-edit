@@ -14,7 +14,7 @@ import { BuyAgainSection, YouMayLikeSection, type SidebarProduct } from "@/compo
 import OrderTimeline from "@/components/orders/OrderTimeline";
 import { useBuyAgainBadges } from "@/hooks/useBuyAgainBadges";
 import { composeProductBadges } from "@/lib/productBadges";
-import OrderReviewsSection from "@/components/reviews/OrderReviewsSection";
+import YourReviewsSection from "@/components/reviews/YourReviewsSection";
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
   pending:    "bg-indigo-50 text-indigo-700 border-indigo-200",
@@ -499,7 +499,7 @@ const OrderDetailPage = () => {
             <aside className="w-full sm:w-[35%] sm:shrink-0 space-y-6 mt-8 sm:mt-7 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
               {order && !loading && !error && (
                 <div style={{ marginTop: '12px' }}>
-                  <OrderReviewsSection items={order.items} />
+                  <YourReviewsSection items={order.items} />
                 </div>
               )}
               <BuyAgainSection items={buyAgainItemsWithBadges} onItemClick={openSidebarQuickView} />
