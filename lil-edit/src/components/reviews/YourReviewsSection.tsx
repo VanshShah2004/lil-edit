@@ -142,7 +142,6 @@ export default function YourReviewsSection({ items }: YourReviewsSectionProps) {
             );
           })}
         </div>
-      </div>
     </div>
   );
 }
