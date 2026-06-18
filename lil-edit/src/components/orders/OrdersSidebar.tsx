@@ -163,18 +163,28 @@ export function ReviewHistorySection({
   if (total === 0) return null;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-400 shadow-lg ring-1 ring-black/10 overflow-hidden">
-      {/* Header */}
-      <div className="p-4 sm:p-6">
+    <div className="rounded-2xl border border-brand-teal/30 shadow-xl ring-1 ring-brand-teal/10 overflow-hidden">
+      {/* Accent strip */}
+      <div className="h-1.5 w-full bg-gradient-to-r from-brand-teal via-teal-500 to-emerald-400" />
+
+      {/* Header — tinted band so the panel reads as its own surface */}
+      <div className="p-4 sm:p-6 bg-gradient-to-br from-brand-teal/10 to-emerald-50 border-b border-brand-teal/15">
         <div className="flex items-center gap-2">
-          <MessageSquare className="w-6 h-6 text-brand-teal" />
+          <span className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-teal text-white shadow-sm shrink-0">
+            <MessageSquare className="w-5 h-5" />
+          </span>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Your Reviews</h2>
+          {total > 0 && (
+            <span className="ml-auto text-xs font-bold text-brand-teal bg-white border border-brand-teal/30 rounded-full px-2.5 py-1 shadow-sm">
+              {total}
+            </span>
+          )}
         </div>
-        <p className="text-xs text-gray-500 mt-1">Spill the tea, rate the fit, explore the cuteness ✨</p>
+        <p className="text-xs text-gray-600 mt-1.5">Spill the tea, rate the fit, explore the cuteness ✨</p>
       </div>
 
       {/* Product Cards */}
-      <div className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-6">
+      <div className="p-4 sm:p-6 bg-white space-y-6">
         {/* Pending — not reviewed yet */}
         {pendingItems.length > 0 && (
         <div className="space-y-3">

@@ -8,14 +8,24 @@ interface OrderReviewsSectionProps {
 
 export default function OrderReviewsSection({ items }: OrderReviewsSectionProps) {
   return (
-    <div className="bg-white border border-gray-400 rounded-2xl overflow-hidden shadow-lg ring-1 ring-black/10">
-      {/* Header */}
-      <div className="p-4 sm:p-5 border-b border-gray-100">
+    <div className="rounded-2xl border border-brand-teal/30 overflow-hidden shadow-xl ring-1 ring-brand-teal/10">
+      {/* Accent strip */}
+      <div className="h-1.5 w-full bg-gradient-to-r from-brand-teal via-teal-500 to-emerald-400" />
+
+      {/* Header — tinted band so the panel reads as its own surface */}
+      <div className="p-4 sm:p-5 bg-gradient-to-br from-brand-teal/10 to-emerald-50 border-b border-brand-teal/15">
         <div className="flex items-center gap-2">
-          <MessageSquare className="w-6 h-6 text-brand-teal" />
+          <span className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-teal text-white shadow-sm shrink-0">
+            <MessageSquare className="w-5 h-5" />
+          </span>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Your Reviews</h2>
+          {items.length > 0 && (
+            <span className="ml-auto text-xs font-bold text-brand-teal bg-white border border-brand-teal/30 rounded-full px-2.5 py-1 shadow-sm">
+              {items.length}
+            </span>
+          )}
         </div>
-        <p className="text-sm text-gray-600 mt-1">Share your feedback on each product you ordered</p>
+        <p className="text-sm text-gray-600 mt-1.5">Share your feedback on each product you ordered</p>
       </div>
 
       {/* Reviews for each product */}
