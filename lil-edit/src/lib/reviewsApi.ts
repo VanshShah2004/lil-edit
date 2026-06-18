@@ -187,6 +187,26 @@ export async function getUserReviewForProduct(productSlug: string): Promise<Revi
   return data ? mapReview(data) : null;
 }
 
+export async function getUserReviews(): Promise<Review[]> {
+  const user = await getUser();
+  if (!user) return [];
+
+  console.log(`[reviewsApi] fetching all reviews for user=${user.id}`);
+
+  const { data, error } = await supabase
+    .from("product_reviews")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[reviewsApi] fetch user reviews failed", error);
+    return [];
+  }
+
+  return (data ?? []).map(mapReview);
+}
+
 function mapReview(row: any): Review {
   return {
     id: row.id,

@@ -79,7 +79,7 @@ export default function YourReviewsSection({ items }: YourReviewsSectionProps) {
             const isOpen = openItemId === item.id;
 
             return (
-              <div key={item.id} className="rounded-xl border border-gray-200 overflow-hidden">
+              <div key={item.id} className="rounded-xl border border-gray-200 bg-gray-50 shadow-sm overflow-hidden">
                 <div className="w-full flex items-center gap-4 p-4 text-left">
                   {/* Product Image */}
                   <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">

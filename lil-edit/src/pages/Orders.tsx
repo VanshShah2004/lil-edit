@@ -17,9 +17,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchOrders, type OrderStatus, type OrderSummary } from "@/lib/ordersApi";
 import { getBackendBaseUrl } from "@/lib/backend";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
-import { BuyAgainSection, YouMayLikeSection, type SidebarProduct } from "@/components/orders/OrdersSidebar";
+import { BuyAgainSection, YouMayLikeSection, ReviewHistorySection, type SidebarProduct } from "@/components/orders/OrdersSidebar";
 import { useBuyAgainBadges } from "@/hooks/useBuyAgainBadges";
 import { composeProductBadges } from "@/lib/productBadges";
+import { getUserReviews, type Review } from "@/lib/reviewsApi";
 
 // Status → badge colours. Keys match the DB status CHECK constraint.
 const STATUS_STYLES: Record<OrderStatus, string> = {
@@ -112,6 +113,8 @@ const OrdersPage = () => {
   const [recsLoading, setRecsLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<QuickViewProduct | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const [reviewHistory, setReviewHistory] = useState<Review[]>([]);
+  const [reviewHistoryLoading, setReviewHistoryLoading] = useState(false);
 
   const userId = user?.id ?? null;
   const sortedOrders = useMemo(() => sortOrders(orders, sortBy), [orders, sortBy]);
@@ -143,6 +146,49 @@ const OrdersPage = () => {
   }, [sortedOrders]);
   const buyAgainItemsWithBadges = useBuyAgainBadges(buyAgainItems);
 
+  // Map product slug → its display title (and image) from order snapshots, so reviewed
+  // products read with the same naming as everywhere else instead of a de-slugified guess.
+  const productInfoBySlug = useMemo(() => {
+    const map = new Map<string, { title: string; image: string }>();
+    for (const order of orders) {
+      for (const item of order.items) {
+        if (!map.has(item.productSlug)) {
+          map.set(item.productSlug, { title: item.title, image: item.image });
+        }
+      }
+    }
+    return map;
+  }, [orders]);
+
+  // Last 5 unreviewed products — always most-recent first, independent of the sort toggle.
+  const pendingReviewItems = useMemo(() => {
+    const reviewedSlugs = new Set(reviewHistory.map((r) => r.productSlug));
+    const seen = new Set<string>();
+    const pending: { item: SidebarProduct; orderId: string }[] = [];
+    const recentFirst = sortOrders(orders, "newest");
+    for (const order of recentFirst) {
+      for (const item of order.items) {
+        if (reviewedSlugs.has(item.productSlug) || seen.has(item.productSlug)) continue;
+        seen.add(item.productSlug);
+        pending.push({
+          orderId: order.id,
+          item: {
+            title: item.title,
+            slug: item.productSlug,
+            categorySlug: item.categorySlug,
+            price: item.unitPrice,
+            originalPrice: item.originalPrice,
+            image: item.image,
+            sku: item.sku,
+            productId: item.productId,
+          },
+        });
+        if (pending.length >= 5) return pending;
+      }
+    }
+    return pending;
+  }, [orders, reviewHistory]);
+
   // Orders fetch.
   useEffect(() => {
     if (!userId) {
@@ -166,6 +212,27 @@ const OrdersPage = () => {
         }
       })
       .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  // Review history fetch.
+  useEffect(() => {
+    if (!userId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setReviewHistory([]);
+      return;
+    }
+    let cancelled = false;
+    setReviewHistoryLoading(true);
+    getUserReviews()
+      .then((data) => { if (!cancelled) setReviewHistory(data); })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("[OrdersPage] review history fetch failed", err);
+          setReviewHistory([]);
+        }
+      })
+      .finally(() => { if (!cancelled) setReviewHistoryLoading(false); });
     return () => { cancelled = true; };
   }, [userId]);
 
@@ -410,9 +477,18 @@ const OrdersPage = () => {
               </div>
             </div>
 
-            {/* ── Right sidebar: empty placeholder for layout spacing ───────── */}
+            {/* ── Right sidebar: review history ──────────────────────────── */}
             {showSidebar && (
-              <aside className="w-full sm:w-[35%] sm:shrink-0 mt-8 sm:mt-7" />
+              <aside className="w-full sm:w-[35%] sm:shrink-0 mt-8 sm:mt-7 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
+                <div className="mt-10 sm:mt-16" style={{ position: "relative", top: "-12px" }}>
+                <ReviewHistorySection
+                  reviews={reviewHistory.slice(0, 5)}
+                  loading={reviewHistoryLoading}
+                  pendingItems={pendingReviewItems}
+                  productInfoBySlug={productInfoBySlug}
+                />
+                </div>
+              </aside>
             )}
           </div>
         </section>

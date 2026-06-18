@@ -1,4 +1,6 @@
-import { Package, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Package, Sparkles, Star, MessageSquare, Check } from "lucide-react";
+import type { Review } from "@/lib/reviewsApi";
 
 
 function inr(n: number): string {
@@ -131,6 +133,156 @@ export function YouMayLikeSection({ items, loading, onItemClick }: { items: Side
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+export function ReviewHistorySection({
+  reviews,
+  loading,
+  pendingItems = [],
+  productInfoBySlug,
+}: {
+  reviews: Review[];
+  loading: boolean;
+  pendingItems?: { item: SidebarProduct; orderId: string }[];
+  productInfoBySlug?: Map<string, { title: string; image: string }>;
+}) {
+  const total = reviews.length + pendingItems.length;
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-400 shadow-lg ring-1 ring-black/10 overflow-hidden p-6">
+        <div className="flex justify-center">
+          <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  if (total === 0) return null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-400 shadow-lg ring-1 ring-black/10 overflow-hidden">
+      {/* Header */}
+      <div className="p-4 sm:p-6">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="w-6 h-6 text-brand-teal" />
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Your Reviews</h2>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">Spill the tea, rate the fit, explore the cuteness ✨</p>
+      </div>
+
+      {/* Product Cards */}
+      <div className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-6">
+        {/* Pending — not reviewed yet */}
+        {pendingItems.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-gray-900">Pending Reviews</h3>
+        {pendingItems.map(({ item, orderId }) => (
+          <Link
+            key={`${item.slug}-${item.sku}`}
+            to={`/orders/${orderId}`}
+            className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50 shadow-sm text-left"
+          >
+            {/* Product Image */}
+            <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+              {item.image ? (
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                  <MessageSquare size={20} />
+                </div>
+              )}
+            </div>
+
+            {/* Product Info */}
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">{item.title}</p>
+              <p className="text-xs text-gray-500">Not reviewed yet</p>
+            </div>
+
+            {/* Action Button */}
+            <div className="shrink-0">
+              <div className="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-brand-teal">
+                Write Review
+              </div>
+            </div>
+          </Link>
+        ))}
+        </div>
+        )}
+
+        {/* Reviewed */}
+        {reviews.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-gray-900">Reviewed Products</h3>
+        {reviews.map((review) => {
+          const info = productInfoBySlug?.get(review.productSlug);
+          const displayTitle = info?.title ?? review.productSlug.replace(/-/g, " ");
+          const displayImage = info?.image ?? review.images?.[0];
+          return (
+          <div
+            key={review.id}
+            className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50 shadow-sm text-left"
+          >
+            {/* Product Image */}
+            <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+              {displayImage ? (
+                <img
+                  src={displayImage}
+                  alt={displayTitle}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                  <MessageSquare size={20} />
+                </div>
+              )}
+            </div>
+
+            {/* Product Info */}
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">{displayTitle}</p>
+
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <div className="flex gap-0.5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-3.5 h-3.5 ${
+                        star <= review.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"
+                      }`}
+                    />
+                  ))}
+                </div>
+                {review.verified && (
+                  <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                    Verified
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Action Button */}
+            <div className="shrink-0">
+              <div className="px-3 py-1.5 rounded-lg text-sm font-medium text-brand-teal border border-brand-teal/30 bg-brand-teal/5">
+                Edit Review
+              </div>
+            </div>
+          </div>
+          );
+        })}
+        </div>
+        )}
+      </div>
     </div>
   );
 }
