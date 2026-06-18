@@ -1,4 +1,4 @@
-import { Package, RotateCcw, Sparkles } from "lucide-react";
+import { Package, Sparkles } from "lucide-react";
 
 
 function inr(n: number): string {
@@ -52,14 +52,9 @@ export function BuyAgainSection({ items, onItemClick }: { items: SidebarProduct[
     <div>
       <div className="mb-3 md:mb-4">
         <p className="text-base font-black tracking-[0.2em] uppercase text-[#0F766E] mb-0.5">Loved It Once?</p>
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-2xl md:text-3xl font-black text-foreground flex items-center gap-3">
-            Buy Again
-          </h2>
-          <button className="flex items-center justify-center w-10 h-10 rounded-full bg-white text-foreground border border-border shadow-sm hover:bg-[#0F766E] hover:text-white transition-all duration-300 shrink-0">
-            <RotateCcw className="w-6 h-6" />
-          </button>
-        </div>
+        <h2 className="font-display text-2xl md:text-3xl font-black text-foreground flex items-center gap-3">
+          Buy Again
+        </h2>
       </div>
       <div className="grid grid-cols-2 gap-4 md:flex md:gap-5 md:overflow-x-auto md:no-scrollbar md:snap-x md:snap-mandatory md:scroll-smooth pb-2" style={{ scrollbarWidth: "none" }}>
         {items.map((item, idx) => (

@@ -410,15 +410,22 @@ const OrdersPage = () => {
               </div>
             </div>
 
-            {/* ── Right sidebar: Buy Again + You May Like ───────────────────── */}
+            {/* ── Right sidebar: empty placeholder for layout spacing ───────── */}
             {showSidebar && (
-              <aside className="w-full sm:w-[35%] sm:shrink-0 space-y-14 mt-8 sm:mt-7 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
-                <BuyAgainSection items={buyAgainItemsWithBadges} onItemClick={openSidebarQuickView} />
-                <YouMayLikeSection items={recommendations} loading={recsLoading} onItemClick={openSidebarQuickView} />
-              </aside>
+              <aside className="w-full sm:w-[35%] sm:shrink-0 mt-8 sm:mt-7" />
             )}
           </div>
         </section>
+
+        {/* ── Buy Again + You May Like — full-width lavender band ─────── */}
+        {showSidebar && (
+          <div className="w-full bg-[#E8DDF7] mt-2">
+            <section className="container py-10 space-y-7">
+              <BuyAgainSection items={buyAgainItemsWithBadges} onItemClick={openSidebarQuickView} />
+              <YouMayLikeSection items={recommendations} loading={recsLoading} onItemClick={openSidebarQuickView} />
+            </section>
+          </div>
+        )}
       </main>
 
       <Footer />
