@@ -46,12 +46,12 @@ export default function YourReviewsSection({ items }: YourReviewsSectionProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-brand-teal/30 shadow-xl ring-1 ring-brand-teal/10 overflow-hidden">
+    <div className="rounded-2xl border border-gray-400 shadow-xl ring-1 ring-black/10 overflow-hidden">
         {/* Accent strip */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-brand-teal via-teal-500 to-emerald-400" />
+        <div className="h-1.5 w-full bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
 
         {/* Header — tinted band so the panel reads as its own surface */}
-        <div className="p-4 sm:p-6 bg-gradient-to-br from-brand-teal/10 to-emerald-50 border-b border-brand-teal/15">
+        <div className="p-4 sm:p-6 bg-gradient-to-br from-brand-teal/10 via-[#E8DDF7]/50 to-emerald-50 border-b border-[#B19CD9]/25">
           <div className="flex items-center gap-2 mb-4">
             <span className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-teal text-white shadow-sm shrink-0">
               <MessageSquare className="w-5 h-5" />
