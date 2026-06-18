@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
 import { Package, Sparkles, Star, MessageSquare, Check } from "lucide-react";
 import type { Review } from "@/lib/reviewsApi";
+import ReviewForm from "@/components/reviews/ReviewForm";
 
 
 function inr(n: number): string {
@@ -142,13 +143,17 @@ export function ReviewHistorySection({
   loading,
   pendingItems = [],
   productInfoBySlug,
+  onReviewSaved,
 }: {
   reviews: Review[];
   loading: boolean;
   pendingItems?: { item: SidebarProduct; orderId: string }[];
   productInfoBySlug?: Map<string, { title: string; image: string }>;
+  onReviewSaved?: () => void;
 }) {
   const total = reviews.length + pendingItems.length;
+  // Slug of the pending item whose inline review form is expanded (null = none).
+  const [openSlug, setOpenSlug] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -175,7 +180,7 @@ export function ReviewHistorySection({
           </span>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Your Reviews</h2>
           {total > 0 && (
-            <span className="ml-auto text-xs font-bold text-brand-teal bg-white border border-brand-teal/30 rounded-full px-2.5 py-1 shadow-sm">
+            <span className="ml-auto text-xs font-bold text-gray-900 bg-white border border-brand-teal/30 rounded-full px-2.5 py-1 shadow-sm">
               {total}
             </span>
           )}
@@ -189,42 +194,64 @@ export function ReviewHistorySection({
         {pendingItems.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-sm font-bold uppercase tracking-wide text-gray-900">Pending Reviews</h3>
-        {pendingItems.map(({ item, orderId }) => (
-          <Link
+        {pendingItems.map(({ item }) => {
+          const isOpen = openSlug === item.slug;
+          return (
+          <div
             key={`${item.slug}-${item.sku}`}
-            to={`/orders/${orderId}`}
-            className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50 shadow-sm text-left"
+            className="rounded-xl border border-gray-200 bg-gray-50 shadow-sm overflow-hidden"
           >
-            {/* Product Image */}
-            <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
-              {item.image ? (
-                <img
-                  src={item.image}
-                  alt={item.title}
-                  className="w-full h-full object-cover"
-                  onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-300">
-                  <MessageSquare size={20} />
-                </div>
-              )}
-            </div>
+            <div className="w-full flex items-center gap-4 p-4 text-left">
+              {/* Product Image */}
+              <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+                {item.image ? (
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-300">
+                    <MessageSquare size={20} />
+                  </div>
+                )}
+              </div>
 
-            {/* Product Info */}
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">{item.title}</p>
-              <p className="text-xs text-gray-500">Not reviewed yet</p>
-            </div>
+              {/* Product Info */}
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">{item.title}</p>
+                <p className="text-xs text-gray-500">Not reviewed yet</p>
+              </div>
 
-            {/* Action Button */}
-            <div className="shrink-0">
-              <div className="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-brand-teal">
-                Write Review
+              {/* Action Button — toggles the inline review form */}
+              <div className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setOpenSlug(isOpen ? null : item.slug)}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-brand-teal hover:bg-brand-teal/90 transition-colors"
+                >
+                  {isOpen ? "Close" : "Write Review"}
+                </button>
               </div>
             </div>
-          </Link>
-        ))}
+
+            {isOpen && (
+              <div className="p-4 pt-0">
+                <ReviewForm
+                  compact
+                  productSlug={item.slug}
+                  onCancel={() => setOpenSlug(null)}
+                  onSuccess={() => {
+                    setOpenSlug(null);
+                    onReviewSaved?.();
+                  }}
+                />
+              </div>
+            )}
+          </div>
+          );
+        })}
         </div>
         )}
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, Package, ArrowRight, RotateCcw, ArrowUpDown } from "lucide-react";
 
@@ -216,25 +216,22 @@ const OrdersPage = () => {
   }, [userId]);
 
   // Review history fetch.
-  useEffect(() => {
+  const loadReviewHistory = useCallback(() => {
     if (!userId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setReviewHistory([]);
       return;
     }
-    let cancelled = false;
     setReviewHistoryLoading(true);
     getUserReviews()
-      .then((data) => { if (!cancelled) setReviewHistory(data); })
+      .then((data) => setReviewHistory(data))
       .catch((err) => {
-        if (!cancelled) {
-          console.error("[OrdersPage] review history fetch failed", err);
-          setReviewHistory([]);
-        }
+        console.error("[OrdersPage] review history fetch failed", err);
+        setReviewHistory([]);
       })
-      .finally(() => { if (!cancelled) setReviewHistoryLoading(false); });
-    return () => { cancelled = true; };
+      .finally(() => setReviewHistoryLoading(false));
   }, [userId]);
+
+  useEffect(() => { loadReviewHistory(); }, [loadReviewHistory]);
 
   // Recommendations fetch — anchored to the most recently ordered item.
   useEffect(() => {
@@ -486,6 +483,7 @@ const OrdersPage = () => {
                   loading={reviewHistoryLoading}
                   pendingItems={pendingReviewItems}
                   productInfoBySlug={productInfoBySlug}
+                  onReviewSaved={loadReviewHistory}
                 />
                 </div>
               </aside>
