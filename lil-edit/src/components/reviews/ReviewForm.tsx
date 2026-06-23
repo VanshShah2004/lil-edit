@@ -6,6 +6,9 @@ import { useAuth } from "@/contexts/AuthContext";
 
 interface ReviewFormProps {
   productSlug: string;
+  // Variant SKU the review is for. Reviews are keyed per (productSlug, sku);
+  // defaults to '' for legacy product-level callers.
+  sku?: string;
   userName?: string;
   existingReview?: Review | null;
   onSuccess?: (review: Review) => void;
@@ -15,6 +18,7 @@ interface ReviewFormProps {
 
 export default function ReviewForm({
   productSlug,
+  sku = "",
   userName,
   existingReview,
   onSuccess,
@@ -107,7 +111,7 @@ export default function ReviewForm({
 
       let review: Review | null;
       if (isEditing) {
-        review = await updateReview(productSlug, {
+        review = await updateReview(productSlug, sku, {
           rating,
           title,
           comment,
@@ -116,6 +120,7 @@ export default function ReviewForm({
       } else {
         review = await createReview({
           productSlug,
+          sku,
           rating,
           title,
           comment,

@@ -59,6 +59,7 @@ export default function OrderReviewsSection({ items }: OrderReviewsSectionProps)
             {/* Reviews for this product */}
             <CustomerReviewsSection
               productSlug={item.productSlug}
+              sku={item.sku}
               categorySlug={item.categorySlug}
               title={item.title}
             />

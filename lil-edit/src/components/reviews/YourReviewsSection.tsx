@@ -18,7 +18,7 @@ export default function YourReviewsSection({ items }: YourReviewsSectionProps) {
       const reviews: Record<string, Review | null> = {};
       for (const item of items) {
         try {
-          const review = await getUserReviewForProduct(item.productSlug);
+          const review = await getUserReviewForProduct(item.productSlug, item.sku);
           reviews[item.id] = review;
         } catch (err) {
           console.error("[YourReviewsSection] fetch error for", item.productSlug, err);
@@ -57,7 +57,7 @@ export default function YourReviewsSection({ items }: YourReviewsSectionProps) {
               <MessageSquare className="w-5 h-5" />
             </span>
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Your Reviews</h2>
-            <span className="ml-auto text-xs font-bold text-brand-teal bg-white border border-brand-teal/30 rounded-full px-2.5 py-1 shadow-sm">
+            <span className="ml-auto text-xs font-bold text-gray-900 bg-white border border-brand-teal/30 rounded-full px-2.5 py-1 shadow-sm">
               {reviewedCount}/{items.length}
             </span>
           </div>
@@ -156,6 +156,7 @@ export default function YourReviewsSection({ items }: YourReviewsSectionProps) {
                     <ReviewForm
                       compact
                       productSlug={item.productSlug}
+                      sku={item.sku}
                       existingReview={review}
                       onCancel={() => setOpenItemId(null)}
                       onSuccess={(saved) => {

@@ -17,6 +17,8 @@ export interface ProductColor {
 export interface Review {
   id: string;
   user: string;
+  // Variant SKU the review is for ('' = legacy product-level review).
+  sku?: string;
   rating: number;
   date: string;
   title: string;

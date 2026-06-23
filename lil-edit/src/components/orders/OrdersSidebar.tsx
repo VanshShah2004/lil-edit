@@ -142,18 +142,19 @@ export function ReviewHistorySection({
   reviews,
   loading,
   pendingItems = [],
-  productInfoBySlug,
+  productInfoByVariant,
   onReviewSaved,
 }: {
   reviews: Review[];
   loading: boolean;
   pendingItems?: { item: SidebarProduct; orderId: string }[];
-  productInfoBySlug?: Map<string, { title: string; image: string }>;
+  productInfoByVariant?: Map<string, { title: string; image: string }>;
   onReviewSaved?: () => void;
 }) {
   const total = reviews.length + pendingItems.length;
-  // Slug of the pending item whose inline review form is expanded (null = none).
-  const [openSlug, setOpenSlug] = useState<string | null>(null);
+  // Variant key (`${slug}|${sku}`) of the item whose inline review form is expanded
+  // (null = none). Keyed per variant so colour variants don't toggle together.
+  const [openKey, setOpenKey] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -195,15 +196,16 @@ export function ReviewHistorySection({
         <div className="space-y-3">
           <h3 className="text-sm font-bold uppercase tracking-wide text-gray-900">Pending Reviews</h3>
         {pendingItems.map(({ item }) => {
-          const isOpen = openSlug === item.slug;
+          const variantKey = `${item.slug}|${item.sku}`;
+          const isOpen = openKey === variantKey;
           return (
           <div
             key={`${item.slug}-${item.sku}`}
             className="rounded-xl border border-gray-200 bg-gray-50 shadow-sm overflow-hidden"
           >
-            <div className="w-full flex items-center gap-4 p-4 text-left">
+            <div className="w-full flex items-stretch gap-4 p-4 text-left">
               {/* Product Image */}
-              <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+              <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
                 {item.image ? (
                   <img
                     src={item.image}
@@ -218,21 +220,20 @@ export function ReviewHistorySection({
                 )}
               </div>
 
-              {/* Product Info */}
-              <div className="flex-1 min-w-0">
+              {/* Product Info — top content stays top, action row pinned to the image's baseline */}
+              <div className="flex-1 min-w-0 flex flex-col justify-between">
                 <p className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">{item.title}</p>
-                <p className="text-xs text-gray-500">Not reviewed yet</p>
-              </div>
-
-              {/* Action Button — toggles the inline review form */}
-              <div className="shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setOpenSlug(isOpen ? null : item.slug)}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-brand-teal hover:bg-brand-teal/90 transition-colors"
-                >
-                  {isOpen ? "Close" : "Write Review"}
-                </button>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-gray-500">Not yet reviewed</p>
+                  {/* Action Button — toggles the inline review form */}
+                  <button
+                    type="button"
+                    onClick={() => setOpenKey(isOpen ? null : variantKey)}
+                    className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-brand-teal hover:bg-brand-teal/90 transition-colors"
+                  >
+                    {isOpen ? "Close" : "Write Review"}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -241,9 +242,10 @@ export function ReviewHistorySection({
                 <ReviewForm
                   compact
                   productSlug={item.slug}
-                  onCancel={() => setOpenSlug(null)}
+                  sku={item.sku}
+                  onCancel={() => setOpenKey(null)}
                   onSuccess={() => {
-                    setOpenSlug(null);
+                    setOpenKey(null);
                     onReviewSaved?.();
                   }}
                 />
@@ -258,18 +260,25 @@ export function ReviewHistorySection({
         {/* Reviewed */}
         {reviews.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-bold uppercase tracking-wide text-gray-900">Reviewed Products</h3>
+          <h3 className="text-sm font-bold uppercase tracking-wide text-gray-900">Recently Reviewed Products</h3>
         {reviews.map((review) => {
-          const info = productInfoBySlug?.get(review.productSlug);
+          const variantKey = `${review.productSlug}|${review.sku}`;
+          // Falls back to a slug-only match for legacy reviews (sku='') predating
+          // the per-variant migration, which won't hit a real order-item variant key.
+          const info = productInfoByVariant?.get(variantKey) ?? productInfoByVariant?.get(review.productSlug);
           const displayTitle = info?.title ?? review.productSlug.replace(/-/g, " ");
-          const displayImage = info?.image ?? review.images?.[0];
+          // Always the product's own primary image — never a review-attached photo,
+          // which is shown separately in the thumbnail strip below.
+          const displayImage = info?.image;
+          const isOpen = openKey === variantKey;
           return (
           <div
             key={review.id}
-            className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50 shadow-sm text-left"
+            className="rounded-xl border border-gray-200 bg-gray-50 shadow-sm overflow-hidden"
           >
+            <div className="w-full flex items-stretch gap-4 p-4 text-left">
             {/* Product Image */}
-            <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+            <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
               {displayImage ? (
                 <img
                   src={displayImage}
@@ -284,36 +293,86 @@ export function ReviewHistorySection({
               )}
             </div>
 
-            {/* Product Info */}
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">{displayTitle}</p>
+            {/* Product Info — top content stays top, action row pinned to the image's baseline */}
+            <div className="flex-1 min-w-0 flex flex-col justify-between">
+              <div>
+                <p className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">{displayTitle}</p>
 
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-600" />
-                <div className="flex gap-0.5">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`w-3.5 h-3.5 ${
-                        star <= review.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"
-                      }`}
-                    />
-                  ))}
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-600" />
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`w-3.5 h-3.5 ${
+                          star <= review.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  {review.verified && (
+                    <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                      Verified
+                    </span>
+                  )}
                 </div>
-                {review.verified && (
-                  <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                    Verified
-                  </span>
-                )}
               </div>
+
+              {/* Review-attached photos + edit action — same line, bottom-aligned with the image */}
+              <div className="flex items-end justify-between gap-2 mt-2">
+                {review.images && review.images.length > 0 ? (
+                  <div className="flex -space-x-2">
+                    {review.images.map((url, idx) => (
+                      <div
+                        key={idx}
+                        className={`w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0 ring-2 ring-white shadow-sm ${idx > 0 ? "hidden sm:block" : ""}`}
+                      >
+                        <img
+                          src={url}
+                          alt={`Review photo ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                        />
+                      </div>
+                    ))}
+                    {/* Mobile-only — collapses remaining photos into a count badge */}
+                    {review.images.length > 1 && (
+                      <div className="sm:hidden w-10 h-10 rounded-lg bg-gray-200 ring-2 ring-white shadow-sm shrink-0 flex items-center justify-center text-xs font-semibold text-gray-600">
+                        +{review.images.length - 1}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div />
+                )}
+
+                {/* Action Button — toggles the inline review form */}
+                <button
+                  type="button"
+                  onClick={() => setOpenKey(isOpen ? null : variantKey)}
+                  className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium text-brand-teal border border-brand-teal/30 bg-brand-teal/5 hover:bg-brand-teal/10 transition-colors"
+                >
+                  {isOpen ? "Close" : "Edit Review"}
+                </button>
+              </div>
+            </div>
             </div>
 
-            {/* Action Button */}
-            <div className="shrink-0">
-              <div className="px-3 py-1.5 rounded-lg text-sm font-medium text-brand-teal border border-brand-teal/30 bg-brand-teal/5">
-                Edit Review
+            {isOpen && (
+              <div className="p-4 pt-0">
+                <ReviewForm
+                  compact
+                  productSlug={review.productSlug}
+                  sku={review.sku}
+                  existingReview={review}
+                  onCancel={() => setOpenKey(null)}
+                  onSuccess={() => {
+                    setOpenKey(null);
+                    onReviewSaved?.();
+                  }}
+                />
               </div>
-            </div>
+            )}
           </div>
           );
         })}

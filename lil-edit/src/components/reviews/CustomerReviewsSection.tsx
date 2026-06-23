@@ -5,6 +5,7 @@ import { getUserReviewForProduct, type Review } from "@/lib/reviewsApi";
 
 interface CustomerReviewsSectionProps {
   productSlug: string;
+  sku: string;
   categorySlug: string;
   title: string;
 }
@@ -12,6 +13,7 @@ interface CustomerReviewsSectionProps {
 
 export default function CustomerReviewsSection({
   productSlug,
+  sku,
   categorySlug,
   title,
 }: CustomerReviewsSectionProps) {
@@ -24,8 +26,8 @@ export default function CustomerReviewsSection({
 
     const fetchData = async () => {
       try {
-        console.log(`[CustomerReviewsSection] fetching user review  slug=${productSlug}`);
-        const userRev = await getUserReviewForProduct(productSlug);
+        console.log(`[CustomerReviewsSection] fetching user review  slug=${productSlug}  sku=${sku}`);
+        const userRev = await getUserReviewForProduct(productSlug, sku);
         if (!cancelled) setUserReview(userRev);
       } catch (err) {
         console.error("[CustomerReviewsSection] fetch error", err);
@@ -36,7 +38,7 @@ export default function CustomerReviewsSection({
 
     fetchData();
     return () => { cancelled = true; };
-  }, [productSlug]);
+  }, [productSlug, sku]);
 
   const handleReviewSuccess = (review: Review) => {
     setUserReview(review);
@@ -117,6 +119,7 @@ export default function CustomerReviewsSection({
             <div className="py-5 border-b border-gray-100">
               <ReviewForm
                 productSlug={productSlug}
+                sku={sku}
                 existingReview={userReview}
                 onSuccess={handleReviewSuccess}
                 onCancel={() => setShowForm(false)}

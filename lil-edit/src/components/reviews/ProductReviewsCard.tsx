@@ -6,12 +6,14 @@ import { fetchReviewsForProduct, getUserReviewForProduct, type Review, type Revi
 
 interface ProductReviewsCardProps {
   productSlug: string;
+  sku: string;
   categorySlug: string;
   title: string;
 }
 
 export default function ProductReviewsCard({
   productSlug,
+  sku,
   categorySlug,
   title,
 }: ProductReviewsCardProps) {
@@ -29,7 +31,7 @@ export default function ProductReviewsCard({
         const data = await fetchReviewsForProduct(productSlug);
         if (!cancelled) setReviewsData(data);
 
-        const userRev = await getUserReviewForProduct(productSlug);
+        const userRev = await getUserReviewForProduct(productSlug, sku);
         if (!cancelled) setUserReview(userRev);
       } catch (err) {
         console.error("[ProductReviewsCard] fetch error", err);
@@ -41,7 +43,7 @@ export default function ProductReviewsCard({
 
     fetchData();
     return () => { cancelled = true; };
-  }, [productSlug]);
+  }, [productSlug, sku]);
 
   const handleReviewSuccess = (review: Review) => {
     setUserReview(review);
@@ -129,6 +131,7 @@ export default function ProductReviewsCard({
           ) : showForm && userReview ? (
             <ReviewForm
               productSlug={productSlug}
+              sku={sku}
               existingReview={userReview}
               onSuccess={handleReviewSuccess}
               onCancel={() => setShowForm(false)}
@@ -137,6 +140,7 @@ export default function ProductReviewsCard({
           ) : showForm ? (
             <ReviewForm
               productSlug={productSlug}
+              sku={sku}
               onSuccess={handleReviewSuccess}
               onCancel={() => setShowForm(false)}
               compact

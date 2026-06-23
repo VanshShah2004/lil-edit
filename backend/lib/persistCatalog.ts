@@ -1375,6 +1375,9 @@ export async function fetchRecommendedProducts(
 export interface ReviewItem {
   id: string;
   user: string;
+  // Variant SKU this review is for ('' = legacy product-level review). Lets the
+  // PDP show the current variant's reviews first, then the other variants'.
+  sku: string;
   rating: number;
   date: string;
   title: string;
@@ -1391,7 +1394,7 @@ export interface ReviewsData {
 }
 
 const REVIEWS_SELECT = `
-  id, user_name, rating, title, comment, verified, images, created_at
+  id, user_name, sku, rating, title, comment, verified, images, created_at
 `;
 
 // "2026-06-02T..." → "2 Jun 2026" (matches the date style the PDP renders).
@@ -1445,6 +1448,7 @@ export async function fetchReviewsDataBySlug(
     const item: ReviewItem = {
       id: String(r.id),
       user: r.user_name,
+      sku: r.sku || "",
       rating: Number(r.rating) || 0,
       date: formatReviewDate(r.created_at),
       title: r.title || "",

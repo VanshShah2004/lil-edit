@@ -146,12 +146,19 @@ const OrdersPage = () => {
   }, [sortedOrders]);
   const buyAgainItemsWithBadges = useBuyAgainBadges(buyAgainItems);
 
-  // Map product slug → its display title (and image) from order snapshots, so reviewed
-  // products read with the same naming as everywhere else instead of a de-slugified guess.
-  const productInfoBySlug = useMemo(() => {
+  // Map (slug + sku) → its display title (and image) from order snapshots, so reviewed
+  // variants read with the same naming/image as ordered instead of a de-slugified guess.
+  // Reviews are per-variant, so the key includes the SKU. Also keys by slug alone as a
+  // fallback for legacy reviews written before the per-variant migration (sku=''), which
+  // would otherwise never match a real order-item sku.
+  const productInfoByVariant = useMemo(() => {
     const map = new Map<string, { title: string; image: string }>();
     for (const order of orders) {
       for (const item of order.items) {
+        const variantKey = `${item.productSlug}|${item.sku}`;
+        if (!map.has(variantKey)) {
+          map.set(variantKey, { title: item.title, image: item.image });
+        }
         if (!map.has(item.productSlug)) {
           map.set(item.productSlug, { title: item.title, image: item.image });
         }
@@ -160,16 +167,18 @@ const OrdersPage = () => {
     return map;
   }, [orders]);
 
-  // Last 5 unreviewed products — always most-recent first, independent of the sort toggle.
+  // Last 5 unreviewed variants — always most-recent first, independent of the sort toggle.
+  // Keyed per (slug, sku) so each ordered colour variant is tracked separately.
   const pendingReviewItems = useMemo(() => {
-    const reviewedSlugs = new Set(reviewHistory.map((r) => r.productSlug));
+    const reviewedKeys = new Set(reviewHistory.map((r) => `${r.productSlug}|${r.sku}`));
     const seen = new Set<string>();
     const pending: { item: SidebarProduct; orderId: string }[] = [];
     const recentFirst = sortOrders(orders, "newest");
     for (const order of recentFirst) {
       for (const item of order.items) {
-        if (reviewedSlugs.has(item.productSlug) || seen.has(item.productSlug)) continue;
-        seen.add(item.productSlug);
+        const key = `${item.productSlug}|${item.sku}`;
+        if (reviewedKeys.has(key) || seen.has(key)) continue;
+        seen.add(key);
         pending.push({
           orderId: order.id,
           item: {
@@ -482,7 +491,7 @@ const OrdersPage = () => {
                   reviews={reviewHistory.slice(0, 5)}
                   loading={reviewHistoryLoading}
                   pendingItems={pendingReviewItems}
-                  productInfoBySlug={productInfoBySlug}
+                  productInfoByVariant={productInfoByVariant}
                   onReviewSaved={loadReviewHistory}
                 />
                 </div>

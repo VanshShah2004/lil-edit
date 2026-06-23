@@ -4,6 +4,9 @@ import { getBackendBaseUrl } from "@/lib/backend";
 export interface Review {
   id: string;
   productSlug: string;
+  // Variant SKU the review is for ('' = legacy product-level review). A user can
+  // hold one review per (productSlug, sku).
+  sku: string;
   userId: string | null;
   userName: string;
   rating: number;
@@ -23,6 +26,7 @@ export interface ReviewsData {
 
 export interface CreateReviewInput {
   productSlug: string;
+  sku: string;
   rating: number;
   title: string;
   comment: string;
@@ -63,6 +67,7 @@ export async function fetchReviewsForProduct(slug: string): Promise<ReviewsData>
   const mappedReviews = (reviewsData.reviews || []).map((r: any) => ({
     id: r.id,
     productSlug: slug,
+    sku: r.sku || "",
     userId: null,
     userName: r.user || "Anonymous",
     rating: r.rating,
@@ -85,12 +90,13 @@ export async function createReview(input: CreateReviewInput): Promise<Review | n
   const user = await getUser();
   if (!user) throw new Error("Not authenticated");
 
-  console.log(`[reviewsApi] creating review  product=${input.productSlug}  rating=${input.rating}`);
+  console.log(`[reviewsApi] creating review  product=${input.productSlug}  sku=${input.sku}  rating=${input.rating}`);
 
   const { data, error } = await supabase
     .from("product_reviews")
     .insert({
       product_slug: input.productSlug,
+      sku: input.sku,
       user_id: user.id,
       user_name: user.user_metadata?.name || user.email || "Anonymous",
       rating: input.rating,
@@ -112,12 +118,13 @@ export async function createReview(input: CreateReviewInput): Promise<Review | n
 
 export async function updateReview(
   productSlug: string,
+  sku: string,
   input: UpdateReviewInput,
 ): Promise<Review | null> {
   const user = await getUser();
   if (!user) throw new Error("Not authenticated");
 
-  console.log(`[reviewsApi] updating review  product=${productSlug}`);
+  console.log(`[reviewsApi] updating review  product=${productSlug}  sku=${sku}`);
 
   const { data, error } = await supabase
     .from("product_reviews")
@@ -128,6 +135,7 @@ export async function updateReview(
       ...(input.images !== undefined && { images: input.images }),
     })
     .eq("product_slug", productSlug)
+    .eq("sku", sku)
     .eq("user_id", user.id)
     .select()
     .single();
@@ -141,16 +149,17 @@ export async function updateReview(
   return data ? mapReview(data) : null;
 }
 
-export async function deleteReview(productSlug: string): Promise<void> {
+export async function deleteReview(productSlug: string, sku: string): Promise<void> {
   const user = await getUser();
   if (!user) throw new Error("Not authenticated");
 
-  console.log(`[reviewsApi] deleting review  product=${productSlug}`);
+  console.log(`[reviewsApi] deleting review  product=${productSlug}  sku=${sku}`);
 
   const { error } = await supabase
     .from("product_reviews")
     .delete()
     .eq("product_slug", productSlug)
+    .eq("sku", sku)
     .eq("user_id", user.id);
 
   if (error) {
@@ -161,16 +170,17 @@ export async function deleteReview(productSlug: string): Promise<void> {
   console.log("[reviewsApi] deleted review");
 }
 
-export async function getUserReviewForProduct(productSlug: string): Promise<Review | null> {
+export async function getUserReviewForProduct(productSlug: string, sku: string): Promise<Review | null> {
   const user = await getUser();
   if (!user) return null;
 
-  console.log(`[reviewsApi] fetching user review  product=${productSlug}  user=${user.id}`);
+  console.log(`[reviewsApi] fetching user review  product=${productSlug}  sku=${sku}  user=${user.id}`);
 
   const { data, error } = await supabase
     .from("product_reviews")
     .select("*")
     .eq("product_slug", productSlug)
+    .eq("sku", sku)
     .eq("user_id", user.id)
     .single();
 
@@ -197,7 +207,7 @@ export async function getUserReviews(): Promise<Review[]> {
     .from("product_reviews")
     .select("*")
     .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+    .order("updated_at", { ascending: false });
 
   if (error) {
     console.error("[reviewsApi] fetch user reviews failed", error);
@@ -211,6 +221,7 @@ function mapReview(row: any): Review {
   return {
     id: row.id,
     productSlug: row.product_slug,
+    sku: row.sku || "",
     userId: row.user_id || null,
     // Handle both direct Supabase (user_name) and backend API (user) responses
     userName: row.user_name || row.user || "Anonymous",

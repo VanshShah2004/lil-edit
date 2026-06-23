@@ -183,11 +183,19 @@ export default function ProductDetail() {
   const sortedReviews = useMemo(() => {
     const list = [...(reviewsData?.reviews ?? [])]; // payload is newest-first
     switch (reviewSort) {
-      case "oldest":  return list.reverse();
-      case "highest": return list.sort((a, b) => b.rating - a.rating);
-      default:        return list; // newest
+      case "oldest":  list.reverse(); break;
+      case "highest": list.sort((a, b) => b.rating - a.rating); break;
+      default:        break; // newest
     }
-  }, [reviewsData, reviewSort]);
+    // Surface the current colour variant's reviews first, then the other variants'.
+    // Stable partition preserves the chosen sort within each group.
+    if (skuId) {
+      const mine = list.filter((r) => r.sku === skuId);
+      const rest = list.filter((r) => r.sku !== skuId);
+      return [...mine, ...rest];
+    }
+    return list;
+  }, [reviewsData, reviewSort, skuId]);
 
   // Show the first `visibleReviewCount` of the chosen order (starts at 3, grows by
   // 3 via the "Show more" button). Sort runs over ALL reviews, so the slice
