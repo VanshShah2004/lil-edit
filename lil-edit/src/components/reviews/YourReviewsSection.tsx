@@ -67,12 +67,16 @@ export default function YourReviewsSection({ items }: YourReviewsSectionProps) {
             const review = userReviews[item.id];
             const isReviewed = review !== null;
             const isOpen = openItemId === item.id;
+            const hasPhotos = isReviewed && Boolean(review.images && review.images.length > 0);
+            const tall = isReviewed && item.title.length > 30 && hasPhotos;
 
             return (
               <div key={item.id} className="rounded-xl border border-gray-400 bg-white shadow-[0_2px_6px_rgba(0,0,0,0.18)] overflow-hidden">
                 <div className="w-full flex items-stretch gap-4 p-4 text-left">
-                  {/* Product Image */}
-                  <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+                  {/* Product Image — width stays w-24; height only stretches to the
+                      bottom of the review-photo thumbnail strip when the title is
+                      long and photos are present, otherwise stays h-24 */}
+                  <div className={`w-24 ${tall ? "self-stretch" : "h-24"} rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100`}>
                     {item.image ? (
                       <img
                         src={item.image}
@@ -90,7 +94,7 @@ export default function YourReviewsSection({ items }: YourReviewsSectionProps) {
                   </div>
 
                   {/* Product Info — top content stays top, action row pinned to the image's baseline */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-between">
+                  <div className={`flex-1 min-w-0 flex flex-col ${tall ? "gap-2" : "justify-between"}`}>
                     {isReviewed ? (
                       <>
                         <div>
@@ -116,7 +120,7 @@ export default function YourReviewsSection({ items }: YourReviewsSectionProps) {
                         </div>
 
                         {/* Review-attached photos + edit action — same line, bottom-aligned with the image */}
-                        <div className="flex items-end justify-between gap-2 mt-2">
+                        <div className={`flex items-end justify-between gap-2 ${tall ? "" : "mt-2"}`}>
                           {review.images && review.images.length > 0 ? (
                             <div className="flex -space-x-2">
                               {review.images.map((url, idx) => (

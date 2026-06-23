@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ChevronRight, ChevronDown, ChevronUp, Heart, Star, StarHalf, BadgeCheck, ThumbsUp } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, ChevronLeft, Heart, Star, StarHalf, BadgeCheck, ThumbsUp, X } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -178,6 +178,7 @@ export default function ProductDetail() {
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const sortMenuRef = useRef<HTMLDivElement>(null);
   const [visibleReviewCount, setVisibleReviewCount] = useState(3); // grows by 3 per "Show more"
+  const [reviewLightbox, setReviewLightbox] = useState<{ images: string[]; index: number } | null>(null);
 
   // Sort always runs over the FULL review set (not just the visible cards).
   const sortedReviews = useMemo(() => {
@@ -703,7 +704,7 @@ export default function ProductDetail() {
                     key={review.id}
                     className="relative p-6 sm:p-8 rounded-[2rem] border border-slate-300 bg-slate-50 shadow-md shadow-slate-400/30 sm:hover:bg-white sm:hover:-translate-y-1.5 sm:hover:shadow-2xl sm:hover:shadow-slate-900/25 sm:hover:border-teal-500 transition-all duration-300 group"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
                       <div className="flex items-center gap-4">
                         <div
                           className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-lg font-bold text-white shadow-inner transform transition-transform duration-500"
@@ -739,24 +740,26 @@ export default function ProductDetail() {
                       </div>
                     </div>
 
-                    <div className="space-y-4">
-                      <h4 className="font-bold text-slate-800 text-lg leading-snug">
-                        {review.title}
-                      </h4>
-                      <p className="text-slate-600 leading-relaxed text-[15px]">
-                        {review.comment}
-                      </p>
-
-                      {review.images && (
-                        <div className="flex flex-wrap gap-3 mt-6">
+                    <div className="space-y-4 min-w-0">
+                      {review.images && review.images.length > 0 && (
+                        <div className="flex -space-x-2">
                           {review.images.map((img: string, idx: number) => (
-                            <div key={idx} className="relative w-24 h-32 rounded-xl overflow-hidden border border-gray-100 shadow-sm cursor-zoom-in group/img">
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setReviewLightbox({ images: review.images!, index: idx })}
+                              className="relative w-14 h-14 shrink-0 rounded-lg overflow-hidden ring-2 ring-white shadow-sm cursor-zoom-in group/img"
+                            >
                               <img src={img} alt="Review" className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110" />
                               <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors" />
-                            </div>
+                            </button>
                           ))}
                         </div>
                       )}
+
+                      <p className="text-slate-600 leading-relaxed text-[15px] break-words whitespace-pre-wrap">
+                        {review.comment}
+                      </p>
 
                       <div className="flex items-center gap-6 pt-4 mt-6 border-t border-gray-50">
                         <button onClick={() => alert("Helpful rating recorded!")} className="inline-flex items-center gap-2 text-xs text-gray-400 hover:text-teal-700 transition-colors font-bold uppercase tracking-widest">
@@ -799,6 +802,55 @@ export default function ProductDetail() {
           </div>
           )}
         </section>
+        )}
+
+        {reviewLightbox && (
+          <div
+            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+            onClick={() => setReviewLightbox(null)}
+          >
+            <button
+              type="button"
+              onClick={() => setReviewLightbox(null)}
+              className="absolute top-4 right-4 text-white/80 hover:text-white"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            {reviewLightbox.images.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setReviewLightbox((prev) =>
+                    prev ? { ...prev, index: (prev.index - 1 + prev.images.length) % prev.images.length } : prev
+                  );
+                }}
+                className="absolute left-4 text-white/80 hover:text-white"
+              >
+                <ChevronLeft className="w-8 h-8" />
+              </button>
+            )}
+            <img
+              src={reviewLightbox.images[reviewLightbox.index]}
+              alt="Review"
+              className="max-w-full max-h-full object-contain rounded"
+              onClick={(e) => e.stopPropagation()}
+            />
+            {reviewLightbox.images.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setReviewLightbox((prev) =>
+                    prev ? { ...prev, index: (prev.index + 1) % prev.images.length } : prev
+                  );
+                }}
+                className="absolute right-4 text-white/80 hover:text-white"
+              >
+                <ChevronRight className="w-8 h-8" />
+              </button>
+            )}
+          </div>
         )}
 
         {/* YOU MAY ALSO LIKE SECTION */}

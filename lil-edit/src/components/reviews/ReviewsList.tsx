@@ -1,4 +1,4 @@
-import { Star, Check, ChevronRight } from "lucide-react";
+import { Star, Check, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import type { Review } from "@/lib/reviewsApi";
 
@@ -19,7 +19,8 @@ function formatDate(iso: string): string {
 }
 
 function ReviewCard({ review }: { review: any }) {
-  const [expandedImages, setExpandedImages] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const images: string[] = review.images ?? [];
 
   return (
     <div className="pt-4 first:pt-0">
@@ -53,31 +54,74 @@ function ReviewCard({ review }: { review: any }) {
       {review.comment && (
         <p className="text-sm text-gray-700 leading-relaxed mb-2">{review.comment}</p>
       )}
-      {/* Images */}
-      {review.images && review.images.length > 0 && (
-        <div className="mt-2 space-y-2">
-          {!expandedImages ? (
+      {/* Thumbnail strip */}
+      {images.length > 0 && (
+        <div className="mt-2 flex gap-2 overflow-x-auto no-scrollbar">
+          {images.map((imgUrl, idx) => (
             <button
-              onClick={() => setExpandedImages(true)}
-              className="inline-flex items-center gap-2 text-xs font-medium text-brand-teal hover:underline"
+              key={idx}
+              type="button"
+              onClick={() => setLightboxIndex(idx)}
+              className="w-14 h-14 shrink-0 rounded-lg overflow-hidden border border-gray-200 hover:opacity-90 transition-opacity"
             >
-              View {review.images.length} photo{review.images.length !== 1 ? "s" : ""}
-              <ChevronRight className="w-3 h-3" />
+              <img
+                src={imgUrl}
+                alt={`Review photo ${idx + 1}`}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = "/fallback-product.webp";
+                }}
+              />
             </button>
-          ) : (
-            <div className="grid grid-cols-3 gap-2">
-              {review.images.map((imgUrl: string, idx: number) => (
-                <img
-                  key={idx}
-                  src={imgUrl}
-                  alt={`Review photo ${idx + 1}`}
-                  className="w-full aspect-square object-cover rounded border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                  onError={(e) => {
-                    e.currentTarget.src = "/fallback-product.webp";
-                  }}
-                />
-              ))}
-            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxIndex !== null && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setLightboxIndex(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxIndex(null)}
+            className="absolute top-4 right-4 text-white/80 hover:text-white"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          {images.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIndex((lightboxIndex - 1 + images.length) % images.length);
+              }}
+              className="absolute left-4 text-white/80 hover:text-white"
+            >
+              <ChevronLeft className="w-8 h-8" />
+            </button>
+          )}
+          <img
+            src={images[lightboxIndex]}
+            alt={`Review photo ${lightboxIndex + 1}`}
+            className="max-w-full max-h-full object-contain rounded"
+            onClick={(e) => e.stopPropagation()}
+            onError={(e) => {
+              e.currentTarget.src = "/fallback-product.webp";
+            }}
+          />
+          {images.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIndex((lightboxIndex + 1) % images.length);
+              }}
+              className="absolute right-4 text-white/80 hover:text-white"
+            >
+              <ChevronRight className="w-8 h-8" />
+            </button>
           )}
         </div>
       )}
