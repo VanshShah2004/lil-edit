@@ -1,6 +1,13 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ChevronRight, ChevronDown, ChevronUp, ChevronLeft, Heart, Star, StarHalf, BadgeCheck, ThumbsUp, X } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, ChevronLeft, Heart, Star, StarHalf, BadgeCheck, ThumbsUp, X, ArrowRight, ArrowUpDown } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,8 +27,8 @@ const TEAL = "#0B5B55";
 // Review sort options. Backend returns reviews newest-first, so "newest" is the
 // payload order, "oldest" is reversed, and rating sorts are stable on top of that.
 const REVIEW_SORT_OPTIONS = [
-  { value: "newest",  label: "Newest" },
-  { value: "oldest",  label: "Oldest" },
+  { value: "newest",  label: "Newest First" },
+  { value: "oldest",  label: "Oldest First" },
   { value: "highest", label: "Highest rated" },
 ] as const;
 type ReviewSort = (typeof REVIEW_SORT_OPTIONS)[number]["value"];
@@ -175,8 +182,6 @@ export default function ProductDetail() {
 
   // ── Review sorting (client-side) ──────────────────────────────────────────
   const [reviewSort, setReviewSort] = useState<ReviewSort>("newest");
-  const [sortMenuOpen, setSortMenuOpen] = useState(false);
-  const sortMenuRef = useRef<HTMLDivElement>(null);
   const [visibleReviewCount, setVisibleReviewCount] = useState(3); // grows by 3 per "Show more"
   const [reviewLightbox, setReviewLightbox] = useState<{ images: string[]; index: number } | null>(null);
 
@@ -209,17 +214,6 @@ export default function ProductDetail() {
     setVisibleReviewCount(3);
   }, [productSlug]);
 
-  // Close the sort menu on outside click
-  useEffect(() => {
-    if (!sortMenuOpen) return;
-    const onPointerDown = (e: MouseEvent) => {
-      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target as Node)) {
-        setSortMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [sortMenuOpen]);
 
   // ── Perf tracker — one instance per slug, stable across re-renders ────────
   const perfRef     = useRef<PdpClientPerf | null>(null);
@@ -658,44 +652,23 @@ export default function ProductDetail() {
 
             {/* Right Column: Review List */}
             <div className="w-full md:w-2/3">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-lg font-bold text-slate-800">
+              <div className="flex items-center justify-between gap-4 mb-8">
+                <h3 className="text-lg font-bold text-slate-800 whitespace-nowrap">
                   Most Relevant Reviews
                 </h3>
-                <div ref={sortMenuRef} className="relative flex items-center gap-2 text-sm text-gray-500 font-medium">
-                  <span>Sort by:</span>
-                  <button
-                    type="button"
-                    onClick={() => setSortMenuOpen((o) => !o)}
-                    aria-haspopup="listbox"
-                    aria-expanded={sortMenuOpen}
-                    className="inline-flex items-center gap-1 text-slate-900 font-bold hover:underline focus:outline-none"
-                  >
-                    {REVIEW_SORT_OPTIONS.find((o) => o.value === reviewSort)?.label}
-                    <ChevronDown size={14} className={`transition-transform duration-200 ${sortMenuOpen ? "rotate-180" : ""}`} />
-                  </button>
-                  {sortMenuOpen && (
-                    <div
-                      role="listbox"
-                      className="absolute right-0 top-full mt-2 z-20 w-44 rounded-xl border border-gray-100 bg-white shadow-xl shadow-slate-200/50 py-1.5 overflow-hidden"
-                    >
-                      {REVIEW_SORT_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          role="option"
-                          aria-selected={reviewSort === opt.value}
-                          onClick={() => { setReviewSort(opt.value); setSortMenuOpen(false); }}
-                          className={`w-full text-left px-4 py-2 text-sm transition-colors hover:bg-gray-50 ${
-                            reviewSort === opt.value ? "text-teal-700 font-bold" : "text-slate-600 font-medium"
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <Select value={reviewSort} onValueChange={(v) => setReviewSort(v as ReviewSort)}>
+                  <SelectTrigger className="h-8 w-auto gap-1.5 rounded-full border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-0 [&>svg]:h-3.5 [&>svg]:w-3.5">
+                    <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
+                    <SelectValue placeholder="Sort" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {REVIEW_SORT_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-6">
@@ -704,6 +677,9 @@ export default function ProductDetail() {
                     key={review.id}
                     className="relative p-6 sm:p-8 rounded-[2rem] border border-slate-300 bg-slate-50 shadow-md shadow-slate-400/30 sm:hover:bg-white sm:hover:-translate-y-1.5 sm:hover:shadow-2xl sm:hover:shadow-slate-900/25 sm:hover:border-teal-500 transition-all duration-300 group"
                   >
+                    <button type="button" className="absolute top-6 right-6 sm:top-8 sm:right-8 w-10 h-10 rounded-full bg-white text-slate-900 border border-slate-300 shadow-sm hover:bg-teal-700 hover:text-white hover:border-teal-700 transition-all duration-300 shrink-0 flex items-center justify-center">
+                      <ArrowRight className="w-5 h-5" />
+                    </button>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
                       <div className="flex items-center gap-4">
                         <div
