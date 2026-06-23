@@ -195,14 +195,14 @@ export default function ReviewForm({
           Your review
         </label>
         <textarea
-          maxLength={500}
+          maxLength={200}
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           placeholder="Share your thoughts about this product"
           rows={compact ? 2 : 3}
           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/50 resize-none"
         />
-        <p className="text-xs text-gray-400 mt-1">{comment.length}/500</p>
+        <p className="text-xs text-gray-400 mt-1">{comment.length}/200</p>
       </div>
 
       {/* Images */}
