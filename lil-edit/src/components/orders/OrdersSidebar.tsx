@@ -190,7 +190,7 @@ export function ReviewHistorySection({
       </div>
 
       {/* Product Cards */}
-      <div className="p-4 sm:p-6 bg-white space-y-6">
+      <div className="p-4 sm:p-6 bg-gray-50 space-y-6">
         {/* Pending — not reviewed yet */}
         {pendingItems.length > 0 && (
         <div className="space-y-3">
@@ -201,7 +201,7 @@ export function ReviewHistorySection({
           return (
           <div
             key={`${item.slug}-${item.sku}`}
-            className="rounded-xl border border-gray-200 bg-gray-50 shadow-sm overflow-hidden"
+            className="rounded-xl border border-gray-400 bg-white shadow-[0_2px_6px_rgba(0,0,0,0.18)] overflow-hidden"
           >
             <div className="w-full flex items-stretch gap-4 p-4 text-left">
               {/* Product Image */}
@@ -274,7 +274,7 @@ export function ReviewHistorySection({
           return (
           <div
             key={review.id}
-            className="rounded-xl border border-gray-200 bg-gray-50 shadow-sm overflow-hidden"
+            className="rounded-xl border border-gray-400 bg-white shadow-[0_2px_6px_rgba(0,0,0,0.18)] overflow-hidden"
           >
             <div className="w-full flex items-stretch gap-4 p-4 text-left">
             {/* Product Image */}

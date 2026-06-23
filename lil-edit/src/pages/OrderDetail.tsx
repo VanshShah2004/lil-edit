@@ -361,7 +361,7 @@ const OrderDetailPage = () => {
                   {/* Reorder — placeholder for now; placement pipeline ships with checkout */}
                   <button
                     type="button"
-                    className="shrink-0 inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-brand-teal rounded-full px-4 py-2 hover:bg-brand-teal/90 transition-colors shadow-sm"
+                    className="shrink-0 inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-brand-teal rounded-lg px-4 py-3 hover:bg-brand-teal/90 transition-colors shadow-sm"
                   >
                     <RotateCcw className="w-4 h-4" /> Reorder
                   </button>

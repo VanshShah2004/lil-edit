@@ -466,11 +466,11 @@ const OrdersPage = () => {
                             <button
                               type="button"
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                              className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-white bg-brand-teal rounded-full px-3 py-1.5 hover:bg-brand-teal/90 transition-colors shadow-sm shrink-0"
+                              className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-white bg-brand-teal rounded-lg px-3 py-2.5 hover:bg-brand-teal/90 transition-colors shadow-sm shrink-0"
                             >
                               <RotateCcw className="w-3.5 h-3.5" /> Reorder
                             </button>
-                            <span className="hidden sm:flex items-center gap-1 text-sm font-semibold text-brand-teal group-hover:gap-2 transition-all shrink-0">
+                            <span className="hidden sm:flex items-center gap-1 text-sm font-semibold text-brand-teal border-[1.5px] border-brand-teal rounded-lg px-3 py-2.5 group-hover:gap-2 transition-all shrink-0">
                               View details <ArrowRight className="w-4 h-4" />
                             </span>
                           </div>
