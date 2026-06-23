@@ -10,7 +10,6 @@ export interface Review {
   userId: string | null;
   userName: string;
   rating: number;
-  title: string;
   comment: string;
   verified: boolean;
   images: string[];
@@ -28,14 +27,12 @@ export interface CreateReviewInput {
   productSlug: string;
   sku: string;
   rating: number;
-  title: string;
   comment: string;
   images?: string[];
 }
 
 export interface UpdateReviewInput {
   rating?: number;
-  title?: string;
   comment?: string;
   images?: string[];
 }
@@ -71,7 +68,6 @@ export async function fetchReviewsForProduct(slug: string): Promise<ReviewsData>
     userId: null,
     userName: r.user || "Anonymous",
     rating: r.rating,
-    title: r.title,
     comment: r.comment,
     verified: r.verified,
     images: r.images || [],
@@ -100,7 +96,6 @@ export async function createReview(input: CreateReviewInput): Promise<Review | n
       user_id: user.id,
       user_name: user.user_metadata?.name || user.email || "Anonymous",
       rating: input.rating,
-      title: input.title,
       comment: input.comment,
       images: input.images || [],
     })
@@ -130,7 +125,6 @@ export async function updateReview(
     .from("product_reviews")
     .update({
       ...(input.rating !== undefined && { rating: input.rating }),
-      ...(input.title !== undefined && { title: input.title }),
       ...(input.comment !== undefined && { comment: input.comment }),
       ...(input.images !== undefined && { images: input.images }),
     })
@@ -226,7 +220,6 @@ function mapReview(row: any): Review {
     // Handle both direct Supabase (user_name) and backend API (user) responses
     userName: row.user_name || row.user || "Anonymous",
     rating: row.rating,
-    title: row.title,
     comment: row.comment,
     verified: row.verified,
     images: row.images || [],

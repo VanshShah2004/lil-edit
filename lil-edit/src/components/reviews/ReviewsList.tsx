@@ -45,8 +45,7 @@ function ReviewCard({ review }: { review: any }) {
               </span>
             )}
           </div>
-          <p className="font-semibold text-gray-900 text-sm">{review.title}</p>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-gray-500">
             by {review.userName} • {formatDate(review.createdAt)}
           </p>
         </div>

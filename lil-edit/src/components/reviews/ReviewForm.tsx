@@ -28,7 +28,6 @@ export default function ReviewForm({
   const { user } = useAuth();
   const [rating, setRating] = useState(existingReview?.rating ?? 0);
   const [hoverRating, setHoverRating] = useState(0);
-  const [title, setTitle] = useState(existingReview?.title ?? "");
   const [comment, setComment] = useState(existingReview?.comment ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,10 +80,6 @@ export default function ReviewForm({
       setError("Please select a rating");
       return;
     }
-    if (!title.trim()) {
-      setError("Please add a title");
-      return;
-    }
 
     setLoading(true);
     setUploadingImages(true);
@@ -113,7 +108,6 @@ export default function ReviewForm({
       if (isEditing) {
         review = await updateReview(productSlug, sku, {
           rating,
-          title,
           comment,
           images: imageUrls,
         } as UpdateReviewInput);
@@ -122,7 +116,6 @@ export default function ReviewForm({
           productSlug,
           sku,
           rating,
-          title,
           comment,
           images: imageUrls,
         } as CreateReviewInput);
@@ -194,21 +187,6 @@ export default function ReviewForm({
             {rating} star{rating !== 1 ? "s" : ""}
           </span>
         )}
-      </div>
-
-      {/* Title */}
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
-          Title
-        </label>
-        <input
-          type="text"
-          maxLength={100}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Sum up your experience"
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/50"
-        />
       </div>
 
       {/* Comment */}

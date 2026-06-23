@@ -21,7 +21,6 @@ export interface Review {
   sku?: string;
   rating: number;
   date: string;
-  title: string;
   comment: string;
   verified: boolean;
   images?: string[];
