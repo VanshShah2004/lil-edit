@@ -25,9 +25,9 @@ const About = () => {
             <div className="flex flex-col lg:flex-row items-center">
               {/* Left Side: Logo/Image */}
               <div className="w-full lg:w-[45%] p-8 lg:p-6 flex justify-center items-center">
-                <div className="bg-[#F8F5EE] aspect-square w-full max-w-[400px] rounded-3xl shadow-xl shadow-purple-900/5 flex flex-col items-center justify-center p-8 relative group transition-transform duration-500 hover:scale-[1.02]">
+                <div className="bg-[#F8F5EE] aspect-square w-full max-w-[400px] rounded-3xl shadow-xl shadow-purple-900/5 flex flex-col items-center justify-center overflow-hidden p-0 relative group transition-transform duration-500 hover:scale-[1.02]">
                   {/* Decorative Icon */}
-                  <img src={logo} alt="The Lil Edit" className="w-full h-auto max-w-[280px] drop-shadow-md" />
+                  <img src={logo} alt="The Lil Edit" className="w-full h-full object-cover drop-shadow-md" />
                 </div>
               </div>
 
