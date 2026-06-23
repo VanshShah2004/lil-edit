@@ -33,6 +33,175 @@ export type SidebarProduct = {
   productId?: string | null;
 };
 
+// Width stays w-24. When `tall`, height stretches to match the info column's
+// own (now fixed-gap, not justify-between) height, landing exactly at the
+// bottom of the review-photo thumbnail strip; otherwise stays h-24.
+function ReviewThumb({ image, title, tall = false }: { image?: string; title: string; tall?: boolean }) {
+  return (
+    <div className={`w-24 ${tall ? "self-stretch" : "h-24"} rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100`}>
+      {image ? (
+        <img
+          src={image}
+          alt={title}
+          className="w-full h-full object-cover"
+          onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-gray-300">
+          <MessageSquare size={20} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PendingReviewRow({
+  item,
+  isOpen,
+  onToggle,
+  onCancel,
+  onSuccess,
+}: {
+  item: SidebarProduct;
+  isOpen: boolean;
+  onToggle: () => void;
+  onCancel: () => void;
+  onSuccess: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-gray-400 bg-white shadow-[0_2px_6px_rgba(0,0,0,0.18)] overflow-hidden">
+      <div className="w-full flex items-stretch gap-4 p-4 text-left">
+        <ReviewThumb image={item.image} title={item.title} />
+        <div className="flex-1 min-w-0 flex flex-col justify-between">
+          <p className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">{item.title}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-gray-500">Not yet reviewed</p>
+            <button
+              type="button"
+              onClick={onToggle}
+              className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-brand-teal hover:bg-brand-teal/90 transition-colors"
+            >
+              {isOpen ? "Close" : "Write Review"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="p-4 pt-0">
+          <ReviewForm
+            compact
+            productSlug={item.slug}
+            sku={item.sku}
+            onCancel={onCancel}
+            onSuccess={onSuccess}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReviewedRow({
+  review,
+  displayTitle,
+  displayImage,
+  isOpen,
+  onToggle,
+  onCancel,
+  onSuccess,
+}: {
+  review: Review;
+  displayTitle: string;
+  displayImage?: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  onCancel: () => void;
+  onSuccess: () => void;
+}) {
+  const tall = displayTitle.length > 30 && Boolean(review.images && review.images.length > 0);
+  return (
+    <div className="rounded-xl border border-gray-400 bg-white shadow-[0_2px_6px_rgba(0,0,0,0.18)] overflow-hidden">
+      <div className="w-full flex items-stretch gap-4 p-4 text-left">
+        <ReviewThumb image={displayImage} title={displayTitle} tall={tall} />
+
+        <div className={`flex-1 min-w-0 flex flex-col ${tall ? "gap-2" : "justify-between"}`}>
+          <div>
+            <p className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">{displayTitle}</p>
+
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-emerald-600" />
+              <div className="flex gap-0.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    className={`w-3.5 h-3.5 ${
+                      star <= review.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"
+                    }`}
+                  />
+                ))}
+              </div>
+              {review.verified && (
+                <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                  Verified
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className={`flex items-end justify-between gap-2 ${tall ? "" : "mt-2"}`}>
+            {review.images && review.images.length > 0 ? (
+              <div className="flex -space-x-2">
+                {review.images.map((url, idx) => (
+                  <div
+                    key={idx}
+                    className={`w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0 ring-2 ring-white shadow-sm ${idx > 0 ? "hidden sm:block" : ""}`}
+                  >
+                    <img
+                      src={url}
+                      alt={`Review photo ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                    />
+                  </div>
+                ))}
+                {review.images.length > 1 && (
+                  <div className="sm:hidden w-10 h-10 rounded-lg bg-gray-200 ring-2 ring-white shadow-sm shrink-0 flex items-center justify-center text-xs font-semibold text-gray-600">
+                    +{review.images.length - 1}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div />
+            )}
+
+            <button
+              type="button"
+              onClick={onToggle}
+              className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium text-brand-teal border border-brand-teal/30 bg-brand-teal/5 hover:bg-brand-teal/10 transition-colors"
+            >
+              {isOpen ? "Close" : "Edit Review"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="p-4 pt-0">
+          <ReviewForm
+            compact
+            productSlug={review.productSlug}
+            sku={review.sku}
+            existingReview={review}
+            onCancel={onCancel}
+            onSuccess={onSuccess}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SidebarSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-4 md:flex md:gap-5 animate-pulse">
@@ -199,59 +368,17 @@ export function ReviewHistorySection({
           const variantKey = `${item.slug}|${item.sku}`;
           const isOpen = openKey === variantKey;
           return (
-          <div
-            key={`${item.slug}-${item.sku}`}
-            className="rounded-xl border border-gray-400 bg-white shadow-[0_2px_6px_rgba(0,0,0,0.18)] overflow-hidden"
-          >
-            <div className="w-full flex items-stretch gap-4 p-4 text-left">
-              {/* Product Image */}
-              <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
-                {item.image ? (
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-300">
-                    <MessageSquare size={20} />
-                  </div>
-                )}
-              </div>
-
-              {/* Product Info — top content stays top, action row pinned to the image's baseline */}
-              <div className="flex-1 min-w-0 flex flex-col justify-between">
-                <p className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">{item.title}</p>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-gray-500">Not yet reviewed</p>
-                  {/* Action Button — toggles the inline review form */}
-                  <button
-                    type="button"
-                    onClick={() => setOpenKey(isOpen ? null : variantKey)}
-                    className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-brand-teal hover:bg-brand-teal/90 transition-colors"
-                  >
-                    {isOpen ? "Close" : "Write Review"}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {isOpen && (
-              <div className="p-4 pt-0">
-                <ReviewForm
-                  compact
-                  productSlug={item.slug}
-                  sku={item.sku}
-                  onCancel={() => setOpenKey(null)}
-                  onSuccess={() => {
-                    setOpenKey(null);
-                    onReviewSaved?.();
-                  }}
-                />
-              </div>
-            )}
-          </div>
+            <PendingReviewRow
+              key={`${item.slug}-${item.sku}`}
+              item={item}
+              isOpen={isOpen}
+              onToggle={() => setOpenKey(isOpen ? null : variantKey)}
+              onCancel={() => setOpenKey(null)}
+              onSuccess={() => {
+                setOpenKey(null);
+                onReviewSaved?.();
+              }}
+            />
           );
         })}
         </div>
@@ -272,108 +399,19 @@ export function ReviewHistorySection({
           const displayImage = info?.image;
           const isOpen = openKey === variantKey;
           return (
-          <div
-            key={review.id}
-            className="rounded-xl border border-gray-400 bg-white shadow-[0_2px_6px_rgba(0,0,0,0.18)] overflow-hidden"
-          >
-            <div className="w-full flex items-stretch gap-4 p-4 text-left">
-            {/* Product Image */}
-            <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
-              {displayImage ? (
-                <img
-                  src={displayImage}
-                  alt={displayTitle}
-                  className="w-full h-full object-cover"
-                  onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-300">
-                  <MessageSquare size={20} />
-                </div>
-              )}
-            </div>
-
-            {/* Product Info — top content stays top, action row pinned to the image's baseline */}
-            <div className="flex-1 min-w-0 flex flex-col justify-between">
-              <div>
-                <p className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">{displayTitle}</p>
-
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-600" />
-                  <div className="flex gap-0.5">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        className={`w-3.5 h-3.5 ${
-                          star <= review.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  {review.verified && (
-                    <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                      Verified
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Review-attached photos + edit action — same line, bottom-aligned with the image */}
-              <div className="flex items-end justify-between gap-2 mt-2">
-                {review.images && review.images.length > 0 ? (
-                  <div className="flex -space-x-2">
-                    {review.images.map((url, idx) => (
-                      <div
-                        key={idx}
-                        className={`w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0 ring-2 ring-white shadow-sm ${idx > 0 ? "hidden sm:block" : ""}`}
-                      >
-                        <img
-                          src={url}
-                          alt={`Review photo ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                          onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-                        />
-                      </div>
-                    ))}
-                    {/* Mobile-only — collapses remaining photos into a count badge */}
-                    {review.images.length > 1 && (
-                      <div className="sm:hidden w-10 h-10 rounded-lg bg-gray-200 ring-2 ring-white shadow-sm shrink-0 flex items-center justify-center text-xs font-semibold text-gray-600">
-                        +{review.images.length - 1}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div />
-                )}
-
-                {/* Action Button — toggles the inline review form */}
-                <button
-                  type="button"
-                  onClick={() => setOpenKey(isOpen ? null : variantKey)}
-                  className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium text-brand-teal border border-brand-teal/30 bg-brand-teal/5 hover:bg-brand-teal/10 transition-colors"
-                >
-                  {isOpen ? "Close" : "Edit Review"}
-                </button>
-              </div>
-            </div>
-            </div>
-
-            {isOpen && (
-              <div className="p-4 pt-0">
-                <ReviewForm
-                  compact
-                  productSlug={review.productSlug}
-                  sku={review.sku}
-                  existingReview={review}
-                  onCancel={() => setOpenKey(null)}
-                  onSuccess={() => {
-                    setOpenKey(null);
-                    onReviewSaved?.();
-                  }}
-                />
-              </div>
-            )}
-          </div>
+            <ReviewedRow
+              key={review.id}
+              review={review}
+              displayTitle={displayTitle}
+              displayImage={displayImage}
+              isOpen={isOpen}
+              onToggle={() => setOpenKey(isOpen ? null : variantKey)}
+              onCancel={() => setOpenKey(null)}
+              onSuccess={() => {
+                setOpenKey(null);
+                onReviewSaved?.();
+              }}
+            />
           );
         })}
         </div>
