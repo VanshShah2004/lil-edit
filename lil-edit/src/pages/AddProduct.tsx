@@ -622,7 +622,7 @@ const AddProduct = () => {
       {user ? <UserNavbar /> : <Navbar />}
       <div className="relative pt-[160px] md:pt-[128px] pb-24">
         <AdminSubNav />
-        <div className="mx-auto max-w-none px-4 sm:px-8 lg:px-12 xl:px-20">
+        <div className="mx-auto max-w-screen-2xl px-6 lg:px-12">
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
