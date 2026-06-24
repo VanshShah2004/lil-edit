@@ -30,7 +30,7 @@ const AdminSubNav = () => {
   }, []);
 
   return (
-    <div ref={containerRef} className="absolute top-[160px] md:top-[128px] right-[10px] md:right-[55px] z-50">
+    <div ref={containerRef} className="absolute top-[160px] md:top-[128px] right-[10px] md:right-[55px] z-40">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}

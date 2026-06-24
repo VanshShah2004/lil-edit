@@ -170,8 +170,8 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(!isProductCacheFresh);  // skip spinner if product cache hit
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [recommendationsError, setRecommendationsError] = useState<string | null>(null);
-  const [reviewsLoading, setReviewsLoading] = useState(false);
-  const [reviewsError, setReviewsError] = useState<string | null>(null);
+  const [, setReviewsLoading] = useState(false);
+  const [, setReviewsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const lazyLoadSlugRef = useRef<string | undefined>(undefined);
   // SKUs of the currently-loaded product (base + every colour). Lets a colour switch —
@@ -531,7 +531,7 @@ export default function ProductDetail() {
         )}
       </div>
 
-      <main className="page-container w-full pb-[calc(env(safe-area-inset-bottom)+2rem)] sm:pb-[calc(env(safe-area-inset-bottom)+2rem)] md:pb-6">
+      <main className={`page-container w-full ${showSkeleton ? "pb-[calc(env(safe-area-inset-bottom)+2rem)] sm:pb-[calc(env(safe-area-inset-bottom)+2rem)] md:pb-6" : ""}`}>
         {showSkeleton ? (
           <ProductDetailSkeleton />
         ) : (
@@ -540,29 +540,12 @@ export default function ProductDetail() {
 
         {!showSkeleton && (
         <>
-        {/* Reviews & Ratings — lazy-loaded; hidden entirely when the product has zero reviews */}
-        {!(reviewsData && reviewsData.totalReviews === 0) && (
+        {/* Reviews & Ratings — lazy-loaded; only takes up space once we know reviews exist,
+            so products with zero reviews never reserve room for a loading skeleton */}
+        {reviewsData && reviewsData.totalReviews > 0 && (
         <section className="mt-16 sm:mt-24">
           {/* Full-bleed divider — breaks out of page-container to span the viewport */}
           <div aria-hidden className="w-screen relative left-1/2 -translate-x-1/2 border-t border-gray-400 mb-12" />
-          {reviewsLoading && !reviewsData && (
-            <div className="flex flex-col md:flex-row gap-12 animate-pulse" aria-hidden>
-              <div className="w-full md:w-1/3 h-80 rounded-3xl bg-gray-100" />
-              <div className="w-full md:w-2/3 space-y-6">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-40 rounded-[2rem] bg-gray-100" />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {!reviewsLoading && !reviewsData && reviewsError && (
-            <p className="text-center text-gray-400 text-sm py-8">
-              Customer reviews are temporarily unavailable.
-            </p>
-          )}
-
-          {reviewsData && reviewsData.totalReviews > 0 && (
           <div className="flex flex-col md:flex-row gap-12">
             {/* Left Column: Summary */}
             <div className="w-full md:w-1/3">
@@ -776,7 +759,6 @@ export default function ProductDetail() {
               )}
             </div>
           </div>
-          )}
         </section>
         )}
 
@@ -830,9 +812,9 @@ export default function ProductDetail() {
         )}
 
         {/* YOU MAY ALSO LIKE SECTION */}
-        <section className="page-container w-full mt-14 pb-0 pt-6">
-          {/* Full-bleed divider — spans the viewport (matches the divider above the reviews) */}
-          <div aria-hidden className="w-screen relative left-1/2 -translate-x-1/2 border-t border-gray-400 -mt-6 mb-6" />
+        <section className="mt-14">
+          <div className="w-screen relative left-1/2 -translate-x-1/2 pt-6 [padding-bottom:calc(env(safe-area-inset-bottom)+2.5rem)] md:[padding-bottom:calc(env(safe-area-inset-bottom)+1.5rem)] bg-[#E8DDF7]">
+          <div className="page-container">
           <div className="flex items-end justify-between mb-6 sm:mb-8">
             <div>
               <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">
@@ -845,16 +827,16 @@ export default function ProductDetail() {
             </Link>
           </div>
 
-          <div className="flex sm:grid overflow-x-auto sm:overflow-visible flex-nowrap sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 no-scrollbar snap-x snap-mandatory px-1 sm:px-0">
+          <div className="flex sm:grid overflow-x-auto sm:overflow-visible flex-nowrap sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-6 no-scrollbar snap-x snap-mandatory px-1 sm:px-0">
             {/* Loading Skeleton */}
             {recommendationsLoading && recommendedProducts.length === 0 && (
               <>
                 {[...Array(5)].map((_, idx) => (
                   <div
                     key={`skeleton-${idx}`}
-                    className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border shrink-0 snap-start w-[240px] sm:w-auto animate-pulse"
+                    className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border shrink-0 snap-start w-[42%] sm:w-auto animate-pulse"
                   >
-                    <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5 bg-gray-200" />
+                    <div className="relative rounded-xl overflow-hidden aspect-[4/5] md:aspect-[5/6] mb-2 md:mb-1.5 bg-gray-200" />
                     <div className="px-1 pb-0.5 space-y-2">
                       <div className="h-4 bg-gray-200 rounded w-3/4" />
                       <div className="h-3 bg-gray-200 rounded w-1/2" />
@@ -870,9 +852,9 @@ export default function ProductDetail() {
               <div
                 key={item.slug}
                 onMouseEnter={() => prefetchProductDetail(item.slug, item.sku, item.categorySlug)}
-                className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all shrink-0 snap-start w-[240px] sm:w-auto"
+                className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all shrink-0 snap-start w-[42%] sm:w-auto"
               >
-                <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5">
+                <div className="relative rounded-xl overflow-hidden aspect-[4/5] md:aspect-[5/6] mb-2 md:mb-1.5">
                   {item.image && (
                   <img
                     src={getOptimizedUrlForVariant(item.image, "thumbnail")}
@@ -950,6 +932,8 @@ export default function ProductDetail() {
                 <p className="text-gray-400 text-sm">Unable to load recommendations, but your product is ready!</p>
               </div>
             )}
+          </div>
+          </div>
           </div>
         </section>
         </>
