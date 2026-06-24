@@ -837,16 +837,18 @@ export default function ProductDetail() {
             </Link>
           </div>
 
-          <div className="flex sm:grid overflow-x-auto sm:overflow-visible flex-nowrap sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-6 no-scrollbar snap-x snap-mandatory px-1 sm:px-0">
+          {/* Mobile: 2×2 grid capped at 4 cards (5th+ hidden via max-sm:hidden below).
+              sm and up keeps the wider grid and shows every recommendation. */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
             {/* Loading Skeleton */}
             {recommendationsLoading && recommendedProducts.length === 0 && (
               <>
                 {[...Array(5)].map((_, idx) => (
                   <div
                     key={`skeleton-${idx}`}
-                    className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border shrink-0 snap-start w-[42%] sm:w-auto animate-pulse"
+                    className={`group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border animate-pulse ${idx >= 4 ? "max-sm:hidden" : ""}`}
                   >
-                    <div className="relative rounded-xl overflow-hidden aspect-[4/5] md:aspect-[5/6] mb-2 md:mb-1.5 bg-gray-200" />
+                    <div className="relative rounded-xl overflow-hidden aspect-[3/4] sm:aspect-[4/5] md:aspect-[5/6] mb-2 md:mb-1.5 bg-gray-200" />
                     <div className="px-1 pb-0.5 space-y-2">
                       <div className="h-4 bg-gray-200 rounded w-3/4" />
                       <div className="h-3 bg-gray-200 rounded w-1/2" />
@@ -858,13 +860,13 @@ export default function ProductDetail() {
             )}
 
             {/* Loaded Recommendations */}
-            {recommendedProducts.map((item) => (
+            {recommendedProducts.map((item, idx) => (
               <div
                 key={item.slug}
                 onMouseEnter={() => prefetchProductDetail(item.slug, item.sku, item.categorySlug)}
-                className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all shrink-0 snap-start w-[42%] sm:w-auto"
+                className={`group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all ${idx >= 4 ? "max-sm:hidden" : ""}`}
               >
-                <div className="relative rounded-xl overflow-hidden aspect-[4/5] md:aspect-[5/6] mb-2 md:mb-1.5">
+                <div className="relative rounded-xl overflow-hidden aspect-[3/4] sm:aspect-[4/5] md:aspect-[5/6] mb-2 md:mb-1.5">
                   {item.image && (
                   <img
                     src={getOptimizedUrlForVariant(item.image, "thumbnail")}
