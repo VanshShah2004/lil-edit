@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -473,6 +473,8 @@ function prefetchList(status: "ALL" | "PUBLISHED" | "DRAFT", showAll: boolean): 
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+const FILTER_SEGMENTS = ["ALL", "PUBLISHED", "DRAFT"] as const;
+
 const ManageProducts = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -501,6 +503,16 @@ const ManageProducts = () => {
     PUBLISHED: false,
     DRAFT: false
   });
+
+  // Width of the filter segmented-control track — drives the draggable pill geometry.
+  const filterTrackRef = useRef<HTMLDivElement>(null);
+  const [filterTrackW, setFilterTrackW] = useState(0);
+  useEffect(() => {
+    const measure = () => setFilterTrackW(filterTrackRef.current?.offsetWidth ?? 0);
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
 
   const applyDetail = (sku: string, detail: { published?: ProductItem; draft?: ProductItem }) => {
     setProducts(prev => prev.map(p =>
@@ -1066,6 +1078,11 @@ const ManageProducts = () => {
     [products, searchTerm]
   );
 
+  // Draggable filter pill geometry (track has p-1 = 4px inset on each side).
+  const FILTER_PAD = 4;
+  const filterSegW = filterTrackW > 0 ? (filterTrackW - FILTER_PAD * 2) / 3 : 0;
+  const filterActiveIndex = FILTER_SEGMENTS.indexOf(filterStatus);
+
   if (authLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
   return (
@@ -1109,20 +1126,49 @@ const ManageProducts = () => {
                 <Plus size={16} />
               </Link>
             </div>
-            <div className="flex bg-gray-50 p-1 rounded-md border border-gray-100">
-              {(["ALL", "PUBLISHED", "DRAFT"] as const).map((status) => (
+            <div ref={filterTrackRef} className="relative flex bg-gray-50 p-1 rounded-md border border-gray-100 select-none">
+              {/* Segments — click to select; labels sit above the pill (z-30) and don't block its drag (pointer-events-none) */}
+              {FILTER_SEGMENTS.map((status) => (
                 <button
                   key={status}
+                  type="button"
                   onClick={() => setFilterStatus(status)}
                   onMouseEnter={() => prefetchList(status, showAllMap[status])}
-                  className={`flex-1 py-2 sm:py-1.5 rounded text-[11px] sm:text-[9px] font-bold uppercase tracking-wider transition-all ${filterStatus === status ? "bg-white text-gray-900 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-600"}`}
+                  aria-pressed={filterStatus === status}
+                  className="group flex-1 py-2 sm:py-1.5 text-center"
                 >
-                  {status}
+                  <span
+                    className={`relative z-30 pointer-events-none text-[11px] sm:text-[9px] font-bold uppercase tracking-wider transition-colors ${filterStatus === status ? "text-gray-900" : "text-gray-400 group-hover:text-gray-600"}`}
+                  >
+                    {status}
+                  </span>
                 </button>
               ))}
+
+              {/* Draggable sliding pill — sits over the active segment; release snaps to nearest */}
+              {filterSegW > 0 && (
+                <motion.div
+                  drag="x"
+                  dragConstraints={{ left: 0, right: filterSegW * 2 }}
+                  dragElastic={0.04}
+                  dragMomentum={false}
+                  initial={false}
+                  onDragEnd={(_, info) => {
+                    const draggedX = filterActiveIndex * filterSegW + info.offset.x;
+                    const idx = Math.max(0, Math.min(2, Math.round(draggedX / filterSegW)));
+                    const next = FILTER_SEGMENTS[idx];
+                    if (next !== filterStatus) setFilterStatus(next);
+                    prefetchList(next, showAllMap[next]);
+                  }}
+                  animate={{ x: filterActiveIndex * filterSegW }}
+                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                  style={{ width: filterSegW }}
+                  className="absolute top-1 bottom-1 left-1 z-20 rounded bg-white shadow-sm border border-gray-100 cursor-grab active:cursor-grabbing"
+                />
+              )}
             </div>
             {/* Elegant progressive load selector row */}
-            <div className="flex justify-between items-center mt-3 text-[11px] sm:text-[9px] font-bold uppercase tracking-[0.1em] gap-4">
+            <div className="flex justify-between items-center mt-3 text-[13px] sm:text-[11px] font-bold uppercase tracking-[0.1em] gap-4">
               <button
                 onClick={() => setShowAllMap(prev => ({ ...prev, [filterStatus]: false }))}
                 onMouseEnter={() => prefetchList(filterStatus, false)}
