@@ -34,7 +34,7 @@ const AdminSubNav = () => {
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-1 sm:gap-2.5 w-44 sm:w-60 shrink-0 px-2 py-1.5 sm:px-4 sm:py-2.5 rounded-md text-[11px] sm:text-[15px] font-bold tracking-wide border-2 border-gray-300 bg-gray-50 text-gray-900 shadow-md hover:bg-gray-100 hover:shadow-lg transition-all"
+        className="flex items-center gap-1 sm:gap-2.5 w-40 sm:w-52 shrink-0 px-2 py-1.5 sm:px-4 sm:py-2.5 rounded-md font-display text-[11px] sm:text-[15px] font-bold tracking-wide border-2 border-gray-300 bg-gray-50 text-gray-900 shadow-md hover:bg-gray-100 hover:shadow-lg transition-all"
       >
         <span className="flex-1 flex items-center justify-center gap-1 sm:gap-2.5 min-w-0">
           <ActiveIcon className="w-3 h-3 sm:w-4.5 sm:h-4.5 shrink-0" style={{ color: ACCENT }} />
@@ -44,7 +44,7 @@ const AdminSubNav = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1.5 w-44 sm:w-60 bg-white rounded-md shadow-lg border border-gray-400 overflow-hidden z-50 animate-in fade-in slide-in-from-top-1">
+        <div className="absolute right-0 mt-1.5 w-40 sm:w-52 bg-white rounded-md shadow-lg border border-gray-400 overflow-hidden z-50 animate-in fade-in slide-in-from-top-1">
           {TABS.map((tab, index) => {
             const Icon = tab.icon;
             const isActive = tab.to === activeTab.to;

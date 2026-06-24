@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import {
+  ArrowUpRight,
   BarChart3,
   ClipboardList,
   LayoutGrid,
@@ -78,11 +79,11 @@ const AdminSettings = () => {
         </div>
       </div>
 
-      <main className="flex-1 px-6 lg:px-12 py-10">
+      <main className="flex-1 px-6 lg:px-12 py-10 bg-gray-50">
         <div className="max-w-screen-2xl mx-auto space-y-10">
           {groups.map((group) => (
             <section key={group.title}>
-              <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400 mb-3">
+              <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-gray-700 mb-3">
                 {group.title}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -93,17 +94,19 @@ const AdminSettings = () => {
                       <div
                         key={tile.label}
                         aria-disabled="true"
-                        className="flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50 cursor-not-allowed"
+                        className="flex items-start gap-3.5 p-5 rounded-2xl border border-dashed border-gray-300 bg-gray-50/80 cursor-not-allowed"
                       >
-                        <div className="w-9 h-9 rounded-lg bg-gray-200 text-gray-400 flex items-center justify-center shrink-0">
-                          <Icon className="w-4.5 h-4.5" />
+                        <div className="w-10 h-10 rounded-xl bg-gray-200/80 text-gray-400 flex items-center justify-center shrink-0">
+                          <Icon className="w-5 h-5" />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-gray-400">{tile.label}</p>
-                            <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Soon</span>
+                            <p className="text-sm font-semibold text-gray-500">{tile.label}</p>
+                            <span className="px-1.5 py-0.5 rounded-full bg-gray-200 text-[9px] font-bold uppercase tracking-wide text-gray-500">
+                              Soon
+                            </span>
                           </div>
-                          <p className="text-xs text-gray-400 mt-0.5">{tile.description}</p>
+                          <p className="text-xs text-gray-400 mt-1">{tile.description}</p>
                         </div>
                       </div>
                     );
@@ -112,18 +115,19 @@ const AdminSettings = () => {
                     <Link
                       key={tile.label}
                       to={tile.to}
-                      className="flex items-start gap-3 p-4 rounded-xl border border-gray-100 hover:border-gray-300 hover:shadow-sm transition-all bg-white"
+                      className="group relative flex items-start gap-3.5 p-5 rounded-2xl border border-gray-200 bg-white shadow-[0_1px_3px_rgba(16,24,40,0.06),0_1px_2px_rgba(16,24,40,0.04)] ring-1 ring-transparent hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-8px_rgba(177,156,217,0.45)] hover:border-transparent hover:ring-[#B19CD9] transition-all duration-200"
                     >
                       <div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-white"
+                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white shadow-sm transition-transform duration-200 group-hover:scale-105"
                         style={{ backgroundColor: ACCENT }}
                       >
-                        <Icon className="w-4.5 h-4.5" />
+                        <Icon className="w-5 h-5" />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-gray-900">{tile.label}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{tile.description}</p>
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">{tile.description}</p>
                       </div>
+                      <ArrowUpRight className="w-4 h-4 text-gray-300 shrink-0 transition-all duration-200 group-hover:text-[#B19CD9] group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                     </Link>
                   );
                 })}
