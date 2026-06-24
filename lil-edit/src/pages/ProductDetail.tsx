@@ -554,8 +554,9 @@ export default function ProductDetail() {
             so products with zero reviews never reserve room for a loading skeleton */}
         {reviewsData && reviewsData.totalReviews > 0 && (
         <section className="mt-16 sm:mt-24">
-          {/* Full-bleed divider — breaks out of page-container to span the viewport */}
-          <div aria-hidden className="w-screen relative left-1/2 -translate-x-1/2 border-t border-gray-400 mb-12" />
+          {/* Full-bleed divider — breaks out of page-container; a solid 1px hairline
+              spanning the full viewport width */}
+          <div aria-hidden className="w-screen relative left-1/2 -translate-x-1/2 mb-12 h-px bg-slate-400" />
           <div className="flex flex-col md:flex-row gap-12">
             {/* Left Column: Summary */}
             <div className="w-full md:w-1/3">
