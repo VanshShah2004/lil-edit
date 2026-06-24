@@ -30,7 +30,7 @@ const AdminSubNav = () => {
   }, []);
 
   return (
-    <div ref={containerRef} className="relative inline-block shrink-0">
+    <div ref={containerRef} className="relative inline-block shrink-0 translate-x-[15px] z-40">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
@@ -44,7 +44,7 @@ const AdminSubNav = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1.5 w-44 sm:w-60 bg-white rounded-md shadow-lg border border-gray-100 overflow-hidden z-20 animate-in fade-in slide-in-from-top-1">
+        <div className="absolute right-0 mt-1.5 w-44 sm:w-60 bg-white rounded-md shadow-lg border border-gray-400 overflow-hidden z-50 animate-in fade-in slide-in-from-top-1">
           {TABS.map((tab, index) => {
             const Icon = tab.icon;
             const isActive = tab.to === activeTab.to;
