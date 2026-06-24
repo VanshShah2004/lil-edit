@@ -1115,7 +1115,7 @@ const ManageProducts = () => {
                   placeholder="Search records..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 text-xs border border-gray-200 rounded-md bg-gray-50/50 outline-none focus:border-gray-900 transition-all font-medium"
+                  className="w-full pl-9 pr-4 py-2 text-xs border border-gray-400 rounded-md bg-gray-50/50 outline-none focus:border-gray-900 transition-all font-medium"
                 />
               </div>
               <Link
@@ -1318,6 +1318,7 @@ const ManageProducts = () => {
         </section>
       </main>
 
+      <div className="h-32 md:h-44 bg-white" />
       <Footer />
     </div>
   );
