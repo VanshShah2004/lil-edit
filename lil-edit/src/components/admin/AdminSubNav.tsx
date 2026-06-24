@@ -54,18 +54,18 @@ const AdminSubNav = () => {
                 <Link
                   to={tab.to}
                   onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-1.5 sm:gap-3 px-2.5 py-1.5 sm:px-4 sm:py-3 transition-colors hover:bg-gray-50"
+                  className="flex items-center gap-1.5 sm:gap-3 px-2.5 py-3.5 sm:px-4 sm:py-5 transition-colors hover:bg-gray-50"
                   style={isActive ? { backgroundColor: "#0E857B" } : undefined}
                 >
                   <Icon className="w-3 h-3 sm:w-5 sm:h-5 shrink-0" style={{ color: isActive ? "#FFFFFF" : "#374151" }} />
-                  <span className="flex flex-col gap-0.5 min-w-0">
+                  <span className="flex flex-col gap-1 min-w-0">
                     <span
-                      className="text-[10px] sm:text-[15px] font-semibold tracking-wide leading-none truncate"
+                      className="text-[10px] sm:text-[15px] font-semibold tracking-wide leading-tight truncate"
                       style={{ color: isActive ? "#FFFFFF" : "#374151" }}
                     >
                       {tab.label}
                     </span>
-                    <span className="text-[10px] sm:text-sm font-medium normal-case tracking-normal leading-none truncate" style={{ color: isActive ? "rgba(255,255,255,0.8)" : "#9CA3AF" }}>
+                    <span className="text-[10px] sm:text-sm font-medium normal-case tracking-normal leading-tight truncate" style={{ color: isActive ? "rgba(255,255,255,0.8)" : "#9CA3AF" }}>
                       {tab.section}
                     </span>
                   </span>
