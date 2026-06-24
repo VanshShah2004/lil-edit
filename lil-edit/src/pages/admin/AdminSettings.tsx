@@ -65,15 +65,15 @@ const AdminSettings = () => {
     <div className="min-h-screen bg-white text-[#1a1a1a] flex flex-col font-sans">
       <UserNavbar />
 
-      <div className="pt-[160px] md:pt-[128px] px-6 lg:px-12 bg-white border-b border-gray-100 pb-8">
-        <div className="max-w-screen-2xl mx-auto space-y-1">
-          <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>
-            Admin
-          </p>
-          <div className="flex items-center justify-between gap-4">
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Admin Settings</h1>
-            <AdminSubNav />
+      <div className="relative pt-[160px] md:pt-[128px] bg-white border-b border-gray-100 pb-8">
+        <AdminSubNav />
+        <div className="max-w-screen-2xl mx-auto px-6 lg:px-12 space-y-1">
+          <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
+            <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>
+              Admin
+            </p>
           </div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Admin Settings</h1>
           <p className="text-sm text-gray-500">Manage products, orders, and storefront content from one place.</p>
         </div>
       </div>

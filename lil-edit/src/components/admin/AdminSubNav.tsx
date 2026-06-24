@@ -30,11 +30,11 @@ const AdminSubNav = () => {
   }, []);
 
   return (
-    <div ref={containerRef} className="relative inline-block shrink-0 translate-x-[15px] z-40">
+    <div ref={containerRef} className="absolute top-[160px] md:top-[128px] right-[10px] md:right-[55px] z-50">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-1 sm:gap-2.5 w-44 sm:w-60 shrink-0 px-2 py-1.5 sm:px-4 sm:py-2.5 rounded-md text-[11px] sm:text-[15px] font-bold uppercase tracking-wide border-2 border-gray-300 bg-gray-50 text-gray-900 shadow-md hover:bg-gray-100 hover:shadow-lg transition-all"
+        className="flex items-center gap-1 sm:gap-2.5 w-44 sm:w-60 shrink-0 px-2 py-1.5 sm:px-4 sm:py-2.5 rounded-md text-[11px] sm:text-[15px] font-bold tracking-wide border-2 border-gray-300 bg-gray-50 text-gray-900 shadow-md hover:bg-gray-100 hover:shadow-lg transition-all"
       >
         <span className="flex-1 flex items-center justify-center gap-1 sm:gap-2.5 min-w-0">
           <ActiveIcon className="w-3 h-3 sm:w-4.5 sm:h-4.5 shrink-0" style={{ color: ACCENT }} />
@@ -60,7 +60,7 @@ const AdminSubNav = () => {
                   <Icon className="w-3 h-3 sm:w-5 sm:h-5 shrink-0" style={{ color: isActive ? "#FFFFFF" : "#374151" }} />
                   <span className="flex flex-col gap-0.5 min-w-0">
                     <span
-                      className="text-[10px] sm:text-[15px] font-semibold uppercase tracking-wide leading-none truncate"
+                      className="text-[10px] sm:text-[15px] font-semibold tracking-wide leading-none truncate"
                       style={{ color: isActive ? "#FFFFFF" : "#374151" }}
                     >
                       {tab.label}

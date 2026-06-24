@@ -1073,12 +1073,12 @@ const ManageProducts = () => {
       {user ? <UserNavbar /> : <Navbar />}
 
       {/* PAGE HEADER */}
-      <div className="pt-[160px] md:pt-[128px] px-8 lg:px-12 bg-white border-b border-gray-100 pb-8">
-        <div className="max-w-screen-2xl mx-auto">
+      <div className="relative pt-[160px] md:pt-[128px] bg-white border-b border-gray-100 pb-8">
+        <AdminSubNav />
+        <div className="max-w-screen-2xl mx-auto px-8 lg:px-12">
           <div className="space-y-1">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
               <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: "#B19CD9" }}>Catalog Studio</p>
-              <AdminSubNav />
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Inventory Management</h1>
           </div>

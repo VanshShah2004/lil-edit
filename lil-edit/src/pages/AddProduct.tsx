@@ -620,19 +620,19 @@ const AddProduct = () => {
   return (
     <div className="min-h-screen bg-white overflow-x-hidden w-full selection:bg-gray-900/20">
       {user ? <UserNavbar /> : <Navbar />}
-      <div className="pt-[160px] md:pt-[128px] pb-24 px-4 sm:px-8 lg:px-12 xl:px-20">
-        <div className="mx-auto max-w-none">
+      <div className="relative pt-[160px] md:pt-[128px] pb-24">
+        <AdminSubNav />
+        <div className="mx-auto max-w-none px-4 sm:px-8 lg:px-12 xl:px-20">
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
             className="mb-8 space-y-1"
           >
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
               <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: "#B19CD9" }}>
                 Creator's Studio
               </p>
-              <AdminSubNav />
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">
               Product Listings
