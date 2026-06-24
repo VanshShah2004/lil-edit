@@ -194,15 +194,18 @@ export default function ProductDetail() {
       case "highest": list.sort((a, b) => b.rating - a.rating); break;
       default:        break; // newest
     }
-    // Surface the current colour variant's reviews first, then the other variants'.
-    // Stable partition preserves the chosen sort within each group.
-    if (skuId) {
-      const mine = list.filter((r) => r.sku === skuId);
-      const rest = list.filter((r) => r.sku !== skuId);
-      return [...mine, ...rest];
-    }
-    return list;
-  }, [reviewsData, reviewSort, skuId]);
+    // Three-tier ordering: the selected variant's reviews first, then the base-SKU
+    // reviews (incl. legacy product-level ones with sku ''), then the remaining
+    // variants'. The tier sort below is stable, so the chosen sort above is preserved
+    // within each tier. product.sku is the base_sku; colours carry the variant skus.
+    const baseSku = product?.sku;
+    const rank = (sku: string | undefined): number => {
+      if (skuId && sku === skuId) return 0;               // selected variant
+      if (baseSku && (sku === baseSku || !sku)) return 1; // base sku + legacy ('')
+      return 2;                                           // other variants
+    };
+    return list.sort((a, b) => rank(a.sku) - rank(b.sku));
+  }, [reviewsData, reviewSort, skuId, product?.sku]);
 
   // Show the first `visibleReviewCount` of the chosen order (starts at 3, grows by
   // 3 via the "Show more" button). Sort runs over ALL reviews, so the slice
@@ -824,7 +827,7 @@ export default function ProductDetail() {
           <div className="page-container">
           <div className="flex items-end justify-between mb-6 sm:mb-8">
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">
+              <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900">
                 You May Also Like
               </h2>
               <p className="text-sm text-gray-500 mt-1">Similar styles you’ll love</p>
