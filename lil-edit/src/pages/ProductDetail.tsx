@@ -670,8 +670,8 @@ export default function ProductDetail() {
                     key={review.id}
                     className="relative p-6 sm:p-8 rounded-[2rem] border border-slate-300 bg-slate-50 shadow-md shadow-slate-400/30 sm:hover:bg-white sm:hover:-translate-y-1.5 sm:hover:shadow-2xl sm:hover:shadow-slate-900/25 sm:hover:border-teal-500 transition-all duration-300 group"
                   >
-                    <button type="button" className="absolute top-6 right-6 sm:top-8 sm:right-8 w-10 h-10 rounded-full bg-white text-slate-900 border border-slate-300 shadow-sm hover:bg-teal-700 hover:text-white hover:border-teal-700 transition-all duration-300 shrink-0 flex items-center justify-center">
-                      <ArrowRight className="w-5 h-5" />
+                    <button type="button" className="absolute top-6 right-6 sm:top-8 sm:right-8 w-8 h-8 rounded-full bg-white text-slate-900 border border-slate-300 shadow-sm hover:bg-teal-700 hover:text-white hover:border-teal-700 transition-all duration-300 shrink-0 flex items-center justify-center">
+                      <ArrowRight className="w-4 h-4" />
                     </button>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
                       <div className="flex items-center gap-4">
