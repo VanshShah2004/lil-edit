@@ -12,7 +12,6 @@ import {
   Menu,
   X,
   Shirt,
-  Plus,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
@@ -343,17 +342,6 @@ const UserNavbar = () => {
               </span>
             )}
           </Link>
-
-          {isAdmin && (
-            <Link
-              to="/admin/add-product"
-              onClick={() => setIsLeftMenuOpen(false)}
-              className="flex items-center gap-3 px-3 py-3 rounded-lg text-foreground hover:bg-secondary transition-colors"
-            >
-              <Plus className="w-5 h-5 text-muted-foreground" />
-              <span className="font-medium">Add Product</span>
-            </Link>
-          )}
 
           <div className="mt-auto">
             <Link
