@@ -44,18 +44,18 @@ const AdminSubNav = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1.5 w-44 sm:w-60 bg-white rounded-md shadow-lg border border-gray-100 py-1.5 sm:py-2 z-20 animate-in fade-in slide-in-from-top-1">
+        <div className="absolute right-0 mt-1.5 w-44 sm:w-60 bg-white rounded-md shadow-lg border border-gray-100 overflow-hidden z-20 animate-in fade-in slide-in-from-top-1">
           {TABS.map((tab, index) => {
             const Icon = tab.icon;
             const isActive = tab.to === activeTab.to;
             return (
               <div key={tab.to}>
-                {index > 0 && <div className="h-px bg-gray-100 my-0.5 sm:my-1" />}
+                {index > 0 && <div className="h-px bg-gray-400" />}
                 <Link
                   to={tab.to}
                   onClick={() => setIsOpen(false)}
                   className="flex items-center gap-1.5 sm:gap-3 px-2.5 py-1.5 sm:px-4 sm:py-3 transition-colors hover:bg-gray-50"
-                  style={isActive ? { backgroundColor: "#0F766E" } : undefined}
+                  style={isActive ? { backgroundColor: "#0E857B" } : undefined}
                 >
                   <Icon className="w-3 h-3 sm:w-5 sm:h-5 shrink-0" style={{ color: isActive ? "#FFFFFF" : "#374151" }} />
                   <span className="flex flex-col gap-0.5 min-w-0">
@@ -65,7 +65,7 @@ const AdminSubNav = () => {
                     >
                       {tab.label}
                     </span>
-                    <span className="text-[8px] sm:text-xs font-medium normal-case tracking-normal leading-none truncate" style={{ color: isActive ? "rgba(255,255,255,0.8)" : "#9CA3AF" }}>
+                    <span className="text-[10px] sm:text-sm font-medium normal-case tracking-normal leading-none truncate" style={{ color: isActive ? "rgba(255,255,255,0.8)" : "#9CA3AF" }}>
                       {tab.section}
                     </span>
                   </span>
