@@ -80,13 +80,16 @@ const AdminSettings = () => {
       </div>
 
       <main className="flex-1 px-6 lg:px-12 py-10 bg-gray-50">
-        <div className="max-w-screen-2xl mx-auto space-y-10">
+        <div className="max-w-screen-2xl mx-auto space-y-12">
           {groups.map((group) => (
             <section key={group.title}>
-              <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-gray-700 mb-3">
-                {group.title}
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="flex items-center gap-4 mb-5">
+                <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-gray-700 shrink-0">
+                  {group.title}
+                </h2>
+                <div className="flex-1 h-px bg-gray-400" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {group.tiles.map((tile) => {
                   const Icon = tile.icon;
                   if (tile.comingSoon) {
@@ -94,19 +97,19 @@ const AdminSettings = () => {
                       <div
                         key={tile.label}
                         aria-disabled="true"
-                        className="flex items-start gap-3.5 p-5 rounded-2xl border border-dashed border-gray-300 bg-gray-50/80 cursor-not-allowed"
+                        className="relative flex items-start gap-4 p-5 rounded-2xl border border-dashed border-gray-300 bg-gray-50/60 cursor-not-allowed overflow-hidden"
                       >
-                        <div className="w-10 h-10 rounded-xl bg-gray-200/80 text-gray-400 flex items-center justify-center shrink-0">
+                        <div className="w-11 h-11 rounded-xl bg-gray-200/70 text-gray-400 flex items-center justify-center shrink-0">
                           <Icon className="w-5 h-5" />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-gray-500">{tile.label}</p>
+                            <p className="text-[15px] font-semibold text-gray-500">{tile.label}</p>
                             <span className="px-1.5 py-0.5 rounded-full bg-gray-200 text-[9px] font-bold uppercase tracking-wide text-gray-500">
                               Soon
                             </span>
                           </div>
-                          <p className="text-xs text-gray-400 mt-1">{tile.description}</p>
+                          <p className="text-xs text-gray-400 mt-1 leading-relaxed">{tile.description}</p>
                         </div>
                       </div>
                     );
@@ -115,16 +118,21 @@ const AdminSettings = () => {
                     <Link
                       key={tile.label}
                       to={tile.to}
-                      className="group relative flex items-start gap-3.5 p-5 rounded-2xl border border-gray-200 bg-white shadow-[0_1px_3px_rgba(16,24,40,0.06),0_1px_2px_rgba(16,24,40,0.04)] ring-1 ring-transparent hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-8px_rgba(177,156,217,0.45)] hover:border-transparent hover:ring-[#B19CD9] transition-all duration-200"
+                      className="group relative flex items-start gap-4 p-5 rounded-2xl border border-gray-400 bg-white overflow-hidden shadow-[0_4px_12px_-2px_rgba(16,24,40,0.12),0_2px_4px_-1px_rgba(16,24,40,0.08)] ring-1 ring-transparent hover:-translate-y-0.5 hover:shadow-[0_16px_32px_-8px_rgba(177,156,217,0.55)] hover:border-transparent hover:ring-[#B19CD9] transition-all duration-200"
                     >
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white shadow-sm transition-transform duration-200 group-hover:scale-105"
+                      {/* Animated left accent bar */}
+                      <span
+                        className="absolute left-0 top-0 h-full w-1 origin-top scale-y-0 group-hover:scale-y-100 transition-transform duration-200"
                         style={{ backgroundColor: ACCENT }}
+                      />
+                      <div
+                        className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-white shadow-sm transition-transform duration-200 group-hover:scale-105 group-hover:-rotate-3"
+                        style={{ background: `linear-gradient(135deg, ${ACCENT}, #9A82C9)` }}
                       >
                         <Icon className="w-5 h-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-gray-900">{tile.label}</p>
+                        <p className="text-[15px] font-semibold text-gray-900 group-hover:text-[#6B5B95] transition-colors">{tile.label}</p>
                         <p className="text-xs text-gray-500 mt-1 leading-relaxed">{tile.description}</p>
                       </div>
                       <ArrowUpRight className="w-4 h-4 text-gray-300 shrink-0 transition-all duration-200 group-hover:text-[#B19CD9] group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
