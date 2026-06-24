@@ -471,7 +471,7 @@ const AdminOrderDetailPage = () => {
     <div className="min-h-screen bg-white text-[#1a1a1a] flex flex-col font-sans">
       {user ? <UserNavbar /> : <Navbar />}
 
-      <div className="pt-[160px] md:pt-[128px] px-6 lg:px-12 bg-white border-b border-gray-100 pb-6">
+      <div className="pt-[160px] md:pt-[128px] px-6 lg:px-12 bg-white border-b border-gray-300 pb-6">
         <div className="max-w-screen-2xl mx-auto">
           <div className="flex flex-wrap items-center text-xs text-gray-500 gap-1 mb-3">
             <Link to="/admin/orders" className="hover:underline">Order Management</Link>

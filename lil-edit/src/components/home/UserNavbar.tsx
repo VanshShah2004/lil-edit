@@ -237,13 +237,19 @@ const UserNavbar = () => {
                     );
                   })}
                   {isAdmin && (
-                    <Link
-                      to="/admin/settings"
-                      onClick={closeProfileMenu}
-                      className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
-                    >
-                      <ShieldCheck className="w-4 h-4" /> Admin Settings
-                    </Link>
+                    <>
+                      <div className="h-px bg-border my-1" />
+                      <div className="px-4 pt-1 pb-0.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Admin
+                      </div>
+                      <Link
+                        to="/admin/settings"
+                        onClick={closeProfileMenu}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
+                      >
+                        <ShieldCheck className="w-4 h-4" /> Admin Settings
+                      </Link>
+                    </>
                   )}
                   <div className="h-px bg-border my-1" />
                   <button

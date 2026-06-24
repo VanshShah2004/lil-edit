@@ -342,7 +342,7 @@ const OrdersPage = () => {
           <div className="flex flex-wrap items-center text-xs sm:text-sm text-gray-600 gap-y-2">
             <Link to="/" className="hover:underline">Home</Link>
             <ChevronRight className="w-4 h-4 mx-1" />
-            <span className="text-gray-800 font-medium">Your Orders</span>
+            <span className="text-gray-800 font-medium">Orders</span>
           </div>
         </div>
 

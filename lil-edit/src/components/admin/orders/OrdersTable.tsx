@@ -28,7 +28,7 @@ export function OrdersTable({ orders, onView }: OrdersTableProps) {
               {["Order ID", "Customer", "Email", "Date", "Total", "Items", "Payment", "Status", ""].map((h, i) => (
                 <th
                   key={h || i}
-                  className={`px-4 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap ${i === 4 || i === 5 ? "text-right" : ""}`}
+                  className={`px-4 py-3 text-[10px] font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap ${i === 4 || i === 5 ? "text-right" : ""}`}
                 >
                   {h || "Actions"}
                 </th>
