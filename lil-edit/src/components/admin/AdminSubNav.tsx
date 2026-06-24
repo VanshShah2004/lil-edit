@@ -41,10 +41,10 @@ const AdminSubNav = () => {
           <button
             type="button"
             onClick={() => setIsOpen((prev) => !prev)}
-            className="flex items-center gap-1 sm:gap-2.5 w-44 sm:w-60 shrink-0 px-2 py-1.5 sm:px-4 sm:py-2.5 rounded-md font-display text-[11px] sm:text-[15px] font-bold tracking-wide border-2 border-gray-300 bg-gray-50 text-gray-900 shadow-md hover:bg-gray-100 hover:shadow-lg transition-all"
+            className="flex items-center gap-1 sm:gap-2.5 w-44 sm:w-60 shrink-0 px-2 py-2 sm:px-4 sm:py-3 rounded-md font-display text-[13px] sm:text-[17px] font-bold tracking-wide border-2 border-gray-300 bg-gray-50 text-gray-900 shadow-md hover:bg-gray-100 hover:shadow-lg transition-all"
           >
-            <span className="flex-1 flex items-center justify-center gap-1 sm:gap-2.5 min-w-0">
-              <ActiveIcon className="w-3 h-3 sm:w-4.5 sm:h-4.5 shrink-0" style={{ color: ACCENT }} />
+            <span className="flex-1 flex items-center justify-center gap-2 sm:gap-2.5 min-w-0">
+              <ActiveIcon className="w-5 h-5 sm:w-7 sm:h-7 shrink-0" style={{ color: ACCENT }} />
               <span className="truncate">{activeTab.label}</span>
             </span>
             <ChevronDown className={`w-3 h-3 sm:w-4.5 sm:h-4.5 shrink-0 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -61,18 +61,18 @@ const AdminSubNav = () => {
                     <Link
                       to={tab.to}
                       onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-1.5 sm:gap-3 px-2.5 py-3.5 sm:px-4 sm:py-5 transition-colors hover:bg-gray-50"
+                      className="flex items-center gap-3 px-2.5 py-3.5 sm:px-4 sm:py-5 transition-colors hover:bg-gray-50"
                       style={isActive ? { backgroundColor: "#0E857B" } : undefined}
                     >
-                      <Icon className="w-3 h-3 sm:w-5 sm:h-5 shrink-0" style={{ color: isActive ? "#FFFFFF" : "#374151" }} />
+                      <Icon className="w-5 h-5 sm:w-7 sm:h-7 shrink-0" style={{ color: isActive ? "#FFFFFF" : "#374151" }} />
                       <span className="flex flex-col gap-1 min-w-0">
                         <span
-                          className="text-[10px] sm:text-[15px] font-semibold tracking-wide leading-tight truncate"
+                          className="font-display text-[14px] sm:text-[15px] font-semibold tracking-wide leading-tight truncate"
                           style={{ color: isActive ? "#FFFFFF" : "#374151" }}
                         >
                           {tab.label}
                         </span>
-                        <span className="text-[10px] sm:text-sm font-medium normal-case tracking-normal leading-tight truncate" style={{ color: isActive ? "rgba(255,255,255,0.8)" : "#9CA3AF" }}>
+                        <span className="text-[11px] sm:text-sm font-medium normal-case tracking-normal leading-tight truncate" style={{ color: isActive ? "rgba(255,255,255,0.8)" : "#9CA3AF" }}>
                           {tab.section}
                         </span>
                       </span>
