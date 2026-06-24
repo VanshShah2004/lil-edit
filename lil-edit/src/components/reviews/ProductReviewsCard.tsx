@@ -27,8 +27,8 @@ export default function ProductReviewsCard({
 
     const fetchData = async () => {
       try {
-        console.log(`[ProductReviewsCard] fetching reviews  slug=${productSlug}`);
-        const data = await fetchReviewsForProduct(productSlug);
+        console.log(`[ProductReviewsCard] fetching reviews  sku=${sku}`);
+        const data = await fetchReviewsForProduct([sku]);
         if (!cancelled) setReviewsData(data);
 
         const userRev = await getUserReviewForProduct(productSlug, sku);

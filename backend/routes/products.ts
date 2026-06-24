@@ -10,7 +10,7 @@ import {
   deleteProductFromDatabase,
   fetchProductBySku,
   fetchRecommendedProducts,
-  fetchReviewsDataBySlug,
+  fetchReviewsDataBySkus,
   fetchSuggestions,
   searchProducts,
   invalidateSearchCatalog,
@@ -335,29 +335,31 @@ router.get("/detail", async (req: Request, res: Response) => {
 
 // ─── GET /api/products/reviews — lazy-loaded reviews ─────────────────────────
 router.get("/reviews", async (req: Request, res: Response) => {
-  const log  = createLog().start("PDP REVIEWS");
-  const slug = req.query.slug as string;
+  const log     = createLog().start("PDP REVIEWS");
+  const skusRaw = req.query.skus as string;
+  const skus    = skusRaw ? skusRaw.split(",").map((s) => s.trim()).filter(Boolean) : [];
 
-  if (!slug) {
-    log.warn("Missing slug").end("PDP REVIEWS");
-    res.status(400).json({ error: "slug parameter is required." });
+  if (skus.length === 0) {
+    log.warn("Missing skus").end("PDP REVIEWS");
+    res.status(400).json({ error: "skus parameter is required." });
     return;
   }
 
-  log.step(`slug=${slug}`);
+  const cacheKey = skus.slice().sort().join(",");
+  log.step(`skus=${cacheKey}`);
 
   try {
-    const cached = await redisGet<{ reviewsData: object }>(redisKey("reviews", slug), log);
+    const cached = await redisGet<{ reviewsData: object }>(redisKey("reviews", cacheKey), log);
     if (cached) {
       log.success("L2 Redis - HIT  served from cache").end("PDP REVIEWS");
       res.json(cached);
       return;
     }
 
-    const reviewsData = await fetchReviewsDataBySlug(slug, log);
-    const payload     = { reviewsData };
+    const reviewsData = await fetchReviewsDataBySkus(skus, log);
+    const payload      = { reviewsData };
 
-    void redisSet(redisKey("reviews", slug), payload, REVIEWS_TTL_S, log);
+    void redisSet(redisKey("reviews", cacheKey), payload, REVIEWS_TTL_S, log);
 
     log.success(`${reviewsData.totalReviews} reviews returned  avg=${reviewsData.averageRating}`).end("PDP REVIEWS");
     res.json(payload);

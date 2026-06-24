@@ -42,8 +42,8 @@ async function getUser() {
   return user;
 }
 
-export async function fetchReviewsForProduct(slug: string): Promise<ReviewsData> {
-  const url = `${getBackendBaseUrl()}/api/products/reviews?slug=${encodeURIComponent(slug)}`;
+export async function fetchReviewsForProduct(skus: string[]): Promise<ReviewsData> {
+  const url = `${getBackendBaseUrl()}/api/products/reviews?skus=${encodeURIComponent(skus.join(","))}`;
   console.log(`[reviewsApi] fetching reviews  ${url}`);
 
   const res = await fetch(url);
@@ -63,7 +63,7 @@ export async function fetchReviewsForProduct(slug: string): Promise<ReviewsData>
   const reviewsData = data.reviewsData;
   const mappedReviews = (reviewsData.reviews || []).map((r: any) => ({
     id: r.id,
-    productSlug: slug,
+    productSlug: r.productSlug || "",
     sku: r.sku || "",
     userId: null,
     userName: r.user || "Anonymous",

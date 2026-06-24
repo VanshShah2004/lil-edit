@@ -1375,12 +1375,12 @@ export async function fetchRecommendedProducts(
 export interface ReviewItem {
   id: string;
   user: string;
+  productSlug: string;
   // Variant SKU this review is for ('' = legacy product-level review). Lets the
   // PDP show the current variant's reviews first, then the other variants'.
   sku: string;
   rating: number;
   date: string;
-  title: string;
   comment: string;
   verified: boolean;
   images?: string[];
@@ -1394,7 +1394,7 @@ export interface ReviewsData {
 }
 
 const REVIEWS_SELECT = `
-  id, user_name, sku, rating, title, comment, verified, images, created_at
+  id, user_name, product_slug, sku, rating, comment, verified, images, created_at
 `;
 
 // "2026-06-02T..." → "2 Jun 2026" (matches the date style the PDP renders).
@@ -1406,7 +1406,9 @@ function formatReviewDate(iso: string): string {
 }
 
 /**
- * Fetch all reviews for a product slug and aggregate them into the ReviewsData
+ * Fetch all reviews for a product — identified by its full set of variant SKUs
+ * (base + every colour) rather than its slug, since slugs aren't unique and a
+ * sku uniquely pins down the product — and aggregate them into the ReviewsData
  * shape the PDP consumes. Aggregation (average, 5→1 distribution) is computed in
  * JS — the per-product review count is small, mirroring how recommendations are
  * mapped in-process rather than via SQL aggregates.
@@ -1414,18 +1416,18 @@ function formatReviewDate(iso: string): string {
  * A product with no reviews returns a valid empty payload (totalReviews: 0),
  * NOT an error — the PDP renders a "no reviews yet" state for that case.
  */
-export async function fetchReviewsDataBySlug(
-  slug: string,
+export async function fetchReviewsDataBySkus(
+  skus: string[],
   log: OpLogger,
 ): Promise<ReviewsData> {
   const sb = requireAdmin();
 
-  log.step(`DB fetch - reviews  slug=${slug}`);
+  log.step(`DB fetch - reviews  skus=${skus.join(",")}`);
   const t1 = performance.now();
   const { data, error } = await sb
     .from("product_reviews")
     .select(REVIEWS_SELECT)
-    .eq("product_slug", slug)
+    .in("sku", skus)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -1448,10 +1450,10 @@ export async function fetchReviewsDataBySlug(
     const item: ReviewItem = {
       id: String(r.id),
       user: r.user_name,
+      productSlug: r.product_slug || "",
       sku: r.sku || "",
       rating: Number(r.rating) || 0,
       date: formatReviewDate(r.created_at),
-      title: r.title || "",
       comment: r.comment || "",
       verified: !!r.verified,
     };

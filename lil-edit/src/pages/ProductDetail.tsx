@@ -87,9 +87,10 @@ interface RecommendedProduct {
 }
 
 // ⚡ Module-level caches — persist across route changes within the session, capped at
-// 30 entries (oldest evicted). productCache is keyed by SKU: slugs are non-unique now
-// (two products can share one), so the sku is the identifier. recommendations and
-// reviews are slug-grained on the backend, so those two stay keyed by slug.
+// 30 entries (oldest evicted). productCache and reviewsCache are keyed by SKU: slugs
+// are non-unique now (two products can share one), so the sku is the identifier.
+// Recommendations stay slug-grained on the backend (category/style based, not a
+// per-variant concern), so that one stays keyed by slug.
 const productCache        = new LRUCache<{ product: Product;         cachedAt: number }>(30, "product");
 const recommendationCache = new LRUCache<{ recommended: RecommendedProduct[]; cachedAt: number }>(30, "recs");
 const reviewsCache        = new LRUCache<{ reviewsData: ReviewsData; cachedAt: number }>(30, "reviews");
@@ -155,7 +156,7 @@ export default function ProductDetail() {
   // peek() — no LRU promotion, no log (runs on every render; get() is for effects only)
   const productCached = skuId ? productCache.peek(skuId) : undefined;
   const recCached = productSlug ? recommendationCache.peek(productSlug) : undefined;
-  const reviewsCached = productSlug ? reviewsCache.peek(productSlug) : undefined;
+  const reviewsCached = skuId ? reviewsCache.peek(skuId) : undefined;
 
   // Check if caches are still valid (not expired)
   const isProductCacheFresh = productCached && (Date.now() - productCached.cachedAt < CACHE_TTL_MS);
@@ -362,9 +363,13 @@ export default function ProductDetail() {
     const recsController = new AbortController();
     let cancelled = false;
 
+    // Every sku this product is reachable by (base + each colour) — reviews are
+    // fetched/cached by sku, never by slug, since slugs aren't unique.
+    const productSkus = [product.sku, ...((product.colors ?? []).map((c) => c.sku))].filter(Boolean) as string[];
+
     // Snapshot cache at effect run time — keeps cache-derived booleans out of deps
     // (they changing after each fetch resolved was causing the lazy effect to loop)
-    const revCachedNow = reviewsCache.get(productSlug);
+    const revCachedNow = skuId ? reviewsCache.get(skuId) : undefined;
     const isRevFresh = !!revCachedNow && (Date.now() - revCachedNow.cachedAt < CACHE_TTL_MS);
     const recCachedNow = recommendationCache.get(productSlug);
     const isRecFreshNow = !!recCachedNow && (Date.now() - recCachedNow.cachedAt < CACHE_TTL_MS);
@@ -378,8 +383,8 @@ export default function ProductDetail() {
       }
       setReviewsLoading(true);
       setReviewsError(null);
-      console.log(`[AbortController] reviews fetch START  slug=${productSlug}`);
-      fetch(`${base}/api/products/reviews?slug=${encodeURIComponent(productSlug)}`, { signal: reviewsController.signal })
+      console.log(`[AbortController] reviews fetch START  skus=${productSkus.join(",")}`);
+      fetch(`${base}/api/products/reviews?skus=${encodeURIComponent(productSkus.join(","))}`, { signal: reviewsController.signal })
         .then(async (res) => {
           if (!res.ok) {
             const errMsg = await res.json().catch(() => ({}));
@@ -389,12 +394,14 @@ export default function ProductDetail() {
         })
         .then((data) => {
           if (cancelled || !data?.reviewsData) return;
-          reviewsCache.set(productSlug, { reviewsData: data.reviewsData, cachedAt: Date.now() });
+          for (const s of productSkus) {
+            reviewsCache.set(s, { reviewsData: data.reviewsData, cachedAt: Date.now() });
+          }
           setReviewsData(data.reviewsData);
         })
         .catch((err) => {
           if (err.name === 'AbortError') {
-            console.log(`[AbortController] reviews fetch ABORTED  slug=${productSlug}`);
+            console.log(`[AbortController] reviews fetch ABORTED  skus=${productSkus.join(",")}`);
             return;
           }
           if (cancelled) return;
@@ -467,7 +474,7 @@ export default function ProductDetail() {
       reviewsController.abort();
       recsController.abort();
     };
-  }, [product, productSlug]);
+  }, [product, productSlug, skuId]);
 
   const showSkeleton = loading && !product;
   const showNotFound = !loading && (error || !product);
