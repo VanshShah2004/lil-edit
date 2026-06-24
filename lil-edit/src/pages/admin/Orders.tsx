@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchAdminOrders, type AdminOrderSummary, type OrderSortKey } from "@/lib/adminOrdersApi";
 import OrderFilters, { type StatusFilter, type PaymentFilter } from "@/components/admin/orders/OrderFilters";
 import OrdersTable from "@/components/admin/orders/OrdersTable";
+import AdminSubNav from "@/components/admin/AdminSubNav";
 
 const PAGE_SIZE = 20;
 
@@ -93,7 +94,10 @@ const AdminOrdersPage = () => {
       {/* Page header — matches the Catalog Studio admin header. */}
       <div className="pt-[160px] md:pt-[128px] px-6 lg:px-12 bg-white border-b border-gray-100 pb-8">
         <div className="max-w-screen-2xl mx-auto space-y-1">
-          <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: "#B19CD9" }}>Operations</p>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: "#B19CD9" }}>Operations</p>
+            <AdminSubNav />
+          </div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Order Management</h1>
           <p className="text-sm text-gray-500">{total} order{total !== 1 ? "s" : ""} in the system</p>
         </div>

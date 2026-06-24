@@ -1,21 +1,18 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  ClipboardList,
   Heart,
   LayoutDashboard,
   LogOut,
   Package,
   Search,
-  Settings,
-  Shield,
+  ShieldCheck,
   ShoppingCart,
   User,
   Menu,
   X,
   Shirt,
   Plus,
-  LayoutGrid,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
@@ -48,20 +45,14 @@ const UserNavbar = () => {
   const userInitial = firstNameCandidate.charAt(0).toUpperCase();
   const role = profile?.role ?? "customer";
   const isAdmin = role === "admin";
-  // The profile dropdown is grouped: personal account items first, then (for
-  // admins) a labelled Admin section in workflow order — catalog, merchandising,
-  // orders, settings.
+  // Level 1 stays minimal: everyday account actions, an admin entry point
+  // that navigates to the full Admin Settings page, then logout.
   const accountMenuItems = [
     { to: "/profile", label: "Profile", icon: User },
     { to: "/orders", label: "My Orders", icon: Package },
   ];
-  const adminMenuItems = [
-    { to: "/admin/add-product", label: "Add Product", icon: Plus },
-    { to: "/admin/manage-products", label: "Manage Products", icon: Shirt },
-    { to: "/admin/orders", label: "Manage Orders", icon: ClipboardList },
-    { to: "/admin/spotlight", label: "The Spotlight", icon: LayoutGrid },
-    { to: "#", label: "Admin Settings", icon: Settings },
-  ];
+
+  const closeProfileMenu = () => setIsProfileOpen(false);
 
 
   useLayoutEffect(() => {
@@ -95,7 +86,7 @@ const UserNavbar = () => {
     const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
       if (!profileMenuRef.current) return;
       if (!profileMenuRef.current.contains(event.target as Node)) {
-        setIsProfileOpen(false);
+        closeProfileMenu();
       }
     };
 
@@ -193,7 +184,7 @@ const UserNavbar = () => {
               onMouseLeave={() => {
                 if (window.innerWidth >= 768) {
                   profileCloseTimeoutRef.current = window.setTimeout(() => {
-                    setIsProfileOpen(false);
+                    closeProfileMenu();
                     profileCloseTimeoutRef.current = null;
                   }, 180);
                 }
@@ -216,7 +207,7 @@ const UserNavbar = () => {
 
               {isProfileOpen && (
                 <div
-                  className="absolute right-0 mt-2 w-56 bg-background rounded-xl shadow-lg border border-border py-2 animate-in fade-in slide-in-from-top-2"
+                  className="absolute right-0 mt-2 w-56 bg-background rounded-xl shadow-lg border border-border py-2 animate-in fade-in slide-in-from-top-2 overflow-hidden"
                   onMouseEnter={() => {
                     if (window.innerWidth >= 768) {
                       if (profileCloseTimeoutRef.current) {
@@ -228,12 +219,9 @@ const UserNavbar = () => {
                   }}
                 >
                   {isAdmin && (
-                    <>
-                      <div className="px-4 py-2 text-xs text-muted-foreground">
-                        Signed in as <span className="font-semibold text-foreground">Admin</span>
-                      </div>
-                      <div className="h-px bg-border my-1" />
-                    </>
+                    <div className="px-4 py-2 text-xs text-muted-foreground">
+                      Signed in as <span className="font-semibold text-foreground">Admin</span>
+                    </div>
                   )}
                   {accountMenuItems.map((item) => {
                     const Icon = item.icon;
@@ -241,7 +229,7 @@ const UserNavbar = () => {
                       <Link
                         key={item.label}
                         to={item.to}
-                        onClick={() => setIsProfileOpen(false)}
+                        onClick={closeProfileMenu}
                         className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
                       >
                         <Icon className="w-4 h-4" /> {item.label}
@@ -249,31 +237,19 @@ const UserNavbar = () => {
                     );
                   })}
                   {isAdmin && (
-                    <>
-                      <div className="h-px bg-border my-1" />
-                      <div className="flex items-center gap-1.5 px-4 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                        <Shield className="w-3 h-3 text-primary" strokeWidth={5} /> Admin
-                      </div>
-                      {adminMenuItems.map((item) => {
-                        const Icon = item.icon;
-                        return (
-                          <Link
-                            key={item.label}
-                            to={item.to}
-                            onClick={() => setIsProfileOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
-                          >
-                            <Icon className="w-4 h-4" /> {item.label}
-                          </Link>
-                        );
-                      })}
-                    </>
+                    <Link
+                      to="/admin/settings"
+                      onClick={closeProfileMenu}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
+                    >
+                      <ShieldCheck className="w-4 h-4" /> Admin Settings
+                    </Link>
                   )}
                   <div className="h-px bg-border my-1" />
                   <button
                     onClick={async () => {
                       try {
-                        setIsProfileOpen(false);
+                        closeProfileMenu();
                         await signOut();
                         navigate("/");
                       } catch (err) {

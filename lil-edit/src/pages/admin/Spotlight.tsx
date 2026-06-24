@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 
 import UserNavbar from "@/components/home/UserNavbar";
+import AdminSubNav from "@/components/admin/AdminSubNav";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
@@ -865,7 +866,10 @@ const SpotlightPage = () => {
       {/* Header */}
       <div className="pt-[160px] md:pt-[128px] px-6 lg:px-12 bg-white border-b border-gray-100 pb-8">
         <div className="max-w-screen-2xl mx-auto space-y-1">
-          <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>Merchandising</p>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>Merchandising</p>
+            <AdminSubNav />
+          </div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">The Spotlight</h1>
           <p className="text-sm text-gray-500">Control which products and tiles appear across the storefront.</p>
         </div>
