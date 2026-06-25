@@ -347,7 +347,7 @@ async function afterPlacement(snap: CheckoutSnapshot, razorpayOrderId: string, r
         recipientEmail = (data?.email as string) ?? "";
         recipientName = [data?.first_name, data?.last_name].filter(Boolean).join(" ").trim() || undefined;
       } catch { /* best-effort profile lookup */ }
-      await sendOrderConfirmation({
+      const mail = await sendOrderConfirmation({
         orderId: result.order_id ?? "",
         orderNumber: result.order_number ?? "",
         recipientEmail,
@@ -380,6 +380,21 @@ async function afterPlacement(snap: CheckoutSnapshot, razorpayOrderId: string, r
           pincode: snap.address.pincode,
         },
       });
+      // Record the receipt send (kind='receipt') so the admin can see it actually went
+      // out — and offer a re-send if it didn't. Best-effort, same posture as the status-
+      // notification audit: a missing table (pre-migration) or a lost row must never turn
+      // a successful send into a failure. The order is placed as "confirmed" at this point.
+      if (mail.sent && result.order_id) {
+        const { error: recErr } = await db().from("order_notifications").insert({
+          order_id: result.order_id,
+          status: "confirmed",
+          kind: "receipt",
+          recipient_email: recipientEmail,
+          sent_by: null,
+          sent_by_name: "System",
+        });
+        if (recErr) log.warn(`could not record receipt notification (table missing?): ${recErr.message}`);
+      }
     } catch (e) {
       log.warn(`confirmation email failed (non-fatal): ${e instanceof Error ? e.message : String(e)}`);
     }

@@ -84,37 +84,54 @@ function Node({
       <div className={`flex-1 ${isLast ? "" : "pb-6"}`}>
         {/* Status headline; on the latest state the notify button sits at the right
             of the same row. */}
-        <div className="flex items-center justify-between gap-2">
-          <p className={`text-sm leading-4 flex items-center gap-1.5 ${mostRecent ? "font-bold text-gray-900" : "font-medium text-gray-700"}`}>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+          <p className={`text-sm leading-4 flex shrink-0 items-center gap-1.5 ${mostRecent ? "font-bold text-gray-900" : "font-medium text-gray-700"}`}>
             {label}
-            {correction && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
-                <AlertTriangle className="h-2.5 w-2.5" /> Correction
-              </span>
-            )}
           </p>
           {notify && onNotify && (
-            <button
-              type="button"
-              onClick={onNotify}
-              disabled={notifying}
-              title={notifiedCurrent
-                ? "Customer already notified for this status — click to send again"
-                : "Email the customer this status update"}
-              className={`shrink-0 inline-flex items-center gap-1 rounded-[4px] px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
-                notifiedCurrent
-                  ? "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                  : "bg-[#B19CD9] text-gray-900 hover:bg-[#9d86c9]"
-              }`}
-            >
-              {notifiedCurrent ? <Check className="h-3 w-3" /> : <Mail className="h-3 w-3" />}
-              {notifying ? "Sending…" : notifiedCurrent ? "Notified · Resend" : "Notify via Gmail"}
-            </button>
+            notifiedCurrent ? (
+              // Already emailed for this status: show a static "Notified" marker, plus a
+              // separate "Resend via Gmail" button for an explicit re-send.
+              <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                <span
+                  title="Customer already notified for this status"
+                  className="inline-flex items-center gap-1 rounded-[4px] border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700"
+                >
+                  <Check className="h-3 w-3" /> Notified
+                </span>
+                <button
+                  type="button"
+                  onClick={onNotify}
+                  disabled={notifying}
+                  title="Send this status update to the customer again"
+                  className="inline-flex items-center gap-1 rounded-[4px] bg-[#B19CD9] px-2.5 py-1 text-[11px] font-semibold text-gray-900 transition-colors hover:bg-[#9d86c9] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Mail className="h-3 w-3" />
+                  {notifying ? "Sending…" : "Resend via Gmail"}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={onNotify}
+                disabled={notifying}
+                title="Email the customer this status update"
+                className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-[4px] bg-[#B19CD9] px-2.5 py-1 text-[11px] font-semibold text-gray-900 transition-colors hover:bg-[#9d86c9] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Mail className="h-3 w-3" />
+                {notifying ? "Sending…" : "Notify via Gmail"}
+              </button>
+            )
           )}
         </div>
         {/* Description: the state change that was made + who made it (the admin-only
             additions over the customer view). */}
         <p className="text-xs text-gray-500 mt-1">
+          {correction && (
+            <span className="mr-1.5 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 align-middle text-[10px] font-semibold text-amber-700">
+              <AlertTriangle className="h-2.5 w-2.5" /> Correction
+            </span>
+          )}
           {isPlacement ? (
             <>Order placed</>
           ) : (

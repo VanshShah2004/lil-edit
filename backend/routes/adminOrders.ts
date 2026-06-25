@@ -7,8 +7,9 @@ import { adminMutationLimiter } from "../middleware/rateLimiters.js";
 import { createLog, fms, type OpLogger } from "../lib/logger.js";
 // redisDel/redisKey bust the OWNER's cached order list + detail on a status change.
 import { redisDel, redisKey } from "../lib/redis.js";
-// Customer-facing "your order status changed" email (no-ops if Resend isn't configured).
-import { sendOrderStatusEmail } from "../lib/orderEmail.js";
+// Customer-facing emails (no-op if Resend isn't configured): the per-status change
+// notification, and the order-confirmation receipt re-send.
+import { sendOrderStatusEmail, sendOrderConfirmation, type OrderConfirmationPayload } from "../lib/orderEmail.js";
 // Storefront base URL for the "View your order" link (shared with the confirmation email).
 import { publicSiteUrl } from "../lib/siteUrl.js";
 
@@ -194,11 +195,14 @@ async function recordNotification(
   adminId: string | null,
   adminName: string,
   log: OpLogger,
+  // 'status' = a "your order is now <X>" notification; 'receipt' = the confirmation receipt.
+  kind: "status" | "receipt" = "status",
 ): Promise<void> {
   try {
     const { error } = await db().from("order_notifications").insert({
       order_id: orderId,
       status,
+      kind,
       recipient_email: recipientEmail,
       sent_by: adminId,
       sent_by_name: adminName,
@@ -346,17 +350,23 @@ router.get("/:id", async (req: Request, res: Response) => {
     // markers in the Status History timeline.
     const [profiles, notifs] = await Promise.all([
       loadProfiles([row.user_id]),
-      db().from("order_notifications").select("status").eq("order_id", orderId),
+      db().from("order_notifications").select("status, kind").eq("order_id", orderId),
     ]);
     if (notifs.error) log.warn(`notifications query failed (table missing?): ${notifs.error.message}`);
-    // Distinct statuses the customer has already been emailed about.
+    const notifRows = (notifs.data ?? []) as { status: string; kind?: string | null }[];
+    // Distinct statuses the customer has been emailed about — STATUS notifications only
+    // (the receipt is a separate kind, so it never pollutes the "already notified" guard).
+    // Rows predating the `kind` column read as 'status' via the column default.
     const notifiedStatuses = [
-      ...new Set(((notifs.data ?? []) as { status: string }[]).map((n) => n.status)),
+      ...new Set(notifRows.filter((n) => (n.kind ?? "status") !== "receipt").map((n) => n.status)),
     ];
+    // Whether the order-confirmation receipt has a recorded send (drives the receipt
+    // indicator + "Resend receipt" affordance).
+    const receiptSent = notifRows.some((n) => n.kind === "receipt");
     const order = mapOrder(row, profiles.get(row.user_id), true);
 
-    log.success(`served  order=${order.orderNumber}  items=${order.items.length}  notified=[${notifiedStatuses.join(",")}]  total=${fms(log.elapsed())}`).end("ADMIN ORDER DETAIL");
-    res.json({ order: { ...order, notifiedStatuses } });
+    log.success(`served  order=${order.orderNumber}  items=${order.items.length}  notified=[${notifiedStatuses.join(",")}]  receipt=${receiptSent}  total=${fms(log.elapsed())}`).end("ADMIN ORDER DETAIL");
+    res.json({ order: { ...order, notifiedStatuses, receiptSent } });
   } catch (err) {
     log.error("unhandled error", err).end("ADMIN ORDER DETAIL");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
