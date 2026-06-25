@@ -314,7 +314,7 @@ const UserNavbar = () => {
       >
         {/* Header — branded gradient band with greeting + avatar */}
         <div className="relative overflow-hidden bg-gradient-to-br from-brand-teal/12 via-[#E8DDF7]/45 to-emerald-50 border-b border-foreground px-5 pt-5 pb-4">
-          <div className="h-1 w-full absolute top-0 left-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
+          <div className="h-1.5 w-full absolute top-0 left-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
           <button
             type="button"
             onClick={() => setIsLeftMenuOpen(false)}
@@ -387,6 +387,9 @@ const UserNavbar = () => {
             <span>Logout</span>
           </button>
         </div>
+
+        {/* Bottom accent strip — mirrors the one atop the header */}
+        <div className="h-1.5 w-full shrink-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
       </aside>
     </>
   );
@@ -424,6 +427,7 @@ function SideLink({
   badgeClass?: string;
 }) {
   const active = pathname === to || (to !== "/dashboard" && pathname.startsWith(to + "/"));
+  const hasBadge = typeof badge === "number" && badge > 0;
   return (
     <Link
       to={to}
@@ -437,13 +441,11 @@ function SideLink({
       <Icon className={`w-6 h-6 shrink-0 ${active ? "text-[#0F766E]" : "text-muted-foreground"}`} />
       <span className="font-medium text-lg">{label}</span>
       {typeof badge === "number" && badge > 0 && (
-        <span className={`ml-auto min-w-[22px] h-[22px] flex items-center justify-center rounded-full text-white text-xs font-bold px-1.5 ${badgeClass}`}>
+        <span className={`ml-auto min-w-[24px] h-[24px] flex items-center justify-center rounded-full text-white text-sm font-bold px-1.5 ${badgeClass}`}>
           {badge > 99 ? "99+" : badge}
         </span>
       )}
-      {!(typeof badge === "number" && badge > 0) && (
-        <ChevronRight className={`ml-auto w-5 h-5 transition-transform ${active ? "text-[#0F766E]" : "text-muted-foreground/30 group-hover:text-muted-foreground/60 group-hover:translate-x-0.5"}`} />
-      )}
+      <ChevronRight className={`${hasBadge ? "ml-1.5" : "ml-auto"} w-5 h-5 shrink-0 transition-transform ${active ? "text-[#0F766E]" : "text-foreground/60 group-hover:text-foreground group-hover:translate-x-0.5"}`} />
     </Link>
   );
 }
