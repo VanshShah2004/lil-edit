@@ -8,6 +8,7 @@ import { mutationLimiter } from "../middleware/rateLimiters.js";
 import { createLog, fms, type OpLogger } from "../lib/logger.js";
 import { redisGet, redisSet, redisDel, redisSetNX, redisKey, CHECKOUT_TTL_S } from "../lib/redis.js";
 import { sendOrderConfirmation } from "../lib/orderEmail.js";
+import { resolveRecipientEmail } from "../lib/recipientEmail.js";
 import { publicSiteUrl } from "../lib/siteUrl.js";
 import { verifyReviewsForOrder } from "../lib/reviewsVerification.js";
 import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
@@ -347,6 +348,10 @@ async function afterPlacement(snap: CheckoutSnapshot, razorpayOrderId: string, r
         recipientEmail = (data?.email as string) ?? "";
         recipientName = [data?.first_name, data?.last_name].filter(Boolean).join(" ").trim() || undefined;
       } catch { /* best-effort profile lookup */ }
+      // Fall back to the auth email when the profile has none, so a missing/cleared
+      // profiles.email can't silently swallow the receipt (the buyer authenticated to place
+      // this order, so an auth identity email exists).
+      recipientEmail = await resolveRecipientEmail(snap.userId, recipientEmail, log);
       const mail = await sendOrderConfirmation({
         orderId: result.order_id ?? "",
         orderNumber: result.order_number ?? "",
@@ -743,7 +748,17 @@ router.post("/verify", requireAuth, mutationLimiter, async (req: Request, res: R
       return;
     }
 
-    await afterPlacement(snap, razorpay_order_id, result, log);
+    // Run post-placement side-effects ONLY for the first placement of this payment. A
+    // concurrent /verify (or the /webhook backstop) that lost the race gets result='exists'
+    // — place_order's per-user advisory lock serialized them and its idempotency check
+    // returned the already-placed order. Re-running afterPlacement would send a SECOND
+    // confirmation receipt and write a duplicate notification row, so skip it. The response
+    // stays correct: place_order returns the existing order's id/number on 'exists'.
+    if (result.result === "created") {
+      await afterPlacement(snap, razorpay_order_id, result, log);
+    } else {
+      log.step(`idempotent placement (result=${result.result}) — skipping post-placement side-effects (first placement already handled them)`);
+    }
     log.success(`placed  order=${result.order_number}  result=${result.result}  ${fms(log.elapsed())}`).end("CHECKOUT VERIFY");
     res.json({ orderId: result.order_id, orderNumber: result.order_number });
   } catch (err) {
@@ -870,7 +885,14 @@ export const webhookHandler: RequestHandler = async (req: Request, res: Response
       return;
     }
 
-    await afterPlacement(snap, razorpayOrderId, result, log);
+    // First-placement-only side-effects (same guard as /verify): on an idempotent 'exists'
+    // (e.g. /verify already placed this payment) skip afterPlacement so the backstop can't
+    // double-send the confirmation receipt or duplicate the notification row.
+    if (result.result === "created") {
+      await afterPlacement(snap, razorpayOrderId, result, log);
+    } else {
+      log.step(`idempotent placement (result=${result.result}) — skipping post-placement side-effects (first placement already handled them)`);
+    }
     log.success(`webhook placed  order=${result.order_number}  result=${result.result}`).end("CHECKOUT WEBHOOK");
     res.status(200).json({ ok: true });
   } catch (err) {

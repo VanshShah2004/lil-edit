@@ -12,6 +12,9 @@ import { redisDel, redisKey } from "../lib/redis.js";
 import { sendOrderStatusEmail, sendOrderConfirmation, type OrderConfirmationPayload } from "../lib/orderEmail.js";
 // Storefront base URL for the "View your order" link (shared with the confirmation email).
 import { publicSiteUrl } from "../lib/siteUrl.js";
+// Resolve a customer's email (profiles.email, else the auth identity) so a missing profile
+// email can't silently drop a notification or receipt.
+import { resolveRecipientEmail } from "../lib/recipientEmail.js";
 
 const router = Router();
 const db = () => supabaseAdmin ?? supabaseAnon;
@@ -487,8 +490,9 @@ router.patch("/:id/status", adminMutationLimiter, async (req: Request, res: Resp
         const owner = ownerProfiles.get(ownerId);
         const recipientName = [owner?.first_name, owner?.last_name].filter(Boolean).join(" ").trim();
         const orderNumber = (orderMeta.data as { order_number?: string } | null)?.order_number ?? orderId;
+        const recipientEmail = await resolveRecipientEmail(ownerId, owner?.email, log);
         const mail = await sendOrderStatusEmail({
-          recipientEmail: owner?.email ?? "",
+          recipientEmail,
           recipientName: recipientName || undefined,
           orderNumber,
           toStatus: status,
@@ -497,7 +501,7 @@ router.patch("/:id/status", adminMutationLimiter, async (req: Request, res: Resp
         emailed = mail.sent;
         emailReason = mail.reason;
         // Record only successful sends so "already notified" reflects real deliveries.
-        if (emailed) await recordNotification(orderId, status, owner?.email ?? "", adminId, adminName, log);
+        if (emailed) await recordNotification(orderId, status, recipientEmail, adminId, adminName, log);
         else log.warn(`notify requested but email not sent: ${mail.error ?? "unknown"} (reason=${mail.reason ?? "?"})`);
       } catch (mailErr) {
         log.error("status email failed", mailErr);
@@ -552,9 +556,10 @@ router.post("/:id/notify", adminMutationLimiter, async (req: Request, res: Respo
     const admin = adminProfiles.get(adminId);
     const adminName = [admin?.first_name, admin?.last_name].filter(Boolean).join(" ").trim() || "Admin";
     const recipientName = [owner?.first_name, owner?.last_name].filter(Boolean).join(" ").trim();
+    const recipientEmail = await resolveRecipientEmail(o.user_id, owner?.email, log);
 
     const mail = await sendOrderStatusEmail({
-      recipientEmail: owner?.email ?? "",
+      recipientEmail,
       recipientName: recipientName || undefined,
       orderNumber: o.order_number ?? orderId,
       toStatus: o.status,
@@ -562,13 +567,110 @@ router.post("/:id/notify", adminMutationLimiter, async (req: Request, res: Respo
     });
 
     // Record only on a confirmed send, mirroring the status-change path.
-    if (mail.sent) await recordNotification(orderId, o.status, owner?.email ?? "", adminId, adminName, log);
+    if (mail.sent) await recordNotification(orderId, o.status, recipientEmail, adminId, adminName, log);
     else log.warn(`notify not sent: ${mail.error ?? "unknown"}`);
 
     log.success(`notify  order=${orderId}  status=${o.status}  emailed=${mail.sent}${mail.reason ? `  reason=${mail.reason}` : ""}`).end("ADMIN ORDER NOTIFY");
     res.json({ emailed: mail.sent, status: o.status, ...(mail.reason ? { reason: mail.reason } : {}) });
   } catch (err) {
     log.error("unhandled error", err).end("ADMIN ORDER NOTIFY");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// ─── POST /api/admin/orders/:id/resend-receipt — (re)send the confirmation receipt ─────
+// The order-confirmation receipt is auto-sent fire-and-forget at placement; this is its
+// recovery / send-again path (the receipt is a one-off document, so unlike the status
+// notification it has no per-status "already notified" guard — sending again is always
+// allowed). Rebuilds the SAME itemized payload from the persisted order + items + address
+// and sends via the shared mailer, recording a kind='receipt' row on a confirmed send.
+router.post("/:id/resend-receipt", adminMutationLimiter, async (req: Request, res: Response) => {
+  const log = createLog().start("ADMIN ORDER RESEND RECEIPT");
+  const adminId = (req as AuthenticatedRequest).userId;
+  const orderId = req.params.id as string;
+  log.step(`admin=${adminId}  order=${orderId}  (resend confirmation receipt)`);
+
+  try {
+    const { data, error } = await db()
+      .from("orders")
+      .select(`
+        id, user_id, order_number, subtotal, discount, shipping_fee, total, item_count,
+        payment_method, status, created_at, shipping_address,
+        order_items(${ORDER_ITEMS_SELECT})
+      `)
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (error) {
+      log.error(`order query failed  msg=${error.message}`, error).end("ADMIN ORDER RESEND RECEIPT");
+      res.status(500).json({ error: error.message });
+      return;
+    }
+    if (!data) {
+      log.warn(`not found  order=${orderId}`).end("ADMIN ORDER RESEND RECEIPT");
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    const row = data as unknown as OrderRow;
+    const [ownerProfiles, adminProfiles] = await Promise.all([
+      loadProfiles([row.user_id]),
+      loadProfiles([adminId]),
+    ]);
+    const owner = ownerProfiles.get(row.user_id);
+    const admin = adminProfiles.get(adminId);
+    const adminName = [admin?.first_name, admin?.last_name].filter(Boolean).join(" ").trim() || "Admin";
+    const recipientName = [owner?.first_name, owner?.last_name].filter(Boolean).join(" ").trim() || undefined;
+    const recipientEmail = await resolveRecipientEmail(row.user_id, owner?.email, log);
+    const a = (row.shipping_address ?? {}) as Record<string, unknown>;
+
+    const payload: OrderConfirmationPayload = {
+      orderId: row.id,
+      orderNumber: row.order_number,
+      recipientEmail,
+      recipientName,
+      items: (row.order_items ?? []).map((it) => ({
+        title: it.title,
+        sku: it.sku,
+        size: it.size || undefined,
+        colorName: it.color_name || undefined,
+        quantity: it.quantity,
+        unitPrice: Number(it.unit_price) || 0,
+        lineTotal: Number(it.line_total) || 0,
+        imageUrl: it.image_url || undefined,
+      })),
+      subtotal: Number(row.subtotal) || 0,
+      discount: Number(row.discount) || 0,
+      shippingFee: Number(row.shipping_fee) || 0,
+      total: Number(row.total) || 0,
+      itemCount: row.item_count,
+      paymentMethod: row.payment_method,
+      orderUrl: `${publicSiteUrl()}/orders/${row.id}`,
+      // Real order date (not "now") so a later re-send still shows when it was placed.
+      placedAt: row.created_at,
+      address: {
+        label: (a.label as string) ?? null,
+        line1: (a.line1 as string) ?? "",
+        line2: (a.line2 as string) || undefined,
+        landmark: (a.landmark as string) ?? null,
+        city: (a.city as string) ?? "",
+        state: (a.state as string) ?? "",
+        country: (a.country as string) ?? "",
+        pincode: (a.pincode as string) ?? "",
+      },
+    };
+
+    const mail = await sendOrderConfirmation(payload);
+    // Record on a confirmed send (kind='receipt'), mirroring the placement receipt + the
+    // status-notify path. status carries the order's CURRENT status (informational — the
+    // receiptSent indicator keys on kind, not status).
+    if (mail.sent) await recordNotification(orderId, row.status, recipientEmail, adminId, adminName, log, "receipt");
+    else log.warn(`receipt resend not sent: ${mail.error ?? "unknown"} (reason=${mail.reason ?? "?"})`);
+
+    log.success(`receipt resend  order=${orderId}  emailed=${mail.sent}${mail.reason ? `  reason=${mail.reason}` : ""}`).end("ADMIN ORDER RESEND RECEIPT");
+    res.json({ emailed: mail.sent, ...(mail.reason ? { reason: mail.reason } : {}) });
+  } catch (err) {
+    log.error("unhandled error", err).end("ADMIN ORDER RESEND RECEIPT");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });

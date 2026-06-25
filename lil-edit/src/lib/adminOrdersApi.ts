@@ -79,6 +79,9 @@ export interface AdminOrderDetail extends AdminOrderSummary {
   // Distinct statuses the customer has already been emailed about (drives the "already
   // notified" warning before a re-send). Empty if the notifications table isn't present.
   notifiedStatuses: OrderStatus[];
+  // Whether the order-confirmation receipt has a recorded send (drives the receipt
+  // indicator + "Resend receipt" action). False if the notifications table isn't present.
+  receiptSent: boolean;
 }
 
 export interface AdminOrdersResponse {
@@ -211,6 +214,7 @@ export async function fetchAdminOrderById(orderId: string): Promise<AdminOrderDe
     statusHistory: order.statusHistory ?? [],
     paymentStatusHistory: order.paymentStatusHistory ?? [],
     notifiedStatuses: order.notifiedStatuses ?? [],
+    receiptSent: order.receiptSent ?? false,
   };
 }
 
@@ -280,6 +284,23 @@ export async function resendStatusNotification(
   const data = await res.json();
   console.log(`[adminOrdersApi] resendStatusNotification → ${orderId}`, data);
   return data as { emailed: boolean; status: OrderStatus; reason?: NotifyFailureReason };
+}
+
+// (Re)send the order-confirmation receipt for this order — the recovery / send-again path
+// for the receipt that's auto-sent at placement. `emailed` reflects whether it actually
+// went out (the backend falls back to the auth email when the profile has none).
+export async function resendReceipt(
+  orderId: string,
+): Promise<{ emailed: boolean; reason?: NotifyFailureReason }> {
+  const res = await authFetch(`/api/admin/orders/${orderId}/resend-receipt`, { method: "POST" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    console.error("[adminOrdersApi] resendReceipt error:", body);
+    throw new Error((body as { error?: string }).error ?? `Receipt send failed (${res.status})`);
+  }
+  const data = await res.json();
+  console.log(`[adminOrdersApi] resendReceipt → ${orderId}`, data);
+  return data as { emailed: boolean; reason?: NotifyFailureReason };
 }
 
 export async function updatePaymentStatus(

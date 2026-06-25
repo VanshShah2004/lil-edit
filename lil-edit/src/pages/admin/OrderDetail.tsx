@@ -22,6 +22,7 @@ import {
   updateOrderStatus,
   updatePaymentStatus,
   resendStatusNotification,
+  resendReceipt,
   nextStatuses,
   nextPaymentStatuses,
   SETTABLE_ORDER_STATUSES,
@@ -121,6 +122,8 @@ const AdminOrderDetailPage = () => {
   // In-flight flag for the Status History "Notify via Gmail" re-send (separate from the
   // Status Management save above).
   const [notifying, setNotifying] = useState(false);
+  // In-flight flag for the header "Resend receipt" action.
+  const [resendingReceipt, setResendingReceipt] = useState(false);
   // Correction mode: the escape hatch for a mistakenly-finalized (terminal) order.
   const [correcting, setCorrecting] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentStatus>("pending");
@@ -243,11 +246,9 @@ const AdminOrderDetailPage = () => {
   // "Send again" action so the admin re-checks before emailing the same update twice.
   const handleNotify = () => {
     if (!order || notifying) return;
-    // Nothing to send to → say so plainly instead of round-tripping to a generic failure.
-    if (!order.customer.email) {
-      toast.warning("This customer has no email address on file — nothing to notify.");
-      return;
-    }
+    // Don't pre-block on a missing customer email: the server falls back to the auth email
+    // when the profile has none (which we can't see here). If it's truly unresolvable, the
+    // send returns no_recipient and doNotify surfaces "no email address on file".
     const already = order.notifiedStatuses?.includes(order.status) ?? false;
     if (already) {
       toast.warning(`You already notified the customer that this order is "${STATUS_LABELS[order.status]}".`, {
@@ -258,6 +259,26 @@ const AdminOrderDetailPage = () => {
       return;
     }
     void doNotify();
+  };
+
+  // (Re)send the order-confirmation receipt from the header — independent of status, the
+  // recovery path for a receipt that failed at placement (or needs sending again). The
+  // server resolves the auth email if the profile has none, so don't pre-block on a missing
+  // customer email here.
+  const handleResendReceipt = async () => {
+    if (!order || resendingReceipt) return;
+    setResendingReceipt(true);
+    try {
+      const result = await resendReceipt(order.id);
+      if (result.emailed) toast.success(`Receipt sent to ${order.customer.email || "the customer"}`);
+      else toast.warning(`Couldn't send receipt — ${notifyIssueClause(result.reason)}.`);
+      await loadOrder(order.id, false); // refresh the receiptSent indicator
+    } catch (err) {
+      console.error("[AdminOrderDetail] resend receipt failed", err);
+      toast.error(err instanceof Error ? err.message : "Failed to send receipt");
+    } finally {
+      setResendingReceipt(false);
+    }
   };
 
   // Enter correction mode: offer every settable status except the current (terminal)
@@ -554,13 +575,32 @@ const AdminOrderDetailPage = () => {
               <ArrowLeft className="w-4 h-4" /> Back to orders
             </Link>
             {order && (
-              <button
-                type="button"
-                onClick={handleDownloadPdf}
-                className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-gray-900 rounded-md px-4 py-2 hover:bg-gray-800 transition-colors"
-              >
-                <Download className="w-4 h-4" /> Download PDF
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {order.receiptSent && (
+                  <span
+                    title="A confirmation receipt has been sent for this order"
+                    className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700"
+                  >
+                    <Check className="w-3.5 h-3.5" /> Receipt sent
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleResendReceipt}
+                  disabled={resendingReceipt}
+                  title="Email the order-confirmation receipt to the customer"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-md px-4 py-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Mail className="w-4 h-4" /> {resendingReceipt ? "Sending…" : order.receiptSent ? "Resend receipt" : "Send receipt"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-gray-900 rounded-md px-4 py-2 hover:bg-gray-800 transition-colors"
+                >
+                  <Download className="w-4 h-4" /> Download PDF
+                </button>
+              </div>
             )}
           </div>
         </div>
