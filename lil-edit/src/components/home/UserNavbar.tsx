@@ -313,7 +313,7 @@ const UserNavbar = () => {
           }`}
       >
         {/* Header — branded gradient band with greeting + avatar */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-brand-teal/12 via-[#E8DDF7]/45 to-emerald-50 border-b border-foreground px-5 pt-5 pb-4">
+        <div className="relative overflow-hidden bg-gradient-to-br from-brand-teal/12 via-[#E8DDF7]/45 to-emerald-50 border-b border-foreground px-5 pt-7 pb-6">
           <div className="h-1.5 w-full absolute top-0 left-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
           <button
             type="button"
@@ -329,7 +329,7 @@ const UserNavbar = () => {
             </div>
             <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#0F766E]">Welcome back</p>
-              <p className="font-display text-2xl font-extrabold text-foreground truncate leading-tight">
+              <p className="font-display text-xl md:text-lg font-extrabold text-foreground truncate leading-tight">
                 {firstNameCandidate === "U" ? "User" : firstNameCandidate}
                 {isAdmin && (
                   <span className="ml-2 align-middle text-[11px] font-bold uppercase tracking-wider text-white bg-[#0F766E] rounded-full px-2 py-0.5">
@@ -341,7 +341,7 @@ const UserNavbar = () => {
           </div>
         </div>
 
-        <nav className="flex flex-col flex-1 py-2 overflow-y-hidden">
+        <nav className="flex flex-col flex-1 py-2 overflow-y-hidden md:overflow-y-auto">
           <SideSection label="Front Row">
             <SideLink to="/dashboard" icon={Home} label="Home" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
             <SideLink to="/collections" icon={Shirt} label="Collections" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
@@ -369,7 +369,7 @@ const UserNavbar = () => {
         </nav>
 
         {/* Logout — pinned footer */}
-        <div className="px-3 py-3 border-t border-foreground">
+        <div className="px-3 py-2 border-t border-foreground">
           <button
             type="button"
             onClick={async () => {
@@ -381,9 +381,9 @@ const UserNavbar = () => {
                 console.error("Logout failed", err);
               }
             }}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors font-medium text-lg"
+            className="w-full flex items-center gap-3 px-3 py-1.5 md:py-1 rounded-lg text-destructive hover:bg-destructive/10 transition-colors font-medium text-sm md:text-xs"
           >
-            <LogOut className="w-6 h-6" />
+            <LogOut className="w-5 h-5 md:w-3.5 md:h-3.5" />
             <span>Logout</span>
           </button>
         </div>
@@ -398,8 +398,8 @@ const UserNavbar = () => {
 // Uppercase, tracked section label with grouped links beneath it.
 function SideSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="mx-3 pt-2.5 pb-1.5 border-t border-foreground/55 first:border-t-0 first:pt-1">
-      <p className="px-3 py-1.5 mb-1 font-display text-lg font-black uppercase tracking-[0.16em] text-foreground/85">
+    <div className="mx-3 pt-2.5 md:pt-2 pb-1.5 border-t border-foreground/55 first:border-t-0 first:pt-1">
+      <p className="px-3 py-1.5 mb-1 font-display text-base md:text-sm font-black uppercase tracking-[0.16em] text-foreground/85">
         {label}
       </p>
       <div className="flex flex-col gap-0.5">{children}</div>
@@ -433,19 +433,19 @@ function SideLink({
       to={to}
       onClick={onClick}
       aria-current={active ? "page" : undefined}
-      className={`group flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${active
+      className={`group flex items-center gap-3 px-3 py-2 md:py-1.5 rounded-lg transition-colors ${active
         ? "bg-brand-teal/10 text-[#0F766E] font-semibold"
         : "text-foreground hover:bg-secondary"
         }`}
     >
-      <Icon className={`w-6 h-6 shrink-0 ${active ? "text-[#0F766E]" : "text-muted-foreground"}`} />
-      <span className="font-medium text-lg">{label}</span>
+      <Icon className={`w-5 h-5 md:w-4 md:h-4 shrink-0 ${active ? "text-[#0F766E]" : "text-muted-foreground"}`} />
+      <span className="font-medium text-base md:text-sm">{label}</span>
       {typeof badge === "number" && badge > 0 && (
-        <span className={`ml-auto min-w-[24px] h-[24px] flex items-center justify-center rounded-full text-white text-sm font-bold px-1.5 ${badgeClass}`}>
+        <span className={`ml-auto min-w-[24px] h-[24px] md:min-w-[18px] md:h-[18px] flex items-center justify-center rounded-full text-white text-sm md:text-[11px] font-bold px-1.5 ${badgeClass}`}>
           {badge > 99 ? "99+" : badge}
         </span>
       )}
-      <ChevronRight className={`${hasBadge ? "ml-1.5" : "ml-auto"} w-5 h-5 shrink-0 transition-transform ${active ? "text-[#0F766E]" : "text-foreground/60 group-hover:text-foreground group-hover:translate-x-0.5"}`} />
+      <ChevronRight className={`${hasBadge ? "ml-1.5" : "ml-auto"} w-5 h-5 md:w-3.5 md:h-3.5 shrink-0 transition-transform ${active ? "text-[#0F766E]" : "text-foreground/60 group-hover:text-foreground group-hover:translate-x-0.5"}`} />
     </Link>
   );
 }
