@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Heart,
-  LayoutDashboard,
+  Home,
   LogOut,
   Package,
   Search,
@@ -12,6 +12,11 @@ import {
   Menu,
   X,
   Shirt,
+  Info,
+  Settings,
+  Sparkles,
+  ClipboardList,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
@@ -32,6 +37,7 @@ const UserNavbar = () => {
   const { cartCount } = useCart();
   const { wishlistCount } = useWishlist();
   const navigate = useNavigate();
+  const location = useLocation();
   const hideMegaMenu = false;
   const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
   const firstNameCandidate =
@@ -97,6 +103,21 @@ const UserNavbar = () => {
       document.removeEventListener("touchstart", handleOutsideClick);
     };
   }, []);
+
+  // Side menu: lock body scroll while open and close on Escape.
+  useEffect(() => {
+    if (!isLeftMenuOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsLeftMenuOpen(false);
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [isLeftMenuOpen]);
 
 
 
@@ -276,87 +297,155 @@ const UserNavbar = () => {
       </header>
 
       {/* Left Menu Overlay */}
-      {isLeftMenuOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/30 transition-opacity"
-          onClick={() => setIsLeftMenuOpen(false)}
-        />
-      )}
+      <div
+        className={`fixed inset-0 z-[60] bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${isLeftMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+        onClick={() => setIsLeftMenuOpen(false)}
+        aria-hidden={!isLeftMenuOpen}
+      />
 
       {/* Left Menu Panel */}
-      <div
-        className={`fixed top-0 left-0 bottom-0 z-50 w-72 bg-background border-r border-border transform transition-transform duration-300 ease-in-out flex flex-col ${isLeftMenuOpen ? "translate-x-0" : "-translate-x-full"
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Main menu"
+        className={`fixed top-0 left-0 bottom-0 z-[70] w-80 max-w-[88vw] bg-background shadow-2xl border-r border-border transform transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] flex flex-col ${isLeftMenuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
       >
-        <div className="flex items-center justify-between p-4 border-b border-border/50">
-          <div className="font-display text-2xl font-semibold">Hey, <span className="font-extrabold">{firstNameCandidate === "U" ? "User" : firstNameCandidate}</span>!</div>
+        {/* Header — branded gradient band with greeting + avatar */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-brand-teal/12 via-[#E8DDF7]/45 to-emerald-50 border-b border-foreground px-5 pt-5 pb-4">
+          <div className="h-1 w-full absolute top-0 left-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
           <button
             type="button"
             onClick={() => setIsLeftMenuOpen(false)}
-            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+            className="absolute top-4 right-4 p-1 text-muted-foreground hover:text-foreground hover:bg-white/60 rounded-full transition-colors"
+            aria-label="Close menu"
           >
             <X className="w-5 h-5" />
           </button>
-        </div>
-        <nav className="flex flex-col flex-1 py-4 px-3 gap-2 overflow-y-auto">
-          <Link
-            to="/dashboard"
-            onClick={() => setIsLeftMenuOpen(false)}
-            className="flex items-center gap-3 px-3 py-3 rounded-lg text-foreground hover:bg-secondary transition-colors"
-          >
-            <LayoutDashboard className="w-5 h-5 text-muted-foreground" />
-            <span className="font-medium">Home</span>
-          </Link>
-          <Link
-            to="/collections"
-            onClick={() => setIsLeftMenuOpen(false)}
-            className="flex items-center gap-3 px-3 py-3 rounded-lg text-foreground hover:bg-secondary transition-colors"
-          >
-            <Shirt className="w-5 h-5 text-muted-foreground" />
-            <span className="font-medium">Collections</span>
-          </Link>
-
-          <Link
-            to="/cart"
-            onClick={() => setIsLeftMenuOpen(false)}
-            className="flex items-center gap-3 px-3 py-3 rounded-lg text-foreground hover:bg-secondary transition-colors"
-          >
-            <ShoppingCart className="w-5 h-5 text-muted-foreground" />
-            <span className="font-medium">Cart</span>
-            {cartCount > 0 && (
-              <span className="ml-auto min-w-[20px] h-5 flex items-center justify-center rounded-full bg-[#0F766E] text-white text-[10px] font-bold px-1">
-                {cartCount > 99 ? "99+" : cartCount}
-              </span>
-            )}
-          </Link>
-          <Link
-            to="/wishlist"
-            onClick={() => setIsLeftMenuOpen(false)}
-            className="flex items-center gap-3 px-3 py-3 rounded-lg text-foreground hover:bg-secondary transition-colors"
-          >
-            <Heart className="w-5 h-5 text-muted-foreground" />
-            <span className="font-medium">Wishlist</span>
-            {wishlistCount > 0 && (
-              <span className="ml-auto min-w-[20px] h-5 flex items-center justify-center rounded-full bg-primary text-white text-[10px] font-bold px-1">
-                {wishlistCount > 99 ? "99+" : wishlistCount}
-              </span>
-            )}
-          </Link>
-
-          <div className="mt-auto">
-            <Link
-              to="/profile"
-              onClick={() => setIsLeftMenuOpen(false)}
-              className="flex items-center gap-3 px-3 py-3 rounded-lg text-foreground hover:bg-secondary transition-colors"
-            >
-              <User className="w-5 h-5 text-muted-foreground" />
-              <span className="font-medium">Profile</span>
-            </Link>
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-full border-2 border-teal-600 bg-gradient-to-br from-[#F8FFFE] to-[#E9FCF8] text-teal-700 shadow-sm flex items-center justify-center font-display text-2xl font-black shrink-0">
+              {userInitial}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#0F766E]">Welcome back</p>
+              <p className="font-display text-2xl font-extrabold text-foreground truncate leading-tight">
+                {firstNameCandidate === "U" ? "User" : firstNameCandidate}
+                {isAdmin && (
+                  <span className="ml-2 align-middle text-[11px] font-bold uppercase tracking-wider text-white bg-[#0F766E] rounded-full px-2 py-0.5">
+                    Admin
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
+        </div>
+
+        <nav className="flex flex-col flex-1 py-2 overflow-y-hidden">
+          <SideSection label="Front Row">
+            <SideLink to="/dashboard" icon={Home} label="Home" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+            <SideLink to="/collections" icon={Shirt} label="Collections" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+            <SideLink to="/about" icon={Info} label="About Us" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+          </SideSection>
+
+          <SideSection label="Your Closet">
+            <SideLink to="/wishlist" icon={Heart} label="Wishlist" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} badge={wishlistCount} badgeClass="bg-primary" />
+            <SideLink to="/cart" icon={ShoppingCart} label="Cart" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} badge={cartCount} badgeClass="bg-[#0F766E]" />
+            <SideLink to="/orders" icon={Package} label="My Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+          </SideSection>
+
+          {isAdmin && (
+            <SideSection label="Backstage">
+              <SideLink to="/admin/settings" icon={ShieldCheck} label="Admin Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+              <SideLink to="/admin/manage-products" icon={Settings} label="Manage Products" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+              <SideLink to="/admin/orders" icon={ClipboardList} label="All Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+              <SideLink to="/admin/spotlight" icon={Sparkles} label="The Spotlight" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+            </SideSection>
+          )}
+
+          <SideSection label="You">
+            <SideLink to="/profile" icon={User} label="Profile" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+          </SideSection>
         </nav>
-      </div>
+
+        {/* Logout — pinned footer */}
+        <div className="px-3 py-3 border-t border-foreground">
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                setIsLeftMenuOpen(false);
+                await signOut();
+                navigate("/");
+              } catch (err) {
+                console.error("Logout failed", err);
+              }
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors font-medium text-lg"
+          >
+            <LogOut className="w-6 h-6" />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
     </>
   );
 };
+
+// Uppercase, tracked section label with grouped links beneath it.
+function SideSection({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="mx-3 pt-2.5 pb-1.5 border-t border-foreground/55 first:border-t-0 first:pt-1">
+      <p className="px-3 py-1.5 mb-1 font-display text-lg font-black uppercase tracking-[0.16em] text-foreground/85">
+        {label}
+      </p>
+      <div className="flex flex-col gap-0.5">{children}</div>
+    </div>
+  );
+}
+
+// A single nav row. Highlights when its route is active and supports an
+// optional count badge (cart / wishlist).
+function SideLink({
+  to,
+  icon: Icon,
+  label,
+  pathname,
+  onClick,
+  badge,
+  badgeClass = "bg-primary",
+}: {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  pathname: string;
+  onClick: () => void;
+  badge?: number;
+  badgeClass?: string;
+}) {
+  const active = pathname === to || (to !== "/dashboard" && pathname.startsWith(to + "/"));
+  return (
+    <Link
+      to={to}
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      className={`group flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${active
+        ? "bg-brand-teal/10 text-[#0F766E] font-semibold"
+        : "text-foreground hover:bg-secondary"
+        }`}
+    >
+      <Icon className={`w-6 h-6 shrink-0 ${active ? "text-[#0F766E]" : "text-muted-foreground"}`} />
+      <span className="font-medium text-lg">{label}</span>
+      {typeof badge === "number" && badge > 0 && (
+        <span className={`ml-auto min-w-[22px] h-[22px] flex items-center justify-center rounded-full text-white text-xs font-bold px-1.5 ${badgeClass}`}>
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
+      {!(typeof badge === "number" && badge > 0) && (
+        <ChevronRight className={`ml-auto w-5 h-5 transition-transform ${active ? "text-[#0F766E]" : "text-muted-foreground/30 group-hover:text-muted-foreground/60 group-hover:translate-x-0.5"}`} />
+      )}
+    </Link>
+  );
+}
 
 export default UserNavbar;
