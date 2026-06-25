@@ -7,7 +7,7 @@ import { adminMutationLimiter } from "../middleware/rateLimiters.js";
 import { createLog, fms, type OpLogger } from "../lib/logger.js";
 // redisDel/redisKey bust the OWNER's cached order list + detail on a status change.
 import { redisDel, redisKey } from "../lib/redis.js";
-// Customer-facing emails (no-op if Resend isn't configured): the per-status change
+// Customer-facing emails (no-op if Gmail SMTP isn't configured): the per-status change
 // notification, and the order-confirmation receipt re-send.
 import { sendOrderStatusEmail, sendOrderConfirmation, type OrderConfirmationPayload } from "../lib/orderEmail.js";
 // Storefront base URL for the "View your order" link (shared with the confirmation email).

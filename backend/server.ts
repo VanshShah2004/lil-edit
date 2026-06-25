@@ -13,7 +13,6 @@ import ordersRouter from "./routes/orders.js";
 import adminOrdersRouter from "./routes/adminOrders.js";
 import curationRouter from "./routes/curation.js";
 import checkoutRouter, { webhookHandler } from "./routes/checkout.js";
-import { resendWebhookHandler } from "./routes/emailWebhook.js";
 import { globalLimiter, mutationLimiter } from "./middleware/rateLimiters.js";
 import { warmupRedis, startRedisKeepalive, getRedis, redisSet, redisKey, CATALOG_LIST_TTL_S } from "./lib/redis.js";
 import { fetchThinProductList } from "./lib/persistCatalog.js";
@@ -52,10 +51,6 @@ app.use(cors({ origin, credentials: true }));
 // against). It also sits ahead of every limiter so Razorpay's retries are never
 // throttled. Everything else on /api/checkout rides the JSON parser + router below.
 app.use("/api/checkout/webhook", express.raw({ type: "*/*" }), webhookHandler);
-
-// Resend's delivery webhook is signed the same way (HMAC over raw bytes, Svix headers),
-// so it likewise needs the raw parser before express.json and sits ahead of the limiters.
-app.use("/api/email/webhook", express.raw({ type: "*/*" }), resendWebhookHandler);
 
 // Global JSON body limit: 1 MB is ample for any API payload here. The only
 // exception is product image uploads (base64 encoded), which get their own

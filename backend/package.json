@@ -8,7 +8,7 @@
     "dev": "tsx watch server.ts",
     "build": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "node --import tsx --test test/mailer.test.ts test/orderEmail.test.ts test/emailWebhook.test.ts"
+    "test": "node --import tsx --test test/mailer.test.ts test/orderEmail.test.ts"
   },
   "keywords": [],
   "author": "",
@@ -22,8 +22,8 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "ioredis": "^5.10.1",
-    "razorpay": "^2.9.6",
-    "resend": "^6.10.0"
+    "nodemailer": "^9.0.1",
+    "razorpay": "^2.9.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -31,6 +31,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.6.0",
+    "@types/nodemailer": "^8.0.1",
     "eslint": "^10.4.1",
     "globals": "^17.6.0",
     "nodemon": "^3.1.14",

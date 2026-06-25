@@ -1,8 +1,9 @@
 // Order confirmation email — an itemized receipt sent right after a successful placement.
 //
 // Called fire-and-forget from checkout's afterPlacement(), so the checkout flow never
-// blocks on — or fails because of — email delivery. Goes through the shared Resend mailer
-// (so it no-ops gracefully when RESEND_API_KEY is unset, and carries the support Reply-To).
+// blocks on — or fails because of — email delivery. Goes through the shared Gmail SMTP
+// mailer (so it no-ops gracefully when GMAIL_APP_PASSWORD is unset, and carries the
+// support Reply-To).
 
 import { createLog } from "./logger.js";
 import { sendMail, type SendMailResult } from "./mailer.js";
@@ -197,9 +198,9 @@ export async function sendOrderConfirmation(order: OrderConfirmationPayload): Pr
 }
 
 // ─── Order status-change notification ────────────────────────────────────────────
-// Sent when an admin updates an order's status and ticks "Notify customer". Unlike the
-// confirmation stub above this is fully wired through the Resend mailer; it no-ops
-// gracefully (logs, returns sent:false) when RESEND_API_KEY is unset.
+// Sent when an admin updates an order's status and ticks "Notify customer". Wired through
+// the same Gmail SMTP mailer; it no-ops gracefully (logs, returns sent:false) when
+// GMAIL_APP_PASSWORD is unset.
 
 export interface OrderStatusEmailPayload {
   recipientEmail: string;

@@ -22,7 +22,7 @@ new-ecomm/
 │   ├── lib/                   # Core business logic (DB, persistence, mapping)
 │   ├── services/              # Domain-specific logic (SKU generation)
 │   ├── utils/                 # Utilities (SKU formatting, category codes)
-│   └── package.json           # Backend deps: Express, Supabase, Resend
+│   └── package.json           # Backend deps: Express, Supabase, Nodemailer (Gmail SMTP)
 │
 ├── lil-edit/                  # React frontend (TypeScript + Vite)
 │   ├── src/
@@ -72,7 +72,7 @@ new-ecomm/
 - **Language**: TypeScript 6.x
 - **Dev Tools**: tsx (TypeScript execution), nodemon (auto-reload), ts-node
 - **Database**: Supabase PostgreSQL (via @supabase/supabase-js SDK)
-- **Email**: Resend API (transactional emails)
+- **Email**: Gmail SMTP via Nodemailer (transactional emails, sent from shop.theliledit@gmail.com)
 - **CORS**: Enabled for localhost dev servers
 - **Body Parsing**: 50MB JSON limit (for base64 image uploads)
 
@@ -510,7 +510,7 @@ JSON_BODY_LIMIT=50mb
 - 🔨 Product recommendations algorithm
 - 🔨 Search & filtering
 - 🔨 Review system (currently mocked)
-- 🔨 Email notifications (Resend API configured but unused)
+- ✅ Email notifications (Gmail SMTP — order confirmation + status updates; needs GMAIL_APP_PASSWORD)
 
 ### **Known Limitations**
 - Mock reviews (hardcoded in backend)
@@ -599,7 +599,7 @@ This codebase demonstrates:
 ### **External Services**
 - 🔗 **Supabase**: Cloud PostgreSQL + Auth
 - 🔗 **Firebase**: Fallback auth provider
-- 🔗 **Resend**: Email service (configured, not yet used)
+- 🔗 **Gmail SMTP**: Email service via Nodemailer (order confirmation + status emails)
 
 ### **Tech Ecosystem**
 - Built on **Node.js 18+** runtime
