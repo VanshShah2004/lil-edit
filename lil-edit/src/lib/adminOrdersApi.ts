@@ -76,6 +76,9 @@ export interface AdminOrderDetail extends AdminOrderSummary {
   shippingAddress: AdminShippingAddress;
   statusHistory: OrderStatusEvent[];
   paymentStatusHistory: PaymentStatusEvent[];
+  // Distinct statuses the customer has already been emailed about (drives the "already
+  // notified" warning before a re-send). Empty if the notifications table isn't present.
+  notifiedStatuses: OrderStatus[];
 }
 
 export interface AdminOrdersResponse {
@@ -147,6 +150,10 @@ export interface AdminOrdersQuery {
   limit?: number;
 }
 
+// Why a customer notification didn't go out — lets the UI show a precise message
+// (no email on file vs. server not configured vs. an actual send failure).
+export type NotifyFailureReason = "no_recipient" | "not_configured" | "send_failed";
+
 async function getAccessToken(): Promise<string | null> {
   const { data: { session } } = await supabase.auth.getSession();
   console.log("[adminOrdersApi] token:", session?.access_token ? "present" : "missing");
@@ -203,6 +210,7 @@ export async function fetchAdminOrderById(orderId: string): Promise<AdminOrderDe
     ...order,
     statusHistory: order.statusHistory ?? [],
     paymentStatusHistory: order.paymentStatusHistory ?? [],
+    notifiedStatuses: order.notifiedStatuses ?? [],
   };
 }
 
@@ -222,13 +230,16 @@ export class ConflictError extends Error {
 // requires a non-empty note when it's set and flags the change as a correction.
 // `expectedStatus` = the status the admin read before editing; the server rejects the
 // write with a ConflictError if someone else changed it in between.
+// `notify` = email the customer about the new status (the "Notify customer" toggle).
+// The response's `emailed` reflects whether that email actually went out.
 export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus,
   note?: string,
   override?: boolean,
   expectedStatus?: OrderStatus,
-): Promise<{ success: boolean }> {
+  notify?: boolean,
+): Promise<{ success: boolean; emailed?: boolean; reason?: NotifyFailureReason; unchanged?: boolean }> {
   const res = await authFetch(`/api/admin/orders/${orderId}/status`, {
     method: "PATCH",
     body: JSON.stringify({
@@ -236,6 +247,7 @@ export async function updateOrderStatus(
       note: note ?? "",
       override: override ?? false,
       expectedStatus: expectedStatus ?? null,
+      notify: notify ?? false,
     }),
   });
   if (res.status === 409) {
@@ -249,7 +261,25 @@ export async function updateOrderStatus(
   }
   const data = await res.json();
   console.log(`[adminOrdersApi] updateOrderStatus → ${orderId} = ${status}`, data);
-  return data as { success: boolean };
+  return data as { success: boolean; emailed?: boolean; reason?: NotifyFailureReason; unchanged?: boolean };
+}
+
+// Re-send the customer notification email for the order's CURRENT status, independent of
+// any status change — the "Notify via Gmail" button in the Status History timeline. This
+// is the recovery path for a notification that failed or needs sending again. `emailed`
+// reflects whether the email actually went out.
+export async function resendStatusNotification(
+  orderId: string,
+): Promise<{ emailed: boolean; status: OrderStatus; reason?: NotifyFailureReason }> {
+  const res = await authFetch(`/api/admin/orders/${orderId}/notify`, { method: "POST" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    console.error("[adminOrdersApi] resendStatusNotification error:", body);
+    throw new Error((body as { error?: string }).error ?? `Notification failed (${res.status})`);
+  }
+  const data = await res.json();
+  console.log(`[adminOrdersApi] resendStatusNotification → ${orderId}`, data);
+  return data as { emailed: boolean; status: OrderStatus; reason?: NotifyFailureReason };
 }
 
 export async function updatePaymentStatus(

@@ -40,7 +40,7 @@ function formatStamp(iso: string): string {
 
 function Node({
   label, fromLabel, toLabel, isPlacement, actor, email, note, stamp, mostRecent, cancelled, correction, isLast,
-  notify, onToggleNotify,
+  notify, onNotify, notifiedCurrent, notifying,
 }: {
   label: string;
   fromLabel?: string;
@@ -54,8 +54,13 @@ function Node({
   cancelled: boolean;
   correction: boolean;
   isLast: boolean;
+  // `notify` gates whether the (re)send button renders on this node (latest only).
   notify?: boolean;
-  onToggleNotify?: () => void;
+  // Fires the actual send; `notifiedCurrent` reflects whether this status was already
+  // emailed (→ green "Notified" affordance); `notifying` disables it mid-send.
+  onNotify?: () => void;
+  notifiedCurrent?: boolean;
+  notifying?: boolean;
 }) {
   const dotBg = cancelled ? "bg-rose-400" : "bg-emerald-500";
   return (
@@ -88,13 +93,22 @@ function Node({
               </span>
             )}
           </p>
-          {notify && onToggleNotify && (
+          {notify && onNotify && (
             <button
               type="button"
-              onClick={onToggleNotify}
-              className="shrink-0 inline-flex items-center gap-1 rounded-[4px] bg-[#B19CD9] px-2.5 py-1 text-[11px] font-semibold text-gray-900 hover:bg-[#9d86c9] transition-colors"
+              onClick={onNotify}
+              disabled={notifying}
+              title={notifiedCurrent
+                ? "Customer already notified for this status — click to send again"
+                : "Email the customer this status update"}
+              className={`shrink-0 inline-flex items-center gap-1 rounded-[4px] px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                notifiedCurrent
+                  ? "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                  : "bg-[#B19CD9] text-gray-900 hover:bg-[#9d86c9]"
+              }`}
             >
-              <Mail className="h-3 w-3" /> Notify via Gmail
+              {notifiedCurrent ? <Check className="h-3 w-3" /> : <Mail className="h-3 w-3" />}
+              {notifying ? "Sending…" : notifiedCurrent ? "Notified · Resend" : "Notify via Gmail"}
             </button>
           )}
         </div>
@@ -143,10 +157,14 @@ function PassedNode({ label, isLast }: { label: string; isLast: boolean }) {
 
 // who made each change. `events` arrive newest-first from the API.
 export function OrderStatusTimeline({
-  events, onToggleNotify,
+  events, onNotify, notifiedCurrent, notifying,
 }: {
   events: OrderStatusEvent[];
-  onToggleNotify?: () => void;
+  // Send/resend the customer notification for the latest status. `notifiedCurrent` marks
+  // it as already-sent; `notifying` is true while a send is in flight.
+  onNotify?: () => void;
+  notifiedCurrent?: boolean;
+  notifying?: boolean;
 }) {
   if (events.length === 0) {
     return <p className="text-sm text-gray-400">No status history recorded yet.</p>;
@@ -194,7 +212,9 @@ export function OrderStatusTimeline({
             correction={ev.isCorrection}
             isLast={isLast}
             notify={i === 0}
-            onToggleNotify={onToggleNotify}
+            onNotify={onNotify}
+            notifiedCurrent={notifiedCurrent}
+            notifying={notifying}
           />
         );
       })}

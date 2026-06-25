@@ -8,6 +8,7 @@ import { mutationLimiter } from "../middleware/rateLimiters.js";
 import { createLog, fms, type OpLogger } from "../lib/logger.js";
 import { redisGet, redisSet, redisDel, redisSetNX, redisKey, CHECKOUT_TTL_S } from "../lib/redis.js";
 import { sendOrderConfirmation } from "../lib/orderEmail.js";
+import { publicSiteUrl } from "../lib/siteUrl.js";
 import { verifyReviewsForOrder } from "../lib/reviewsVerification.js";
 import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
 
@@ -336,18 +337,52 @@ async function afterPlacement(snap: CheckoutSnapshot, razorpayOrderId: string, r
   // Fire-and-forget — slow/failing tasks must never affect a paid, placed order.
   log.step(`queuing post-placement tasks: confirmation email + review verification`);
   void (async () => {
-    let email = "";
+    // Confirmation receipt — best-effort and isolated in its own try so a mail issue can
+    // never skip the review verification that follows.
     try {
-      const { data } = await db().from("profiles").select("email").eq("id", snap.userId).maybeSingle();
-      email = (data?.email as string) ?? "";
-    } catch { /* best-effort lookup for the stub */ }
-    await sendOrderConfirmation({
-      orderId: result.order_id ?? "",
-      orderNumber: result.order_number ?? "",
-      recipientEmail: email,
-      total: snap.total,
-      itemCount: snap.itemCount,
-    });
+      let recipientEmail = "";
+      let recipientName: string | undefined;
+      try {
+        const { data } = await db().from("profiles").select("email, first_name, last_name").eq("id", snap.userId).maybeSingle();
+        recipientEmail = (data?.email as string) ?? "";
+        recipientName = [data?.first_name, data?.last_name].filter(Boolean).join(" ").trim() || undefined;
+      } catch { /* best-effort profile lookup */ }
+      await sendOrderConfirmation({
+        orderId: result.order_id ?? "",
+        orderNumber: result.order_number ?? "",
+        recipientEmail,
+        recipientName,
+        items: snap.items.map((it) => ({
+          title: it.title,
+          sku: it.sku,
+          size: it.size || undefined,
+          colorName: it.color_name || undefined,
+          quantity: it.quantity,
+          unitPrice: it.unit_price,
+          lineTotal: it.line_total,
+          imageUrl: it.image_url || undefined,
+        })),
+        subtotal: snap.subtotal,
+        discount: snap.discount,
+        shippingFee: snap.shippingFee,
+        total: snap.total,
+        itemCount: snap.itemCount,
+        paymentMethod: "online",
+        orderUrl: result.order_id ? `${publicSiteUrl()}/orders/${result.order_id}` : undefined,
+        address: {
+          label: snap.address.label,
+          line1: snap.address.line1,
+          line2: snap.address.line2 || undefined,
+          landmark: snap.address.landmark,
+          city: snap.address.city,
+          state: snap.address.state,
+          country: snap.address.country,
+          pincode: snap.address.pincode,
+        },
+      });
+    } catch (e) {
+      log.warn(`confirmation email failed (non-fatal): ${e instanceof Error ? e.message : String(e)}`);
+    }
 
     // Mark any pending reviews for products in this order as verified.
     await verifyReviewsForOrder(snap.userId, snap.items, log);

@@ -21,6 +21,7 @@ import {
   fetchAdminOrderById,
   updateOrderStatus,
   updatePaymentStatus,
+  resendStatusNotification,
   nextStatuses,
   nextPaymentStatuses,
   SETTABLE_ORDER_STATUSES,
@@ -44,6 +45,16 @@ function formatDateTime(iso: string): string {
 
 function inr(n: number): string {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
+}
+
+// Turn a notification-failure reason from the API into a plain clause for the admin toast,
+// so "couldn't send" isn't conflated with "this customer has no email on file".
+function notifyIssueClause(reason?: string): string {
+  switch (reason) {
+    case "no_recipient": return "this customer has no email address on file";
+    case "not_configured": return "email isn't configured on the server";
+    default: return "the notification email couldn't be sent";
+  }
 }
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -107,6 +118,9 @@ const AdminOrderDetailPage = () => {
   const [note, setNote] = useState("");
   const [notifyByEmail, setNotifyByEmail] = useState(false);
   const [saving, setSaving] = useState(false);
+  // In-flight flag for the Status History "Notify via Gmail" re-send (separate from the
+  // Status Management save above).
+  const [notifying, setNotifying] = useState(false);
   // Correction mode: the escape hatch for a mistakenly-finalized (terminal) order.
   const [correcting, setCorrecting] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentStatus>("pending");
@@ -148,6 +162,15 @@ const AdminOrderDetailPage = () => {
     return () => { active = false; };
   }, [orderId]);
 
+  // Return the status form to a neutral state — used after a committed change and after a
+  // conflict reload. The generic-error path deliberately SKIPS this to preserve the admin's
+  // inputs (note, target, notify) for an immediate retry.
+  const resetStatusForm = () => {
+    setNote("");
+    setNotifyByEmail(false);
+    setCorrecting(false);
+  };
+
   const handleSave = async () => {
     if (!order || selectedStatus === order.status) return;
     setSaving(true);
@@ -157,36 +180,84 @@ const AdminOrderDetailPage = () => {
     // when they clicked Save.
     const expectedStatus = order.status;
     const isCorrection = correcting;
+    const wantsNotify = notifyByEmail;
     // Optimistic badge update.
     setOrder((prev) => (prev ? { ...prev, status: selectedStatus } : prev));
     try {
-      await updateOrderStatus(order.id, selectedStatus, note, isCorrection, expectedStatus);
+      const result = await updateOrderStatus(order.id, selectedStatus, note, isCorrection, expectedStatus, wantsNotify);
       toast.success(
         isCorrection
           ? `Order status corrected to "${STATUS_LABELS[selectedStatus]}"`
           : `Order status updated to "${STATUS_LABELS[selectedStatus]}"`,
       );
-      setNote(""); // clear after it's been recorded with the change
-      setCorrecting(false);
+      // Surface what happened with the customer email — only if it was requested AND the
+      // status actually changed. On the rare "unchanged" race (another admin already set
+      // this status), no email is due, so don't cry "couldn't send" when nothing failed.
+      if (wantsNotify && !result.unchanged) {
+        if (result.emailed) toast.success(`Customer notified at ${order.customer.email || "their email"}`);
+        else toast.warning(`Status saved, but ${notifyIssueClause(result.reason)}.`);
+      }
+      resetStatusForm(); // clear note/notify/correction now that the change is recorded
       await loadOrder(order.id, false); // refresh from source of truth
     } catch (err) {
       if (err instanceof ConflictError) {
         // Another admin saved first — roll back the optimistic update, reset
         // correction state, and reload so the dropdown shows the real current status.
         toast.warning("Order was updated by another admin — reloading…");
-        setNote("");
-        setCorrecting(false);
+        resetStatusForm();
         setOrder((prev) => (prev ? { ...prev, status: previous } : prev));
         await loadOrder(order.id, false); // syncs selectedStatus to real current value
       } else {
         console.error("[AdminOrderDetail] status update failed", err);
         toast.error(err instanceof Error ? err.message : "Failed to update status");
-        setOrder((prev) => (prev ? { ...prev, status: previous } : prev)); // rollback
-        if (!isCorrection) setSelectedStatus(previous); // keep the chosen target so a correction can be retried
+        setOrder((prev) => (prev ? { ...prev, status: previous } : prev)); // rollback the badge
+        // Deliberately keep note + notify (no resetStatusForm) so a retry is one click away.
+        if (!isCorrection) setSelectedStatus(previous); // keep the chosen target too
       }
     } finally {
       setSaving(false);
     }
+  };
+
+  // Actually (re)send the customer notification for the order's CURRENT status, from the
+  // Status History timeline. Independent of a status change — this is the recovery path
+  // a failed send needs. Reloads after so the timeline reflects the new "notified" state.
+  const doNotify = async () => {
+    if (!order) return;
+    setNotifying(true);
+    try {
+      const result = await resendStatusNotification(order.id);
+      if (result.emailed) toast.success(`Customer notified at ${order.customer.email || "their email"}`);
+      else toast.warning(`Couldn't notify — ${notifyIssueClause(result.reason)}.`);
+      await loadOrder(order.id, false); // refresh notifiedStatuses + timeline
+    } catch (err) {
+      console.error("[AdminOrderDetail] resend notification failed", err);
+      toast.error(err instanceof Error ? err.message : "Failed to send notification");
+    } finally {
+      setNotifying(false);
+    }
+  };
+
+  // Entry point for the timeline button. If the customer was ALREADY notified for the
+  // current status, don't send on the first click — flash a warning with an explicit
+  // "Send again" action so the admin re-checks before emailing the same update twice.
+  const handleNotify = () => {
+    if (!order || notifying) return;
+    // Nothing to send to → say so plainly instead of round-tripping to a generic failure.
+    if (!order.customer.email) {
+      toast.warning("This customer has no email address on file — nothing to notify.");
+      return;
+    }
+    const already = order.notifiedStatuses?.includes(order.status) ?? false;
+    if (already) {
+      toast.warning(`You already notified the customer that this order is "${STATUS_LABELS[order.status]}".`, {
+        description: "Re-check before sending the same update again.",
+        action: { label: "Send again", onClick: () => void doNotify() },
+        duration: 8000,
+      });
+      return;
+    }
+    void doNotify();
   };
 
   // Enter correction mode: offer every settable status except the current (terminal)
@@ -561,7 +632,9 @@ const AdminOrderDetailPage = () => {
                 <SectionCard icon={History} title="Status History">
                   <OrderStatusTimeline
                     events={order.statusHistory ?? []}
-                    onToggleNotify={() => setNotifyByEmail((v) => !v)}
+                    onNotify={handleNotify}
+                    notifiedCurrent={order.notifiedStatuses?.includes(order.status) ?? false}
+                    notifying={notifying}
                   />
                 </SectionCard>
 
@@ -671,8 +744,9 @@ const AdminOrderDetailPage = () => {
                     </div>
                   )}
 
-                  {/* Notify the customer of this status change by email (wiring TBD).
-                      Always shown in Status Management, regardless of order state. */}
+                  {/* Notify the customer of THIS status change by email when the change is
+                      saved (sends on Save). Re-sending later for the current status is done
+                      from the Status History timeline. Always shown, regardless of state. */}
                   <button
                     type="button"
                     onClick={() => setNotifyByEmail((v) => !v)}

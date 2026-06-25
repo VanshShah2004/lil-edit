@@ -4,9 +4,13 @@ import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { adminMutationLimiter } from "../middleware/rateLimiters.js";
-import { createLog, fms } from "../lib/logger.js";
+import { createLog, fms, type OpLogger } from "../lib/logger.js";
 // redisDel/redisKey bust the OWNER's cached order list + detail on a status change.
 import { redisDel, redisKey } from "../lib/redis.js";
+// Customer-facing "your order status changed" email (no-ops if Resend isn't configured).
+import { sendOrderStatusEmail } from "../lib/orderEmail.js";
+// Storefront base URL for the "View your order" link (shared with the confirmation email).
+import { publicSiteUrl } from "../lib/siteUrl.js";
 
 const router = Router();
 const db = () => supabaseAdmin ?? supabaseAnon;
@@ -179,6 +183,32 @@ async function loadProfiles(userIds: string[]): Promise<Map<string, ProfileRow>>
   return map;
 }
 
+// Append a best-effort record that a customer status-notification email was sent. This
+// drives the "already notified for this status" guard in the admin UI. Never throws: a
+// missing table (pre-migration) or an insert error just logs — the email already went
+// out, and a lost audit row must never turn a successful send into a failure.
+async function recordNotification(
+  orderId: string,
+  status: string,
+  recipientEmail: string,
+  adminId: string | null,
+  adminName: string,
+  log: OpLogger,
+): Promise<void> {
+  try {
+    const { error } = await db().from("order_notifications").insert({
+      order_id: orderId,
+      status,
+      recipient_email: recipientEmail,
+      sent_by: adminId,
+      sent_by_name: adminName,
+    });
+    if (error) log.warn(`could not record notification (table missing?): ${error.message}`);
+  } catch (e) {
+    log.warn(`record notification threw: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
 // PostgREST .or() takes a comma/parenthesis-delimited filter string, so a raw
 // search term containing those characters would corrupt the filter. Strip them.
 function sanitizeSearch(raw: string): string {
@@ -310,11 +340,23 @@ router.get("/:id", async (req: Request, res: Response) => {
     }
 
     const row = data as unknown as OrderRow;
-    const profiles = await loadProfiles([row.user_id]);
+    // Profiles + notification audit, fetched in parallel. The notifications query is
+    // deliberately tolerant of the table not existing yet (pre-migration): on error it
+    // yields [], so the detail page still loads — just without the "already notified"
+    // markers in the Status History timeline.
+    const [profiles, notifs] = await Promise.all([
+      loadProfiles([row.user_id]),
+      db().from("order_notifications").select("status").eq("order_id", orderId),
+    ]);
+    if (notifs.error) log.warn(`notifications query failed (table missing?): ${notifs.error.message}`);
+    // Distinct statuses the customer has already been emailed about.
+    const notifiedStatuses = [
+      ...new Set(((notifs.data ?? []) as { status: string }[]).map((n) => n.status)),
+    ];
     const order = mapOrder(row, profiles.get(row.user_id), true);
 
-    log.success(`served  order=${order.orderNumber}  items=${order.items.length}  total=${fms(log.elapsed())}`).end("ADMIN ORDER DETAIL");
-    res.json({ order });
+    log.success(`served  order=${order.orderNumber}  items=${order.items.length}  notified=[${notifiedStatuses.join(",")}]  total=${fms(log.elapsed())}`).end("ADMIN ORDER DETAIL");
+    res.json({ order: { ...order, notifiedStatuses } });
   } catch (err) {
     log.error("unhandled error", err).end("ADMIN ORDER DETAIL");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -338,7 +380,10 @@ router.patch("/:id/status", adminMutationLimiter, async (req: Request, res: Resp
   // Optimistic concurrency guard: the client sends the status it *read* before deciding
   // to write. The RPC checks it under the row lock — mismatch → 'conflict' → 409.
   const expectedStatus = (req.body as { expectedStatus?: unknown })?.expectedStatus as string | null ?? null;
-  log.step(`admin=${adminId}  order=${orderId}  → status=${status}  override=${override}  expected=${expectedStatus ?? "any"}  note=${note ? `"${note.slice(0, 40)}…"` : "none"}`);
+  // When true (admin ticked "Notify customer via Gmail"), email the order owner about
+  // the new status after a successful change. Best-effort: never fails the update.
+  const notify = (req.body as { notify?: unknown })?.notify === true;
+  log.step(`admin=${adminId}  order=${orderId}  → status=${status}  override=${override}  expected=${expectedStatus ?? "any"}  notify=${notify}  note=${note ? `"${note.slice(0, 40)}…"` : "none"}`);
 
   if (!VALID_STATUSES.includes(status)) {
     log.warn(`invalid status="${status}"`).end("ADMIN ORDER STATUS");
@@ -416,10 +461,104 @@ router.patch("/:id/status", adminMutationLimiter, async (req: Request, res: Resp
       redisKey("order", `detail:${ownerId}:${orderId}`),
     );
 
-    log.success(`updated  order=${orderId}  ${result.from_status}→${status}  by=${adminName}  owner=${ownerId}`).end("ADMIN ORDER STATUS");
-    res.json({ success: true });
+    // Notify the customer of the new status, if requested. Best-effort and awaited so
+    // we can report back whether it went out — but wrapped so a mail failure never
+    // turns a committed status change into an error response.
+    let emailed = false;
+    // Why the email didn't go out (if it didn't) — surfaced to the admin UI for a precise
+    // message (no email on file vs. not configured vs. send failed).
+    let emailReason: string | undefined;
+    if (notify) {
+      try {
+        const [ownerProfiles, orderMeta] = await Promise.all([
+          loadProfiles([ownerId]),
+          db().from("orders").select("order_number").eq("id", orderId).maybeSingle(),
+        ]);
+        const owner = ownerProfiles.get(ownerId);
+        const recipientName = [owner?.first_name, owner?.last_name].filter(Boolean).join(" ").trim();
+        const orderNumber = (orderMeta.data as { order_number?: string } | null)?.order_number ?? orderId;
+        const mail = await sendOrderStatusEmail({
+          recipientEmail: owner?.email ?? "",
+          recipientName: recipientName || undefined,
+          orderNumber,
+          toStatus: status,
+          orderUrl: `${publicSiteUrl()}/orders/${orderId}`,
+        });
+        emailed = mail.sent;
+        emailReason = mail.reason;
+        // Record only successful sends so "already notified" reflects real deliveries.
+        if (emailed) await recordNotification(orderId, status, owner?.email ?? "", adminId, adminName, log);
+        else log.warn(`notify requested but email not sent: ${mail.error ?? "unknown"} (reason=${mail.reason ?? "?"})`);
+      } catch (mailErr) {
+        log.error("status email failed", mailErr);
+        emailReason = "send_failed";
+      }
+    }
+
+    log.success(`updated  order=${orderId}  ${result.from_status}→${status}  by=${adminName}  owner=${ownerId}  emailed=${emailed}`).end("ADMIN ORDER STATUS");
+    res.json({ success: true, emailed, ...(emailReason ? { reason: emailReason } : {}) });
   } catch (err) {
     log.error("unhandled error", err).end("ADMIN ORDER STATUS");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// ─── POST /api/admin/orders/:id/notify — (re)send the current-status email ─────────
+// The "Notify via Gmail" action in the Status History timeline. Unlike the status PATCH,
+// this changes NOTHING about the order — it re-sends the customer notification for the
+// order's CURRENT status, so a failed/again send is recoverable without bouncing the
+// status. The UI guards against accidental duplicates (it warns when the status was
+// already notified); this endpoint just sends and records the result.
+router.post("/:id/notify", adminMutationLimiter, async (req: Request, res: Response) => {
+  const log = createLog().start("ADMIN ORDER NOTIFY");
+  const adminId = (req as AuthenticatedRequest).userId;
+  const orderId = req.params.id as string;
+  log.step(`admin=${adminId}  order=${orderId}  (resend current-status notification)`);
+
+  try {
+    const { data, error } = await db()
+      .from("orders")
+      .select("id, user_id, order_number, status")
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (error) {
+      log.error(`order query failed  msg=${error.message}`, error).end("ADMIN ORDER NOTIFY");
+      res.status(500).json({ error: error.message });
+      return;
+    }
+    if (!data) {
+      log.warn(`not found  order=${orderId}`).end("ADMIN ORDER NOTIFY");
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    const o = data as { id: string; user_id: string; order_number: string | null; status: string };
+    const [ownerProfiles, adminProfiles] = await Promise.all([
+      loadProfiles([o.user_id]),
+      loadProfiles([adminId]),
+    ]);
+    const owner = ownerProfiles.get(o.user_id);
+    const admin = adminProfiles.get(adminId);
+    const adminName = [admin?.first_name, admin?.last_name].filter(Boolean).join(" ").trim() || "Admin";
+    const recipientName = [owner?.first_name, owner?.last_name].filter(Boolean).join(" ").trim();
+
+    const mail = await sendOrderStatusEmail({
+      recipientEmail: owner?.email ?? "",
+      recipientName: recipientName || undefined,
+      orderNumber: o.order_number ?? orderId,
+      toStatus: o.status,
+      orderUrl: `${publicSiteUrl()}/orders/${orderId}`,
+    });
+
+    // Record only on a confirmed send, mirroring the status-change path.
+    if (mail.sent) await recordNotification(orderId, o.status, owner?.email ?? "", adminId, adminName, log);
+    else log.warn(`notify not sent: ${mail.error ?? "unknown"}`);
+
+    log.success(`notify  order=${orderId}  status=${o.status}  emailed=${mail.sent}${mail.reason ? `  reason=${mail.reason}` : ""}`).end("ADMIN ORDER NOTIFY");
+    res.json({ emailed: mail.sent, status: o.status, ...(mail.reason ? { reason: mail.reason } : {}) });
+  } catch (err) {
+    log.error("unhandled error", err).end("ADMIN ORDER NOTIFY");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
