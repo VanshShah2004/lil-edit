@@ -74,26 +74,31 @@ export function isMailerConfigured(): boolean {
 // Gmail's side — we simply stop waiting and report it as unconfirmed (sent: false).
 const SEND_TIMEOUT_MS = 10_000;
 
-// Transient failures (connection/socket errors, SMTP 4xx greylisting) get a couple of
-// quick retries — the message was NOT accepted, so a retry can't duplicate it. PERMANENT
-// failures (auth, bad address, any 5xx) are NOT retried: an identical retry just fails
-// again. A TIMEOUT is also not retried — it's slow AND ambiguous (the message may already
-// have been accepted, and unlike a provider API there's no idempotency key to dedupe a
-// re-send), and there's an explicit admin re-send action to fall back on.
+// Retry policy is built around exactly-once. WITHOUT a provider idempotency key, a retry is
+// only safe when the message provably was NOT accepted by Gmail — so we retry just two
+// definitively pre-acceptance classes and fail fast on everything else:
+//   • a transient SMTP 4xx reply — the server explicitly rejected (greylisting, 421
+//     service-unavailable, rate-limit, or a 4xx after the data block). We read a reply, so
+//     we KNOW the message wasn't queued.
+//   • a connection-ESTABLISHMENT error — the TCP/TLS connect, DNS lookup, or SMTP greeting
+//     never completed, so no message DATA was ever transmitted.
+// Everything else surfaces for a manual re-send (status + receipt both have a re-send
+// action): permanent 5xx (auth 535, bad recipient 550, policy), and — crucially — the
+// AMBIGUOUS mid-session errors (ESOCKET / ECONNRESET / a bare ETIMEDOUT). Those can fire
+// AFTER Gmail accepted the message but before we read its 250, so retrying them could send a
+// SECOND copy. Our own withTimeout sits in that same bucket (no code → not retried).
 const MAX_SEND_ATTEMPTS = 3;
 const RETRY_BACKOFF_MS = [500, 1500]; // waited before attempt 2, then attempt 3
 
-// Nodemailer surfaces a `code` (e.g. ECONNECTION / ESOCKET / ETIMEDOUT / EDNS / EAUTH /
-// EENVELOPE) and, for SMTP-level rejections, a numeric `responseCode` (the reply code,
-// e.g. 421 / 450 / 535 / 550). Retry only when the message clearly wasn't accepted yet.
-const RETRIABLE_ERROR_CODES = new Set<string>([
-  "ECONNECTION",
-  "ESOCKET",
-  "ETIMEDOUT",
-  "ECONNRESET",
-  "EDNS",
-  "EAI_AGAIN",
-  "EConnection",
+// Connection-ESTABLISHMENT error codes only — these can occur only before any message data
+// is sent (failed connect / DNS / greeting), so a re-send cannot duplicate. Deliberately
+// EXCLUDES ESOCKET / ECONNRESET / ETIMEDOUT (mid-session, possibly post-acceptance).
+const PRE_SEND_CONNECTION_CODES = new Set<string>([
+  "ECONNECTION",  // nodemailer: failed to establish the connection / never got the greeting
+  "ECONNREFUSED", // TCP refused — never connected
+  "ENOTFOUND",    // DNS: host not found — never connected
+  "EAI_AGAIN",    // DNS: temporary resolver failure — never connected
+  "EDNS",         // nodemailer-wrapped DNS failure
 ]);
 
 interface SmtpError {
@@ -103,12 +108,15 @@ interface SmtpError {
   name?: string;
 }
 
-// Retry on a known-transient connection error, or any transient SMTP 4xx. A 5xx (incl.
-// auth 535, bad recipient 550) and our own timeout (no code/responseCode) are not retried.
-function isRetriable(err: SmtpError): boolean {
-  if (err.code && RETRIABLE_ERROR_CODES.has(err.code)) return true;
+// Retry ONLY a definite-pre-acceptance failure (see the policy note above). A read SMTP
+// reply is authoritative: 4xx → retry, anything else (5xx) → don't — and we never fall
+// through to the code check. With no reply, retry only a connection-establishment code.
+// Ambiguous mid-session errors and our timeout (no code/responseCode) return false, so a
+// message Gmail may already have accepted is never re-sent. Exported for testing.
+export function isRetriable(err: SmtpError): boolean {
   const rc = err.responseCode;
-  return typeof rc === "number" && rc >= 400 && rc < 500;
+  if (typeof rc === "number") return rc >= 400 && rc < 500;
+  return !!err.code && PRE_SEND_CONNECTION_CODES.has(err.code);
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -195,11 +203,12 @@ export async function sendMail(input: SendMailInput, parentLog?: OpLogger): Prom
       const e = (err ?? {}) as SmtpError;
       lastError = e.message ?? String(err);
       const willRetry = isRetriable(e) && attempt < MAX_SEND_ATTEMPTS;
-      const tag = e.code || e.name || "error";
+      const tag = e.code || (e.responseCode ? `SMTP ${e.responseCode}` : e.name) || "error";
       const line = `mailer: send failed to "${to}" (attempt ${attempt}/${MAX_SEND_ATTEMPTS}, ${tag}) : ${lastError}`;
       if (!willRetry) {
-        // Permanent error, timeout, or out of attempts → stop here. (A timeout has no
-        // code/responseCode, so isRetriable() already returns false for it.)
+        // Not retriable: a permanent 5xx, an AMBIGUOUS mid-session error / timeout (could be
+        // post-acceptance — retrying might send a second copy), or out of attempts. Surface
+        // for a manual re-send rather than risk a duplicate.
         log.error(line);
         return { sent: false, error: lastError, reason: "send_failed" };
       }
