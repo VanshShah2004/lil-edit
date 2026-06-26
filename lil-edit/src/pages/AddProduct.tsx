@@ -26,6 +26,7 @@ import Footer from "@/components/layout/Footer";
 import ProductPreviewView from "@/components/ProductPreviewView";
 import StockToggleSlider from "@/components/StockToggleSlider";
 import StyledSelect from "@/components/StyledSelect";
+import ImageTabSlider from "@/components/ImageTabSlider";
 import type { Product, ProductImage, ProductColor } from "@/types/product";
 import { generateColorSku } from "@/utils/sku";
 import { slugify } from "@/utils/slug";
@@ -1207,32 +1208,19 @@ const AddProduct = () => {
                   <div className="bg-white sm:rounded-[2.5rem] sm:border sm:border-gray-300 sm:shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden">
                     {/* Studio Header / Tabs */}
                     <div className="px-0 py-4 sm:px-8 sm:py-6 border-b border-gray-200 bg-white flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-2 p-1 bg-gray-50 rounded-2xl border border-gray-300 w-fit max-w-full overflow-x-auto no-scrollbar">
-                        <button
-                          onClick={() => setActiveImageTab("Global")}
-                          className={`px-6 py-2.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${
-                            activeImageTab === "Global" 
-                              ? "bg-white text-gray-900 shadow-sm border border-gray-300" 
-                              : "text-gray-900 hover:text-gray-900"
-                          }`}
-                        >
-                          Global Images
-                        </button>
-                        {formData.selectedColors.map((color) => (
-                          <button
-                            key={color.name}
-                            onClick={() => setActiveImageTab(color.name)}
-                            className={`px-6 py-2.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-3 whitespace-nowrap ${
-                              activeImageTab === color.name 
-                                ? "bg-white text-gray-900 shadow-sm border border-gray-300" 
-                                : "text-gray-900 hover:text-gray-900"
-                            }`}
-                          >
-                            <div className="w-2.5 h-2.5 rounded-full border border-black/5" style={{ backgroundColor: color.hex }} />
-                            {color.name}
-                          </button>
-                        ))}
-                      </div>
+                      <ImageTabSlider
+                        className="flex-1 min-w-0"
+                        value={activeImageTab}
+                        onChange={(key) => setActiveImageTab(key)}
+                        tabs={[
+                          { key: "Global", label: "Global Images" },
+                          ...formData.selectedColors.map((color) => ({
+                            key: color.name,
+                            label: color.name,
+                            hex: color.hex,
+                          })),
+                        ]}
+                      />
                       
                       <div className="hidden sm:block">
                         <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">
