@@ -494,6 +494,14 @@ const OrdersPage = () => {
                   productInfoByVariant={productInfoByVariant}
                   onReviewSaved={loadReviewHistory}
                 />
+                {(reviewHistory.length > 0 || pendingReviewItems.length > 0) && (
+                  <Link
+                    to="/reviews"
+                    className="mt-3 flex items-center justify-center gap-1.5 text-sm font-semibold text-brand-teal hover:gap-2.5 transition-all"
+                  >
+                    View all reviews <ArrowRight className="w-4 h-4" />
+                  </Link>
+                )}
                 </div>
               </aside>
             )}

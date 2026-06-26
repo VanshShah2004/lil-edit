@@ -17,6 +17,7 @@ import {
   Sparkles,
   ClipboardList,
   ChevronRight,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
@@ -55,6 +56,7 @@ const UserNavbar = () => {
   const accountMenuItems = [
     { to: "/profile", label: "Profile", icon: User },
     { to: "/orders", label: "My Orders", icon: Package },
+    { to: "/reviews", label: "My Reviews", icon: MessageSquare },
   ];
 
   const closeProfileMenu = () => setIsProfileOpen(false);
@@ -352,6 +354,7 @@ const UserNavbar = () => {
             <SideLink to="/wishlist" icon={Heart} label="Wishlist" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} badge={wishlistCount} badgeClass="bg-primary" />
             <SideLink to="/cart" icon={ShoppingCart} label="Cart" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} badge={cartCount} badgeClass="bg-[#0F766E]" />
             <SideLink to="/orders" icon={Package} label="My Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+            <SideLink to="/reviews" icon={MessageSquare} label="My Reviews" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
           </SideSection>
 
           {isAdmin && (

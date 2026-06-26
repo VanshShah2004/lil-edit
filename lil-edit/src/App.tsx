@@ -50,6 +50,7 @@ const Collections    = lazyWithLog("Collections",     () => import("./pages/Coll
 const SearchResults  = lazyWithLog("SearchResults",   () => import("./pages/SearchResults"));
 const Orders         = lazyWithLog("Orders",          () => import("./pages/Orders"));
 const OrderDetail    = lazyWithLog("OrderDetail",     () => import("./pages/OrderDetail"));
+const MyReviews      = lazyWithLog("MyReviews",        () => import("./pages/MyReviews"));
 const Checkout       = lazyWithLog("Checkout",        () => import("./pages/Checkout"));
 
 // Admin pages pull in heavy deps (charts, upload tooling) that normal shoppers
@@ -98,6 +99,7 @@ const App = () => (
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
             <Route path="/orders/:orderId" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
+            <Route path="/reviews" element={<ProtectedRoute><MyReviews /></ProtectedRoute>} />
             <Route path="/admin/add-product" element={<AdminRoute><AddProduct /></AdminRoute>} />
             <Route path="/admin/edit/:productId" element={<AdminRoute><EditProduct /></AdminRoute>} />
             <Route path="/admin/manage-products" element={<AdminRoute><ManageProducts /></AdminRoute>} />
