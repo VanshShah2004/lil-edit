@@ -11,6 +11,10 @@ import { sendOrderConfirmation } from "../lib/orderEmail.js";
 import { resolveRecipientEmail } from "../lib/recipientEmail.js";
 import { publicSiteUrl } from "../lib/siteUrl.js";
 import { verifyReviewsForOrder } from "../lib/reviewsVerification.js";
+// Receipt backstop: re-sends the confirmation receipt for an already-placed order IFF none
+// was recorded, so a placement that was interrupted before its detached send can't silently
+// lose the receipt. No-op on the happy path (a recorded receipt). Fire-and-forget; never throws.
+import { sendReceiptIfMissing } from "../lib/orderReceipt.js";
 import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
 
 // ─── Razorpay-prepaid checkout: cart → order placement ──────────────────────────
@@ -709,6 +713,10 @@ router.post("/verify", requireAuth, mutationLimiter, async (req: Request, res: R
     // webhook beat us here), return it without re-pricing.
     const already = await findPlacedOrder(razorpay_payment_id, log);
     if (already) {
+      // This payment was already placed (the webhook beat us here, or a prior /verify placed it
+      // but was interrupted before its detached receipt went out). Backstop the receipt — sends
+      // only if none was recorded, so the happy path (receipt already sent) is a no-op.
+      void sendReceiptIfMissing(already.id);
       log.success(`already placed (idempotent)  order=${already.order_number}`).end("CHECKOUT VERIFY");
       res.json({ orderId: already.id, orderNumber: already.order_number });
       return;
@@ -757,7 +765,12 @@ router.post("/verify", requireAuth, mutationLimiter, async (req: Request, res: R
     if (result.result === "created") {
       await afterPlacement(snap, razorpay_order_id, result, log);
     } else {
-      log.step(`idempotent placement (result=${result.result}) — skipping post-placement side-effects (first placement already handled them)`);
+      // Idempotent placement: the first placement already ran afterPlacement. Still backstop the
+      // receipt in case that first placement was interrupted before its detached send (no-op when
+      // a receipt is already recorded). Other side-effects are safe to skip — already done or
+      // self-healing. place_order returns the existing order's id on 'exists'.
+      log.step(`idempotent placement (result=${result.result}) — backstopping receipt only`);
+      if (result.order_id) void sendReceiptIfMissing(result.order_id);
     }
     log.success(`placed  order=${result.order_number}  result=${result.result}  ${fms(log.elapsed())}`).end("CHECKOUT VERIFY");
     res.json({ orderId: result.order_id, orderNumber: result.order_number });
@@ -864,6 +877,11 @@ export const webhookHandler: RequestHandler = async (req: Request, res: Response
     // payment, ack and stop — no re-pricing.
     const already = await findPlacedOrder(paymentId, log);
     if (already) {
+      // The order already exists — normally because /verify placed it AND sent the receipt, so
+      // this short-circuits. But if /verify placed it yet was interrupted before its detached
+      // receipt send, this is the path that recovers it: backstop the receipt (no-op when one is
+      // already recorded). Detached so Razorpay is still ack'd immediately.
+      void sendReceiptIfMissing(already.id);
       log.success(`already placed (idempotent)  order=${already.order_number}`).end("CHECKOUT WEBHOOK");
       res.status(200).json({ ok: true });
       return;
@@ -891,7 +909,11 @@ export const webhookHandler: RequestHandler = async (req: Request, res: Response
     if (result.result === "created") {
       await afterPlacement(snap, razorpayOrderId, result, log);
     } else {
-      log.step(`idempotent placement (result=${result.result}) — skipping post-placement side-effects (first placement already handled them)`);
+      // Idempotent placement (e.g. /verify already placed this payment): backstop the receipt in
+      // case that first placement was interrupted before its detached send (no-op when a receipt
+      // is already recorded). place_order returns the existing order's id on 'exists'.
+      log.step(`idempotent placement (result=${result.result}) — backstopping receipt only`);
+      if (result.order_id) void sendReceiptIfMissing(result.order_id);
     }
     log.success(`webhook placed  order=${result.order_number}  result=${result.result}`).end("CHECKOUT WEBHOOK");
     res.status(200).json({ ok: true });
