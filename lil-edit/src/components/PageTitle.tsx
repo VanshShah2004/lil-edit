@@ -4,8 +4,8 @@ import { useLocation, matchPath } from "react-router-dom";
 /**
  * Keeps the browser tab title in sync with the current route.
  *
- * The brand "The Lil Edit" is ALWAYS shown; the page name is appended after an
- * em dash (e.g. "The Lil Edit — Collections"). The landing page is brand-only.
+ * Inner pages show the page name followed by the brand (e.g. "Collections -
+ * Lil Edit"). The landing page (empty label) shows the brand alone.
  *
  * One central map instead of each page setting its own title — add a route here
  * and the tab name follows. Patterns are matched with React Router's matchPath,
@@ -13,7 +13,9 @@ import { useLocation, matchPath } from "react-router-dom";
  * the list wins. Any unmatched path falls through to "Page Not Found" (the `*`
  * route). Empty label === brand only.
  */
-const BRAND = "The Lil Edit";
+export const BRAND = "Lil Edit";
+// The landing page shows the full brand; inner pages use the shorter BRAND.
+const HOME_BRAND = "The Lil Edit";
 
 const ROUTE_TITLES: Array<{ pattern: string; label: string }> = [
   { pattern: "/",                     label: "" },
@@ -50,7 +52,7 @@ export default function PageTitle() {
 
   useEffect(() => {
     const label = labelForPath(pathname);
-    document.title = label ? `${BRAND} — ${label}` : BRAND;
+    document.title = label ? `${label} - ${BRAND}` : HOME_BRAND;
   }, [pathname]);
 
   return null;

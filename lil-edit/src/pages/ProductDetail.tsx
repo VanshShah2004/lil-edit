@@ -20,6 +20,7 @@ import { buildPdpPath } from "@/lib/pdpUrl";
 import { getOptimizedUrlForVariant } from "@/lib/productImage";
 import { PdpClientPerf } from "@/lib/pdpClientPerf";
 import { useWishlist } from "@/contexts/WishlistContext";
+import { BRAND } from "@/components/PageTitle";
 
 const LAVENDER = "#B19CD9";
 const TEAL = "#0B5B55";
@@ -329,6 +330,12 @@ export default function ProductDetail() {
     // above; a different same-slug product (new sku) refetches.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skuId, categoryParam]);
+
+  // Reflect the loaded product's name in the browser tab. PageTitle shows the
+  // generic "Product" fallback for this route until the product resolves here.
+  useEffect(() => {
+    if (product?.title) document.title = `${product.title} - ${BRAND}`;
+  }, [product?.title]);
 
   // Canonicalize base-SKU URLs to primary variant SKU without remounting or refetching
   useEffect(() => {
