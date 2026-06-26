@@ -4,7 +4,6 @@ import {
   ChevronRight,
   ShoppingBag,
   Heart,
-  ArrowRight,
   Sparkles,
   ShieldCheck,
   Award,
@@ -18,26 +17,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-} from "@/components/ui/carousel";
-
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import Footer from "@/components/layout/Footer";
 
-import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
-import img3 from "@/assets/searchbar-frequent_searches/le-3.png";
-import img4 from "@/assets/searchbar-frequent_searches/le-4.png";
-import img5 from "@/assets/searchbar-frequent_searches/le-5.png";
-import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
-
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import type { WishlistItem } from "@/lib/wishlistApi";
+import { useRecommendations } from "@/hooks/useRecommendations";
 
 const BADGE_PRIORITY = ["newarrival", "trending", "bestseller", "featured"];
 const sortBadges = (badges: string[]) => {
@@ -48,59 +36,6 @@ const sortBadges = (badges: string[]) => {
     return (ai === -1 ? -1 : ai) - (bi === -1 ? -1 : bi);
   });
 };
-
-const recommendedProducts = [
-  {
-    id: "r1",
-    title: "Blush Pink Net Indo-Western Gown",
-    slug: "blush-pink-net-indo-western-gown",
-    categorySlug: "party-wear",
-    price: 5200,
-    originalPrice: 6000,
-    image: img3,
-    sku: "LIL-REC1",
-  },
-  {
-    id: "r2",
-    title: "Royal Blue Embroidered Party Set",
-    slug: "royal-blue-embroidered-party-set",
-    categorySlug: "party-wear",
-    price: 4899,
-    originalPrice: 5600,
-    image: img4,
-    sku: "LIL-REC2",
-  },
-  {
-    id: "r3",
-    title: "Peach Floral Princess Dress",
-    slug: "peach-floral-princess-dress",
-    categorySlug: "party-wear",
-    price: 3999,
-    originalPrice: 4700,
-    image: img5,
-    sku: "LIL-REC3",
-  },
-  {
-    id: "r4",
-    title: "Ivory Ethnic Festive Wear",
-    slug: "ivory-ethnic-festive-wear",
-    categorySlug: "kids-ethnic-wear",
-    price: 5799,
-    originalPrice: 6500,
-    image: img6,
-    sku: "LIL-REC4",
-  },
-  {
-    id: "r5",
-    title: "Golden Silk Lehenga Collection",
-    slug: "golden-silk-lehenga-collection",
-    categorySlug: "kids-ethnic-wear",
-    price: 6200,
-    originalPrice: 7500,
-    image: img1,
-    sku: "LIL-REC5",
-  },
-];
 
 function WishlistSkeleton() {
   return (
@@ -204,6 +139,12 @@ const WishlistPage = () => {
 
   const totalValue = filteredItems.reduce((sum, item) => sum + item.price, 0);
   const inStockCount = wishlistItems.filter((i) => i.inStock).length;
+
+  // "You May Also Like" — anchored to the first saved item.
+  const recAnchor = wishlistItems[0]
+    ? { slug: wishlistItems[0].slug, categorySlug: wishlistItems[0].categorySlug, price: wishlistItems[0].price }
+    : null;
+  const { recommendations, loading: recsLoading } = useRecommendations(recAnchor);
 
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -514,64 +455,89 @@ const WishlistPage = () => {
           </div>
         </main>
 
-        {/* RECOMMENDATIONS */}
-        <section className="pt-6 sm:pt-10 pb-14 px-3 sm:px-6">
-          <div className="mb-3 md:mb-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">You May Also Like</h2>
+        {/* RECOMMENDATIONS — PDP-style grid, from the live recommendation engine */}
+        {(recsLoading || recommendations.length > 0) && (
+        <section className="mt-14 sm:mt-20 bg-[#E8DDF7] pt-6 sm:pt-10 pb-14">
+          <div className="page-container px-3 sm:px-6">
+            <div className="flex items-end justify-between mb-6 sm:mb-8">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900">You May Also Like</h2>
+                <p className="text-sm text-gray-500 mt-1">Similar styles you'll love</p>
+              </div>
               <Link
-                to="/"
-                className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 text-gray-900 hover:bg-brand-teal hover:text-white transition-all duration-300 shrink-0"
+                to="/collections"
+                className="hidden sm:block text-sm font-semibold text-brand-teal hover:underline"
               >
-                <ArrowRight className="w-6 h-6" />
+                View All
               </Link>
             </div>
-          </div>
-          <Carousel opts={{ loop: false, align: "start" }} className="w-full">
-            <CarouselContent className="-ml-3 sm:-ml-4 flex-wrap sm:flex-nowrap">
-              {recommendedProducts.map((p, index) => (
-                <CarouselItem
-                  key={p.id}
-                  className={`pl-3 sm:pl-4 basis-1/2 sm:basis-[45%] md:basis-[32%] lg:basis-[20%] xl:basis-[20%] ${index === 4 ? "hidden md:block" : ""}`}
-                >
-                  <div className="group bg-white p-2 md:p-1.5 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg hover:-translate-y-0.5 transition-all h-full">
-                    <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5">
-                      <img
-                        src={p.image}
-                        alt={p.title}
-                        loading="lazy"
-                        onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-                        className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <button
-                        onClick={() => void addToWishlist(p.slug, p.sku)}
-                        className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-600 hover:text-brand-teal hover:bg-white transition-all shadow-sm"
-                        title={isWishlisted(p.slug, p.sku) ? "Already in wishlist" : "Add to wishlist"}
-                      >
-                        <Heart
-                          className="w-3.5 h-3.5"
-                          fill={isWishlisted(p.slug, p.sku) ? "currentColor" : "none"}
-                        />
-                      </button>
-                      <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                        <Link
-                          to={`/collections/${p.categorySlug}/product/${p.slug}$${p.sku}`}
-                          className="w-full py-1.5 bg-white/90 backdrop-blur text-gray-900 rounded-lg font-medium text-[10px] md:text-xs hover:bg-brand-teal hover:text-white transition-colors shadow-sm block text-center"
-                        >
-                          View Details
-                        </Link>
-                      </div>
-                    </div>
-                    <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
-                      <h3 className="text-xs md:text-sm font-medium text-gray-900 leading-snug line-clamp-2">{p.title}</h3>
-                      <p className="text-xs font-semibold text-brand-teal shrink-0">₹{p.price}</p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+              {/* Loading skeleton */}
+              {recsLoading && recommendations.length === 0 &&
+                [...Array(5)].map((_, idx) => (
+                  <div
+                    key={`rec-skeleton-${idx}`}
+                    className={`bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border animate-pulse ${idx >= 4 ? "max-sm:hidden" : ""}`}
+                  >
+                    <div className="aspect-[3/4] sm:aspect-[4/5] md:aspect-[5/6] rounded-xl bg-gray-200 mb-2 md:mb-1.5" />
+                    <div className="px-1 pb-0.5 space-y-2">
+                      <div className="h-3 bg-gray-200 rounded w-3/4" />
+                      <div className="h-3 bg-gray-200 rounded w-1/3" />
                     </div>
                   </div>
-                </CarouselItem>
+                ))}
+
+              {/* Loaded recommendations */}
+              {recommendations.map((p, idx) => (
+                <div
+                  key={`${p.slug}-${p.sku}`}
+                  className={`group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all ${idx >= 4 ? "max-sm:hidden" : ""}`}
+                >
+                  <div className="relative rounded-xl overflow-hidden aspect-[3/4] sm:aspect-[4/5] md:aspect-[5/6] mb-2 md:mb-1.5">
+                    <img
+                      src={p.image}
+                      alt={p.title}
+                      loading="lazy"
+                      onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <button
+                      onClick={() => void addToWishlist(p.slug, p.sku)}
+                      className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center transition-all"
+                      title={isWishlisted(p.slug, p.sku) ? "Already in wishlist" : "Add to wishlist"}
+                    >
+                      <Heart
+                        className={`w-3.5 h-3.5 ${isWishlisted(p.slug, p.sku) ? "text-primary" : "text-muted-foreground"}`}
+                        fill={isWishlisted(p.slug, p.sku) ? "currentColor" : "none"}
+                      />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                      <Link
+                        to={`/collections/${p.categorySlug}/product/${p.slug}$${p.sku}`}
+                        className="w-full py-1.5 bg-white/90 backdrop-blur text-slate-900 rounded-lg font-medium text-[10px] md:text-xs hover:bg-brand-teal hover:text-white transition-colors shadow-sm block text-center"
+                      >
+                        View Details
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
+                    <div className="flex-1">
+                      <h3 className="font-display text-xs md:text-sm font-medium text-slate-900 leading-snug line-clamp-2">{p.title}</h3>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-body text-xs font-semibold text-brand-teal">₹{p.price}</p>
+                      {p.originalPrice > p.price && (
+                        <p className="text-[10px] text-gray-400 line-through">₹{p.originalPrice}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               ))}
-            </CarouselContent>
-          </Carousel>
+            </div>
+          </div>
         </section>
+        )}
       </main>
 
       <Footer />
