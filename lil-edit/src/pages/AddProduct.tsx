@@ -25,6 +25,7 @@ import AdminSubNav from "@/components/admin/AdminSubNav";
 import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 import ProductPreviewView from "@/components/ProductPreviewView";
+import StockToggleSlider from "@/components/StockToggleSlider";
 import type { Product, ProductImage, ProductColor } from "@/types/product";
 import { generateColorSku } from "@/utils/sku";
 import { slugify } from "@/utils/slug";
@@ -360,6 +361,18 @@ const AddProduct = () => {
     }
   };
 
+  const handleGlobalStockMode = (unlimited: boolean) => {
+    setIsStockUnlimited(unlimited);
+    setFormData(prev => ({
+      ...prev,
+      selectedColors: prev.selectedColors.map(c =>
+        unlimited
+          ? { ...c, isUnlimited: true, stock: 0 }
+          : { ...c, isUnlimited: false, stock: c.isUnlimited ? 1 : c.stock }
+      ),
+    }));
+  };
+
   const toggleVariantStockMode = (colorName: string, isUnlimited: boolean) => {
     setFormData(prev => ({
       ...prev,
@@ -622,7 +635,7 @@ const AddProduct = () => {
       {user ? <UserNavbar /> : <Navbar />}
       <div className="relative pt-[160px] md:pt-[128px] pb-24">
         <AdminSubNav />
-        <div className="mx-auto max-w-screen-2xl px-6 lg:px-12">
+        <div className="mx-auto max-w-screen-2xl px-3 lg:px-6">
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
@@ -639,6 +652,8 @@ const AddProduct = () => {
             </h1>
           </motion.div>
 
+          <hr className="-mx-3 lg:-mx-6 mb-8 border-t border-foreground/50" />
+
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
             {/* Main Form */}
             <motion.div
@@ -647,17 +662,17 @@ const AddProduct = () => {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="lg:col-span-3"
             >
-              <div className="bg-white rounded border border-gray-200 shadow-sm p-10 space-y-12">
+              <div className="bg-white rounded-lg border border-black shadow-md p-4 sm:p-10 space-y-12">
                 {/* Basic Info */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#B19CD9" }} />
-                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Essential Details</h2>
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Essential Details</h2>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 transition-colors group-focus-within:text-gray-900">
                         Product Title
                       </label>
                       <input
@@ -666,12 +681,12 @@ const AddProduct = () => {
                         value={formData.name}
                         onChange={handleInputChange}
                         placeholder="e.g. Criss-Cross Back Knot Top"
-                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 transition-colors group-focus-within:text-gray-900">
                         Brand House
                       </label>
                       <input
@@ -680,7 +695,7 @@ const AddProduct = () => {
                         value={formData.brand}
                         onChange={handleInputChange}
                         placeholder="e.g. Atelier Edit"
-                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
                   </div>
@@ -690,12 +705,12 @@ const AddProduct = () => {
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#B19CD9" }} />
-                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Specifications</h2>
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Specifications</h2>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 transition-colors group-focus-within:text-gray-900">
                         Fabric & Lining
                       </label>
                       <input
@@ -704,12 +719,12 @@ const AddProduct = () => {
                         value={formData.fabric}
                         onChange={handleInputChange}
                         placeholder="e.g. Organza with Cotton Lining"
-                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 transition-colors group-focus-within:text-gray-900">
                         Silhouette & Fit
                       </label>
                       <input
@@ -718,12 +733,12 @@ const AddProduct = () => {
                         value={formData.fit}
                         onChange={handleInputChange}
                         placeholder="e.g. Regular Fit"
-                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 transition-colors group-focus-within:text-gray-900">
                         Occasion
                       </label>
                       <input
@@ -732,12 +747,12 @@ const AddProduct = () => {
                         value={formData.occasion}
                         onChange={handleInputChange}
                         placeholder="e.g. Festive, Wedding"
-                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 transition-colors group-focus-within:text-gray-900">
                         Care Instructions
                       </label>
                       <input
@@ -746,7 +761,7 @@ const AddProduct = () => {
                         value={formData.care_instructions}
                         onChange={handleInputChange}
                         placeholder="e.g. Dry Clean Only"
-                        className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
                   </div>
@@ -756,7 +771,7 @@ const AddProduct = () => {
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
-                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Product Details</h2>
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Product Details</h2>
                   </div>
 
                   <div className="space-y-4">
@@ -767,13 +782,13 @@ const AddProduct = () => {
                         onChange={(e) => setNewPoint(e.target.value)}
                         onKeyPress={(e) => e.key === "Enter" && addDescriptionPoint()}
                         placeholder="Add a product feature or note..."
-                        className="flex-1 px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-xs"
+                        className="flex-1 px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
                       />
                       <button
                         onClick={addDescriptionPoint}
-                        className="px-8 py-4 rounded-md bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
+                        className="shrink-0 min-w-[84px] sm:min-w-[120px] flex flex-col items-center justify-center px-4 sm:px-8 rounded-md bg-[#0B5B55] text-white font-bold text-[11px] sm:text-xs uppercase tracking-wide sm:tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10 text-center leading-tight"
                       >
-                        Add Details
+                        Add<br />Details
                       </button>
                     </div>
 
@@ -783,7 +798,7 @@ const AddProduct = () => {
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           key={idx}
-                          className="flex items-center justify-between gap-4 p-4 bg-gray-50 border border-gray-200/40 rounded-md group hover:border-primary/20 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-md"
+                          className="flex items-center justify-between gap-4 p-4 bg-gray-50 border border-gray-300 rounded-md group hover:border-primary/20 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-md"
                         >
                           <div className="flex items-start gap-3">
                             <Play className="w-4 h-4 text-teal-600 mt-0.5 shrink-0 fill-teal-600" />
@@ -791,7 +806,7 @@ const AddProduct = () => {
                           </div>
                           <button
                             onClick={() => removeDescriptionPoint(idx)}
-                            className="p-2 text-gray-400/40 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            className="p-2 text-gray-900 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                           >
                             <X size={16} />
                           </button>
@@ -805,12 +820,12 @@ const AddProduct = () => {
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
-                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Classification</h2>
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Classification</h2>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 transition-colors group-focus-within:text-gray-900">
                         Category
                       </label>
                       <div className="relative">
@@ -818,21 +833,21 @@ const AddProduct = () => {
                           name="category"
                           value={formData.category}
                           onChange={handleInputChange}
-                          className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none appearance-none transition-all duration-300 font-body text-xs"
+                          className={`w-full px-5 py-4 rounded-md border focus:border-gray-900 outline-none appearance-none font-body text-base ${formData.category ? "bg-sky-50 border-sky-200" : "bg-gray-50 border-gray-300"}`}
                         >
-                          <option value="">Select a category</option>
+                          <option value="" className="bg-white text-gray-900">Select a category</option>
                           {CATEGORIES.map((cat) => (
-                            <option key={cat} value={cat}>
+                            <option key={cat} value={cat} className="bg-white text-gray-900">
                               {cat}
                             </option>
                           ))}
                         </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-800 pointer-events-none" />
                       </div>
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 transition-colors group-focus-within:text-gray-900">
                         Gender Category
                       </label>
                       <div className="relative">
@@ -840,16 +855,16 @@ const AddProduct = () => {
                           name="gender"
                           value={formData.gender}
                           onChange={handleInputChange}
-                          className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none appearance-none transition-all duration-300 font-body text-xs"
+                          className={`w-full px-5 py-4 rounded-md border focus:border-gray-900 outline-none appearance-none font-body text-base ${formData.gender ? "bg-sky-50 border-sky-200" : "bg-gray-50 border-gray-300"}`}
                         >
-                          <option value="">Select gender</option>
+                          <option value="" className="bg-white text-gray-900">Select gender</option>
                           {GENDERS.map((g) => (
-                            <option key={g} value={g}>
+                            <option key={g} value={g} className="bg-white text-gray-900">
                               {g}
                             </option>
                           ))}
                         </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-800 pointer-events-none" />
                       </div>
                     </motion.div>
                   </div>
@@ -859,40 +874,40 @@ const AddProduct = () => {
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
-                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Pricing</h2>
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Pricing</h2>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 transition-colors group-focus-within:text-gray-900">
                         Original Price (MRP)
                       </label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/50 font-body">₹</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-900 font-body">₹</span>
                         <input
                           type="number"
                           name="originalPrice"
                           value={formData.originalPrice}
                           onChange={handleInputChange}
                           placeholder="0.00"
-                          className="w-full pl-8 pr-4 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
+                          className="w-full pl-8 pr-4 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                         />
                       </div>
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
-                      <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 transition-colors group-focus-within:text-gray-900">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 transition-colors group-focus-within:text-gray-900">
                         Selling Price
                       </label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/50 font-body">₹</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-900 font-body">₹</span>
                         <input
                           type="number"
                           name="price"
                           value={formData.price}
                           onChange={handleInputChange}
                           placeholder="0.00"
-                          className="w-full pl-8 pr-4 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-gray-900 outline-none transition-all duration-300 font-body text-xs"
+                          className="w-full pl-8 pr-4 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                         />
                       </div>
                     </motion.div>
@@ -903,7 +918,7 @@ const AddProduct = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         className="group"
                       >
-                        <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-2 select-none">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 select-none">
                           Discount
                         </label>
                         <div className="flex items-center justify-center gap-2 px-4 py-4 bg-red-500/5 border border-red-500/20 rounded-md w-fit">
@@ -919,58 +934,27 @@ const AddProduct = () => {
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
-                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Inventory Control</h2>
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Inventory Control</h2>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
                     <motion.div whileHover={{ scale: 1.01 }} className="group transition-all duration-300">
                       <div className="flex items-center h-12 mb-2">
-                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray-400 transition-colors group-focus-within:text-gray-900">
+                        <label className="text-[11px] font-bold uppercase tracking-widest text-gray-800 transition-colors group-focus-within:text-gray-900">
                           Overall Stock Level
                         </label>
                       </div>
                       
-                      <div className="flex p-1 bg-gray-100/50 rounded-md border border-gray-200/50 w-full h-[50px]">
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            setIsStockUnlimited(false);
-                            setFormData(prev => ({
-                              ...prev,
-                              selectedColors: prev.selectedColors.map(c => ({
-                                ...c,
-                                isUnlimited: false,
-                                stock: c.isUnlimited ? 1 : c.stock
-                              }))
-                            }));
-                          }}
-                          className={`flex-1 flex items-center justify-center rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${!isStockUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
-                        >
-                          Limited
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            setIsStockUnlimited(true);
-                            setFormData(prev => ({
-                              ...prev,
-                              selectedColors: prev.selectedColors.map(c => ({
-                                ...c,
-                                isUnlimited: true,
-                                stock: 0
-                              }))
-                            }));
-                          }}
-                          className={`flex-1 flex items-center justify-center rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${isStockUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
-                        >
-                          Unlimited
-                        </button>
-                      </div>
+                      <StockToggleSlider
+                        isUnlimited={isStockUnlimited}
+                        onChange={handleGlobalStockMode}
+                        className="w-full h-[50px]"
+                      />
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
                       <div className="flex items-center h-12 mb-2">
-                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray-400 transition-colors group-focus-within:text-gray-900">
+                        <label className="text-[11px] font-bold uppercase tracking-widest text-gray-800 transition-colors group-focus-within:text-gray-900">
                           Product Base Identifier
                         </label>
                       </div>
@@ -981,7 +965,7 @@ const AddProduct = () => {
                           value={formData.sku}
                           readOnly
                           placeholder={isGeneratingSku ? "Generating..." : "Select category & gender"}
-                          className={`w-full px-5 py-4 rounded-md border border-gray-200 ${isGeneratingSku ? 'bg-[#F0F0F2] animate-pulse' : 'bg-[#F5F4F6]'} text-gray-400 cursor-not-allowed outline-none transition-all duration-300 font-mono text-[13px] tracking-wider`}
+                          className={`w-full px-5 py-4 rounded-md border border-gray-200 ${isGeneratingSku ? 'bg-[#F0F0F2] animate-pulse' : 'bg-[#F5F4F6]'} text-gray-800 cursor-not-allowed outline-none transition-all duration-300 font-mono text-[13px] tracking-wider`}
                         />
                         {isGeneratingSku && (
                           <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -1002,13 +986,13 @@ const AddProduct = () => {
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
-                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Search & Discovery</h2>
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Search & Discovery</h2>
                   </div>
 
                   <div className="space-y-6">
                     <div className="flex gap-3">
                       <div className="relative flex-1 group">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/40 group-focus-within:text-gray-900 transition-colors">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-900 group-focus-within:text-gray-900 transition-colors">
                           <Search size={18} />
                         </div>
                         <input
@@ -1017,18 +1001,18 @@ const AddProduct = () => {
                           onChange={(e) => setNewTag(e.target.value)}
                           onKeyPress={(e) => e.key === "Enter" && addTag()}
                           placeholder="Add discovery tags (e.g. Minimalist, Organic)..."
-                          className="w-full pl-12 pr-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-xs"
+                          className="w-full pl-12 pr-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
                         />
                       </div>
                       <button
                         onClick={addTag}
-                        className="px-8 py-4 rounded-md bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
+                        className="shrink-0 min-w-[84px] sm:min-w-[120px] flex flex-col items-center justify-center px-4 sm:px-8 rounded-md bg-[#0B5B55] text-white font-bold text-[11px] sm:text-xs uppercase tracking-wide sm:tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10 text-center leading-tight"
                       >
-                        Add Tag
+                        Add<br />Tag
                       </button>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 min-h-[48px] p-2 rounded-2xl border border-dashed border-gray-200/20 bg-secondary/5">
+                    <div className="flex flex-wrap gap-2 min-h-[48px] p-2 rounded-2xl border-2 border-dashed border-gray-400 bg-gray-50">
                       {formData.tags.length > 0 ? (
                         formData.tags.map((tag) => (
                           <motion.div
@@ -1040,7 +1024,7 @@ const AddProduct = () => {
                             {tag}
                             <button
                               onClick={() => removeTag(tag)}
-                              className="text-gray-400/40 hover:text-red-500 transition-colors"
+                              className="text-gray-900 hover:text-red-500 transition-colors"
                             >
                               <X size={12} />
                             </button>
@@ -1048,7 +1032,7 @@ const AddProduct = () => {
                         ))
                       ) : (
                         <div className="w-full flex items-center justify-center py-2">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400/30">No tags defined</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-800">No tags defined</p>
                         </div>
                       )}
                     </div>
@@ -1059,7 +1043,7 @@ const AddProduct = () => {
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
-                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Available Sizes</h2>
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Available Sizes</h2>
                   </div>
 
                   <div className="flex flex-wrap gap-4">
@@ -1084,7 +1068,7 @@ const AddProduct = () => {
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
-                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Color Palette</h2>
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Color Palette</h2>
                   </div>
 
                   <div className="space-y-6">
@@ -1097,14 +1081,14 @@ const AddProduct = () => {
                           onChange={(e) => setNewColorInput(e.target.value)}
                           onKeyPress={(e) => e.key === "Enter" && addColor()}
                           placeholder="Type 'Lavender', '#E6E6FA', or 'Lavender #E6E6FA'..."
-                          className="w-full px-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-xs"
+                          className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
                         />
                       </div>
                       <button
                         onClick={addColor}
-                        className="px-8 py-4 rounded-md bg-[#0B5B55] text-white font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10"
+                        className="shrink-0 min-w-[84px] sm:min-w-[120px] flex flex-col items-center justify-center px-4 sm:px-8 rounded-md bg-[#0B5B55] text-white font-bold text-[11px] sm:text-xs uppercase tracking-wide sm:tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10 text-center leading-tight"
                       >
-                        Add Color
+                        Add<br />Color
                       </button>
                     </div>
 
@@ -1117,26 +1101,26 @@ const AddProduct = () => {
                             animate={{ opacity: 1, y: 0 }}
                             whileHover={{ y: -4 }}
                             key={color.name}
-                            className="bg-white border border-gray-200 rounded-[2.5rem] p-8 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-500 group relative"
+                            className="bg-white border border-gray-200 rounded-[2.5rem] p-4 sm:p-8 shadow-[0_4px_20px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-500 group relative"
                           >
                             <div className="space-y-8 relative z-10">
                               {/* Header Row: Swatch, Name, and Image Management */}
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-gray-100">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-gray-200">
                                 <div className="flex items-center gap-5">
                                   <div className="relative">
                                     <div
                                       className="w-14 h-14 rounded-2xl border border-black/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] transition-all duration-700 group-hover:scale-110"
                                       style={{ backgroundColor: color.hex }}
                                     />
-                                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white shadow-sm border border-gray-200/20 flex items-center justify-center">
+                                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white shadow-sm border border-gray-300 flex items-center justify-center">
                                       <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color.hex }} />
                                     </div>
                                   </div>
                                   <div className="flex flex-col">
-                                    <h3 className="text-lg font-bold text-gray-900 tracking-tight leading-none mb-2">
+                                    <h3 className="text-xl font-bold text-gray-900 tracking-tight leading-none mb-2">
                                       {color.name}
                                     </h3>
-                                    <span className="text-[10px] text-gray-400/40 font-mono tracking-[0.2em] uppercase">
+                                    <span className="text-[10px] text-gray-900 font-mono tracking-[0.2em] uppercase">
                                       {color.hex}
                                     </span>
                                   </div>
@@ -1150,7 +1134,7 @@ const AddProduct = () => {
                                     <div className="text-2xl font-bold text-gray-900 group-hover/assets:scale-110 transition-transform">
                                       {color.images.length}
                                     </div>
-                                    <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400/50">
+                                    <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-900">
                                       Specific <br /> Images
                                     </div>
                                   </div>
@@ -1164,7 +1148,7 @@ const AddProduct = () => {
                                         fileInputRef.current?.click();
                                       }, 300);
                                     }}
-                                    className="py-2.5 px-6 rounded-full bg-gray-50 hover:bg-gray-900 hover:text-white border border-gray-200/40 hover:border-primary text-gray-900 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/20 whitespace-nowrap"
+                                    className="py-2.5 px-6 rounded-full bg-gray-50 hover:bg-gray-900 hover:text-white border border-gray-300 hover:border-primary text-gray-900 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/20 whitespace-nowrap"
                                   >
                                     Edit Gallery
                                   </button>
@@ -1175,7 +1159,7 @@ const AddProduct = () => {
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                                 <div className="space-y-3">
                                   <div className="flex items-center h-10">
-                                    <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-gray-400/50 block">Variant Signature</span>
+                                    <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-gray-900 block">Variant Signature</span>
                                   </div>
                                   <div className="font-mono text-[11px] text-gray-900/80 bg-gray-900/5 px-3 py-1.5 rounded-lg border border-primary/10 w-fit">
                                     {color.sku}
@@ -1184,26 +1168,15 @@ const AddProduct = () => {
 
                                 <div className="space-y-3">
                                   <div className="flex items-center justify-between h-10">
-                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray-400/50 block">
+                                    <label className="text-[11px] font-bold uppercase tracking-widest text-gray-900 block">
                                       {color.isUnlimited ? "Stock Level (Auto)" : "Stock Level"}
                                     </label>
                                     
-                                    <div className="flex p-1 bg-gray-100/50 rounded-lg border border-gray-200/50 scale-90 origin-right">
-                                      <button 
-                                        type="button"
-                                        onClick={() => toggleVariantStockMode(color.name, false)}
-                                        className={`px-3 py-1.5 rounded-md text-[7px] font-bold uppercase tracking-widest transition-all ${!color.isUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
-                                      >
-                                        Limited
-                                      </button>
-                                      <button 
-                                        type="button"
-                                        onClick={() => toggleVariantStockMode(color.name, true)}
-                                        className={`px-3 py-1.5 rounded-md text-[7px] font-bold uppercase tracking-widest transition-all ${color.isUnlimited ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-900'}`}
-                                      >
-                                        Unlimited
-                                      </button>
-                                    </div>
+                                    <StockToggleSlider
+                                      isUnlimited={!!color.isUnlimited}
+                                      onChange={(unlimited) => toggleVariantStockMode(color.name, unlimited)}
+                                      className="w-40 h-9"
+                                    />
                                   </div>
                                   
                                   <div className="relative group/input">
@@ -1212,7 +1185,7 @@ const AddProduct = () => {
                                       value={color.isUnlimited ? "" : color.stock}
                                       onChange={(e) => updateVariantStock(color.name, parseInt(e.target.value) || 0)}
                                       disabled={color.isUnlimited}
-                                      className={`w-full bg-transparent border-b border-gray-200/40 focus:border-[#B19CD9] outline-none transition-all py-1 text-sm font-medium font-body ${color.isUnlimited ? 'text-gray-400 opacity-50' : 'text-gray-900 opacity-100'}`}
+                                      className={`w-full bg-transparent border-b border-gray-300 focus:border-[#B19CD9] outline-none transition-all py-1 text-sm font-medium font-body ${color.isUnlimited ? 'text-gray-800 opacity-50' : 'text-gray-900 opacity-100'}`}
                                       placeholder={color.isUnlimited ? "Unlimited" : "1"}
                                       min="1"
                                     />
@@ -1224,18 +1197,18 @@ const AddProduct = () => {
                             {/* Corner Action */}
                             <button
                               onClick={() => removeColor(color.name)}
-                              className="absolute top-4 right-4 p-2.5 text-gray-400/20 hover:text-red-500 hover:bg-red-50 rounded-md transition-all z-20 opacity-0 group-hover:opacity-100"
+                              className="absolute top-4 right-4 p-2.5 text-gray-800/20 hover:text-red-500 hover:bg-red-50 rounded-md transition-all z-20 opacity-0 group-hover:opacity-100"
                             >
                               <X size={14} />
                             </button>
                           </motion.div>
                         ))
                       ) : (
-                        <div className="p-16 text-center border-2 border-dashed border-gray-200/20 rounded-[3rem] bg-secondary/5">
+                        <div className="p-8 sm:p-16 text-center border-2 border-dashed border-gray-300 rounded-[3rem] bg-secondary/5">
                           <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-6">
-                            <Plus className="w-6 h-6 text-gray-400/30" />
+                            <Plus className="w-6 h-6 text-gray-800" />
                           </div>
-                          <p className="text-sm text-gray-400/60 font-light italic max-w-xs mx-auto leading-relaxed">
+                          <p className="text-sm text-gray-900 font-light italic max-w-xs mx-auto leading-relaxed">
                             No color variants curated yet. Begin by entering a color name or hex code above.
                           </p>
                         </div>
@@ -1248,19 +1221,19 @@ const AddProduct = () => {
                 <div className="space-y-6">
                   <div className="flex items-center gap-4" id="image-studio">
                     <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
-                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Image Studio</h2>
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Image Studio</h2>
                   </div>
 
-                  <div className="bg-white rounded-[2.5rem] border border-gray-200/40 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
+                  <div className="bg-white sm:rounded-[2.5rem] sm:border sm:border-gray-300 sm:shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden">
                     {/* Studio Header / Tabs */}
-                    <div className="px-8 py-6 border-b border-gray-200/10 bg-white flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-2 p-1 bg-gray-50 rounded-2xl border border-gray-200/40 w-fit max-w-full overflow-x-auto no-scrollbar">
+                    <div className="px-0 py-4 sm:px-8 sm:py-6 border-b border-gray-200 bg-white flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2 p-1 bg-gray-50 rounded-2xl border border-gray-300 w-fit max-w-full overflow-x-auto no-scrollbar">
                         <button
                           onClick={() => setActiveImageTab("Global")}
                           className={`px-6 py-2.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${
                             activeImageTab === "Global" 
-                              ? "bg-white text-gray-900 shadow-sm border border-gray-200/40" 
-                              : "text-gray-400/60 hover:text-gray-900"
+                              ? "bg-white text-gray-900 shadow-sm border border-gray-300" 
+                              : "text-gray-900 hover:text-gray-900"
                           }`}
                         >
                           Global Images
@@ -1271,8 +1244,8 @@ const AddProduct = () => {
                             onClick={() => setActiveImageTab(color.name)}
                             className={`px-6 py-2.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-3 whitespace-nowrap ${
                               activeImageTab === color.name 
-                                ? "bg-white text-gray-900 shadow-sm border border-gray-200/40" 
-                                : "text-gray-400/60 hover:text-gray-900"
+                                ? "bg-white text-gray-900 shadow-sm border border-gray-300" 
+                                : "text-gray-900 hover:text-gray-900"
                             }`}
                           >
                             <div className="w-2.5 h-2.5 rounded-full border border-black/5" style={{ backgroundColor: color.hex }} />
@@ -1282,14 +1255,14 @@ const AddProduct = () => {
                       </div>
                       
                       <div className="hidden sm:block">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400/40">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">
                           {activeImageTab === "Global" ? "Shared Gallery" : `${activeImageTab} Variant`}
                         </span>
                       </div>
                     </div>
 
                     {/* Studio Body */}
-                    <div className="p-8 space-y-8">
+                    <div className="px-0 py-6 sm:p-8 space-y-8">
                       <motion.div
                         key={activeImageTab}
                         initial={{ opacity: 0, y: 10 }}
@@ -1300,7 +1273,7 @@ const AddProduct = () => {
                         whileHover={{ scale: 1.002 }}
                         className={`border-2 border-dashed rounded p-12 text-center transition-all duration-300 ${isDragging
                           ? "border-primary bg-gray-900/[0.02]"
-                          : "border-gray-200/20 hover:border-primary/20 bg-gray-50"
+                          : "border-gray-300 hover:border-primary/20 bg-gray-50"
                           }`}
                       >
                         <motion.div
@@ -1313,15 +1286,15 @@ const AddProduct = () => {
                           <p className="text-gray-900 font-display font-medium text-lg mb-2">
                             {activeImageTab === "Global" ? "Global Collection" : `${activeImageTab} Variant`}
                           </p>
-                          <p className="text-sm text-gray-400 font-body font-light mb-8 max-w-xs mx-auto">
+                          <p className="text-sm text-gray-800 font-body font-light mb-8 max-w-xs mx-auto">
                             {activeImageTab === "Global" 
                               ? "Upload general campaign or shared editorial shots."
                               : `Upload exclusive shots for the ${activeImageTab} variant.`}
                           </p>
                           <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="px-10 py-3.5 rounded-full text-white hover:brightness-95 transition-all duration-300 text-[11px] font-bold uppercase tracking-widest shadow-xl"
-                            style={{ backgroundColor: "#B19CD9" }}
+                            className="px-10 py-3.5 rounded-md text-white hover:brightness-95 transition-all duration-300 text-[11px] font-bold uppercase tracking-widest shadow-xl"
+                            style={{ backgroundColor: "#0B5B55" }}
                           >
                             Upload Content
                           </button>
@@ -1356,7 +1329,7 @@ const AddProduct = () => {
                           <div className="space-y-4">
                             <div className="flex items-center gap-3">
                               <div className="h-px flex-1 bg-border/20" />
-                              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400/40">Current Selections</span>
+                              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Current Selections</span>
                               <div className="h-px flex-1 bg-border/20" />
                             </div>
                             <motion.div
@@ -1369,7 +1342,7 @@ const AddProduct = () => {
                                   key={`${activeImageTab}-${index}`}
                                   initial={{ opacity: 0, scale: 0.8 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  className="relative group aspect-square rounded-2xl overflow-hidden bg-secondary/10 border border-gray-200/10"
+                                  className="relative group aspect-square rounded-2xl overflow-hidden bg-secondary/10 border border-gray-200"
                                 >
                                   <img
                                     src={preview}
@@ -1399,11 +1372,11 @@ const AddProduct = () => {
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
-                    <h2 className="text-lg font-bold text-gray-900 tracking-tight">Status & Publishing</h2>
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Status & Publishing</h2>
                   </div>
 
                   <div className="space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
                       {/* Core Badges */}
                       {[
                         { key: "newArrival", label: "New Arrival", icon: Zap },
@@ -1416,20 +1389,20 @@ const AddProduct = () => {
                           whileHover={{ scale: 1.01 }}
                           whileTap={{ scale: 0.99 }}
                           onClick={() => handleToggle(key as keyof FormData)}
-                          className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${formData[key as keyof FormData]
+                          className={`flex items-center justify-between gap-2 p-3 sm:p-5 rounded-2xl border transition-all duration-300 ${formData[key as keyof FormData]
                             ? "border-[#B19CD9] bg-[#B19CD9]/[0.02] shadow-xl shadow-[#B19CD9]/5"
                             : "border-gray-200 bg-gray-50 hover:border-[#B19CD9]/20"
                             }`}
                         >
-                          <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData[key as keyof FormData] ? "bg-[#B19CD9]/20 text-gray-900" : "bg-white text-gray-400/40 shadow-sm"
+                          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                            <div className={`w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full flex items-center justify-center transition-colors ${formData[key as keyof FormData] ? "bg-[#B19CD9]/20 text-gray-900" : "bg-white text-gray-900 shadow-sm"
                               }`}>
-                              <Icon className="w-5 h-5" />
+                              <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                             </div>
-                            <span className="font-display font-medium text-gray-900 text-sm">{label}</span>
+                            <span className="font-display font-medium text-gray-900 text-xs sm:text-sm leading-tight text-left">{label}</span>
                           </div>
                           <div
-                            className={`w-12 h-6 rounded-full transition-all duration-300 p-1 ${formData[key as keyof FormData] ? "bg-[#B19CD9]" : "bg-muted-foreground/20"
+                            className={`shrink-0 w-12 h-6 rounded-full transition-all duration-300 p-1 ${formData[key as keyof FormData] ? "bg-[#B19CD9]" : "bg-muted-foreground/20"
                               }`}
                           >
                             <motion.div
@@ -1450,20 +1423,20 @@ const AddProduct = () => {
                           whileHover={{ scale: 1.01 }}
                           whileTap={{ scale: 0.99 }}
                           onClick={() => toggleCustomBadge(badge)}
-                          className={`flex items-center justify-between p-5 rounded-2xl border transition-all duration-300 ${formData.customBadges.includes(badge)
+                          className={`flex items-center justify-between gap-2 p-3 sm:p-5 rounded-2xl border transition-all duration-300 ${formData.customBadges.includes(badge)
                             ? "border-[#B19CD9] bg-[#B19CD9]/[0.02] shadow-xl shadow-[#B19CD9]/5"
                             : "border-gray-200 bg-gray-50 hover:border-[#B19CD9]/20"
                             }`}
                         >
-                          <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${formData.customBadges.includes(badge) ? "bg-[#B19CD9]/20 text-gray-900" : "bg-white text-gray-400/40 shadow-sm"
+                          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                            <div className={`w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full flex items-center justify-center transition-colors ${formData.customBadges.includes(badge) ? "bg-[#B19CD9]/20 text-gray-900" : "bg-white text-gray-900 shadow-sm"
                               }`}>
-                              <Tag className="w-5 h-5" />
+                              <Tag className="w-4 h-4 sm:w-5 sm:h-5" />
                             </div>
-                            <span className="font-display font-medium text-gray-900 text-sm">{badge}</span>
+                            <span lang="en" className="min-w-0 font-display font-medium text-gray-900 text-xs sm:text-sm leading-tight text-left [overflow-wrap:anywhere] hyphens-auto">{badge}</span>
                           </div>
                           <div
-                            className={`w-12 h-6 rounded-full transition-all duration-300 p-1 ${formData.customBadges.includes(badge) ? "bg-[#B19CD9]" : "bg-muted-foreground/20"
+                            className={`shrink-0 w-12 h-6 rounded-full transition-all duration-300 p-1 ${formData.customBadges.includes(badge) ? "bg-[#B19CD9]" : "bg-muted-foreground/20"
                               }`}
                           >
                             <motion.div
@@ -1479,7 +1452,7 @@ const AddProduct = () => {
                     {/* Create Badge Input */}
                     <div className="flex gap-3 pt-2">
                       <div className="relative flex-1 group">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/40 group-focus-within:text-gray-900 transition-colors">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-900 group-focus-within:text-gray-900 transition-colors">
                           <Plus size={18} />
                         </div>
                         <input
@@ -1488,14 +1461,14 @@ const AddProduct = () => {
                           onChange={(e) => setNewBadgeName(e.target.value)}
                           onKeyPress={(e) => e.key === "Enter" && createBadge()}
                           placeholder="Create custom badge (e.g. Limited Edition, Sustainable)..."
-                          className="w-full pl-12 pr-5 py-4 rounded-md border border-gray-200 bg-gray-50 bg-white focus:border-primary/50 outline-none transition-all duration-300 font-body text-xs"
+                          className="w-full pl-12 pr-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
                         />
                       </div>
                       <button
                         onClick={createBadge}
-                        className="px-8 py-4 rounded-md bg-[#B19CD9] text-black font-bold text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-purple-900/10"
+                        className="shrink-0 min-w-[84px] sm:min-w-[120px] flex flex-col items-center justify-center px-4 sm:px-8 rounded-md bg-[#0B5B55] text-white font-bold text-[11px] sm:text-xs uppercase tracking-wide sm:tracking-widest hover:brightness-110 transition-all shadow-lg shadow-teal-900/10 text-center leading-tight"
                       >
-                        Create Badge
+                        Create<br />Badge
                       </button>
                     </div>
                   </div>
@@ -1508,7 +1481,7 @@ const AddProduct = () => {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleSaveDraft}
                     disabled={isSaving || uploadingCount > 0}
-                    className="flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full border border-gray-200 text-gray-900 font-bold uppercase tracking-widest text-xs hover:bg-black hover:text-white hover:border-black active:bg-black active:text-white transition-all duration-300 disabled:opacity-50 group"
+                    className="flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-md border border-gray-200 text-gray-900 font-bold uppercase tracking-widest text-xs shadow-md hover:shadow-xl hover:bg-black hover:text-white hover:border-black active:bg-black active:text-white transition-all duration-300 disabled:opacity-50 group"
                   >
                     {isSaving ? (
                       <Loader className="w-4 h-4 animate-spin text-gray-900 group-hover:text-white" />
@@ -1530,9 +1503,9 @@ const AddProduct = () => {
                       !formData.gender ||
                       !formData.sku
                     }
-                    className={`flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-full font-bold uppercase tracking-widest text-xs transition-all duration-300 shadow-xl ${
+                    className={`flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-md font-bold uppercase tracking-widest text-xs transition-all duration-300 shadow-xl hover:shadow-2xl ${
                       !formData.name || !formData.category || !formData.gender || !formData.sku
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none border border-gray-200"
+                        ? "bg-gray-100 text-gray-800 cursor-not-allowed shadow-none border border-gray-200"
                         : "bg-[#B19CD9] text-black hover:brightness-105 shadow-[#B19CD9]/30"
                     } disabled:opacity-50 text-xs`}
                   >
@@ -1554,8 +1527,8 @@ const AddProduct = () => {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="lg:col-span-2 lg:sticky lg:top-32 h-fit"
             >
-              <div className="bg-white rounded border border-gray-200 shadow-sm px-4 py-3 space-y-4">
-                <div className="flex items-center justify-between pb-1 border-b border-gray-200/20">
+              <div className="bg-white rounded-lg border border-black shadow-md px-4 py-3 space-y-4">
+                <div className="flex items-center justify-between pb-1 border-b border-gray-300">
                   <h2 className="text-lg font-bold uppercase tracking-[0.15em] text-slate-900">
                     Live Preview
                   </h2>
@@ -1566,7 +1539,7 @@ const AddProduct = () => {
                 </div>
 
                 {savedPreviewProduct ? (
-                  <motion.div layout className="rounded-[1.5rem] overflow-hidden border border-gray-200/30 bg-white mx-[-6px]">
+                  <motion.div layout className="rounded-[1.5rem] overflow-hidden border border-gray-300 bg-white mx-[-6px]">
                     <div className="max-h-[calc(100vh-220px)] overflow-y-auto">
                       <ProductPreviewView 
                         product={savedPreviewProduct} 
@@ -1577,12 +1550,12 @@ const AddProduct = () => {
                     </div>
                   </motion.div>
                 ) : (
-                  <div className="rounded-[1.5rem] border-2 border-dashed border-gray-200/30 bg-gray-50 p-10 text-center">
+                  <div className="rounded-[1.5rem] border-2 border-dashed border-gray-300 bg-gray-50 p-10 text-center">
                     <div className="w-14 h-14 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-4">
-                      <Upload className="w-6 h-6 text-gray-400/40" />
+                      <Upload className="w-6 h-6 text-gray-900" />
                     </div>
                     <p className="text-sm font-semibold text-gray-900 mb-1">Your Product Detail Preview Will Appear Here</p>
-                    <p className="text-xs text-gray-400">Click Save Draft to generate the full customer page preview.</p>
+                    <p className="text-xs text-gray-800">Click Save Draft to generate the full customer page preview.</p>
                   </div>
                 )}
               </div>
