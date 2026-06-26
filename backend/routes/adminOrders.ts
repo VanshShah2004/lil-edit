@@ -216,6 +216,106 @@ async function recordNotification(
   }
 }
 
+// A notification row to write BEFORE the email goes out. The interactive resend endpoints
+// "claim" the row first so that a record lost AFTER a successful send can never blind the
+// dedup guard (notificationExists) into allowing a duplicate later. Returns the new row id
+// (so a failed send can release it). `degraded` = the audit table is absent (pre-migration) —
+// the guard is moot then anyway, so callers send without tracking. id=null & !degraded = a
+// real write error: the interactive endpoints fail CLOSED (refuse + ask to retry) rather than
+// send something the guard won't see.
+interface ClaimResult {
+  id: string | null;
+  degraded: boolean;
+}
+
+function isMissingTableError(code?: string, message?: string): boolean {
+  return (
+    code === "42P01" ||            // Postgres: undefined_table
+    code === "PGRST205" ||          // PostgREST: table not in schema cache
+    /does not exist|find the table/i.test(message ?? "")
+  );
+}
+
+async function claimNotification(
+  orderId: string,
+  status: string,
+  recipientEmail: string,
+  adminId: string | null,
+  adminName: string,
+  kind: "status" | "receipt",
+  log: OpLogger,
+): Promise<ClaimResult> {
+  try {
+    const { data, error } = await db()
+      .from("order_notifications")
+      .insert({
+        order_id: orderId,
+        status,
+        kind,
+        recipient_email: recipientEmail,
+        sent_by: adminId,
+        sent_by_name: adminName,
+      })
+      .select("id")
+      .single();
+    if (error) {
+      const missing = isMissingTableError((error as { code?: string }).code, error.message);
+      log.warn(`claim notification ${missing ? "skipped (table missing)" : "FAILED"}: ${error.message}`);
+      return { id: null, degraded: missing };
+    }
+    return { id: (data as { id: string }).id, degraded: false };
+  } catch (e) {
+    log.warn(`claim notification threw: ${e instanceof Error ? e.message : String(e)}`);
+    return { id: null, degraded: false };
+  }
+}
+
+// Undo a claim when the send didn't go out, so the slot is free for a retry. Best-effort: a
+// lost delete just leaves the row, which guards the next attempt behind the admin's "Send
+// again" confirm — a recoverable over-block, never a silent duplicate.
+async function releaseNotification(id: string, log: OpLogger): Promise<void> {
+  try {
+    const { error } = await db().from("order_notifications").delete().eq("id", id);
+    if (error) log.warn(`release notification failed (id=${id}): ${error.message}`);
+  } catch (e) {
+    log.warn(`release notification threw: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+// Has a customer notification of this kind already been recorded for this order? Powers the
+// SERVER-SIDE duplicate guard (so the UI warning is no longer the only gate): a repeat send
+// is allowed only when the admin explicitly confirms, so a double-click, a second admin, or a
+// raw API call can't silently send the same email twice.
+//   • kind='status'  → match the SAME status (re-notifying a *different* status is fine)
+//   • kind='receipt' → pass status=null to match any receipt row (the receipt is one
+//     status-independent document)
+// Fails OPEN: on a read error (e.g. the table is missing pre-migration) it returns false so a
+// legitimate send is never blocked — the worst case is the prior advisory-only behaviour.
+async function notificationExists(
+  orderId: string,
+  status: string | null,
+  kind: "status" | "receipt",
+  log: OpLogger,
+): Promise<boolean> {
+  try {
+    let q = db()
+      .from("order_notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("order_id", orderId)
+      .eq("kind", kind);
+    if (status !== null) q = q.eq("status", status);
+    const { count, error } = await q;
+    if (error) {
+      log.warn(`duplicate-send check failed (table missing?): ${error.message}`);
+      return false;
+    }
+    return (count ?? 0) > 0;
+  } catch (e) {
+    log.warn(`duplicate-send check threw: ${e instanceof Error ? e.message : String(e)}`);
+    return false;
+  }
+}
+
 // PostgREST .or() takes a comma/parenthesis-delimited filter string, so a raw
 // search term containing those characters would corrupt the filter. Strip them.
 function sanitizeSearch(raw: string): string {
@@ -527,7 +627,10 @@ router.post("/:id/notify", adminMutationLimiter, async (req: Request, res: Respo
   const log = createLog().start("ADMIN ORDER NOTIFY");
   const adminId = (req as AuthenticatedRequest).userId;
   const orderId = req.params.id as string;
-  log.step(`admin=${adminId}  order=${orderId}  (resend current-status notification)`);
+  // Explicit override: the admin clicked "Send again" through the duplicate warning. Without
+  // it, a repeat notification for a status already emailed is refused server-side (409).
+  const confirm = (req.body as { confirm?: unknown })?.confirm === true;
+  log.step(`admin=${adminId}  order=${orderId}  confirm=${confirm}  (resend current-status notification)`);
 
   try {
     const { data, error } = await db()
@@ -548,6 +651,17 @@ router.post("/:id/notify", adminMutationLimiter, async (req: Request, res: Respo
     }
 
     const o = data as { id: string; user_id: string; order_number: string | null; status: string };
+
+    // Server-side duplicate guard (option B): unless the admin explicitly confirmed, refuse a
+    // second notification for a status the customer was already emailed about. Catches the
+    // double-click / concurrent-admin / direct-API cases the UI's advisory warning can't see.
+    // The client turns this 409 into the same "Send again" prompt, which retries with confirm.
+    if (!confirm && (await notificationExists(orderId, o.status, "status", log))) {
+      log.warn(`already notified status=${o.status} & confirm not set — refusing duplicate`).end("ADMIN ORDER NOTIFY");
+      res.status(409).json({ alreadySent: true, status: o.status, error: `The customer was already notified that this order is "${o.status}".` });
+      return;
+    }
+
     const [ownerProfiles, adminProfiles] = await Promise.all([
       loadProfiles([o.user_id]),
       loadProfiles([adminId]),
@@ -558,6 +672,17 @@ router.post("/:id/notify", adminMutationLimiter, async (req: Request, res: Respo
     const recipientName = [owner?.first_name, owner?.last_name].filter(Boolean).join(" ").trim();
     const recipientEmail = await resolveRecipientEmail(o.user_id, owner?.email, log);
 
+    // Claim the notification row BEFORE sending: if the send succeeds but a post-send record
+    // write were lost, the dedup guard would go blind and a later resend could duplicate.
+    // Recording first closes that. A hard write error (not a missing table) means we can't
+    // safely track the send, so refuse and let the admin retry rather than risk a duplicate.
+    const claim = await claimNotification(orderId, o.status, recipientEmail, adminId, adminName, "status", log);
+    if (!claim.id && !claim.degraded) {
+      log.error("could not record the notification — not sending to avoid an untracked duplicate").end("ADMIN ORDER NOTIFY");
+      res.status(503).json({ error: "Couldn't send the notification right now — please try again.", reason: "send_failed" });
+      return;
+    }
+
     const mail = await sendOrderStatusEmail({
       recipientEmail,
       recipientName: recipientName || undefined,
@@ -566,9 +691,11 @@ router.post("/:id/notify", adminMutationLimiter, async (req: Request, res: Respo
       orderUrl: `${publicSiteUrl()}/orders/${orderId}`,
     });
 
-    // Record only on a confirmed send, mirroring the status-change path.
-    if (mail.sent) await recordNotification(orderId, o.status, recipientEmail, adminId, adminName, log);
-    else log.warn(`notify not sent: ${mail.error ?? "unknown"}`);
+    // Send failed → release the claim so the slot is free for a retry.
+    if (!mail.sent) {
+      if (claim.id) await releaseNotification(claim.id, log);
+      log.warn(`notify not sent: ${mail.error ?? "unknown"}`);
+    }
 
     log.success(`notify  order=${orderId}  status=${o.status}  emailed=${mail.sent}${mail.reason ? `  reason=${mail.reason}` : ""}`).end("ADMIN ORDER NOTIFY");
     res.json({ emailed: mail.sent, status: o.status, ...(mail.reason ? { reason: mail.reason } : {}) });
@@ -588,7 +715,10 @@ router.post("/:id/resend-receipt", adminMutationLimiter, async (req: Request, re
   const log = createLog().start("ADMIN ORDER RESEND RECEIPT");
   const adminId = (req as AuthenticatedRequest).userId;
   const orderId = req.params.id as string;
-  log.step(`admin=${adminId}  order=${orderId}  (resend confirmation receipt)`);
+  // Explicit override: the admin clicked "Send again" through the duplicate warning. Without
+  // it, a resend is refused server-side (409) when a receipt was already sent for this order.
+  const confirm = (req.body as { confirm?: unknown })?.confirm === true;
+  log.step(`admin=${adminId}  order=${orderId}  confirm=${confirm}  (resend confirmation receipt)`);
 
   try {
     const { data, error } = await db()
@@ -613,6 +743,17 @@ router.post("/:id/resend-receipt", adminMutationLimiter, async (req: Request, re
     }
 
     const row = data as unknown as OrderRow;
+
+    // Server-side duplicate guard (option B): a receipt is one status-independent document, so
+    // match any prior receipt row for this order. Unless the admin explicitly confirmed, refuse
+    // the duplicate; the client turns this 409 into the "Send again" prompt (which retries with
+    // confirm). Catches double-clicks / concurrent admins / direct API calls.
+    if (!confirm && (await notificationExists(orderId, null, "receipt", log))) {
+      log.warn(`receipt already sent & confirm not set — refusing duplicate`).end("ADMIN ORDER RESEND RECEIPT");
+      res.status(409).json({ alreadySent: true, error: "A confirmation receipt has already been sent for this order." });
+      return;
+    }
+
     const [ownerProfiles, adminProfiles] = await Promise.all([
       loadProfiles([row.user_id]),
       loadProfiles([adminId]),
@@ -660,12 +801,22 @@ router.post("/:id/resend-receipt", adminMutationLimiter, async (req: Request, re
       },
     };
 
+    // Claim BEFORE sending (kind='receipt') so a lost post-send record can't blind the guard;
+    // refuse on a hard write error rather than risk an untracked duplicate. status carries the
+    // order's CURRENT status (informational — the receiptSent indicator keys on kind, not status).
+    const claim = await claimNotification(orderId, row.status, recipientEmail, adminId, adminName, "receipt", log);
+    if (!claim.id && !claim.degraded) {
+      log.error("could not record the receipt — not sending to avoid an untracked duplicate").end("ADMIN ORDER RESEND RECEIPT");
+      res.status(503).json({ error: "Couldn't send the receipt right now — please try again.", reason: "send_failed" });
+      return;
+    }
+
     const mail = await sendOrderConfirmation(payload);
-    // Record on a confirmed send (kind='receipt'), mirroring the placement receipt + the
-    // status-notify path. status carries the order's CURRENT status (informational — the
-    // receiptSent indicator keys on kind, not status).
-    if (mail.sent) await recordNotification(orderId, row.status, recipientEmail, adminId, adminName, log, "receipt");
-    else log.warn(`receipt resend not sent: ${mail.error ?? "unknown"} (reason=${mail.reason ?? "?"})`);
+    // Send failed → release the claim so the slot is free for a retry.
+    if (!mail.sent) {
+      if (claim.id) await releaseNotification(claim.id, log);
+      log.warn(`receipt resend not sent: ${mail.error ?? "unknown"} (reason=${mail.reason ?? "?"})`);
+    }
 
     log.success(`receipt resend  order=${orderId}  emailed=${mail.sent}${mail.reason ? `  reason=${mail.reason}` : ""}`).end("ADMIN ORDER RESEND RECEIPT");
     res.json({ emailed: mail.sent, ...(mail.reason ? { reason: mail.reason } : {}) });

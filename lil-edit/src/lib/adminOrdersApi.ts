@@ -274,8 +274,21 @@ export async function updateOrderStatus(
 // reflects whether the email actually went out.
 export async function resendStatusNotification(
   orderId: string,
-): Promise<{ emailed: boolean; status: OrderStatus; reason?: NotifyFailureReason }> {
-  const res = await authFetch(`/api/admin/orders/${orderId}/notify`, { method: "POST" });
+  // Explicit override — set only when the admin clicks "Send again" through the duplicate
+  // warning. Omitted/false lets the server refuse an unconfirmed duplicate (see below).
+  confirm = false,
+): Promise<{ emailed: boolean; status?: OrderStatus; reason?: NotifyFailureReason; alreadySent?: boolean }> {
+  const res = await authFetch(`/api/admin/orders/${orderId}/notify`, {
+    method: "POST",
+    body: JSON.stringify({ confirm }),
+  });
+  // 409 = the server's duplicate guard (this status was already notified and confirm wasn't
+  // set). Surface it as DATA, not an error, so the page can show the "Send again" override —
+  // the same warning whether the duplicate is caught client- or server-side.
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}));
+    return { emailed: false, alreadySent: true, status: (body as { status?: OrderStatus }).status };
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     console.error("[adminOrdersApi] resendStatusNotification error:", body);
@@ -291,8 +304,19 @@ export async function resendStatusNotification(
 // went out (the backend falls back to the auth email when the profile has none).
 export async function resendReceipt(
   orderId: string,
-): Promise<{ emailed: boolean; reason?: NotifyFailureReason }> {
-  const res = await authFetch(`/api/admin/orders/${orderId}/resend-receipt`, { method: "POST" });
+  // Explicit override — set only when the admin clicks "Send again" through the duplicate
+  // warning. Omitted/false lets the server refuse an unconfirmed duplicate (see below).
+  confirm = false,
+): Promise<{ emailed: boolean; reason?: NotifyFailureReason; alreadySent?: boolean }> {
+  const res = await authFetch(`/api/admin/orders/${orderId}/resend-receipt`, {
+    method: "POST",
+    body: JSON.stringify({ confirm }),
+  });
+  // 409 = the server's duplicate guard (a receipt was already sent and confirm wasn't set).
+  // Surface it as DATA so the page can show the "Send again" override toast.
+  if (res.status === 409) {
+    return { emailed: false, alreadySent: true };
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     console.error("[adminOrdersApi] resendReceipt error:", body);

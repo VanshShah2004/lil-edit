@@ -222,14 +222,33 @@ const AdminOrderDetailPage = () => {
     }
   };
 
+  // The "already told the customer this status" warning — shown either because we already
+  // know (notifiedStatuses) OR because the server refused an unconfirmed duplicate. Its action
+  // re-sends with confirm=true, the deliberate override the admin actually wants.
+  const warnAlreadyNotified = (onSendAgain: () => void) => {
+    if (!order) return;
+    toast.warning(`You already notified the customer that this order is "${STATUS_LABELS[order.status]}".`, {
+      description: "Re-check before sending the same update again.",
+      action: { label: "Send again", onClick: onSendAgain },
+      duration: 8000,
+    });
+  };
+
   // Actually (re)send the customer notification for the order's CURRENT status, from the
   // Status History timeline. Independent of a status change — this is the recovery path
   // a failed send needs. Reloads after so the timeline reflects the new "notified" state.
-  const doNotify = async () => {
+  // `confirm` is true only when invoked via the "Send again" override.
+  const doNotify = async (confirm = false) => {
     if (!order) return;
     setNotifying(true);
     try {
-      const result = await resendStatusNotification(order.id);
+      const result = await resendStatusNotification(order.id, confirm);
+      // The server refused an unconfirmed duplicate (stale view, concurrent admin, or a
+      // double-click the client guard didn't catch). Show the SAME warning + override here.
+      if (result.alreadySent) {
+        warnAlreadyNotified(() => void doNotify(true));
+        return;
+      }
       if (result.emailed) toast.success(`Customer notified at ${order.customer.email || "their email"}`);
       else toast.warning(`Couldn't notify — ${notifyIssueClause(result.reason)}.`);
       await loadOrder(order.id, false); // refresh notifiedStatuses + timeline
@@ -243,7 +262,8 @@ const AdminOrderDetailPage = () => {
 
   // Entry point for the timeline button. If the customer was ALREADY notified for the
   // current status, don't send on the first click — flash a warning with an explicit
-  // "Send again" action so the admin re-checks before emailing the same update twice.
+  // "Send again" action so the admin re-checks before emailing the same update twice. The
+  // server enforces the same guard, so concurrent/stale/scripted duplicates are caught too.
   const handleNotify = () => {
     if (!order || notifying) return;
     // Don't pre-block on a missing customer email: the server falls back to the auth email
@@ -251,25 +271,37 @@ const AdminOrderDetailPage = () => {
     // send returns no_recipient and doNotify surfaces "no email address on file".
     const already = order.notifiedStatuses?.includes(order.status) ?? false;
     if (already) {
-      toast.warning(`You already notified the customer that this order is "${STATUS_LABELS[order.status]}".`, {
-        description: "Re-check before sending the same update again.",
-        action: { label: "Send again", onClick: () => void doNotify() },
-        duration: 8000,
-      });
+      warnAlreadyNotified(() => void doNotify(true));
       return;
     }
-    void doNotify();
+    void doNotify(false);
   };
 
-  // (Re)send the order-confirmation receipt from the header — independent of status, the
-  // recovery path for a receipt that failed at placement (or needs sending again). The
-  // server resolves the auth email if the profile has none, so don't pre-block on a missing
-  // customer email here.
-  const handleResendReceipt = async () => {
+  // The "receipt already sent" warning — shown when we already know one went out, or when the
+  // server refuses an unconfirmed duplicate. Its action re-sends with confirm=true.
+  const warnReceiptAlreadySent = (onSendAgain: () => void) => {
+    toast.warning("A confirmation receipt has already been sent for this order.", {
+      description: "Re-check before sending it again.",
+      action: { label: "Send again", onClick: onSendAgain },
+      duration: 8000,
+    });
+  };
+
+  // Actually (re)send the order-confirmation receipt — the recovery path for a receipt that
+  // failed at placement (or needs sending again). The server resolves the auth email if the
+  // profile has none, so don't pre-block on a missing customer email here. `confirm` is true
+  // only when invoked via the "Send again" override.
+  const doResendReceipt = async (confirm = false) => {
     if (!order || resendingReceipt) return;
     setResendingReceipt(true);
     try {
-      const result = await resendReceipt(order.id);
+      const result = await resendReceipt(order.id, confirm);
+      // Server refused an unconfirmed duplicate (concurrent/stale/double-click) — show the
+      // same warning + override here.
+      if (result.alreadySent) {
+        warnReceiptAlreadySent(() => void doResendReceipt(true));
+        return;
+      }
       if (result.emailed) toast.success(`Receipt sent to ${order.customer.email || "the customer"}`);
       else toast.warning(`Couldn't send receipt — ${notifyIssueClause(result.reason)}.`);
       await loadOrder(order.id, false); // refresh the receiptSent indicator
@@ -279,6 +311,17 @@ const AdminOrderDetailPage = () => {
     } finally {
       setResendingReceipt(false);
     }
+  };
+
+  // Entry point for the header receipt button. Warn first when we already know a receipt was
+  // sent (the server enforces the same guard for the cases we can't see here).
+  const handleResendReceipt = () => {
+    if (!order || resendingReceipt) return;
+    if (order.receiptSent) {
+      warnReceiptAlreadySent(() => void doResendReceipt(true));
+      return;
+    }
+    void doResendReceipt(false);
   };
 
   // Enter correction mode: offer every settable status except the current (terminal)

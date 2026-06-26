@@ -22,6 +22,20 @@ import { createLog } from "./lib/logger.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, ".env") });
 
+// Process-level backstop. The app deliberately runs best-effort, fire-and-forget tasks
+// (confirmation email, review verification, cache busts) that are NOT awaited by the request
+// — on modern Node a single unhandled rejection from one of those would crash the WHOLE
+// server. Each such task is written to swallow its own errors, but this guarantees that even
+// if one regresses, a stray async error logs instead of taking the API down. uncaughtException
+// is the synchronous twin. We log and keep serving (never exit) — these paths are never
+// critical enough to justify dropping every in-flight request.
+process.on("unhandledRejection", (reason) => {
+  console.error("[server] UNHANDLED PROMISE REJECTION — keeping the server alive:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("[server] UNCAUGHT EXCEPTION — keeping the server alive:", err);
+});
+
 const app = express();
 
 // Trust ONE proxy hop (the platform LB / reverse proxy in front of us) so req.ip is the
