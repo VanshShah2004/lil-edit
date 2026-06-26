@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchOrders, type OrderSummary } from "@/lib/ordersApi";
 import { getUserReviews, type Review } from "@/lib/reviewsApi";
 import { ReviewHistorySection, type SidebarProduct } from "@/components/orders/OrdersSidebar";
+import StatCard from "@/components/StatCard";
 
 // Most-recent-first ordering, mirroring the Orders page so pending items surface
 // the latest unreviewed purchases first.
@@ -18,21 +19,7 @@ function sortByNewest(orders: OrderSummary[]): OrderSummary[] {
   );
 }
 
-type Filter = "all" | "pending" | "reviewed";
-
-function StatCard({ icon, value, label, accent }: { icon: React.ReactNode; value: number | string; label: string; accent: string }) {
-  return (
-    <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-      <span className={`flex items-center justify-center w-10 h-10 rounded-full ${accent} shrink-0`}>
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <p className="text-xl font-bold text-gray-900 leading-tight">{value}</p>
-        <p className="text-xs text-gray-500">{label}</p>
-      </div>
-    </div>
-  );
-}
+type Tab = "all" | "pending" | "reviewed";
 
 const MyReviewsPage = () => {
   const { user, loading: authLoading } = useAuth();
@@ -40,7 +27,7 @@ const MyReviewsPage = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [reviewsLoading, setReviewsLoading] = useState(false);
-  const [filter, setFilter] = useState<Filter>("all");
+  const [tab, setTab] = useState<Tab>("all");
 
   const userId = user?.id ?? null;
 
@@ -135,16 +122,16 @@ const MyReviewsPage = () => {
 
   const loading = ordersLoading || reviewsLoading;
 
-  // Filtered slices handed to the shared section.
-  const shownReviews = filter === "pending" ? [] : reviews;
-  const shownPending = filter === "reviewed" ? [] : pendingItems;
+  // Only the active tab's slice is handed to the shared section. "All" shows both.
+  const shownReviews = tab === "pending" ? [] : reviews;
+  const shownPending = tab === "reviewed" ? [] : pendingItems;
   const nothingToShow = !loading && shownReviews.length === 0 && shownPending.length === 0;
 
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  const TABS: { value: Filter; label: string; count: number }[] = [
+  const TABS: { value: Tab; label: string; count: number }[] = [
     { value: "all", label: "All", count: reviews.length + pendingItems.length },
     { value: "pending", label: "Pending", count: pendingItems.length },
     { value: "reviewed", label: "Reviewed", count: reviews.length },
@@ -184,12 +171,12 @@ const MyReviewsPage = () => {
           ) : (
             <>
               {/* Stats */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
                 <StatCard
                   icon={<CheckCircle2 className="w-5 h-5 text-white" />}
                   value={reviews.length}
                   label="Reviews written"
-                  accent="bg-emerald-500"
+                  accent="bg-[#B19CD9]"
                 />
                 <StatCard
                   icon={<Clock className="w-5 h-5 text-white" />}
@@ -205,50 +192,50 @@ const MyReviewsPage = () => {
                 />
               </div>
 
-              {/* Full-bleed separator between stats and the filter tabs */}
-              <hr className="-mx-3 sm:-mx-6 mb-6 border-t border-foreground/50" />
+              {/* Full-bleed separator between stats and the tabbed preview */}
+              <hr className="-mx-3 sm:-mx-6 mb-5 border-t border-foreground/50" />
 
-              {/* Filter tabs */}
-              <div className="flex flex-wrap gap-2 mb-5">
-                {TABS.map((tab) => (
-                  <button
-                    key={tab.value}
-                    type="button"
-                    onClick={() => setFilter(tab.value)}
-                    className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${
-                      filter === tab.value
-                        ? "bg-brand-teal text-white border-brand-teal shadow-sm"
-                        : "bg-white text-gray-700 border-gray-200 hover:border-brand-teal/40"
-                    }`}
-                  >
-                    {tab.label}
-                    <span
-                      className={`text-xs font-bold rounded-full px-2 py-0.5 ${
-                        filter === tab.value ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
+              {/* Tabbed preview — switch between Pending and Reviewed */}
+              <div role="tablist" aria-label="Reviews" className="flex items-center justify-center gap-6 border-b border-gray-200 mb-6">
+                {TABS.map((t) => {
+                  const active = tab === t.value;
+                  return (
+                    <button
+                      key={t.value}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setTab(t.value)}
+                      className={`relative -mb-px flex items-center gap-2 pb-3 pt-1 text-sm font-semibold transition-colors ${
+                        active ? "text-brand-teal" : "text-gray-500 hover:text-gray-800"
                       }`}
                     >
-                      {tab.count}
-                    </span>
-                  </button>
-                ))}
+                      {t.label}
+                      <span
+                        className={`text-xs font-bold rounded-full px-2 py-0.5 ${
+                          active ? "bg-brand-teal/10 text-brand-teal" : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {t.count}
+                      </span>
+                      {active && <span className="absolute left-0 right-0 -bottom-px h-0.5 rounded-full bg-brand-teal" />}
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* List */}
+              {/* Active tab panel */}
               {nothingToShow ? (
                 <div className="w-full py-16 sm:py-20 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
                   <MessageSquare size={48} className="text-brand-teal mb-4 opacity-40" />
                   <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
-                    {filter === "reviewed"
-                      ? "No reviews yet"
-                      : filter === "pending"
-                        ? "Nothing pending"
-                        : "No reviews yet"}
+                    {tab === "pending" ? "Nothing pending" : "No reviews yet"}
                   </p>
                   <p className="text-sm text-gray-500 mb-6 text-center max-w-sm">
-                    {filter === "reviewed"
-                      ? "Reviews you write will show up here."
-                      : filter === "pending"
-                        ? "You've reviewed everything you ordered. Nicely done!"
+                    {tab === "pending"
+                      ? "You've reviewed everything you ordered. Nicely done!"
+                      : tab === "reviewed"
+                        ? "Reviews you write will show up here."
                         : "Place an order, then come back to share what you think."}
                   </p>
                   <Link to="/orders" className="text-sm font-medium text-brand-teal underline underline-offset-2">
@@ -262,6 +249,7 @@ const MyReviewsPage = () => {
                   pendingItems={shownPending}
                   productInfoByVariant={productInfoByVariant}
                   onReviewSaved={loadReviews}
+                  hideHeader
                 />
               )}
             </>

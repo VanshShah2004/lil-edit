@@ -313,12 +313,16 @@ export function ReviewHistorySection({
   pendingItems = [],
   productInfoByVariant,
   onReviewSaved,
+  // Hides the "Your Reviews" tinted header band + accent strip — used where the
+  // page already supplies its own heading (e.g. the dedicated Reviews page).
+  hideHeader = false,
 }: {
   reviews: Review[];
   loading: boolean;
   pendingItems?: { item: SidebarProduct; orderId: string }[];
   productInfoByVariant?: Map<string, { title: string; image: string }>;
   onReviewSaved?: () => void;
+  hideHeader?: boolean;
 }) {
   const total = reviews.length + pendingItems.length;
   // Variant key (`${slug}|${sku}`) of the item whose inline review form is expanded
@@ -338,28 +342,32 @@ export function ReviewHistorySection({
   if (total === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-gray-400 shadow-xl ring-1 ring-black/10 overflow-hidden">
-      {/* Accent strip */}
-      <div className="h-1.5 w-full bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
+    <div className={hideHeader ? "" : "rounded-2xl border border-gray-400 shadow-xl ring-1 ring-black/10 overflow-hidden"}>
+      {!hideHeader && (
+        <>
+          {/* Accent strip */}
+          <div className="h-1.5 w-full bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
 
-      {/* Header — tinted band so the panel reads as its own surface */}
-      <div className="p-4 sm:p-6 bg-gradient-to-br from-brand-teal/10 via-[#E8DDF7]/50 to-emerald-50 border-b border-[#B19CD9]/25">
-        <div className="flex items-center gap-2">
-          <span className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-teal text-white shadow-sm shrink-0">
-            <MessageSquare className="w-5 h-5" />
-          </span>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Your Reviews</h2>
-          {total > 0 && (
-            <span className="ml-auto text-xs font-bold text-gray-900 bg-white border border-brand-teal/30 rounded-full px-2.5 py-1 shadow-sm">
-              {total}
-            </span>
-          )}
-        </div>
-        <p className="text-xs text-gray-600 mt-1.5">Spill the tea, rate the fit, explore the cuteness ✨</p>
-      </div>
+          {/* Header — tinted band so the panel reads as its own surface */}
+          <div className="p-4 sm:p-6 bg-gradient-to-br from-brand-teal/10 via-[#E8DDF7]/50 to-emerald-50 border-b border-[#B19CD9]/25">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-teal text-white shadow-sm shrink-0">
+                <MessageSquare className="w-5 h-5" />
+              </span>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Your Reviews</h2>
+              {total > 0 && (
+                <span className="ml-auto text-xs font-bold text-gray-900 bg-white border border-brand-teal/30 rounded-full px-2.5 py-1 shadow-sm">
+                  {total}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-600 mt-1.5">Spill the tea, rate the fit, explore the cuteness ✨</p>
+          </div>
+        </>
+      )}
 
       {/* Product Cards */}
-      <div className="p-4 sm:p-6 bg-gray-50 space-y-6">
+      <div className={hideHeader ? "space-y-6" : "p-4 sm:p-6 bg-gray-50 space-y-6"}>
         {/* Pending — not reviewed yet */}
         {pendingItems.length > 0 && (
         <div className="space-y-3">

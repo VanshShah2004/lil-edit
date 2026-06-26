@@ -13,7 +13,9 @@ import {
   ShieldCheck,
   Award,
   Truck,
+  Wallet,
 } from "lucide-react";
+import StatCard from "@/components/StatCard";
 import { FaTrashAlt } from "react-icons/fa";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -236,6 +238,27 @@ export default function Cart() {
                 </p>
               </div>
             </div>
+
+            {/* Summary stat cards */}
+            {!cartLoading && user && cartItems.length > 0 && (
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                <StatCard
+                  icon={<ShoppingCart className="w-5 h-5 text-white" fill="currentColor" />}
+                  value={cartItems.reduce((sum, item) => sum + item.quantity, 0)}
+                  label="Items in bag"
+                  accent="bg-brand-teal"
+                />
+                <StatCard
+                  icon={<Wallet className="w-5 h-5 text-white" />}
+                  value={`₹${total - deliveryFee}`}
+                  label="Bag total"
+                  accent="bg-[#B19CD9]"
+                />
+              </div>
+            )}
+
+            {/* Section divider */}
+            <hr className="border-t border-foreground/50" />
 
             {/* Loading skeleton */}
             {cartLoading && <CartSkeleton />}

@@ -9,7 +9,9 @@ import {
   ShieldCheck,
   Award,
   Share2,
+  PackageCheck,
 } from "lucide-react";
+import StatCard from "@/components/StatCard";
 import { FaTrashAlt } from "react-icons/fa";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -235,6 +237,27 @@ const WishlistPage = () => {
                 <p className="text-sm text-gray-500 mt-1">{wishlistItems.length} items saved</p>
               </div>
             </div>
+
+            {/* Summary stat cards */}
+            {!wishlistLoading && user && wishlistItems.length > 0 && (
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                <StatCard
+                  icon={<Heart className="w-5 h-5 text-white" fill="currentColor" />}
+                  value={wishlistItems.length}
+                  label="Items saved"
+                  accent="bg-[#B19CD9]"
+                />
+                <StatCard
+                  icon={<PackageCheck className="w-5 h-5 text-white" />}
+                  value={inStockCount}
+                  label="In stock"
+                  accent="bg-emerald-500"
+                />
+              </div>
+            )}
+
+            {/* Section divider */}
+            <hr className="border-t border-foreground/50" />
 
             {/* FILTER TABS */}
             <div className="flex items-end gap-1 border-b border-gray-200 overflow-x-auto no-scrollbar pt-2">
