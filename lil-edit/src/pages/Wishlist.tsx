@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ChevronRight,
   ShoppingBag,
@@ -67,6 +67,7 @@ function WishlistSkeleton() {
 }
 
 const WishlistPage = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("all");
   const [movingId, setMovingId] = useState<string | null>(null);
   const [movingAll, setMovingAll] = useState(false);
@@ -91,6 +92,29 @@ const WishlistPage = () => {
     } finally {
       setMovingId(null);
     }
+  };
+
+  // Direct "Buy Now": straight to checkout with just this item (cart untouched,
+  // wishlist entry kept). The backend re-prices from {slug, sku, size, quantity};
+  // the rest is display-only. Mirrors the QuickView drawer's Buy Now.
+  const handleBuyNow = (item: WishlistItem) => {
+    console.log(`[WishlistPage] buy now  slug=${item.slug}  sku=${item.sku}`);
+    navigate("/checkout", {
+      state: {
+        mode: "direct",
+        item: {
+          product_slug: item.slug,
+          sku: item.sku,
+          size: "",
+          quantity: 1,
+          title: item.title,
+          price: item.price,
+          originalPrice: item.originalPrice,
+          image: item.image,
+          colorName: item.color?.name ?? "",
+        },
+      },
+    });
   };
 
   const handleMoveAllToCart = async () => {
@@ -174,7 +198,7 @@ const WishlistPage = () => {
                 Your Wishlist
                 <Heart className="w-6 h-6 sm:w-7 sm:h-7 text-primary" fill="hsl(268 45% 65%)" />
               </h1>
-              <p className="text-sm text-gray-500 mt-1">{wishlistItems.length} items saved</p>
+              <p className="text-sm text-gray-500 mt-1">Save it today, love it forever ✨</p>
             </div>
           </div>
 
@@ -364,7 +388,7 @@ const WishlistPage = () => {
                             <span>{movingId === item.id ? "Moving…" : "Cart it"}</span>
                           </Button>
                           <Button
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => { e.stopPropagation(); handleBuyNow(item); }}
                             size="sm"
                             disabled={!item.inStock}
                             className="h-9 sm:h-10 flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center"

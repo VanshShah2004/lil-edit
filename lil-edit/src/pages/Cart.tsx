@@ -175,7 +175,7 @@ export default function Cart() {
               <p className="text-sm text-gray-500 mt-1">
                 {cartLoading
                   ? "Loading your cart…"
-                  : `${cartItems.length} ${cartItems.length === 1 ? "item" : "items"} in your cart`}
+                  : "Your little favorites are almost ready for their new home ✨"}
               </p>
             </div>
           </div>
