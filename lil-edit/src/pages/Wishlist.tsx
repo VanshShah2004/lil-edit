@@ -224,19 +224,23 @@ const WishlistPage = () => {
         </div>
 
         {/* Main Content */}
-        <main className="page-container flex-1 flex flex-col lg:flex-row gap-10 sm:gap-6 lg:gap-10 pb-12 px-3 sm:px-6">
+        <main className="page-container flex-1 flex flex-col gap-4 sm:gap-6 pb-12 px-3 sm:px-6">
+          {/* Heading — full width above the columns so the order summary lines up
+              with the stat cards (not the heading) on desktop. */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 flex items-center gap-2">
+                Your Wishlist
+                <Heart className="w-6 h-6 sm:w-7 sm:h-7 text-primary" fill="hsl(268 45% 65%)" />
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">{wishlistItems.length} items saved</p>
+            </div>
+          </div>
+
+          {/* Two-column row — left items + right order summary */}
+          <div className="flex flex-col lg:flex-row gap-10 sm:gap-6 lg:gap-10">
           {/* LEFT SIDE */}
           <section className="flex-1 lg:w-[66%] space-y-4 sm:space-y-6">
-            {/* Heading */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 flex items-center gap-2">
-                  Your Wishlist
-                  <Heart className="w-6 h-6 sm:w-7 sm:h-7 text-primary" fill="hsl(268 45% 65%)" />
-                </h1>
-                <p className="text-sm text-gray-500 mt-1">{wishlistItems.length} items saved</p>
-              </div>
-            </div>
 
             {/* Summary stat cards */}
             {!wishlistLoading && user && wishlistItems.length > 0 && (
@@ -507,6 +511,7 @@ const WishlistPage = () => {
               </div>
             </Card>
           </aside>
+          </div>
         </main>
 
         {/* RECOMMENDATIONS */}

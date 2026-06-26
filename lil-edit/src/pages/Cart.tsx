@@ -220,24 +220,29 @@ export default function Cart() {
         </div>
 
         {/* Main Content */}
-        <main className="page-container flex-1 flex flex-col lg:flex-row gap-10 sm:gap-6 lg:gap-10 pb-12 px-3 sm:px-6">
+        <main className="page-container flex-1 flex flex-col gap-4 sm:gap-6 pb-12 px-3 sm:px-6">
+          {/* Heading — full width above the columns so the order summary lines up
+              with the stat cards (not the heading) on desktop. */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">
+                <span className="inline-flex items-center gap-2 leading-none">
+                  Shopping Bag
+                  <ShoppingCart size={26} className="text-primary translate-y-px" fill="currentColor" />
+                </span>
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                {cartLoading
+                  ? "Loading your cart…"
+                  : `${cartItems.length} ${cartItems.length === 1 ? "item" : "items"} in your cart`}
+              </p>
+            </div>
+          </div>
+
+          {/* Two-column row — left items + right order summary */}
+          <div className="flex flex-col lg:flex-row gap-10 sm:gap-6 lg:gap-10">
           {/* LEFT SIDE */}
           <section className="flex-1 lg:w-[66%] space-y-4 sm:space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">
-                  <span className="inline-flex items-center gap-2 leading-none">
-                    Shopping Bag
-                    <ShoppingCart size={26} className="text-primary translate-y-px" fill="currentColor" />
-                  </span>
-                </h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  {cartLoading
-                    ? "Loading your cart…"
-                    : `${cartItems.length} ${cartItems.length === 1 ? "item" : "items"} in your cart`}
-                </p>
-              </div>
-            </div>
 
             {/* Summary stat cards */}
             {!cartLoading && user && cartItems.length > 0 && (
@@ -593,6 +598,7 @@ export default function Cart() {
               </div>
             </Card>
           </aside>
+          </div>
         </main>
 
         {/* RECOMMENDATIONS */}
