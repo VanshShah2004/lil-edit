@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 import {
   Upload,
   X,
-  ChevronDown,
   Zap,
   TrendingUp,
   Star,
@@ -26,6 +25,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 import ProductPreviewView from "@/components/ProductPreviewView";
 import StockToggleSlider from "@/components/StockToggleSlider";
+import StyledSelect from "@/components/StyledSelect";
 import type { Product, ProductImage, ProductColor } from "@/types/product";
 import { generateColorSku } from "@/utils/sku";
 import { slugify } from "@/utils/slug";
@@ -828,44 +828,24 @@ const AddProduct = () => {
                       <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 transition-colors group-focus-within:text-gray-900">
                         Category
                       </label>
-                      <div className="relative">
-                        <select
-                          name="category"
-                          value={formData.category}
-                          onChange={handleInputChange}
-                          className={`w-full px-5 py-4 rounded-md border focus:border-gray-900 outline-none appearance-none font-body text-base ${formData.category ? "bg-sky-50 border-sky-200" : "bg-gray-50 border-gray-300"}`}
-                        >
-                          <option value="" className="bg-white text-gray-900">Select a category</option>
-                          {CATEGORIES.map((cat) => (
-                            <option key={cat} value={cat} className="bg-white text-gray-900">
-                              {cat}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-800 pointer-events-none" />
-                      </div>
+                      <StyledSelect
+                        value={formData.category}
+                        onChange={(val) => setFormData((prev) => ({ ...prev, category: val }))}
+                        options={CATEGORIES}
+                        placeholder="Select a category"
+                      />
                     </motion.div>
 
                     <motion.div whileHover={{ scale: 1.01 }} className="group">
                       <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 transition-colors group-focus-within:text-gray-900">
                         Gender Category
                       </label>
-                      <div className="relative">
-                        <select
-                          name="gender"
-                          value={formData.gender}
-                          onChange={handleInputChange}
-                          className={`w-full px-5 py-4 rounded-md border focus:border-gray-900 outline-none appearance-none font-body text-base ${formData.gender ? "bg-sky-50 border-sky-200" : "bg-gray-50 border-gray-300"}`}
-                        >
-                          <option value="" className="bg-white text-gray-900">Select gender</option>
-                          {GENDERS.map((g) => (
-                            <option key={g} value={g} className="bg-white text-gray-900">
-                              {g}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-800 pointer-events-none" />
-                      </div>
+                      <StyledSelect
+                        value={formData.gender}
+                        onChange={(val) => setFormData((prev) => ({ ...prev, gender: val }))}
+                        options={GENDERS}
+                        placeholder="Select gender"
+                      />
                     </motion.div>
                   </div>
                 </div>
