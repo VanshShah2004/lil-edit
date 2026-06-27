@@ -663,7 +663,7 @@ const AddProduct = () => {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="lg:col-span-3"
             >
-              <div className="bg-white rounded-lg border border-black shadow-md p-4 sm:p-10 space-y-12">
+              <div className="bg-white rounded-lg border border-foreground/50 shadow-md p-4 sm:p-10 space-y-12">
                 {/* Basic Info */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
@@ -682,7 +682,7 @@ const AddProduct = () => {
                         value={formData.name}
                         onChange={handleInputChange}
                         placeholder="e.g. Criss-Cross Back Knot Top"
-                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
 
@@ -696,7 +696,7 @@ const AddProduct = () => {
                         value={formData.brand}
                         onChange={handleInputChange}
                         placeholder="e.g. Atelier Edit"
-                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
                   </div>
@@ -720,7 +720,7 @@ const AddProduct = () => {
                         value={formData.fabric}
                         onChange={handleInputChange}
                         placeholder="e.g. Organza with Cotton Lining"
-                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
 
@@ -734,7 +734,7 @@ const AddProduct = () => {
                         value={formData.fit}
                         onChange={handleInputChange}
                         placeholder="e.g. Regular Fit"
-                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
 
@@ -748,7 +748,7 @@ const AddProduct = () => {
                         value={formData.occasion}
                         onChange={handleInputChange}
                         placeholder="e.g. Festive, Wedding"
-                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
 
@@ -762,7 +762,7 @@ const AddProduct = () => {
                         value={formData.care_instructions}
                         onChange={handleInputChange}
                         placeholder="e.g. Dry Clean Only"
-                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
                   </div>
@@ -783,7 +783,7 @@ const AddProduct = () => {
                         onChange={(e) => setNewPoint(e.target.value)}
                         onKeyPress={(e) => e.key === "Enter" && addDescriptionPoint()}
                         placeholder="Add a product feature or note..."
-                        className="flex-1 px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
+                        className="flex-1 px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
                       />
                       <button
                         onClick={addDescriptionPoint}
@@ -871,7 +871,7 @@ const AddProduct = () => {
                           value={formData.originalPrice}
                           onChange={handleInputChange}
                           placeholder="0.00"
-                          className="w-full pl-8 pr-4 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
+                          className="w-full pl-8 pr-4 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                         />
                       </div>
                     </motion.div>
@@ -888,7 +888,7 @@ const AddProduct = () => {
                           value={formData.price}
                           onChange={handleInputChange}
                           placeholder="0.00"
-                          className="w-full pl-8 pr-4 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
+                          className="w-full pl-8 pr-4 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                         />
                       </div>
                     </motion.div>
@@ -982,7 +982,7 @@ const AddProduct = () => {
                           onChange={(e) => setNewTag(e.target.value)}
                           onKeyPress={(e) => e.key === "Enter" && addTag()}
                           placeholder="Add discovery tags (e.g. Minimalist, Organic)..."
-                          className="w-full pl-12 pr-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
+                          className="w-full pl-12 pr-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
                         />
                       </div>
                       <button
@@ -1027,21 +1027,39 @@ const AddProduct = () => {
                     <h2 className="text-xl font-bold text-gray-900 tracking-tight">Available Sizes</h2>
                   </div>
 
-                  <div className="flex flex-wrap gap-4">
-                    {SIZES.map((size) => (
-                      <motion.button
-                        key={size}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => toggleSize(size)}
-                        className={`px-6 py-3 rounded-md font-display font-medium text-sm transition-all duration-300 border ${formData.selectedSizes.includes(size)
-                          ? "border-[#9E86C9] bg-[#B19CD9] text-black shadow-md shadow-purple-900/10"
-                          : "border-gray-200 bg-gray-50 text-gray-900 hover:border-[#B19CD9]/30"
-                          }`}
-                      >
-                        {size}
-                      </motion.button>
-                    ))}
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                      {SIZES.filter(s => s.includes("Months") || s.includes("Years")).map((size) => (
+                        <motion.button
+                          key={size}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => toggleSize(size)}
+                          className={`w-full py-4 rounded-md font-display font-medium text-sm transition-all duration-300 border shadow-sm ${formData.selectedSizes.includes(size)
+                            ? "border-[#9E86C9] bg-[#B19CD9] text-black shadow-md shadow-purple-900/10"
+                            : "border-gray-400 bg-white text-gray-900 hover:border-[#B19CD9]/50"
+                            }`}
+                        >
+                          {size}
+                        </motion.button>
+                      ))}
+                    </div>
+                    <div className="flex gap-3 sm:gap-4">
+                      {SIZES.filter(s => !s.includes("Months") && !s.includes("Years")).map((size) => (
+                        <motion.button
+                          key={size}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => toggleSize(size)}
+                          className={`flex-1 py-4 rounded-md font-display font-medium text-sm transition-all duration-300 border shadow-sm ${formData.selectedSizes.includes(size)
+                            ? "border-[#9E86C9] bg-[#B19CD9] text-black shadow-md shadow-purple-900/10"
+                            : "border-gray-400 bg-white text-gray-900 hover:border-[#B19CD9]/50"
+                            }`}
+                        >
+                          {size}
+                        </motion.button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -1062,7 +1080,7 @@ const AddProduct = () => {
                           onChange={(e) => setNewColorInput(e.target.value)}
                           onKeyPress={(e) => e.key === "Enter" && addColor()}
                           placeholder="Type 'Lavender', '#E6E6FA', or 'Lavender #E6E6FA'..."
-                          className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
+                          className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
                         />
                       </div>
                       <button
@@ -1152,21 +1170,21 @@ const AddProduct = () => {
                                     <label className="text-[11px] font-bold uppercase tracking-widest text-gray-900 block">
                                       {color.isUnlimited ? "Stock Level (Auto)" : "Stock Level"}
                                     </label>
-                                    
+
                                     <StockToggleSlider
                                       isUnlimited={!!color.isUnlimited}
                                       onChange={(unlimited) => toggleVariantStockMode(color.name, unlimited)}
                                       className="w-40 h-9"
                                     />
                                   </div>
-                                  
+
                                   <div className="relative group/input">
                                     <input
                                       type="number"
                                       value={color.isUnlimited ? "" : color.stock}
                                       onChange={(e) => updateVariantStock(color.name, parseInt(e.target.value) || 0)}
                                       disabled={color.isUnlimited}
-                                      className={`w-full bg-transparent border-b border-gray-300 focus:border-[#B19CD9] outline-none transition-all py-1 text-sm font-medium font-body ${color.isUnlimited ? 'text-gray-800 opacity-50' : 'text-gray-900 opacity-100'}`}
+                                      className={`w-full bg-gray-50 border border-gray-300 rounded-md px-3 py-2 focus:border-[#B19CD9] outline-none transition-all text-sm font-medium font-body ${color.isUnlimited ? 'text-gray-800 opacity-50' : 'text-gray-900 opacity-100'}`}
                                       placeholder={color.isUnlimited ? "Unlimited" : "1"}
                                       min="1"
                                     />
@@ -1429,7 +1447,7 @@ const AddProduct = () => {
                           onChange={(e) => setNewBadgeName(e.target.value)}
                           onKeyPress={(e) => e.key === "Enter" && createBadge()}
                           placeholder="Create custom badge (e.g. Limited Edition, Sustainable)..."
-                          className="w-full pl-12 pr-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
+                          className="w-full pl-12 pr-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
                         />
                       </div>
                       <button
@@ -1495,7 +1513,7 @@ const AddProduct = () => {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="lg:col-span-2 lg:sticky lg:top-32 h-fit"
             >
-              <div className="bg-white rounded-lg border border-black shadow-md px-4 py-3 space-y-4">
+              <div className="bg-white rounded-lg border border-foreground/50 shadow-md px-4 py-3 space-y-4">
                 <div className="flex items-center justify-between pb-1 border-b border-gray-300">
                   <h2 className="text-lg font-bold uppercase tracking-[0.15em] text-slate-900">
                     Live Preview
