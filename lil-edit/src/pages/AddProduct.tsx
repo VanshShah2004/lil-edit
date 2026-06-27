@@ -1148,7 +1148,7 @@ const AddProduct = () => {
                                         fileInputRef.current?.click();
                                       }, 300);
                                     }}
-                                    className="py-2.5 px-6 rounded-full bg-gray-50 hover:bg-gray-900 hover:text-white border border-gray-300 hover:border-primary text-gray-900 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/20 whitespace-nowrap"
+                                    className="ml-auto sm:ml-0 py-2.5 px-6 rounded-full bg-gray-50 hover:bg-gray-900 hover:text-white border border-gray-300 hover:border-primary text-gray-900 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/20 whitespace-nowrap"
                                   >
                                     Edit Gallery
                                   </button>
@@ -1187,7 +1187,7 @@ const AddProduct = () => {
                                     />
                                   </div>
 
-                                  <div className={`group/input flex items-center h-10 w-52 sm:w-32 rounded-md border border-gray-300 bg-gray-50 overflow-hidden focus-within:border-[#B19CD9] transition-all ${color.isUnlimited ? 'opacity-50' : ''}`}>
+                                  <div className={`group/input flex items-center h-10 w-52 sm:w-28 rounded-md border border-gray-300 bg-gray-50 overflow-hidden focus-within:border-[#B19CD9] transition-all ${color.isUnlimited ? 'opacity-50' : ''}`}>
                                     <button
                                       type="button"
                                       onClick={() => updateVariantStock(color.name, Math.max(1, (color.stock || 1) - 1))}
