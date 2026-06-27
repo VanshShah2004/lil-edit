@@ -144,27 +144,27 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
               {version.label}
             </Badge>
           </div>
-          <p className="text-[13px] sm:text-[11px] font-bold text-gray-400 font-mono tracking-widest uppercase">{p.base_sku}</p>
-          <p className="text-[13px] sm:text-[11px] font-bold text-gray-400 font-mono tracking-widest lowercase">{p.slug}</p>
+          <p className="text-[13px] sm:text-[11px] font-bold text-gray-600 font-mono tracking-widest uppercase">{p.base_sku}</p>
+          <p className="text-[13px] sm:text-[11px] font-bold text-gray-600 font-mono tracking-widest lowercase">{p.slug}</p>
         </div>
 
         <div className="flex flex-col md:flex-row justify-between items-start gap-12">
           <div className="flex-1">
-            <div className="grid grid-cols-2 gap-x-12 gap-y-8 border-t border-b border-gray-100 py-6">
+            <div className="grid grid-cols-2 gap-x-12 gap-y-8 border-t border-b border-gray-200 py-6">
               <div className="space-y-1">
-                <p className="text-[11px] sm:text-[9px] font-bold text-gray-400 uppercase tracking-wider">Brand House</p>
+                <p className="text-[11px] sm:text-[9px] font-bold text-gray-600 uppercase tracking-wider">Brand House</p>
                 <p className="text-sm sm:text-xs font-bold text-gray-900">{p.brand}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-[11px] sm:text-[9px] font-bold text-gray-400 uppercase tracking-wider">Category</p>
+                <p className="text-[11px] sm:text-[9px] font-bold text-gray-600 uppercase tracking-wider">Category</p>
                 <p className="text-sm sm:text-xs font-bold text-gray-900">{p.category}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-[11px] sm:text-[9px] font-bold text-gray-400 uppercase tracking-wider">Selling Price (INR)</p>
+                <p className="text-[11px] sm:text-[9px] font-bold text-gray-600 uppercase tracking-wider">Selling Price (INR)</p>
                 <p className="text-sm sm:text-xs font-bold text-gray-900">₹{p.price.toLocaleString()}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-[11px] sm:text-[9px] font-bold text-gray-400 uppercase tracking-wider">MRP / Original Price</p>
+                <p className="text-[11px] sm:text-[9px] font-bold text-gray-600 uppercase tracking-wider">MRP / Original Price</p>
                 <p className="text-sm sm:text-xs font-bold text-gray-900">
                   {p.original_price ? `₹${p.original_price.toLocaleString()}` : "—"}
                 </p>
@@ -203,7 +203,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
         {/* — IMAGE STUDIO — */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="aspect-[3/4] w-44 sm:w-56 lg:w-full mx-auto lg:mx-0 border border-gray-100 bg-gray-50/50 rounded-sm overflow-hidden flex items-center justify-center">
+          <div className="aspect-[3/4] w-44 sm:w-56 lg:w-full mx-auto lg:mx-0 border border-gray-200 bg-gray-50/50 rounded-sm overflow-hidden flex items-center justify-center">
             {activeImage ? (
               <img src={activeImage} className="w-full h-full object-cover" alt={p.title} />
             ) : (
@@ -226,7 +226,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
                       const tabImages = tab === "Global" ? images.filter(img => !img.variant_id) : images.filter(img => img.variant_id === variant?.id);
                       setActiveImage(tabImages[0]?.image_url ?? null);
                     }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] sm:text-[9px] font-bold uppercase tracking-wider rounded border transition-all ${activeImageTab === tab ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-500 border-gray-100 hover:border-gray-300"}`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] sm:text-[9px] font-bold uppercase tracking-wider rounded border transition-all ${activeImageTab === tab ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"}`}
                   >
                     {variant && <div className="w-2 h-2 rounded-full border border-white/20" style={{ backgroundColor: variant.color_hex }} />}
                     {tab}
@@ -236,7 +236,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
             </div>
             <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
               {(activeImageTab === "Global" ? images.filter(img => !img.variant_id) : images.filter(img => img.variant_id === variants.find(v => v.color_name === activeImageTab)?.id)).map((img, i) => (
-                <button key={i} onClick={() => setActiveImage(img.image_url)} className={`w-12 h-16 border bg-gray-50 shrink-0 overflow-hidden transition-all ${activeImage === img.image_url ? "border-gray-900" : "border-gray-100 opacity-50 hover:opacity-80"}`}>
+                <button key={i} onClick={() => setActiveImage(img.image_url)} className={`w-12 h-16 border bg-gray-50 shrink-0 overflow-hidden transition-all ${activeImage === img.image_url ? "border-gray-900" : "border-gray-200 opacity-50 hover:opacity-80"}`}>
                   <img src={img.image_url} className="w-full h-full object-cover" />
                 </button>
               ))}
@@ -248,7 +248,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
         <div className="lg:col-span-8 space-y-12">
           <div className="space-y-6">
             <div className="flex items-center gap-2">
-              <FileText size={14} className="text-gray-400" />
+              <FileText size={14} className="text-gray-600" />
               <h3 className="text-[12px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Technical Specifications</h3>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-8 gap-x-4">
@@ -262,7 +262,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
                 { label: "Maintenance", value: p.care_instructions || "N/A" }
               ].map((item, i) => (
                 <div key={i} className="space-y-1">
-                  <p className="text-[10px] sm:text-[8px] font-bold text-gray-400 uppercase tracking-widest">{item.label}</p>
+                  <p className="text-[10px] sm:text-[8px] font-bold text-gray-600 uppercase tracking-widest">{item.label}</p>
                   <p className="text-[13px] sm:text-[11px] font-bold text-gray-900">{item.value}</p>
                 </div>
               ))}
@@ -271,16 +271,16 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
 
           <div className="space-y-6">
             <div className="flex items-center gap-2">
-              <Boxes size={14} className="text-gray-400" />
+              <Boxes size={14} className="text-gray-600" />
               <h3 className="text-[12px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Inventory Distribution Matrix</h3>
             </div>
-            <div className="border border-gray-100 rounded-sm overflow-hidden">
+            <div className="border border-gray-200 rounded-sm overflow-hidden">
               <table className="w-full text-left text-[13px] sm:text-[11px]">
-                <thead className="bg-gray-50 border-b border-gray-100">
+                <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 font-bold text-gray-400 uppercase tracking-wider">Variant</th>
-                    <th className="px-6 py-3 font-bold text-gray-400 uppercase tracking-wider">SKU</th>
-                    <th className="px-6 py-3 font-bold text-gray-400 uppercase tracking-wider text-right">Units</th>
+                    <th className="px-6 py-3 font-bold text-gray-600 uppercase tracking-wider">Variant</th>
+                    <th className="px-6 py-3 font-bold text-gray-600 uppercase tracking-wider">SKU</th>
+                    <th className="px-6 py-3 font-bold text-gray-600 uppercase tracking-wider text-right">Units</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -288,11 +288,11 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
                     <tr key={i} className="hover:bg-gray-50/30">
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-2.5 h-2.5 rounded-full border border-gray-100" style={{ backgroundColor: v.color_hex }} />
+                          <div className="w-2.5 h-2.5 rounded-full border border-gray-200" style={{ backgroundColor: v.color_hex }} />
                           <span className="font-bold">{v.color_name}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-3 font-mono text-[12px] sm:text-[10px] text-gray-400">{v.variant_sku}</td>
+                      <td className="px-6 py-3 font-mono text-[12px] sm:text-[10px] text-gray-600">{v.variant_sku}</td>
                       <td className="px-6 py-3 font-bold text-right text-gray-900">
                         {v.is_unlimited ? "Unlimited" : v.stock}
                       </td>
@@ -305,12 +305,12 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
 
           <div className="space-y-6">
             <div className="flex items-center gap-2">
-              <FileText size={14} className="text-gray-400" />
+              <FileText size={14} className="text-gray-600" />
               <h3 className="text-[12px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Merchandising & Taxonomy</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-4">
               <div className="space-y-2">
-                <p className="text-[10px] sm:text-[8px] font-bold text-gray-400 uppercase tracking-widest">Tags</p>
+                <p className="text-[10px] sm:text-[8px] font-bold text-gray-600 uppercase tracking-widest">Tags</p>
                 <div className="flex flex-wrap gap-1.5">
                   {p.tags?.length ? p.tags.map(tag => (
                     <Badge key={tag} variant="secondary" className="text-[9px] font-bold uppercase tracking-widest bg-gray-100 text-gray-600 border-none">{tag}</Badge>
@@ -318,7 +318,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
                 </div>
               </div>
               <div className="space-y-2">
-                <p className="text-[10px] sm:text-[8px] font-bold text-gray-400 uppercase tracking-widest">Badges</p>
+                <p className="text-[10px] sm:text-[8px] font-bold text-gray-600 uppercase tracking-widest">Badges</p>
                 <div className="flex flex-wrap gap-1.5">
                   {(() => {
                     const systemBadges = [
@@ -342,7 +342,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
 
           <div className="space-y-6">
             <div className="flex items-center gap-2">
-              <Activity size={14} className="text-gray-400" />
+              <Activity size={14} className="text-gray-600" />
               <h3 className="text-[12px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Catalogue Highlights</h3>
             </div>
             <div className="space-y-3">
@@ -351,7 +351,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
                   <span className="text-gray-900 font-bold shrink-0">0{i + 1}.</span>
                   <p>{pt}</p>
                 </div>
-              )) : <p className="text-[13px] sm:text-[11px] text-gray-400 font-medium">[No product details specified]</p>}
+              )) : <p className="text-[13px] sm:text-[11px] text-gray-600 font-medium">[No product details specified]</p>}
             </div>
           </div>
         </div>
@@ -1090,7 +1090,7 @@ const ManageProducts = () => {
       {user ? <UserNavbar /> : <Navbar />}
 
       {/* PAGE HEADER */}
-      <div className="relative pt-[160px] md:pt-[128px] bg-white border-b border-gray-100 pb-8">
+      <div className="relative pt-[160px] md:pt-[128px] bg-white border-b border-foreground/50 pb-8">
         <AdminSubNav />
         <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">
           <div className="space-y-1">
@@ -1105,11 +1105,11 @@ const ManageProducts = () => {
       <main className="flex-1 flex flex-col md:flex-row relative min-h-[calc(100vh-250px)]">
 
         {/* LEFT COLUMN — Product List (25%) */}
-        <aside className={`w-full md:w-[25%] border-r border-gray-100 bg-white flex flex-col shrink-0 md:sticky md:top-[128px] transition-transform duration-300 md:translate-x-0 ${isMobileDetailView ? "-translate-x-full md:translate-x-0 hidden md:flex" : "translate-x-0 flex"}`}>
-          <div className="p-6 border-b border-gray-100">
+        <aside className={`w-full md:w-[25%] border-r border-foreground/50 bg-white flex flex-col shrink-0 md:sticky md:top-[128px] transition-transform duration-300 md:translate-x-0 ${isMobileDetailView ? "-translate-x-full md:translate-x-0 hidden md:flex" : "translate-x-0 flex"}`}>
+          <div className="p-6 border-b border-gray-200">
             <div className="flex items-center gap-2 mb-4">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input
                   type="text"
                   placeholder="Search records..."
@@ -1126,7 +1126,7 @@ const ManageProducts = () => {
                 <Plus size={16} />
               </Link>
             </div>
-            <div ref={filterTrackRef} className="relative flex bg-gray-50 p-1 rounded-md border border-gray-100 select-none">
+            <div ref={filterTrackRef} className="relative flex bg-gray-50 p-1 rounded-md border border-gray-200 select-none">
               {/* Segments — click to select; labels sit above the pill (z-30) and don't block its drag (pointer-events-none) */}
               {FILTER_SEGMENTS.map((status) => (
                 <button
@@ -1138,7 +1138,7 @@ const ManageProducts = () => {
                   className="group flex-1 py-2 sm:py-1.5 text-center"
                 >
                   <span
-                    className={`relative z-30 pointer-events-none text-[11px] sm:text-[9px] font-bold uppercase tracking-wider transition-colors ${filterStatus === status ? "text-gray-900" : "text-gray-400 group-hover:text-gray-600"}`}
+                    className={`relative z-30 pointer-events-none text-[11px] sm:text-[9px] font-bold uppercase tracking-wider transition-colors ${filterStatus === status ? "text-gray-900" : "text-gray-600 group-hover:text-gray-600"}`}
                   >
                     {status}
                   </span>
@@ -1163,7 +1163,7 @@ const ManageProducts = () => {
                   animate={{ x: filterActiveIndex * filterSegW }}
                   transition={{ type: "spring", stiffness: 420, damping: 34 }}
                   style={{ width: filterSegW }}
-                  className="absolute top-1 bottom-1 left-1 z-20 rounded bg-white shadow-sm border border-gray-100 cursor-grab active:cursor-grabbing"
+                  className="absolute top-1 bottom-1 left-1 z-20 rounded bg-white shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing"
                 />
               )}
             </div>
@@ -1174,7 +1174,7 @@ const ManageProducts = () => {
                 onMouseEnter={() => prefetchList(filterStatus, false)}
                 className={`flex-1 py-2 sm:py-1.5 px-3 rounded transition-all text-center ${!showAllMap[filterStatus]
                     ? "bg-[#B19CD9] text-black font-black"
-                    : "bg-gray-100 text-gray-400 hover:text-gray-600 border border-gray-200/50"
+                    : "bg-gray-100 text-gray-600 hover:text-gray-600 border border-gray-300"
                   }`}
               >
                 Top 10
@@ -1184,7 +1184,7 @@ const ManageProducts = () => {
                 onMouseEnter={() => prefetchList(filterStatus, true)}
                 className={`flex-1 py-2 sm:py-1.5 px-3 rounded transition-all text-center ${showAllMap[filterStatus]
                     ? "bg-[#B19CD9] text-black font-black"
-                    : "bg-gray-100 text-gray-400 hover:text-gray-600 border border-gray-200/50"
+                    : "bg-gray-100 text-gray-600 hover:text-gray-600 border border-gray-300"
                   }`}
               >
                 See All
@@ -1194,7 +1194,7 @@ const ManageProducts = () => {
 
           <div className="flex-1 overflow-y-auto no-scrollbar py-2">
             {loading ? (
-              <div className="p-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-300">Loading Records...</div>
+              <div className="p-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-500">Loading Records...</div>
             ) : (
               <>
                 {filteredProducts.map((p) => (
@@ -1202,20 +1202,20 @@ const ManageProducts = () => {
                     key={p.base_sku}
                     onClick={() => handleProductSelect(p)}
                     onMouseEnter={() => prefetchDetailForSku(p.base_sku)}
-                    className={`w-full text-left px-6 py-4 transition-all flex gap-4 border-b border-black/20 ${selectedProduct?.base_sku === p.base_sku ? "bg-gray-50 border-r-4 border-r-gray-900" : "hover:bg-gray-50/50"}`}
+                    className={`w-full text-left px-6 py-4 transition-all flex gap-4 border-b border-foreground/50 ${selectedProduct?.base_sku === p.base_sku ? "bg-gray-50 border-r-4 border-r-gray-900" : "hover:bg-gray-50/50"}`}
                   >
                     <div className="w-14 h-[68px] sm:w-12 sm:h-16 bg-gray-100 rounded border border-gray-200 flex-shrink-0 overflow-hidden relative">
                       {p.image_url ? (
                         <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" loading="lazy" onLoad={() => clog(`[IMG] pixels loaded  sku=${p.base_sku}`)} />
                       ) : (
-                        <ImageIcon className="w-6 h-6 sm:w-5 sm:h-5 text-gray-300 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                        <ImageIcon className="w-6 h-6 sm:w-5 sm:h-5 text-gray-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
                           <h3 className={`text-sm sm:text-xs font-bold truncate leading-tight ${selectedProduct?.base_sku === p.base_sku ? "text-gray-900" : "text-gray-600"}`}>{p.title}</h3>
-                          <span className="text-[11px] sm:text-[9px] text-gray-400 font-mono font-medium block mt-0.5">{p.base_sku}</span>
+                          <span className="text-[11px] sm:text-[9px] text-gray-600 font-mono font-medium block mt-0.5">{p.base_sku}</span>
                         </div>
                         {p.is_published ? (
                           <span className="text-[10px] sm:text-[8px] font-black px-1.5 py-0.5 rounded bg-gray-900 text-white whitespace-nowrap uppercase">Published</span>
@@ -1243,8 +1243,8 @@ const ManageProducts = () => {
         <section className={`md:w-[75%] bg-white pb-32 transition-all duration-300 md:translate-x-0 ${isMobileDetailView ? "block translate-x-0" : "hidden md:block translate-x-full md:translate-x-0"}`}>
 
           {/* Mobile Back */}
-          <div className="md:hidden p-6 bg-white border-b border-gray-100 flex items-center justify-between">
-            <button onClick={() => setIsMobileDetailView(false)} className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-gray-900 transition-all">
+          <div className="md:hidden p-6 bg-white border-b border-gray-200 flex items-center justify-between">
+            <button onClick={() => setIsMobileDetailView(false)} className="flex items-center gap-2 text-xs font-bold text-gray-600 hover:text-gray-900 transition-all">
               <ArrowLeft size={16} /> Back to Catalog
             </button>
             <div className="flex gap-2">

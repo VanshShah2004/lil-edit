@@ -35,7 +35,7 @@ const AdminSubNav = () => {
     // (max-w-screen-2xl + px-6/lg:px-12) and stays right-aligned with the page
     // body at every breakpoint. The bar ignores pointer events; only the trigger
     // re-enables them so it never blocks the header sitting beneath it.
-    <div className="pointer-events-none absolute inset-x-0 top-[150px] md:top-[128px] z-40">
+    <div className="pointer-events-none absolute inset-x-0 top-[155px] md:top-[128px] z-40">
       <div className="max-w-screen-2xl mx-auto px-6 lg:px-12 flex justify-end">
         <div ref={containerRef} className="pointer-events-auto relative">
           <button
