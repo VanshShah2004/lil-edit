@@ -98,7 +98,7 @@ const AdminOrdersPage = () => {
           <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
             <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: "#B19CD9" }}>Operations</p>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Order Management</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">Order Management</h1>
           <p className="text-sm text-gray-500">{total} order{total !== 1 ? "s" : ""} in the system</p>
         </div>
       </div>

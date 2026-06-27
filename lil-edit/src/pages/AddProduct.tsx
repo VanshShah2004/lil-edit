@@ -648,7 +648,7 @@ const AddProduct = () => {
                 Creator's Studio
               </p>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">
               Product Listings
             </h1>
           </motion.div>

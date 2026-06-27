@@ -74,7 +74,7 @@ const AdminSettings = () => {
               Admin
             </p>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Admin Settings</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">Admin Settings</h1>
           <p className="text-sm text-gray-500">Manage products, orders, and storefront content from one place.</p>
         </div>
       </div>

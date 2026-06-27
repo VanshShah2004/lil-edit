@@ -1097,7 +1097,7 @@ const ManageProducts = () => {
             <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
               <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: "#B19CD9" }}>Catalog Studio</p>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Inventory Management</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">Inventory Management</h1>
           </div>
         </div>
       </div>

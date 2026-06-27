@@ -911,7 +911,7 @@ const EditProduct = () => {
             <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: "#B19CD9" }}>
               The Spotlight
             </p>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">
               Edit Product
             </h1>
             {originalProduct && (
