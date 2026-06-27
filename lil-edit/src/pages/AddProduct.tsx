@@ -14,6 +14,7 @@ import {
   Loader,
   Search,
   Plus,
+  Minus,
   Flame,
   Tag,
   Play
@@ -1100,7 +1101,7 @@ const AddProduct = () => {
                             animate={{ opacity: 1, y: 0 }}
                             whileHover={{ y: -4 }}
                             key={color.name}
-                            className="bg-white border border-gray-200 rounded-[2.5rem] p-4 sm:p-8 shadow-[0_4px_20px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-500 group relative"
+                            className="bg-white border border-gray-200 rounded-xl p-4 sm:p-8 shadow-[0_4px_20px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-500 group relative"
                           >
                             <div className="space-y-8 relative z-10">
                               {/* Header Row: Swatch, Name, and Image Management */}
@@ -1155,39 +1156,65 @@ const AddProduct = () => {
                               </div>
 
                               {/* Footer Grid: Signature and Stock */}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                              <div className="grid grid-cols-[2fr_3fr] sm:grid-cols-2 gap-4 sm:gap-8">
                                 <div className="space-y-3">
-                                  <div className="flex items-center h-10">
-                                    <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-gray-900 block">Variant Signature</span>
+                                  <div className="flex items-center min-h-[40px] sm:h-10">
+                                    <span className="text-[11px] font-bold uppercase tracking-[0.2em] sm:tracking-[0.25em] text-gray-900 leading-tight">
+                                      <span className="sm:hidden">Variant<br />Signature</span>
+                                      <span className="hidden sm:inline">Variant Signature</span>
+                                    </span>
                                   </div>
-                                  <div className="font-mono text-[11px] text-gray-900/80 bg-gray-900/5 px-3 py-1.5 rounded-lg border border-primary/10 w-fit">
+                                  <div className="font-mono text-[11px] text-gray-900/80 bg-gray-900/5 px-3 h-10 flex items-center rounded-lg border border-primary/10 w-fit max-w-full break-all">
                                     {color.sku}
                                   </div>
                                 </div>
 
                                 <div className="space-y-3">
-                                  <div className="flex items-center justify-between h-10">
-                                    <label className="text-[11px] font-bold uppercase tracking-widest text-gray-900 block">
-                                      {color.isUnlimited ? "Stock Level (Auto)" : "Stock Level"}
+                                  <div className="flex items-center justify-between gap-2 min-h-[40px] sm:h-10">
+                                    <label className="text-[11px] font-bold uppercase tracking-widest text-gray-900 leading-tight">
+                                      <span className="sm:hidden">Stock<br />Level</span>
+                                      <span className="hidden sm:inline">{color.isUnlimited ? "Stock Level (Auto)" : "Stock Level"}</span>
                                     </label>
 
                                     <StockToggleSlider
                                       isUnlimited={!!color.isUnlimited}
                                       onChange={(unlimited) => toggleVariantStockMode(color.name, unlimited)}
-                                      className="w-40 h-9"
+                                      className="w-32 sm:w-40 h-8 sm:h-9 shrink-0"
+                                      limitedLabel="Limited"
+                                      unlimitedLabel="Unlimited"
+                                      limitedLabelMobile="Ltd"
+                                      unlimitedLabelMobile="Unltd"
                                     />
                                   </div>
 
-                                  <div className="relative group/input">
+                                  <div className={`group/input flex items-center h-10 w-52 sm:w-32 rounded-md border border-gray-300 bg-gray-50 overflow-hidden focus-within:border-[#B19CD9] transition-all ${color.isUnlimited ? 'opacity-50' : ''}`}>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateVariantStock(color.name, Math.max(1, (color.stock || 1) - 1))}
+                                      disabled={color.isUnlimited}
+                                      className="h-full px-2.5 flex items-center justify-center text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed transition-colors shrink-0"
+                                      aria-label="Decrease stock"
+                                    >
+                                      <Minus className="w-3.5 h-3.5" />
+                                    </button>
                                     <input
                                       type="number"
                                       value={color.isUnlimited ? "" : color.stock}
                                       onChange={(e) => updateVariantStock(color.name, parseInt(e.target.value) || 0)}
                                       disabled={color.isUnlimited}
-                                      className={`w-full bg-gray-50 border border-gray-300 rounded-md px-3 py-2 focus:border-[#B19CD9] outline-none transition-all text-sm font-medium font-body ${color.isUnlimited ? 'text-gray-800 opacity-50' : 'text-gray-900 opacity-100'}`}
+                                      className={`flex-1 min-w-0 h-full bg-transparent border-x border-gray-300 px-1 outline-none text-sm font-medium font-body text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${color.isUnlimited ? 'text-gray-800' : 'text-gray-900'}`}
                                       placeholder={color.isUnlimited ? "Unlimited" : "1"}
                                       min="1"
                                     />
+                                    <button
+                                      type="button"
+                                      onClick={() => updateVariantStock(color.name, (color.stock || 0) + 1)}
+                                      disabled={color.isUnlimited}
+                                      className="h-full px-2.5 flex items-center justify-center text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed transition-colors shrink-0"
+                                      aria-label="Increase stock"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                    </button>
                                   </div>
                                 </div>
                               </div>

@@ -6,6 +6,14 @@ interface StockToggleSliderProps {
   onChange: (unlimited: boolean) => void;
   /** Extra classes for the outer track (height / width etc.) */
   className?: string;
+  /** Label for the limited side (default "Limited") */
+  limitedLabel?: string;
+  /** Label for the unlimited side (default "Unlimited") */
+  unlimitedLabel?: string;
+  /** Optional shorter label shown only on mobile (< sm) for the limited side */
+  limitedLabelMobile?: string;
+  /** Optional shorter label shown only on mobile (< sm) for the unlimited side */
+  unlimitedLabelMobile?: string;
 }
 
 /**
@@ -22,6 +30,10 @@ export default function StockToggleSlider({
   isUnlimited,
   onChange,
   className = "",
+  limitedLabel = "Limited",
+  unlimitedLabel = "Unlimited",
+  limitedLabelMobile,
+  unlimitedLabelMobile,
 }: StockToggleSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [travel, setTravel] = useState(0);
@@ -80,14 +92,28 @@ export default function StockToggleSlider({
             !isUnlimited ? "text-gray-900" : "text-gray-500"
           }`}
         >
-          Limited
+          {limitedLabelMobile ? (
+            <>
+              <span className="sm:hidden">{limitedLabelMobile}</span>
+              <span className="hidden sm:inline">{limitedLabel}</span>
+            </>
+          ) : (
+            limitedLabel
+          )}
         </span>
         <span
           className={`flex-1 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 ${
             isUnlimited ? "text-gray-900" : "text-gray-500"
           }`}
         >
-          Unlimited
+          {unlimitedLabelMobile ? (
+            <>
+              <span className="sm:hidden">{unlimitedLabelMobile}</span>
+              <span className="hidden sm:inline">{unlimitedLabel}</span>
+            </>
+          ) : (
+            unlimitedLabel
+          )}
         </span>
       </div>
     </div>
