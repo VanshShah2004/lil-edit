@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -1355,22 +1355,31 @@ const ManageProducts = () => {
                     ]
                       .filter((v): v is { type: "PUBLISHED" | "DRAFT"; data: ProductItem; label: string } =>
                         Boolean(v.data) && (v.type !== "DRAFT" || !selectedProduct.is_published || selectedProduct.has_pending_updates))
-                      .map((version) => (
-                        <div
-                          key={version.type}
-                          ref={(el) => { versionRefs.current[version.type] = el; }}
-                          data-version={version.type}
-                          className="border border-foreground/50 rounded-sm shadow-md p-5 md:p-8"
-                        >
-                          <ProductVersionView
-                            version={version}
-                            isUpdate={selectedProduct.is_published && selectedProduct.has_pending_updates}
-                            onEdit={handleEditProduct}
-                            onLaunch={handleLaunchProduct}
-                            onDelete={handleDeleteProduct}
-                            onDownloadPdf={handleDownloadPdf}
-                          />
-                        </div>
+                      .map((version, idx) => (
+                        <Fragment key={version.type}>
+                          {idx > 0 && (
+                            <div className="relative flex items-center justify-center py-2">
+                              <div className="w-full h-0.5 bg-black" />
+                              <div className="absolute px-6 py-2 bg-amber-50 border border-amber-100 rounded-full z-10 whitespace-nowrap">
+                                <p className="text-[11px] sm:text-[10px] font-black uppercase tracking-[0.3em] text-amber-700">Pending Update Version Below</p>
+                              </div>
+                            </div>
+                          )}
+                          <div
+                            ref={(el) => { versionRefs.current[version.type] = el; }}
+                            data-version={version.type}
+                            className="border border-foreground/50 rounded-sm shadow-md p-5 md:p-8"
+                          >
+                            <ProductVersionView
+                              version={version}
+                              isUpdate={selectedProduct.is_published && selectedProduct.has_pending_updates}
+                              onEdit={handleEditProduct}
+                              onLaunch={handleLaunchProduct}
+                              onDelete={handleDeleteProduct}
+                              onDownloadPdf={handleDownloadPdf}
+                            />
+                          </div>
+                        </Fragment>
                       ))}
                   </div>
                 )}
