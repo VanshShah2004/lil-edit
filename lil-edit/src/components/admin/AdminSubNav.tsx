@@ -41,7 +41,7 @@ const AdminSubNav = () => {
           <button
             type="button"
             onClick={() => setIsOpen((prev) => !prev)}
-            className={`group flex items-center gap-1.5 sm:gap-2.5 w-48 sm:w-64 shrink-0 pl-1.5 pr-2.5 py-1.5 sm:pl-2 sm:pr-4 sm:py-2 rounded-xl font-display text-[13px] sm:text-[17px] font-bold tracking-wide border-2 border-gray-300 bg-white text-gray-900 shadow-[0_8px_24px_rgb(0,0,0,0.12)] hover:shadow-[0_12px_32px_rgb(0,0,0,0.18)] hover:border-gray-400 transition-all ${isOpen ? "border-gray-400 shadow-[0_12px_32px_rgb(0,0,0,0.18)]" : ""}`}
+            className={`group flex items-center gap-1.5 sm:gap-2.5 w-48 sm:w-64 shrink-0 pl-1.5 pr-2.5 py-1.5 sm:pl-2 sm:pr-4 sm:py-2 rounded-md font-display text-[13px] sm:text-[17px] font-bold tracking-wide border border-foreground/50 bg-white text-gray-900 shadow-[0_8px_24px_rgb(0,0,0,0.12)] hover:shadow-[0_12px_32px_rgb(0,0,0,0.18)] hover:border-foreground transition-all ${isOpen ? "border-foreground shadow-[0_12px_32px_rgb(0,0,0,0.18)]" : ""}`}
           >
             <span className="flex-1 flex items-center justify-center gap-2 sm:gap-2.5 min-w-0">
               <span
