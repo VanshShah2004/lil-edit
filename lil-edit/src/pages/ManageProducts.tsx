@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -12,11 +12,13 @@ import {
   FileText,
   Boxes,
   Activity,
-  Zap
+  Zap,
+  ExternalLink
 } from "lucide-react";
 import { getBackendBaseUrl } from "@/lib/backend";
 import { authHeader } from "@/lib/apiAuth";
 import { buildPayloadFromProduct } from "@/lib/buildProductPayload";
+import { buildPdpPath, resolvePdpSku } from "@/lib/pdpUrl";
 import UserNavbar from "@/components/home/UserNavbar";
 import AdminSubNav from "@/components/admin/AdminSubNav";
 import Navbar from "@/components/layout/Navbar";
@@ -105,6 +107,16 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
   const [activeImageTab, setActiveImageTab] = useState<string>("Global");
   const [activeImage, setActiveImage] = useState<string | null>(null);
 
+  // Measure the version tag so the "View Product" button can match its exact width.
+  const tagRef = useRef<HTMLDivElement>(null);
+  const [tagWidth, setTagWidth] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const measure = () => setTagWidth(tagRef.current?.offsetWidth ?? null);
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [version.label]);
+
   useEffect(() => {
     const images = version.type === "PUBLISHED" ? version.data.product_images : version.data.draft_product_images;
     const firstGlobal = images?.find(i => !i.variant_id)?.image_url ?? images?.[0]?.image_url ?? null;
@@ -125,18 +137,30 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
         <div className="space-y-1">
           <div className="flex items-start justify-between gap-4">
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{p.title}</h2>
-            <Badge className={`${version.type === "PUBLISHED"
-                ? "bg-gray-900 text-white hover:bg-gray-900"
-                : (isUpdate
+            <div ref={tagRef} className="shrink-0 w-fit">
+              <Badge className={`${version.type === "PUBLISHED"
                   ? "bg-gray-900 text-white hover:bg-gray-900"
-                  : "bg-gray-200 text-gray-600 hover:bg-gray-200")
-              } border-none rounded-sm h-7 sm:h-8 mt-[5px] text-[11px] sm:text-[10px] font-bold uppercase tracking-widest px-3 shrink-0 whitespace-nowrap`}>
-              {version.label}
-            </Badge>
+                  : (isUpdate
+                    ? "bg-gray-900 text-white hover:bg-gray-900"
+                    : "bg-gray-200 text-gray-600 hover:bg-gray-200")
+                } border-none rounded-sm h-7 sm:h-8 mt-[5px] text-[11px] sm:text-[10px] font-bold uppercase tracking-widest px-3 whitespace-nowrap`}>
+                {version.label}
+              </Badge>
+            </div>
           </div>
           <p className="text-[13px] sm:text-[11px] font-bold text-gray-600 font-mono tracking-widest uppercase">{p.base_sku}</p>
           <p className="text-[13px] sm:text-[11px] font-bold text-gray-600 font-mono tracking-widest lowercase">{p.slug}</p>
         </div>
+
+        {version.type === "PUBLISHED" && (
+          <button
+            onClick={() => window.open(buildPdpPath(p.category_slug, p.slug, resolvePdpSku(p.base_sku, variants.map((v) => ({ sku: v.variant_sku })))), "_blank", "noopener,noreferrer")}
+            style={tagWidth ? ({ "--tag-w": `${tagWidth}px` } as React.CSSProperties) : undefined}
+            className="flex w-full sm:w-[var(--tag-w,auto)] sm:ml-auto sm:-translate-y-[50px] sm:h-8 items-center justify-center gap-2 px-4 py-3 sm:px-3 sm:py-0 rounded sm:rounded-sm bg-[#0F766E] text-white font-bold text-[11px] sm:text-[10px] uppercase tracking-widest hover:brightness-110 transition-all"
+          >
+            <ExternalLink size={14} /> View Product
+          </button>
+        )}
 
         <div className="flex flex-col md:flex-row justify-between items-start gap-12">
           <div className="flex-1">
@@ -339,7 +363,7 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
               {!isPlaceholderDescription(p.description_points) ? p.description_points?.map((pt, i) => (
                 <div key={i} className="flex gap-3 text-[13px] sm:text-[11px] leading-relaxed text-gray-500 font-medium">
                   <span className="text-gray-900 font-bold shrink-0">0{i + 1}.</span>
-                  <p>{pt}</p>
+                  <p className="text-justify">{pt}</p>
                 </div>
               )) : <p className="text-[13px] sm:text-[11px] text-gray-600 font-medium">[No product details specified]</p>}
             </div>
