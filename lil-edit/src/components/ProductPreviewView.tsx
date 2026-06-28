@@ -1,7 +1,9 @@
 import { useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Heart, Minus, Plus, Share2, ShoppingBag, Star, X, ChevronRight, ChevronLeft } from "lucide-react";
+import { Heart, Minus, Plus, Share2, ShoppingBag, Star, X, ChevronRight, ChevronLeft, Copy, Mail, Link2, MoreHorizontal } from "lucide-react";
+import { FaFacebook, FaTwitter, FaWhatsapp, FaInstagram, FaTelegramPlane, FaPinterestP, FaSnapchatGhost, FaRedditAlien } from "react-icons/fa";
+import { IoChatbubbleEllipses } from "react-icons/io5";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Carousel,
@@ -9,9 +11,11 @@ import {
   CarouselItem,
   type CarouselApi
 } from "@/components/ui/carousel";
+import { createPortal } from "react-dom";
 import { Badge } from "@/components/ui/badge";
 import ProductGalleryImage from "@/components/ProductGalleryImage";
 import { preconnectProductImageOrigin } from "@/lib/productImage";
+import { buildPdpPath } from "@/lib/pdpUrl";
 import type { Product } from "@/types/product";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
@@ -39,6 +43,7 @@ const ProductPreviewView = ({
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [viewerApi, setViewerApi] = useState<CarouselApi>();
   const thumbnailStripRef = useRef<HTMLDivElement>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [cartBusy, setCartBusy] = useState(false);
   const [wishlistBusy, setWishlistBusy] = useState(false);
   const { addToCart } = useCart();
@@ -221,6 +226,68 @@ const ProductPreviewView = ({
     });
   };
 
+  const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}${buildPdpPath(product.categorySlug, product.slug, currentSku)}` : '';
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareUrl);
+    toast.success("Link copied to clipboard");
+  };
+
+  const handleShare = (platform: 'whatsapp' | 'twitter' | 'facebook' | 'instagram' | 'telegram' | 'sms' | 'email' | 'pinterest' | 'snapchat' | 'reddit' | 'more') => {
+    let url = '';
+    const text = `Check out ${product.title} on our store!`;
+    switch (platform) {
+      case 'whatsapp':
+        url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text + ' ' + shareUrl)}`;
+        break;
+      case 'twitter':
+        url = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
+        break;
+      case 'facebook':
+        url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+        break;
+      case 'instagram':
+        navigator.clipboard.writeText(shareUrl);
+        toast.success('Link copied! Paste it in your Instagram story or DM');
+        setShareOpen(false);
+        return;
+      case 'telegram':
+        url = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
+        break;
+      case 'sms':
+        url = `sms:?body=${encodeURIComponent(text + ' ' + shareUrl)}`;
+        window.location.href = url;
+        setShareOpen(false);
+        return;
+      case 'email':
+        url = `mailto:?subject=${encodeURIComponent(product.title)}&body=${encodeURIComponent(text + '\n\n' + shareUrl)}`;
+        window.location.href = url;
+        setShareOpen(false);
+        return;
+      case 'pinterest':
+        url = `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(shareUrl)}&description=${encodeURIComponent(text)}&media=${encodeURIComponent(galleryImages[0] || '')}`;
+        break;
+      case 'snapchat':
+        url = `https://www.snapchat.com/scan?attachmentUrl=${encodeURIComponent(shareUrl)}`;
+        break;
+      case 'reddit':
+        url = `https://www.reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(text)}`;
+        break;
+      case 'more':
+        if (navigator.share) {
+          navigator.share({ title: product.title, text, url: shareUrl }).catch(() => {});
+          setShareOpen(false);
+          return;
+        }
+        navigator.clipboard.writeText(shareUrl);
+        toast.success('Link copied to clipboard');
+        setShareOpen(false);
+        return;
+    }
+    window.open(url, '_blank');
+    setShareOpen(false);
+  };
+
   return (
     <div className={`${compact ? "p-3" : "p-0"} ${mobileOnly ? "pt-3 px-3" : ""} bg-white`}>
       <div className={`flex ${compact || mobileOnly ? "flex-col gap-3" : "flex-col md:flex-row gap-4 md:gap-8 lg:gap-12"}`}>
@@ -362,7 +429,7 @@ const ProductPreviewView = ({
                   setWishlistBusy(false);
                 }
               }}
-              className="p-1 -m-1 transition-colors disabled:opacity-40 cursor-pointer"
+              className="p-1 -m-1 transition-colors disabled:opacity-40 cursor-pointer outline-none"
               title={isWishlisted(product.slug, currentSku) ? "Remove from wishlist" : "Add to wishlist"}
             >
               <Heart
@@ -371,7 +438,18 @@ const ProductPreviewView = ({
                 fill={isWishlisted(product.slug, currentSku) ? "currentColor" : "none"}
               />
             </button>
-            <Share2 size={18} />
+            {!previewMode ? (
+              <button
+                onClick={() => setShareOpen(true)}
+                className="p-1 -m-1 transition-colors hover:text-[#0B5B55] outline-none cursor-pointer"
+              >
+                <Share2 size={18} />
+              </button>
+            ) : (
+              <button disabled className="p-1 -m-1 opacity-40 cursor-not-allowed outline-none">
+                <Share2 size={18} />
+              </button>
+            )}
             <ShoppingBag size={18} />
             {!previewMode && <Star size={18} />}
           </div>
@@ -599,6 +677,153 @@ const ProductPreviewView = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Share Bottom Sheet ── */}
+      {createPortal(
+        <AnimatePresence>
+          {shareOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setShareOpen(false)}
+              />
+              {/* Sheet – centered on desktop, bottom on mobile */}
+              <motion.div
+                className="fixed z-[201] bottom-0 inset-x-0 md:bottom-auto md:top-1/2 md:left-1/2 md:right-auto md:max-w-[420px] md:w-full md:rounded-2xl bg-white rounded-t-[28px] shadow-[0_-12px_60px_rgba(0,0,0,0.15)] md:shadow-2xl overflow-hidden"
+                initial={{ y: "100%", opacity: 0.8 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: "100%", opacity: 0.8 }}
+                transition={{ type: "spring", damping: 28, stiffness: 320 }}
+                style={{ maxHeight: "90vh" }}
+                // On desktop, shift up 50% to center vertically
+                {...(typeof window !== "undefined" && window.innerWidth >= 768
+                  ? { style: { maxHeight: "90vh", transform: "translate(-50%, -50%)" }, animate: { y: 0, opacity: 1, x: 0 } }
+                  : {}
+                )}
+              >
+                {/* Drag Handle (mobile only) */}
+                <div className="md:hidden flex justify-center pt-3 pb-0">
+                  <div className="w-9 h-[5px] rounded-full bg-gray-300/80" />
+                </div>
+
+                {/* Header row */}
+                <div className="flex items-center justify-between px-5 pt-4 md:pt-5 pb-3">
+                  <h3 className="text-[17px] font-bold text-slate-900 tracking-tight">Share this product</h3>
+                  <button
+                    onClick={() => setShareOpen(false)}
+                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                  >
+                    <X size={16} className="text-gray-500" />
+                  </button>
+                </div>
+
+                {/* Product Preview Card */}
+                <div className="mx-5 mb-5 rounded-2xl bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-100/80 overflow-hidden">
+                  <div className="flex items-center gap-4 p-3.5">
+                    {/* Product Image */}
+                    <div className="relative w-[72px] h-[72px] rounded-xl overflow-hidden bg-white border border-gray-200/60 shrink-0 shadow-sm">
+                      <img
+                        src={galleryImages[0] || ""}
+                        alt={product.title}
+                        className="w-full h-full object-cover"
+                      />
+                      {discountPercent > 0 && (
+                        <div className="absolute top-0 left-0 bg-red-500 text-white text-[8px] font-bold px-1.5 py-[2px] rounded-br-lg">
+                          {discountPercent}% OFF
+                        </div>
+                      )}
+                    </div>
+                    {/* Product Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#0f766e] mb-0.5">{product.brand}</p>
+                      <p className="text-[13px] font-semibold text-slate-800 leading-snug line-clamp-2">{product.title}</p>
+                      <div className="flex items-baseline gap-2 mt-1.5">
+                        <span className="text-[15px] font-bold text-slate-900">₹{product.price.toLocaleString()}</span>
+                        {product.originalPrice > 0 && product.originalPrice > product.price && (
+                          <span className="text-[11px] line-through text-gray-400 font-medium">₹{product.originalPrice.toLocaleString()}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent mx-5" />
+
+                {/* Share Icons – Social Platforms */}
+                <div className="px-5 pt-4 pb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 mb-3">Share via</p>
+                  <div className="flex gap-4 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
+                    {[
+                      { id: 'whatsapp' as const, label: 'WhatsApp', icon: <FaWhatsapp size={22} className="text-white" />, bg: 'bg-[#25D366]', shadow: 'shadow-[#25D366]/25' },
+                      { id: 'instagram' as const, label: 'Instagram', icon: <FaInstagram size={22} className="text-white" />, bg: 'bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF]', shadow: 'shadow-[#DD2A7B]/25' },
+                      { id: 'pinterest' as const, label: 'Pinterest', icon: <FaPinterestP size={22} className="text-white" />, bg: 'bg-[#E60023]', shadow: 'shadow-[#E60023]/25' },
+                      { id: 'telegram' as const, label: 'Telegram', icon: <FaTelegramPlane size={22} className="text-white" />, bg: 'bg-[#0088CC]', shadow: 'shadow-[#0088CC]/25' },
+                      { id: 'snapchat' as const, label: 'Snapchat', icon: <FaSnapchatGhost size={20} className="text-black" />, bg: 'bg-[#FFFC00]', shadow: 'shadow-[#FFFC00]/25' },
+                      { id: 'reddit' as const, label: 'Reddit', icon: <FaRedditAlien size={22} className="text-white" />, bg: 'bg-[#FF4500]', shadow: 'shadow-[#FF4500]/25' },
+                      { id: 'twitter' as const, label: 'Twitter', icon: <FaTwitter size={22} className="text-white" />, bg: 'bg-[#1DA1F2]', shadow: 'shadow-[#1DA1F2]/25' },
+                      { id: 'facebook' as const, label: 'Facebook', icon: <FaFacebook size={22} className="text-white" />, bg: 'bg-[#1877F2]', shadow: 'shadow-[#1877F2]/25' },
+                    ].map((item, i) => (
+                      <motion.button
+                        key={item.id}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.05 * i, duration: 0.25, ease: "easeOut" }}
+                        onClick={() => handleShare(item.id)}
+                        className="flex flex-col items-center gap-1.5 shrink-0 group cursor-pointer min-w-[56px]"
+                      >
+                        <div className={`w-[52px] h-[52px] rounded-[16px] ${item.bg} flex items-center justify-center shadow-lg ${item.shadow} group-hover:scale-110 group-active:scale-95 transition-all duration-200`}>
+                          {item.icon}
+                        </div>
+                        <span className="text-[10px] font-medium text-slate-500 whitespace-nowrap">{item.label}</span>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Share Icons – Utility row */}
+                <div className="px-5 pt-3 pb-6 md:pb-5">
+                  <div className="flex gap-4 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
+                    {[
+                      { id: 'sms' as const, label: 'Messages', icon: <IoChatbubbleEllipses size={22} className="text-white" />, bg: 'bg-[#34C759]', shadow: 'shadow-[#34C759]/20' },
+                      { id: 'email' as const, label: 'Email', icon: <Mail size={20} className="text-white" />, bg: 'bg-slate-500', shadow: 'shadow-slate-500/20' },
+                      { id: 'copy' as const, label: 'Copy', icon: <Link2 size={20} className="text-slate-500" />, bg: 'bg-gray-100', shadow: 'shadow-gray-200/40', action: handleCopyLink },
+                      { id: 'more' as const, label: 'More', icon: <MoreHorizontal size={20} className="text-slate-500" />, bg: 'bg-gray-100', shadow: 'shadow-gray-200/40' },
+                    ].map((item, i) => (
+                      <motion.button
+                        key={`util-${item.id}`}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 + 0.05 * i, duration: 0.25, ease: "easeOut" }}
+                        onClick={() => {
+                          if (item.action) {
+                            item.action();
+                            setShareOpen(false);
+                          } else {
+                            handleShare(item.id as any);
+                          }
+                        }}
+                        className="flex flex-col items-center gap-1.5 shrink-0 group cursor-pointer min-w-[56px]"
+                      >
+                        <div className={`w-[52px] h-[52px] rounded-[16px] ${item.bg} flex items-center justify-center shadow-md ${item.shadow} group-hover:scale-110 group-active:scale-95 transition-all duration-200`}>
+                          {item.icon}
+                        </div>
+                        <span className="text-[10px] font-medium text-slate-500 whitespace-nowrap">{item.label}</span>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
       )}
     </div>
   );
