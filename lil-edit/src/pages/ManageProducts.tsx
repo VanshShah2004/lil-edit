@@ -94,7 +94,6 @@ const isPlaceholderDescription = (pts?: string[]) => {
 
 interface ProductVersionViewProps {
   version: { type: "PUBLISHED" | "DRAFT"; data: ProductItem; label: string };
-  isSecondary?: boolean;
   isUpdate?: boolean;
   onEdit: (p: ProductItem) => void;
   onLaunch: (p: ProductItem) => void;
@@ -102,7 +101,7 @@ interface ProductVersionViewProps {
   onDownloadPdf: (p: ProductItem) => void;
 }
 
-const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, onDelete, onDownloadPdf }: ProductVersionViewProps) => {
+const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onDownloadPdf }: ProductVersionViewProps) => {
   const [activeImageTab, setActiveImageTab] = useState<string>("Global");
   const [activeImage, setActiveImage] = useState<string | null>(null);
 
@@ -120,16 +119,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
   const variants = version.type === "PUBLISHED" ? p.product_variants ?? [] : p.draft_product_variants ?? [];
 
   return (
-    <div className={`space-y-10 ${isSecondary ? "pt-4 relative" : ""}`}>
-      {isSecondary && (
-        <div className="absolute top-0 left-0 right-0 flex items-center justify-center">
-          <div className="w-full h-0.5 bg-black" />
-          <div className="absolute px-6 py-2 bg-amber-50 border border-amber-100 rounded-full z-10 whitespace-nowrap">
-            <p className="text-[11px] sm:text-[10px] font-black uppercase tracking-[0.3em] text-amber-700">Pending Update Version Below</p>
-          </div>
-        </div>
-      )}
-
+    <div className="space-y-10">
       {/* Summary Row */}
       <div className="space-y-8">
         <div className="space-y-1">
@@ -138,9 +128,9 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
             <Badge className={`${version.type === "PUBLISHED"
                 ? "bg-gray-900 text-white hover:bg-gray-900"
                 : (isUpdate
-                  ? "bg-amber-100 text-amber-700 hover:bg-amber-100"
+                  ? "bg-gray-900 text-white hover:bg-gray-900"
                   : "bg-gray-200 text-gray-600 hover:bg-gray-200")
-              } border-none text-[11px] sm:text-[10px] font-bold uppercase tracking-widest px-3 py-1 shrink-0 whitespace-nowrap`}>
+              } border-none rounded-sm h-7 sm:h-8 mt-[5px] text-[11px] sm:text-[10px] font-bold uppercase tracking-widest px-3 shrink-0 whitespace-nowrap`}>
               {version.label}
             </Badge>
           </div>
@@ -174,10 +164,10 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
 
           <div className="w-full md:w-auto flex flex-col gap-3">
             <div className="flex gap-3">
-              <button onClick={() => onEdit(p)} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white rounded font-bold text-[11px] sm:text-[10px] uppercase tracking-widest hover:bg-gray-800 transition-all">
+              <button onClick={() => onEdit(p)} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white rounded font-bold text-[11px] sm:text-[10px] uppercase tracking-widest border border-black hover:bg-gray-800 transition-all">
                 <Edit3 size={14} /> {version.type === "PUBLISHED" ? "Update" : "Edit Draft"}
               </button>
-              <button onClick={() => onDownloadPdf(p)} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border border-gray-200 text-gray-600 rounded font-bold text-[11px] sm:text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all">
+              <button onClick={() => onDownloadPdf(p)} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border border-gray-500 text-gray-600 rounded font-bold text-[11px] sm:text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all">
                 <Download size={14} /> PDF
               </button>
             </div>
@@ -203,7 +193,7 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
         {/* — IMAGE STUDIO — */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="aspect-[3/4] w-44 sm:w-56 lg:w-full mx-auto lg:mx-0 border border-gray-200 bg-gray-50/50 rounded-sm overflow-hidden flex items-center justify-center">
+          <div className="aspect-[3/4] w-72 sm:w-80 lg:w-full mx-auto lg:mx-0 border border-gray-200 bg-gray-50/50 rounded-sm overflow-hidden flex items-center justify-center">
             {activeImage ? (
               <img src={activeImage} className="w-full h-full object-cover" alt={p.title} />
             ) : (
@@ -214,8 +204,8 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
             )}
           </div>
 
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-1 justify-center lg:justify-start">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-1 justify-center order-2">
               {["Global", ...variants.map(v => v.color_name)].map(tab => {
                 const variant = variants.find(v => v.color_name === tab);
                 return (
@@ -234,9 +224,9 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
                 );
               })}
             </div>
-            <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
+            <div className="flex flex-wrap gap-2 justify-center order-1">
               {(activeImageTab === "Global" ? images.filter(img => !img.variant_id) : images.filter(img => img.variant_id === variants.find(v => v.color_name === activeImageTab)?.id)).map((img, i) => (
-                <button key={i} onClick={() => setActiveImage(img.image_url)} className={`w-12 h-16 border bg-gray-50 shrink-0 overflow-hidden transition-all ${activeImage === img.image_url ? "border-gray-900" : "border-gray-200 opacity-50 hover:opacity-80"}`}>
+                <button key={i} onClick={() => setActiveImage(img.image_url)} className={`w-16 h-20 sm:w-12 sm:h-16 border bg-gray-50 shrink-0 overflow-hidden transition-all ${activeImage === img.image_url ? "border-gray-900" : "border-gray-200 opacity-50 hover:opacity-80"}`}>
                   <img src={img.image_url} className="w-full h-full object-cover" />
                 </button>
               ))}
@@ -274,18 +264,18 @@ const ProductVersionView = ({ version, isSecondary, isUpdate, onEdit, onLaunch, 
               <Boxes size={14} className="text-gray-600" />
               <h3 className="text-[12px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Inventory Distribution Matrix</h3>
             </div>
-            <div className="border border-gray-200 rounded-sm overflow-hidden">
+            <div className="border border-gray-400 rounded-sm overflow-hidden">
               <table className="w-full text-left text-[13px] sm:text-[11px]">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
+                <thead className="bg-gray-50 border-b border-gray-400">
+                  <tr className="divide-x divide-gray-300">
                     <th className="px-6 py-3 font-bold text-gray-600 uppercase tracking-wider">Variant</th>
                     <th className="px-6 py-3 font-bold text-gray-600 uppercase tracking-wider">SKU</th>
                     <th className="px-6 py-3 font-bold text-gray-600 uppercase tracking-wider text-right">Units</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-gray-300">
                   {variants.map((v, i) => (
-                    <tr key={i} className="hover:bg-gray-50/30">
+                    <tr key={i} className="divide-x divide-gray-300 hover:bg-gray-50/30">
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-2.5 h-2.5 rounded-full border border-gray-200" style={{ backgroundColor: v.color_hex }} />
@@ -484,6 +474,10 @@ const ManageProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"ALL" | "DRAFT" | "PUBLISHED">("ALL");
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
+  // Which stacked version (published vs draft) is currently dominating the viewport —
+  // drives the single Live/Sync badge in the mobile back bar when a product has both.
+  const [activeVersion, setActiveVersion] = useState<"PUBLISHED" | "DRAFT">("PUBLISHED");
+  const versionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [showAllMap, setShowAllMap] = useState<{
     ALL: boolean;
     PUBLISHED: boolean;
@@ -513,6 +507,38 @@ const ManageProducts = () => {
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, []);
+
+  // Scroll-spy: when both a published and a draft version are stacked, track which
+  // one occupies more of the viewport so the back-bar badge can switch Live ↔ Sync.
+  useEffect(() => {
+    setActiveVersion("PUBLISHED"); // reset to the top (live) version on product change
+    const els = ["PUBLISHED", "DRAFT"]
+      .map((t) => versionRefs.current[t])
+      .filter((el): el is HTMLDivElement => Boolean(el));
+    if (els.length < 2) return; // single version — badge logic falls back to that one
+
+    const ratios = new Map<Element, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) ratios.set(e.target, e.intersectionRatio);
+          else ratios.delete(e.target);
+        }
+        let bestEl: Element | null = null;
+        let bestRatio = -1;
+        for (const [el, ratio] of ratios) {
+          if (ratio > bestRatio) { bestRatio = ratio; bestEl = el; }
+        }
+        const v = bestEl?.getAttribute("data-version");
+        if (v === "PUBLISHED" || v === "DRAFT") setActiveVersion(v);
+      },
+      { threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+    // Re-run when the product or its version composition changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProduct?.base_sku, selectedProduct?.detailLoaded, selectedProduct?.is_published, selectedProduct?.has_pending_updates]);
 
   const applyDetail = (sku: string, detail: { published?: ProductItem; draft?: ProductItem }) => {
     setProducts(prev => prev.map(p =>
@@ -1090,10 +1116,13 @@ const ManageProducts = () => {
       {user ? <UserNavbar /> : <Navbar />}
 
       {/* PAGE HEADER */}
-      <div className="relative pt-[160px] md:pt-[128px] bg-white border-b border-foreground/50 pb-8">
-        <AdminSubNav />
+      <div className={`relative md:pt-[128px] bg-white border-foreground/50 ${isMobileDetailView ? "pt-[120px] pb-0 border-b-0 md:pb-8 md:border-b" : "pt-[160px] pb-8 border-b"}`}>
+        {/* Admin dropdown — hidden on the mobile product detail view */}
+        <div className={isMobileDetailView ? "hidden md:block" : ""}>
+          <AdminSubNav />
+        </div>
         <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">
-          <div className="space-y-1">
+          <div className={`space-y-1 ${isMobileDetailView ? "hidden md:block" : ""}`}>
             <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
               <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: "#B19CD9" }}>Catalog Studio</p>
             </div>
@@ -1242,16 +1271,25 @@ const ManageProducts = () => {
         {/* RIGHT COLUMN — Detail View (75%) */}
         <section className={`md:w-[75%] bg-white pb-32 transition-all duration-300 md:translate-x-0 ${isMobileDetailView ? "block translate-x-0" : "hidden md:block translate-x-full md:translate-x-0"}`}>
 
-          {/* Mobile Back */}
-          <div className="md:hidden p-6 bg-white border-b border-gray-200 flex items-center justify-between">
-            <button onClick={() => setIsMobileDetailView(false)} className="flex items-center gap-2 text-xs font-bold text-gray-600 hover:text-gray-900 transition-all">
+          {/* Mobile Back — pinned under the navbar while scrolling the detail */}
+          <div className="md:hidden sticky top-[var(--navbar-height,114px)] z-30 p-6 bg-white flex items-center justify-between">
+            <button onClick={() => setIsMobileDetailView(false)} className="flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-gray-900 transition-all">
               <ArrowLeft size={16} /> Back to Catalog
             </button>
             <div className="flex gap-2">
-              {selectedProduct?.is_published && <Badge variant="outline" className="text-[10px] font-bold uppercase">Live</Badge>}
-              {selectedProduct?.has_draft && (!selectedProduct.is_published || selectedProduct.has_pending_updates) && (
-                <Badge variant="outline" className="text-[10px] font-bold uppercase bg-amber-50 text-amber-600 border-amber-100">Sync</Badge>
-              )}
+              {(() => {
+                const hasLive = !!selectedProduct?.is_published;
+                const draftRendered = !!selectedProduct?.has_draft && (!selectedProduct?.is_published || !!selectedProduct?.has_pending_updates);
+                // With both stacked, follow the version in view; otherwise show whichever exists.
+                const showLive = hasLive && (!draftRendered || activeVersion === "PUBLISHED");
+                const showSync = draftRendered && (!hasLive || activeVersion === "DRAFT");
+                return (
+                  <>
+                    {showLive && <Badge variant="outline" className="text-[10px] font-bold uppercase bg-amber-50 text-amber-600 border-amber-100">Live</Badge>}
+                    {showSync && <Badge variant="outline" className="text-[10px] font-bold uppercase bg-amber-50 text-amber-600 border-amber-100">Sync</Badge>}
+                  </>
+                );
+              })()}
             </div>
           </div>
 
@@ -1262,7 +1300,7 @@ const ManageProducts = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="px-8 pt-2 pb-16 lg:px-16 lg:pt-4 lg:pb-20 max-w-5xl mx-auto"
+                className="px-3 pt-3 pb-16 md:pt-2 lg:px-4 lg:pt-4 lg:pb-20"
               >
                 {!selectedProduct.detailLoaded ? (
                   <div className="animate-pulse space-y-10 pt-6">
@@ -1282,7 +1320,7 @@ const ManageProducts = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-32">
+                  <div className="space-y-8">
                     {[
                       { type: "PUBLISHED" as const, data: selectedProduct.published, label: "Published Version" },
                       {
@@ -1293,17 +1331,22 @@ const ManageProducts = () => {
                     ]
                       .filter((v): v is { type: "PUBLISHED" | "DRAFT"; data: ProductItem; label: string } =>
                         Boolean(v.data) && (v.type !== "DRAFT" || !selectedProduct.is_published || selectedProduct.has_pending_updates))
-                      .map((version, idx) => (
-                        <ProductVersionView
+                      .map((version) => (
+                        <div
                           key={version.type}
-                          version={version}
-                          isSecondary={idx > 0}
-                          isUpdate={selectedProduct.is_published && selectedProduct.has_pending_updates}
-                          onEdit={handleEditProduct}
-                          onLaunch={handleLaunchProduct}
-                          onDelete={handleDeleteProduct}
-                          onDownloadPdf={handleDownloadPdf}
-                        />
+                          ref={(el) => { versionRefs.current[version.type] = el; }}
+                          data-version={version.type}
+                          className="border border-foreground/50 rounded-sm shadow-md p-5 md:p-8"
+                        >
+                          <ProductVersionView
+                            version={version}
+                            isUpdate={selectedProduct.is_published && selectedProduct.has_pending_updates}
+                            onEdit={handleEditProduct}
+                            onLaunch={handleLaunchProduct}
+                            onDelete={handleDeleteProduct}
+                            onDownloadPdf={handleDownloadPdf}
+                          />
+                        </div>
                       ))}
                   </div>
                 )}

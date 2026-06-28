@@ -59,7 +59,7 @@ const FeaturedCategories = ({ previewItems }: { previewItems?: ResolvedItem[] })
             <div
               key={category.id}
               onClick={() => go(category.to)}
-              className="relative flex-1 group cursor-pointer overflow-hidden min-h-[400px] md:min-h-[550px]"
+              className="relative flex-1 group cursor-pointer overflow-hidden min-h-[300px] md:min-h-[420px]"
             >
               {/* Natural Image */}
               <img
