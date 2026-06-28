@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import {
   Search,
   Edit3,
@@ -13,7 +14,11 @@ import {
   Boxes,
   Activity,
   Zap,
-  ExternalLink
+  ExternalLink,
+  Maximize2,
+  X,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { getBackendBaseUrl } from "@/lib/backend";
 import { authHeader } from "@/lib/apiAuth";
@@ -106,6 +111,10 @@ interface ProductVersionViewProps {
 const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onDownloadPdf }: ProductVersionViewProps) => {
   const [activeImageTab, setActiveImageTab] = useState<string>("Global");
   const [activeImage, setActiveImage] = useState<string | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  // True when the last pointer interaction was a drag — used to tell a swipe
+  // (navigate) apart from a click (open full view) on the same image.
+  const draggedRef = useRef(false);
 
   // Measure the version tag so the "View Product" button can match its exact width.
   const tagRef = useRef<HTMLDivElement>(null);
@@ -129,6 +138,37 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
   const p = version.data;
   const images = version.type === "PUBLISHED" ? p.product_images ?? [] : p.draft_product_images ?? [];
   const variants = version.type === "PUBLISHED" ? p.product_variants ?? [] : p.draft_product_variants ?? [];
+
+  // Carousel: images for the active tab, the current index, and looped navigation.
+  const tabImages = activeImageTab === "Global"
+    ? images.filter((img) => !img.variant_id)
+    : images.filter((img) => img.variant_id === variants.find((v) => v.color_name === activeImageTab)?.id);
+  const activeIndex = Math.max(0, tabImages.findIndex((img) => img.image_url === activeImage));
+  const showImageAt = (i: number) => {
+    if (tabImages.length === 0) return;
+    const n = ((i % tabImages.length) + tabImages.length) % tabImages.length; // wrap-around
+    setActiveImage(tabImages[n].image_url);
+  };
+  const nextImage = () => showImageAt(activeIndex + 1);
+  const prevImage = () => showImageAt(activeIndex - 1);
+
+  // Lightbox: lock body scroll + keyboard nav (←/→/Esc) while open.
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxOpen(false);
+      else if (e.key === "ArrowRight") nextImage();
+      else if (e.key === "ArrowLeft") prevImage();
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightboxOpen, activeIndex, tabImages.length]);
 
   return (
     <div className="space-y-10">
@@ -217,9 +257,46 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
         {/* — IMAGE STUDIO — */}
         <div className="lg:col-span-4 space-y-4">
-          <div className={`aspect-[3/4] w-72 sm:w-80 lg:w-full mx-auto lg:mx-0 border ${activeImage ? "border-gray-200" : "border-gray-400"} bg-gray-50/50 rounded-sm overflow-hidden flex items-center justify-center`}>
+          <div className={`relative aspect-[3/4] w-72 sm:w-80 lg:w-full mx-auto lg:mx-0 border ${activeImage ? "border-gray-200" : "border-gray-400"} bg-gray-50/50 rounded-sm overflow-hidden flex items-center justify-center`}>
             {activeImage ? (
-              <img src={activeImage} className="w-full h-full object-cover" alt={p.title} />
+              <>
+                <motion.img
+                  key={activeImage}
+                  src={activeImage}
+                  alt={p.title}
+                  className="w-full h-full object-cover cursor-zoom-in select-none"
+                  draggable={false}
+                  drag={tabImages.length > 1 ? "x" : false}
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.2}
+                  onPointerDown={() => { draggedRef.current = false; }}
+                  onDragStart={() => { draggedRef.current = true; }}
+                  onDragEnd={(_, info) => {
+                    if (info.offset.x < -60) nextImage();
+                    else if (info.offset.x > 60) prevImage();
+                  }}
+                  onClick={() => { if (!draggedRef.current) setLightboxOpen(true); }}
+                  initial={{ opacity: 0.5 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                />
+                <button type="button" onClick={() => setLightboxOpen(true)} aria-label="View fullscreen" className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-black/50 text-white hover:bg-black/70 transition-colors">
+                  <Maximize2 size={14} />
+                </button>
+                {tabImages.length > 1 && (
+                  <>
+                    <button type="button" onClick={prevImage} aria-label="Previous image" className="absolute left-1 top-1/2 -translate-y-1/2 z-10 p-1 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors">
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button type="button" onClick={nextImage} aria-label="Next image" className="absolute right-1 top-1/2 -translate-y-1/2 z-10 p-1 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors">
+                      <ChevronRight size={18} />
+                    </button>
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 px-2 py-0.5 rounded-full bg-black/50 text-white text-[10px] font-bold">
+                      {activeIndex + 1} / {tabImages.length}
+                    </div>
+                  </>
+                )}
+              </>
             ) : (
               <div className="flex flex-col items-center gap-2 text-gray-200">
                 <ImageIcon size={32} />
@@ -370,6 +447,58 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
           </div>
         </div>
       </div>
+
+      {createPortal(
+        <AnimatePresence>
+          {lightboxOpen && activeImage && (
+            <motion.div
+              className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setLightboxOpen(false)}
+            >
+              <button type="button" onClick={() => setLightboxOpen(false)} aria-label="Close" className="absolute top-4 right-4 z-10 p-2 text-white/80 hover:text-white transition-colors">
+                <X size={28} />
+              </button>
+              {tabImages.length > 1 && (
+                <button type="button" onClick={(e) => { e.stopPropagation(); prevImage(); }} aria-label="Previous image" className="absolute left-2 sm:left-6 z-10 p-2 text-white/70 hover:text-white transition-colors">
+                  <ChevronLeft size={36} />
+                </button>
+              )}
+              <motion.img
+                key={activeImage}
+                src={activeImage}
+                alt={p.title}
+                className="max-h-[90vh] max-w-[90vw] object-contain select-none"
+                draggable={false}
+                onClick={(e) => e.stopPropagation()}
+                drag={tabImages.length > 1 ? "x" : false}
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.2}
+                onDragEnd={(_, info) => {
+                  if (info.offset.x < -80) nextImage();
+                  else if (info.offset.x > 80) prevImage();
+                }}
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.2 }}
+              />
+              {tabImages.length > 1 && (
+                <button type="button" onClick={(e) => { e.stopPropagation(); nextImage(); }} aria-label="Next image" className="absolute right-2 sm:right-6 z-10 p-2 text-white/70 hover:text-white transition-colors">
+                  <ChevronRight size={36} />
+                </button>
+              )}
+              {tabImages.length > 1 && (
+                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10 px-3 py-1 rounded-full bg-white/10 text-white/80 text-xs font-bold">
+                  {activeIndex + 1} / {tabImages.length}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 };
