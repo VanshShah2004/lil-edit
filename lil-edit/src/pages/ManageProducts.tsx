@@ -133,7 +133,7 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
   return (
     <div className="space-y-10">
       {/* Summary Row */}
-      <div className="space-y-8">
+      <div className="space-y-8 relative">
         <div className="space-y-1">
           <div className="flex items-start justify-between gap-4">
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{p.title}</h2>
@@ -156,15 +156,15 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
           <button
             onClick={() => window.open(buildPdpPath(p.category_slug, p.slug, resolvePdpSku(p.base_sku, variants.map((v) => ({ sku: v.variant_sku })))), "_blank", "noopener,noreferrer")}
             style={tagWidth ? ({ "--tag-w": `${tagWidth}px` } as React.CSSProperties) : undefined}
-            className="flex w-full sm:w-[var(--tag-w,auto)] sm:ml-auto sm:-translate-y-[50px] sm:h-8 items-center justify-center gap-2 px-4 py-3 sm:px-3 sm:py-0 rounded sm:rounded-sm bg-[#0F766E] text-white font-bold text-[11px] sm:text-[10px] uppercase tracking-widest hover:brightness-110 transition-all"
+            className="flex w-full sm:w-[var(--tag-w,auto)] sm:absolute sm:right-0 sm:top-[17px] sm:h-8 items-center justify-center gap-2 px-4 py-3 sm:px-3 sm:py-0 rounded sm:rounded-sm bg-[#0F766E] text-white font-bold text-[11px] sm:text-[10px] uppercase tracking-widest hover:brightness-110 transition-all"
           >
             <ExternalLink size={14} /> View Product
           </button>
         )}
 
-        <div className="flex flex-col md:flex-row justify-between items-start gap-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-[28px] md:gap-12 sm:pt-4">
           <div className="flex-1">
-            <div className="grid grid-cols-2 gap-x-12 gap-y-8 border-t border-b border-gray-200 py-6">
+            <div className="grid grid-cols-2 gap-x-12 gap-y-8 py-6">
               <div className="space-y-1">
                 <p className="text-[11px] sm:text-[9px] font-bold text-gray-600 uppercase tracking-wider">Brand House</p>
                 <p className="text-sm sm:text-xs font-bold text-gray-900">{p.brand}</p>
@@ -188,25 +188,25 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
 
           <div className="w-full md:w-auto flex flex-col gap-3">
             <div className="flex gap-3">
-              <button onClick={() => onEdit(p)} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white rounded font-bold text-[11px] sm:text-[10px] uppercase tracking-widest border border-black hover:bg-gray-800 transition-all">
+              <button onClick={() => onEdit(p)} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 text-white rounded font-bold text-[11px] sm:text-[10px] uppercase tracking-widest whitespace-nowrap border border-black hover:bg-gray-800 transition-all">
                 <Edit3 size={14} /> {version.type === "PUBLISHED" ? "Update" : "Edit Draft"}
               </button>
-              <button onClick={() => onDownloadPdf(p)} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border border-gray-500 text-gray-600 rounded font-bold text-[11px] sm:text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all">
+              <button onClick={() => onDownloadPdf(p)} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border border-gray-500 text-gray-600 rounded font-bold text-[11px] sm:text-[10px] uppercase tracking-widest whitespace-nowrap hover:bg-gray-50 transition-all">
                 <Download size={14} /> PDF
               </button>
             </div>
             {version.type === "DRAFT" && (
               <button
                 onClick={() => onLaunch(p)}
-                className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded font-bold text-[11px] sm:text-[10px] uppercase tracking-widest transition-all shadow-lg ${isUpdate
-                    ? "bg-[#4DB01E] text-white shadow-[#4DB01E]/20 hover:brightness-110"
-                    : "bg-[#B19CD9] text-black shadow-[#B19CD9]/20 hover:brightness-105"
+                className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded font-bold text-[11px] sm:text-[10px] uppercase tracking-widest transition-all ${isUpdate
+                    ? "bg-[#4DB01E] text-white hover:brightness-110"
+                    : "bg-[#B19CD9] text-black shadow-lg shadow-[#B19CD9]/20 hover:brightness-105"
                   }`}
               >
                 <Zap size={14} /> {isUpdate ? "Sync Updates to Live" : "Launch Product"}
               </button>
             )}
-            <button onClick={() => onDelete(p)} className="w-full flex items-center justify-center gap-2 px-6 py-3 border border-red-200 text-red-500 rounded font-bold text-[11px] sm:text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all">
+            <button onClick={() => onDelete(p)} className="w-full flex items-center justify-center gap-2 px-6 py-3 border-2 border-red-200 text-red-500 rounded font-bold text-[11px] sm:text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all">
               <Trash2 size={14} /> Delete Version
             </button>
           </div>
@@ -217,7 +217,7 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
         {/* — IMAGE STUDIO — */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="aspect-[3/4] w-72 sm:w-80 lg:w-full mx-auto lg:mx-0 border border-gray-200 bg-gray-50/50 rounded-sm overflow-hidden flex items-center justify-center">
+          <div className={`aspect-[3/4] w-72 sm:w-80 lg:w-full mx-auto lg:mx-0 border ${activeImage ? "border-gray-200" : "border-gray-400"} bg-gray-50/50 rounded-sm overflow-hidden flex items-center justify-center`}>
             {activeImage ? (
               <img src={activeImage} className="w-full h-full object-cover" alt={p.title} />
             ) : (
@@ -289,25 +289,25 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
               <h3 className="text-[12px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-gray-900">Inventory Distribution Matrix</h3>
             </div>
             <div className="border border-gray-400 rounded-sm overflow-hidden">
-              <table className="w-full text-left text-[13px] sm:text-[11px]">
+              <table className="w-full text-center text-[13px] sm:text-[11px]">
                 <thead className="bg-gray-50 border-b border-gray-400">
                   <tr className="divide-x divide-gray-300">
                     <th className="px-6 py-3 font-bold text-gray-600 uppercase tracking-wider">Variant</th>
                     <th className="px-6 py-3 font-bold text-gray-600 uppercase tracking-wider">SKU</th>
-                    <th className="px-6 py-3 font-bold text-gray-600 uppercase tracking-wider text-right">Units</th>
+                    <th className="px-6 py-3 font-bold text-gray-600 uppercase tracking-wider">Units</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-300">
                   {variants.map((v, i) => (
                     <tr key={i} className="divide-x divide-gray-300 hover:bg-gray-50/30">
                       <td className="px-6 py-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center gap-2">
                           <div className="w-2.5 h-2.5 rounded-full border border-gray-200" style={{ backgroundColor: v.color_hex }} />
                           <span className="font-bold">{v.color_name}</span>
                         </div>
                       </td>
                       <td className="px-6 py-3 font-mono text-[12px] sm:text-[10px] text-gray-600">{v.variant_sku}</td>
-                      <td className="px-6 py-3 font-bold text-right text-gray-900">
+                      <td className="px-6 py-3 font-bold text-gray-900">
                         {v.is_unlimited ? "Unlimited" : v.stock}
                       </td>
                     </tr>
@@ -526,7 +526,7 @@ const ManageProducts = () => {
   const filterTrackRef = useRef<HTMLDivElement>(null);
   const [filterTrackW, setFilterTrackW] = useState(0);
   useEffect(() => {
-    const measure = () => setFilterTrackW(filterTrackRef.current?.offsetWidth ?? 0);
+    const measure = () => setFilterTrackW(filterTrackRef.current?.clientWidth ?? 0);
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
@@ -1188,7 +1188,7 @@ const ManageProducts = () => {
                   onClick={() => setFilterStatus(status)}
                   onMouseEnter={() => prefetchList(status, showAllMap[status])}
                   aria-pressed={filterStatus === status}
-                  className="group flex-1 py-2 sm:py-1.5 text-center"
+                  className="group flex-1 flex items-center justify-center py-2 sm:py-1.5"
                 >
                   <span
                     className={`relative z-30 pointer-events-none text-[11px] sm:text-[9px] font-bold uppercase tracking-wider transition-colors ${filterStatus === status ? "text-gray-900" : "text-gray-600 group-hover:text-gray-600"}`}
@@ -1309,8 +1309,8 @@ const ManageProducts = () => {
                 const showSync = draftRendered && (!hasLive || activeVersion === "DRAFT");
                 return (
                   <>
-                    {showLive && <Badge variant="outline" className="text-[10px] font-bold uppercase bg-amber-50 text-amber-600 border-amber-100">Live</Badge>}
-                    {showSync && <Badge variant="outline" className="text-[10px] font-bold uppercase bg-amber-50 text-amber-600 border-amber-100">Sync</Badge>}
+                    {showLive && <Badge variant="outline" className="text-sm font-bold uppercase rounded-sm bg-amber-50 text-amber-600 border-amber-100">Live</Badge>}
+                    {showSync && <Badge variant="outline" className="text-sm font-bold uppercase rounded-sm bg-amber-50 text-amber-600 border-amber-100">Sync</Badge>}
                   </>
                 );
               })()}
