@@ -334,7 +334,7 @@ export default function ProductDetail() {
   // Reflect the loaded product's name in the browser tab. PageTitle shows the
   // generic "Product" fallback for this route until the product resolves here.
   useEffect(() => {
-    if (product?.title) document.title = `${product.title} - ${BRAND}`;
+    if (product?.title) document.title = `${product.title} | ${BRAND}`;
   }, [product?.title]);
 
   // Canonicalize base-SKU URLs to primary variant SKU without remounting or refetching

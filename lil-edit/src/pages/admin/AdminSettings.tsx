@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowUpRight,
@@ -62,6 +63,10 @@ const groups: AdminSettingsGroup[] = [
 ];
 
 const AdminSettings = () => {
+  useEffect(() => {
+    document.title = "Admin Settings | Lil Edit";
+  }, []);
+
   return (
     <div className="min-h-screen bg-white text-[#1a1a1a] flex flex-col font-sans">
       <UserNavbar />

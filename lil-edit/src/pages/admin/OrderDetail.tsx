@@ -443,7 +443,7 @@ const AdminOrderDetailPage = () => {
       <html>
       <head>
         <meta charset="utf-8" />
-        <title>Order Sheet — ${order.orderNumber}</title>
+        <title>Order Sheet | ${order.orderNumber}</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">

@@ -52,7 +52,7 @@ export default function PageTitle() {
 
   useEffect(() => {
     const label = labelForPath(pathname);
-    document.title = label ? `${label} - ${BRAND}` : HOME_BRAND;
+    document.title = label ? `${label} | ${BRAND}` : HOME_BRAND;
   }, [pathname]);
 
   return null;
