@@ -180,10 +180,10 @@ const WishlistPage = () => {
 
       <main className="flex-1 flex flex-col w-full pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)]">
         {/* Breadcrumb */}
-        <div className="page-container px-4 sm:px-6 pt-1 pb-6">
-          <div className="flex flex-wrap items-center text-xs sm:text-sm text-gray-600 gap-y-2">
+        <div className="page-container px-4 sm:px-6 pt-3 pb-2 mt-1.5">
+          <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
             <Link to="/" className="hover:underline">Home</Link>
-            <ChevronRight className="w-4 h-4 mx-1" />
+            <ChevronRight className="w-4 h-4" />
             <span className="text-gray-800 font-medium">Your Wishlist</span>
           </div>
         </div>
@@ -209,7 +209,7 @@ const WishlistPage = () => {
 
             {/* Summary stat cards */}
             {!wishlistLoading && user && wishlistItems.length > 0 && (
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-6">
                 <StatCard
                   icon={<Heart className="w-5 h-5 text-white" fill="currentColor" />}
                   value={wishlistItems.length}
@@ -226,18 +226,21 @@ const WishlistPage = () => {
             )}
 
             {/* Section divider */}
-            <hr className="border-t border-foreground/50" />
+            <hr className="border-t border-foreground/50 mb-8" />
 
-            {/* FILTER TABS */}
-            <div className="flex items-end gap-1 border-b border-gray-200 overflow-x-auto no-scrollbar pt-2">
+            {/* FILTER TABS — baseline is an inset shadow (not a border) so the
+                active tab can paint a white bottom border over it and read as
+                "open"/connected to the panel below. A real border-b would sit
+                outside the overflow-x clip and be impossible to cover. */}
+            <div className="flex items-end gap-1 overflow-x-auto no-scrollbar pt-2 shadow-[inset_0_-2px_0_0_hsl(var(--foreground)_/_0.5)]">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 px-4 py-2 sm:px-5 sm:py-2.5 rounded-t-xl text-xs sm:text-sm font-medium transition-colors border border-b-0 relative top-[1px] whitespace-nowrap ${
+                  className={`flex items-center gap-1.5 rounded-t-xl font-medium transition-colors border-foreground/50 relative whitespace-nowrap ${
                     activeTab === tab.id
-                      ? "bg-white text-primary border-gray-200 z-10"
-                      : "bg-gray-200/60 text-gray-500 border-transparent hover:bg-gray-200 hover:text-gray-700"
+                      ? "border-[2px] px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base bg-white text-primary border-b-white z-10"
+                      : "border-[1.5px] px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm bg-gray-200/60 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
                   }`}
                 >
                   {tab.label}
@@ -250,9 +253,6 @@ const WishlistPage = () => {
                   >
                     {tab.count}
                   </span>
-                  {activeTab === tab.id && (
-                    <div className="absolute -bottom-[2px] left-0 right-0 h-[3px] bg-white" />
-                  )}
                 </button>
               ))}
             </div>
@@ -290,10 +290,10 @@ const WishlistPage = () => {
                 </button>
               </div>
             ) : (
-              filteredItems.map((item) => (
+              filteredItems.map((item, idx) => (
                 <Card
                   key={item.id}
-                  className="bg-white border border-gray-300 border-l-8 border-l-primary rounded-lg sm:rounded-xl overflow-hidden shadow-md ring-1 ring-black/5 hover:shadow-xl hover:ring-black/10 transition-all duration-300 min-h-[160px] md:min-h-[140px]"
+                  className={`bg-white border border-gray-400 border-l-8 border-l-primary rounded-lg sm:rounded-xl overflow-hidden shadow-lg ring-1 ring-black/10 hover:shadow-xl hover:ring-black/10 transition-all duration-300 min-h-[160px] md:min-h-[140px] ${idx === 0 ? 'mt-8' : ''}`}
                 >
                   <CardContent
                     className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-2.5 relative cursor-pointer"

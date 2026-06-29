@@ -29,28 +29,28 @@ export function OrderItemsTable({ items }: { items: OrderItem[] }) {
   return (
     <>
       {/* Desktop table */}
-      <div className="hidden sm:block overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-gray-200">
-            <tr>
-              {["Product", "SKU", "Qty", "Unit Price", "Subtotal"].map((h, i) => (
+      <div className="hidden sm:block overflow-x-auto border border-foreground/50 rounded-lg">
+        <table className="w-full text-center text-sm border-collapse">
+          <thead>
+            <tr className="border-b border-foreground/50">
+              {["Product", "SKU", "Qty", "Unit Price", "Subtotal"].map((h, i, arr) => (
                 <th
                   key={h}
-                  className={`py-2.5 text-[10px] font-bold text-gray-600 uppercase tracking-wider ${i >= 2 ? "text-right" : ""}`}
+                  className="px-5 sm:px-6 py-3 text-xs font-bold text-gray-600 uppercase tracking-wider align-middle text-center"
                 >
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody>
             {items.map((item) => (
-              <tr key={item.id}>
-                <td className="py-3 pr-3">
-                  <div className="flex items-center gap-3">
+              <tr key={item.id} className="border-b border-foreground/50 align-middle">
+                <td className="px-5 sm:px-6 py-3 pr-3 text-center align-middle">
+                  <div className="flex items-center justify-center gap-3">
                     <Thumb item={item} />
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900 line-clamp-2">{item.title}</p>
+                      <p className="font-medium text-gray-900 line-clamp-2 text-sm">{item.title}</p>
                       {(item.size || item.color.name) && (
                         <p className="text-xs text-gray-500 mt-0.5">
                           {[item.size && `Size: ${item.size}`, item.color.name].filter(Boolean).join(" · ")}
@@ -59,10 +59,10 @@ export function OrderItemsTable({ items }: { items: OrderItem[] }) {
                     </div>
                   </div>
                 </td>
-                <td className="py-3 pr-3 font-mono text-xs text-gray-500 whitespace-nowrap">{item.sku || "—"}</td>
-                <td className="py-3 text-right text-gray-700">{item.quantity}</td>
-                <td className="py-3 text-right text-gray-700 whitespace-nowrap">{inr(item.unitPrice)}</td>
-                <td className="py-3 text-right font-semibold text-gray-900 whitespace-nowrap">{inr(item.lineTotal)}</td>
+                <td className="px-5 sm:px-6 py-3 pr-3 font-mono text-xs text-gray-500 whitespace-nowrap align-middle text-center">{item.sku || "—"}</td>
+                <td className="px-5 sm:px-6 py-3 text-center text-gray-700 text-sm align-middle">{item.quantity}</td>
+                <td className="px-5 sm:px-6 py-3 text-center text-gray-700 whitespace-nowrap text-sm align-middle">{inr(item.unitPrice)}</td>
+                <td className="px-5 sm:px-6 py-3 text-center font-semibold text-gray-900 whitespace-nowrap text-sm align-middle">{inr(item.lineTotal)}</td>
               </tr>
             ))}
           </tbody>
@@ -70,14 +70,14 @@ export function OrderItemsTable({ items }: { items: OrderItem[] }) {
       </div>
 
       {/* Mobile cards */}
-      <div className="sm:hidden divide-y divide-gray-100">
-        {items.map((item) => (
-          <div key={item.id} className="flex gap-3 py-3 first:pt-0">
+      <div className="sm:hidden">
+        {items.map((item, idx) => (
+          <div key={item.id} className={`flex gap-3 py-3 ${idx < items.length - 1 ? "border-b border-foreground/50" : ""}`}>
             <Thumb item={item} />
             <div className="flex-1 min-w-0">
               <p className="font-medium text-gray-900 text-sm line-clamp-2">{item.title}</p>
-              <p className="font-mono text-[11px] text-gray-500 mt-0.5">{item.sku || "—"}</p>
-              <div className="flex items-center justify-between mt-1 text-xs text-gray-600">
+              <p className="font-mono text-xs text-gray-500 mt-0.5">{item.sku || "—"}</p>
+              <div className="flex items-center justify-between mt-1 text-sm text-gray-600">
                 <span>{inr(item.unitPrice)} × {item.quantity}</span>
                 <span className="font-semibold text-gray-900">{inr(item.lineTotal)}</span>
               </div>

@@ -79,7 +79,7 @@ const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
 function SectionCard({ icon: Icon, title, children }: { icon: typeof User; title: string; children: React.ReactNode }) {
   return (
     <div className="p-5 sm:p-6">
-      <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500 mb-4 flex items-center gap-2">
+      <h2 className="text-sm font-bold uppercase tracking-[0.15em] text-gray-500 flex items-center gap-2" style={{ marginBottom: "24px" }}>
         <Icon className="w-4 h-4" style={{ color: "#B19CD9" }} /> {title}
       </h2>
       {children}
@@ -90,8 +90,8 @@ function SectionCard({ icon: Icon, title, children }: { icon: typeof User; title
 function Field({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
   return (
     <div className="space-y-1">
-      <p className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">{label}</p>
-      <p className={`text-sm text-gray-900 break-words ${mono ? "font-mono text-xs" : "font-medium"}`}>{value || "—"}</p>
+      <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">{label}</p>
+      <p className={`text-base text-gray-900 break-words ${mono ? "font-mono text-xs" : "font-medium"}`}>{value || "—"}</p>
     </div>
   );
 }
@@ -606,40 +606,37 @@ const AdminOrderDetailPage = () => {
     <div className="min-h-screen bg-white text-[#1a1a1a] flex flex-col font-sans">
       {user ? <UserNavbar /> : <Navbar />}
 
-      <div className="pt-[160px] md:pt-[128px] px-6 lg:px-12 bg-white border-b border-gray-300 pb-6">
-        <div className="max-w-screen-2xl mx-auto">
-          <div className="flex flex-wrap items-center text-xs text-gray-500 gap-1 mb-3">
-            <Link to="/admin/orders" className="hover:underline">Order Management</Link>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-gray-800 font-medium font-mono">{order?.orderNumber ?? "Order"}</span>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Link to="/admin/orders" className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900">
-              <ArrowLeft className="w-4 h-4" /> Back to orders
-            </Link>
+      <div className="relative pt-[130px] md:pt-[110px] bg-white pb-2">
+        <div className="px-3 sm:px-6 lg:px-12">
+          <div className="max-w-[2200px] mx-auto">
+            <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
+              <Link to="/" className="hover:underline">Home</Link>
+              <ChevronRight className="w-4 h-4" />
+              <Link to="/admin/orders" className="hover:underline">Orders</Link>
+              <ChevronRight className="w-4 h-4" />
+              <span className="text-gray-800 font-medium font-mono">{order?.orderNumber ?? "Order"}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 pb-6">
+              <Link to="/admin/orders" className="inline-flex items-center gap-1.5 text-base font-medium text-gray-600 hover:text-gray-900">
+                <ArrowLeft className="w-4 h-4" /> Back to orders
+              </Link>
+            </div>
+            <hr className="border-t border-foreground/50 mb-4" />
             {order && (
-              <div className="flex flex-wrap items-center gap-2">
-                {order.receiptSent && (
-                  <span
-                    title="A confirmation receipt has been sent for this order"
-                    className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700"
-                  >
-                    <Check className="w-3.5 h-3.5" /> Receipt sent
-                  </span>
-                )}
+              <div className="flex flex-wrap items-center gap-2 pt-4 pb-0 -mb-4 justify-end">
                 <button
                   type="button"
                   onClick={handleResendReceipt}
                   disabled={resendingReceipt}
                   title="Email the order-confirmation receipt to the customer"
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-md px-4 py-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center gap-2 text-base font-semibold text-gray-700 bg-white border border-foreground/50 rounded-md px-4 py-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  <Mail className="w-4 h-4" /> {resendingReceipt ? "Sending…" : order.receiptSent ? "Resend receipt" : "Send receipt"}
+                  <Mail className="w-4 h-4" /> {resendingReceipt ? "Sending…" : "Send receipt"}
                 </button>
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-gray-900 rounded-md px-4 py-2 hover:bg-gray-800 transition-colors"
+                  className="inline-flex items-center gap-2 text-base font-semibold text-white bg-gray-900 rounded-md px-4 py-2 hover:bg-gray-800 transition-colors"
                 >
                   <Download className="w-4 h-4" /> Download PDF
                 </button>
@@ -649,12 +646,12 @@ const AdminOrderDetailPage = () => {
         </div>
       </div>
 
-      <main className="flex-1 px-6 lg:px-12 py-8">
-        <div className="max-w-screen-2xl mx-auto">
+      <main className="flex-1 px-3 sm:px-6 lg:px-12 pt-6 pb-8">
+        <div className="max-w-[2200px] mx-auto">
           {loading ? (
             <DetailSkeleton />
           ) : error || !order ? (
-            <div className="w-full py-20 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
+            <div className="w-full py-20 flex flex-col items-center justify-center bg-white border border-foreground/50 rounded-xl">
               <p className="text-lg font-semibold text-gray-800 mb-1">Order not found</p>
               <p className="text-sm text-gray-500 mb-6">{error ?? "This order doesn't exist."}</p>
               <Link to="/admin/orders" className="text-sm font-medium text-gray-900 underline underline-offset-2">View all orders</Link>
@@ -663,18 +660,18 @@ const AdminOrderDetailPage = () => {
             <div className="grid lg:grid-cols-3 gap-6 items-start">
               {/* ── Left column: ONE rectangle holding every order-detail section,
                      separated by dividers (no nested boxes) ─────────────────────── */}
-              <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl shadow-sm divide-y divide-gray-100">
+              <div className="lg:col-span-2 bg-white border border-foreground/50 rounded-xl shadow-sm">
                 {/* Order Information */}
                 <SectionCard icon={Receipt} title="Order Information">
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-5">
                     <Field label="Order ID" value={order.orderNumber} mono />
                     <Field label="Created Date" value={formatDateTime(order.createdAt)} />
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Order Status</p>
+                      <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">Order Status</p>
                       <OrderStatusBadge status={order.status} />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Payment Status</p>
+                      <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">Payment Status</p>
                       <PaymentStatusBadge status={order.paymentStatus} />
                     </div>
                     <Field label="Payment Method" value={order.paymentMethod?.toUpperCase()} />
@@ -684,7 +681,7 @@ const AdminOrderDetailPage = () => {
 
                 {/* Customer Information */}
                 <SectionCard icon={User} title="Customer Information">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-5">
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-5">
                     <Field label="Customer Name" value={order.customer.name} />
                     <Field label="Email" value={order.customer.email} />
                     <Field label="Phone Number" value={order.customer.phone} />
@@ -728,17 +725,17 @@ const AdminOrderDetailPage = () => {
               </div>
 
               {/* ── Right column ─────────────────────────────────────────────── */}
-              <div className="space-y-6 lg:sticky lg:top-[148px]">
+              <div className="space-y-4 lg:sticky lg:top-[148px]">
                 {/* Status + Payment Management — ONE rectangle, two divided sections */}
-                <div className="bg-white border border-gray-200 rounded-xl shadow-sm divide-y divide-gray-100">
+                <div className="bg-white border border-foreground/50 rounded-xl shadow-sm">
                 {/* Status Management */}
                 <div className="p-5 sm:p-6">
-                  <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500 mb-4">Status Management</h2>
+                  <h2 className="text-sm font-bold uppercase tracking-[0.15em] text-gray-500 mb-4">Status Management</h2>
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm text-gray-600">Current</span>
                     <OrderStatusBadge status={order.status} />
                   </div>
-                  <label className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">
+                  <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">
                     {correcting ? "Correct status to" : "Update status"}
                   </label>
                   {correcting ? (
@@ -753,7 +750,7 @@ const AdminOrderDetailPage = () => {
                           className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
                             selectedStatus === s
                               ? "border-amber-500 bg-amber-50 text-amber-800"
-                              : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300"
+                              : "bg-gray-50/50 text-gray-700 hover:border-gray-300"
                           }`}
                         >
                           {STATUS_LABELS[s]}
@@ -762,7 +759,7 @@ const AdminOrderDetailPage = () => {
                     </div>
                   ) : (
                     <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as OrderStatus)} disabled={terminal}>
-                      <SelectTrigger className="mt-1.5 h-10 w-full border-gray-200 bg-gray-50/50 text-sm disabled:opacity-60">
+                      <SelectTrigger className="mt-1.5 h-10 w-full bg-gray-50/50 text-sm disabled:opacity-60 border border-gray-400" style={{ borderWidth: "1.25px" }}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -788,7 +785,7 @@ const AdminOrderDetailPage = () => {
                         <button
                           type="button"
                           onClick={startCorrection}
-                          className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-100 hover:border-amber-400 transition-colors"
+                          className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-100 hover:border-amber-400 transition-colors"
                         >
                           <AlertTriangle className="h-3 w-3" /> Correct status
                         </button>
@@ -812,18 +809,19 @@ const AdminOrderDetailPage = () => {
                   {/* Note — optional for a normal change, required for a correction. */}
                   {(!terminal || correcting) && (
                     <div className="mt-4">
-                      <label htmlFor="status-note" className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">
+                      <label htmlFor="status-note" className="text-xs font-bold text-gray-600 uppercase tracking-wider">
                         Note / reminder <span className="font-medium normal-case text-gray-500">(optional)</span>
                       </label>
                       <Textarea
                         id="status-note"
                         value={note}
-                        onChange={(e) => setNote(e.target.value.slice(0, 500))}
+                        onChange={(e) => setNote(e.target.value.slice(0, 200))}
                         placeholder={correcting ? "e.g. Marked delivered by mistake — order is still in transit" : "e.g. Courier delayed — customer informed"}
                         rows={2}
-                        className="mt-1.5 resize-none border-gray-200 bg-gray-50/50 text-sm"
+                        className="mt-1.5 resize-none bg-gray-50/50 text-sm border border-gray-400"
+                        style={{ borderWidth: "1.25px" }}
                       />
-                      <p className="mt-1 text-right text-[10px] text-gray-500">{note.length}/500</p>
+                      <p className="mt-1 text-right text-[10px] text-gray-500">{note.length}/200</p>
                     </div>
                   )}
 
@@ -854,7 +852,7 @@ const AdminOrderDetailPage = () => {
                         type="button"
                         onClick={cancelCorrection}
                         disabled={saving}
-                        className="flex-1 inline-flex items-center justify-center text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-md px-4 py-2.5 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                        className="flex-1 inline-flex items-center justify-center text-base font-semibold text-gray-700 bg-white border border-foreground/50 rounded-md px-4 py-2.5 hover:bg-gray-50 disabled:opacity-40 transition-colors"
                       >
                         Cancel
                       </button>
@@ -862,7 +860,7 @@ const AdminOrderDetailPage = () => {
                         type="button"
                         onClick={handleSave}
                         disabled={!dirty || saving}
-                        className="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-white bg-amber-600 rounded-md px-4 py-2.5 hover:bg-amber-700 disabled:opacity-40 disabled:hover:bg-amber-600 transition-colors"
+                        className="flex-1 inline-flex items-center justify-center gap-2 text-base font-semibold text-white bg-amber-600 rounded-md px-4 py-2.5 hover:bg-amber-700 disabled:opacity-40 disabled:hover:bg-amber-600 transition-colors"
                       >
                         <AlertTriangle className="w-4 h-4" /> {saving ? "Saving…" : "Save correction"}
                       </button>
@@ -872,7 +870,7 @@ const AdminOrderDetailPage = () => {
                       type="button"
                       onClick={handleSave}
                       disabled={!dirty || saving}
-                      className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-white bg-gray-900 rounded-md px-4 py-2.5 hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-gray-900 transition-colors"
+                      className="mt-4 w-full inline-flex items-center justify-center gap-2 text-base font-semibold text-white bg-gray-900 rounded-md px-4 py-2.5 hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-gray-900 transition-colors"
                     >
                       <Save className="w-4 h-4" /> {saving ? "Saving…" : "Save Changes"}
                     </button>
@@ -881,14 +879,14 @@ const AdminOrderDetailPage = () => {
 
                 {/* Payment Management */}
                 <div className="p-5 sm:p-6">
-                  <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500 mb-4 flex items-center gap-2">
+                  <h2 className="text-sm font-bold uppercase tracking-[0.15em] text-gray-500 mb-4 flex items-center gap-2">
                     <Wallet className="w-4 h-4" style={{ color: "#B19CD9" }} /> Payment Management
                   </h2>
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm text-gray-600">Current</span>
                     <PaymentStatusBadge status={order.paymentStatus} />
                   </div>
-                  <label className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">
+                  <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">
                     {correctingPayment ? "Correct payment status to" : "Update payment status"}
                   </label>
                   {correctingPayment ? (
@@ -903,7 +901,7 @@ const AdminOrderDetailPage = () => {
                           className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
                             selectedPayment === s
                               ? "border-amber-500 bg-amber-50 text-amber-800"
-                              : "border-gray-200 bg-gray-50/50 text-gray-700 hover:border-gray-300"
+                              : "bg-gray-50/50 text-gray-700 hover:border-gray-300"
                           }`}
                         >
                           {PAYMENT_STATUS_LABELS[s]}
@@ -912,7 +910,7 @@ const AdminOrderDetailPage = () => {
                     </div>
                   ) : (
                     <Select value={selectedPayment} onValueChange={(v) => setSelectedPayment(v as PaymentStatus)} disabled={paymentTerminal}>
-                      <SelectTrigger className="mt-1.5 h-10 w-full border-gray-200 bg-gray-50/50 text-sm disabled:opacity-60">
+                      <SelectTrigger className="mt-1.5 h-10 w-full bg-gray-50/50 text-sm disabled:opacity-60 border border-gray-400" style={{ borderWidth: "1.25px" }}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -936,7 +934,7 @@ const AdminOrderDetailPage = () => {
                         <button
                           type="button"
                           onClick={startPaymentCorrection}
-                          className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-100 hover:border-amber-400 transition-colors"
+                          className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-100 hover:border-amber-400 transition-colors"
                         >
                           <AlertTriangle className="h-3 w-3" /> Correct status
                         </button>
@@ -959,18 +957,19 @@ const AdminOrderDetailPage = () => {
                   {/* Note — optional for a normal change or a correction. */}
                   {(!paymentTerminal || correctingPayment) && (
                     <div className="mt-4">
-                      <label htmlFor="payment-note" className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">
+                      <label htmlFor="payment-note" className="text-xs font-bold text-gray-600 uppercase tracking-wider">
                         Note / reminder <span className="font-medium normal-case text-gray-500">(optional)</span>
                       </label>
                       <Textarea
                         id="payment-note"
                         value={paymentNote}
-                        onChange={(e) => setPaymentNote(e.target.value.slice(0, 500))}
+                        onChange={(e) => setPaymentNote(e.target.value.slice(0, 200))}
                         placeholder="e.g. Refund processed via Razorpay — ref #RZP123"
                         rows={2}
-                        className="mt-1.5 resize-none border-gray-200 bg-gray-50/50 text-sm"
+                        className="mt-1.5 resize-none bg-gray-50/50 text-sm border border-gray-400"
+                        style={{ borderWidth: "1.25px" }}
                       />
-                      <p className="mt-1 text-right text-[10px] text-gray-500">{paymentNote.length}/500</p>
+                      <p className="mt-1 text-right text-[10px] text-gray-500">{paymentNote.length}/200</p>
                     </div>
                   )}
 
@@ -980,7 +979,7 @@ const AdminOrderDetailPage = () => {
                         type="button"
                         onClick={cancelPaymentCorrection}
                         disabled={savingPayment}
-                        className="flex-1 inline-flex items-center justify-center text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-md px-4 py-2.5 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                        className="flex-1 inline-flex items-center justify-center text-base font-semibold text-gray-700 bg-white border border-foreground/50 rounded-md px-4 py-2.5 hover:bg-gray-50 disabled:opacity-40 transition-colors"
                       >
                         Cancel
                       </button>
@@ -988,7 +987,7 @@ const AdminOrderDetailPage = () => {
                         type="button"
                         onClick={handleSavePayment}
                         disabled={!paymentDirty || savingPayment}
-                        className="flex-1 inline-flex items-center justify-center gap-2 text-sm font-semibold text-white bg-amber-600 rounded-md px-4 py-2.5 hover:bg-amber-700 disabled:opacity-40 disabled:hover:bg-amber-600 transition-colors"
+                        className="flex-1 inline-flex items-center justify-center gap-2 text-base font-semibold text-white bg-amber-600 rounded-md px-4 py-2.5 hover:bg-amber-700 disabled:opacity-40 disabled:hover:bg-amber-600 transition-colors"
                       >
                         <AlertTriangle className="w-4 h-4" /> {savingPayment ? "Saving…" : "Save correction"}
                       </button>
@@ -998,7 +997,7 @@ const AdminOrderDetailPage = () => {
                       type="button"
                       onClick={handleSavePayment}
                       disabled={!paymentDirty || savingPayment}
-                      className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-white bg-gray-900 rounded-md px-4 py-2.5 hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-gray-900 transition-colors"
+                      className="mt-4 w-full inline-flex items-center justify-center gap-2 text-base font-semibold text-white bg-gray-900 rounded-md px-4 py-2.5 hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-gray-900 transition-colors"
                     >
                       <CreditCard className="w-4 h-4" /> {savingPayment ? "Saving…" : "Save Payment"}
                     </button>
@@ -1007,8 +1006,8 @@ const AdminOrderDetailPage = () => {
                 </div>
 
                 {/* Order Summary — its own rectangle, last */}
-                <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 sm:p-6">
-                  <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500 mb-4">Order Summary</h2>
+                <div className="bg-white border border-foreground/50 rounded-xl shadow-sm p-5 sm:p-6">
+                  <h2 className="text-sm font-bold uppercase tracking-[0.15em] text-gray-500 mb-4">Order Summary</h2>
                   <OrderSummaryCard order={order} />
                 </div>
               </div>

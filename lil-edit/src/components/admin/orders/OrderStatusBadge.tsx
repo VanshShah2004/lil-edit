@@ -20,7 +20,7 @@ const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
 
 function Pill({ label, className }: { label: string; className: string }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border capitalize whitespace-nowrap ${className}`}>
+    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-md border capitalize whitespace-nowrap ${className}`}>
       <span className="w-1.5 h-1.5 rounded-full bg-current" />
       {label}
     </span>

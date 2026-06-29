@@ -43,10 +43,10 @@ function Node({
         {/* Same dot/line treatment as the order status timeline: latest change is a
             full circle with a tick (rose ✕ for failed/refunded); earlier ones are a
             small solid dot. */}
-        <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center">
           {mostRecent ? (
-            <span className={`flex h-4 w-4 items-center justify-center rounded-full text-white ring-4 ring-gray-100 ${dotBg}`}>
-              {negative ? <X className="h-2.5 w-2.5" /> : <Check className="h-2.5 w-2.5" />}
+            <span className={`flex h-5 w-5 items-center justify-center rounded-full text-white ring-4 ring-gray-100 ${dotBg}`}>
+              {negative ? <X className="h-3 w-3" /> : <Check className="h-3 w-3" />}
             </span>
           ) : (
             <span className={`h-2 w-2 rounded-full ${dotBg}`} />

@@ -69,10 +69,10 @@ function Node({
         {/* Same dot/line treatment as the customer journey: latest change is a
             full circle with a tick (rose ✕ if it was a cancellation); earlier ones
             are a small solid dot. */}
-        <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center">
           {mostRecent ? (
-            <span className={`flex h-4 w-4 items-center justify-center rounded-full text-white ring-4 ring-gray-100 ${dotBg}`}>
-              {cancelled ? <X className="h-2.5 w-2.5" /> : <Check className="h-2.5 w-2.5" />}
+            <span className={`flex h-5 w-5 items-center justify-center rounded-full text-white ring-4 ring-gray-100 ${dotBg}`}>
+              {cancelled ? <X className="h-3 w-3" /> : <Check className="h-3 w-3" />}
             </span>
           ) : (
             <span className={`h-2 w-2 rounded-full ${dotBg}`} />
@@ -89,39 +89,16 @@ function Node({
             {label}
           </p>
           {notify && onNotify && (
-            notifiedCurrent ? (
-              // Already emailed for this status: show a static "Notified" marker, plus a
-              // separate "Resend via Gmail" button for an explicit re-send.
-              <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                <span
-                  title="Customer already notified for this status"
-                  className="inline-flex items-center gap-1 rounded-[4px] border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700"
-                >
-                  <Check className="h-3 w-3" /> Notified
-                </span>
-                <button
-                  type="button"
-                  onClick={onNotify}
-                  disabled={notifying}
-                  title="Send this status update to the customer again"
-                  className="inline-flex items-center gap-1 rounded-[4px] bg-[#B19CD9] px-2.5 py-1 text-[11px] font-semibold text-gray-900 transition-colors hover:bg-[#9d86c9] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <Mail className="h-3 w-3" />
-                  {notifying ? "Sending…" : "Resend via Gmail"}
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={onNotify}
-                disabled={notifying}
-                title="Email the customer this status update"
-                className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-[4px] bg-[#B19CD9] px-2.5 py-1 text-[11px] font-semibold text-gray-900 transition-colors hover:bg-[#9d86c9] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <Mail className="h-3 w-3" />
-                {notifying ? "Sending…" : "Notify via Gmail"}
-              </button>
-            )
+            <button
+              type="button"
+              onClick={onNotify}
+              disabled={notifying}
+              title={notifiedCurrent ? "Send this status update to the customer again" : "Email the customer this status update"}
+              className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-[4px] bg-[#B19CD9] px-2.5 py-1 text-[11px] font-semibold text-gray-900 transition-colors hover:bg-[#9d86c9] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Mail className="h-3 w-3" />
+              {notifying ? "Sending…" : notifiedCurrent ? "Resend via Gmail" : "Notify via Gmail"}
+            </button>
           )}
         </div>
         {/* Description: the state change that was made + who made it (the admin-only

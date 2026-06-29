@@ -146,16 +146,16 @@ export default function Cart() {
         className="flex-1 flex flex-col w-full pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)]"
       >
         {/* Breadcrumb */}
-        <div className="page-container px-4 sm:px-6 pt-1 pb-6">
-          <div className="flex flex-wrap items-center text-xs sm:text-sm text-gray-600 gap-y-2">
+        <div className="page-container px-4 sm:px-6 pt-3 pb-2 mt-1.5">
+          <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
             <Link to="/" className="hover:underline">
               Home
             </Link>
-            <ChevronRight className="w-4 h-4 mx-1" />
+            <ChevronRight className="w-4 h-4" />
             <span className="text-gray-800 font-medium">Your Bag</span>
-            <ChevronRight className="w-4 h-4 mx-1" />
+            <ChevronRight className="w-4 h-4" />
             <span className="text-gray-500">Shipping</span>
-            <ChevronRight className="w-4 h-4 mx-1" />
+            <ChevronRight className="w-4 h-4" />
             <span className="text-gray-500">Payment</span>
           </div>
         </div>
@@ -187,7 +187,7 @@ export default function Cart() {
 
             {/* Summary stat cards */}
             {!cartLoading && user && cartItems.length > 0 && (
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-6">
                 <StatCard
                   icon={<ShoppingCart className="w-5 h-5 text-white" fill="currentColor" />}
                   value={cartItems.reduce((sum, item) => sum + item.quantity, 0)}
@@ -204,7 +204,7 @@ export default function Cart() {
             )}
 
             {/* Section divider */}
-            <hr className="border-t border-foreground/50" />
+            <hr className="border-t border-foreground/50 mb-8" />
 
             {/* Loading skeleton */}
             {cartLoading && <CartSkeleton />}
@@ -248,11 +248,12 @@ export default function Cart() {
             )}
 
             {/* Cart items */}
-            {!cartLoading &&
-              cartItems.map((item) => (
+            {!cartLoading && (
+              <div className="space-y-4 sm:space-y-6">
+              {cartItems.map((item, idx) => (
                 <Card
                   key={item.id}
-                  className="bg-white border border-gray-300 border-l-8 border-l-brand-teal rounded-lg sm:rounded-xl overflow-hidden shadow-md ring-1 ring-black/5 hover:shadow-xl hover:ring-black/10 transition-all duration-300 min-h-[160px] md:min-h-[140px]"
+                  className={`bg-white border border-gray-400 border-l-8 border-l-brand-teal rounded-lg sm:rounded-xl overflow-hidden shadow-lg ring-1 ring-black/10 hover:shadow-xl hover:ring-black/10 transition-all duration-300 min-h-[160px] md:min-h-[140px] ${idx === 0 ? 'mt-8' : ''}`}
                 >
                   <CardContent
                     className="py-3 pr-4 pl-2 sm:p-2.5 md:p-3 flex flex-col gap-1.5 relative cursor-pointer"
@@ -437,6 +438,8 @@ export default function Cart() {
                   </CardContent>
                 </Card>
               ))}
+              </div>
+            )}
 
             {/* Free shipping progress */}
             {!cartLoading && cartItems.length > 0 && freeShippingRemaining > 0 && (
