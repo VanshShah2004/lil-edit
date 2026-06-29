@@ -146,6 +146,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     });
     try {
       await apiRemove(wishlistItemId);
+      toast.success("Removed from wishlist!");
     } catch {
       setWishlistItems(snapshot);
       toast.error("Could not remove from wishlist");

@@ -830,7 +830,7 @@ export default function ProductDetail() {
         )}
 
         {/* YOU MAY ALSO LIKE SECTION */}
-        <section className="mt-14">
+        <section className="mt-32">
           <div className="w-screen relative left-1/2 -translate-x-1/2 pt-6 [padding-bottom:calc(env(safe-area-inset-bottom)+2.5rem)] md:[padding-bottom:calc(env(safe-area-inset-bottom)+1.5rem)] bg-[#E8DDF7]">
           <div className="page-container">
           <div className="flex items-end justify-between mb-6 sm:mb-8">

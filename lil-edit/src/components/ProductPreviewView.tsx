@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Heart, Minus, Plus, Share2, ShoppingBag, Star, X, Mail, Link2, MoreHorizontal, Check } from "lucide-react";
+import { Heart, Minus, Plus, Share2, Star, X, Mail, Link2, MoreHorizontal, Check } from "lucide-react";
 import { FaFacebook, FaTwitter, FaWhatsapp, FaInstagram, FaTelegramPlane, FaPinterestP, FaSnapchatGhost, FaRedditAlien } from "react-icons/fa";
 import { IoChatbubbleEllipses } from "react-icons/io5";
 import { motion, AnimatePresence } from "framer-motion";
@@ -48,7 +48,7 @@ const ProductPreviewView = ({
   const [wishlistBusy, setWishlistBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isDesktop] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 768 : false);
-  const { addToCart } = useCart();
+  const { addToCart, removeItem, cartItems } = useCart();
   const { isWishlisted, addToWishlist, removeFromWishlist, wishlistItems } = useWishlist();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -172,6 +172,8 @@ const ProductPreviewView = ({
   const mobileOnly = forceMobileLayout;
 
   const currentSku = activeColor?.sku || product.sku;
+  // Bag fills (like the wishlist heart) when this variant's SKU is already in the cart.
+  const isInCart = cartItems.some((i) => i.sku === currentSku);
   const isCurrentUnlimited = activeColor ? !!activeColor.isUnlimited : product.colors.some(c => c.isUnlimited);
   const currentStock = activeColor ? (activeColor.stock ?? 0) : product.colors.reduce((sum, c) => sum + (c.stock ?? 0), 0);
 
@@ -198,6 +200,24 @@ const ProductPreviewView = ({
         size: selectedSize ?? "",
         quantity,
       });
+    } finally {
+      setCartBusy(false);
+    }
+  };
+
+  // Bag icon toggles cart membership: filled (in cart) → remove every line for this
+  // SKU; empty → run the normal add flow. Keyed by SKU to match the bag's filled state.
+  const handleBagToggle = async () => {
+    if (previewMode) return;
+    if (!isInCart) {
+      await handleAddToCart();
+      return;
+    }
+    setCartBusy(true);
+    try {
+      const matches = cartItems.filter((i) => i.sku === currentSku);
+      for (const m of matches) await removeItem(m.id);
+      toast.success("Removed from cart!");
     } finally {
       setCartBusy(false);
     }
@@ -492,7 +512,7 @@ const ProductPreviewView = ({
             </div>
           )}
 
-          <div className="flex gap-4 mb-5 text-black items-center">
+          <div className="flex gap-5 mb-5 text-black items-center">
             <button
               type="button"
               disabled={previewMode || wishlistBusy}
@@ -518,10 +538,12 @@ const ProductPreviewView = ({
               className="p-1 -m-1 transition-colors disabled:opacity-40 cursor-pointer outline-none"
               title={isWishlisted(product.slug, currentSku) ? "Remove from wishlist" : "Add to wishlist"}
             >
+              {/* Stroke stays black always (text-black); the wishlisted state fills the
+                  heart with the primary colour via `fill-primary` (CSS fill overrides the
+                  attribute), so the black border reads over the fill. */}
               <Heart
-                size={18}
-                className={isWishlisted(product.slug, currentSku) ? "text-primary" : "text-black"}
-                fill={isWishlisted(product.slug, currentSku) ? "currentColor" : "none"}
+                strokeWidth={isWishlisted(product.slug, currentSku) ? 1.5 : 2}
+                className={`w-[30px] h-[30px] md:w-6 md:h-6 text-black ${isWishlisted(product.slug, currentSku) ? "fill-primary" : "fill-none"}`}
               />
             </button>
             {!previewMode ? (
@@ -529,15 +551,37 @@ const ProductPreviewView = ({
                 onClick={() => setShareOpen(true)}
                 className="p-1 -m-1 transition-colors hover:text-[#0B5B55] outline-none cursor-pointer"
               >
-                <Share2 size={18} />
+                <Share2 className="w-[30px] h-[30px] md:w-6 md:h-6" />
               </button>
             ) : (
               <button disabled className="p-1 -m-1 opacity-40 cursor-not-allowed outline-none">
-                <Share2 size={18} />
+                <Share2 className="w-[30px] h-[30px] md:w-6 md:h-6" />
               </button>
             )}
-            <ShoppingBag size={18} />
-            {!previewMode && <Star size={18} />}
+            <button
+              type="button"
+              disabled={cartBusy || previewMode}
+              onClick={() => void handleBagToggle()}
+              className="p-1 -m-1 transition-colors hover:text-[#0B5B55] outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              title={isInCart ? "Remove from cart" : "Add to cart"}
+            >
+              {/* lucide ShoppingBag geometry, hand-rolled so only the bag BODY fills with
+                  teal. Filling via the lucide component fills the open handle arc into a
+                  solid blob — so the top line + handle stay stroke-only (black) on top. */}
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={isInCart ? 1.5 : 2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-black w-[30px] h-[30px] md:w-6 md:h-6"
+              >
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" fill={isInCart ? "#4DB6AC" : "none"} />
+                <path d="M3 6h18" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
+              </svg>
+            </button>
           </div>
 
           <div className="mb-5">
@@ -592,7 +636,7 @@ const ProductPreviewView = ({
                 <button
                   key={size}
                   onClick={() => setSelectedSize(size)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
                     selectedSize === size ? "bg-[#B19CD9] text-black" : "bg-gray-100 text-slate-900"
                   }`}
                 >
@@ -604,7 +648,7 @@ const ProductPreviewView = ({
 
           <div className="mb-5">
             <p className="text-sm font-medium mb-2">Quantity</p>
-            <div className="flex items-center border-2 border-[#08423E] rounded-full w-fit h-10">
+            <div className="flex items-center border-2 border-[#08423E] rounded-xl w-fit h-10">
               <button onClick={() => setQuantity((prev) => Math.max(1, prev - 1))} className="h-10 w-10 flex items-center justify-center text-[#08423E]">
                 <Minus size={16} />
               </button>
@@ -615,11 +659,11 @@ const ProductPreviewView = ({
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 mb-6">
+          <div className="flex flex-col gap-3 mt-10 mb-6">
             <button
               onClick={() => void handleAddToCart()}
               disabled={cartBusy || previewMode}
-              className="w-full text-black py-3 rounded-full font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
+              className="w-full text-black py-3 rounded-xl font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
               style={{ backgroundColor: "#B19CD9" }}
             >
               {cartBusy ? "Adding…" : "ADD TO CART"}
@@ -627,7 +671,7 @@ const ProductPreviewView = ({
             <button
               onClick={handleBuyNow}
               disabled={cartBusy || previewMode}
-              className="w-full text-white py-3 rounded-full font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
+              className="w-full text-white py-3 rounded-xl font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
               style={{ backgroundColor: "#0B5B55" }}
             >
               BUY NOW

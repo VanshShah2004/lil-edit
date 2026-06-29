@@ -1148,7 +1148,7 @@ const AddProduct = () => {
                                         fileInputRef.current?.click();
                                       }, 300);
                                     }}
-                                    className="ml-auto sm:ml-0 py-2.5 px-6 rounded-full bg-gray-50 hover:bg-gray-900 hover:text-white border border-gray-300 hover:border-primary text-gray-900 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/20 whitespace-nowrap"
+                                    className="ml-auto sm:ml-0 py-2.5 px-6 rounded-md bg-gray-50 hover:bg-gray-900 hover:text-white border border-gray-300 hover:border-primary text-gray-900 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/20 whitespace-nowrap"
                                   >
                                     Edit Gallery
                                   </button>
@@ -1173,7 +1173,7 @@ const AddProduct = () => {
                                   <div className="flex items-center justify-between gap-2 min-h-[40px] sm:h-10">
                                     <label className="text-[11px] font-bold uppercase tracking-widest text-gray-900 leading-tight">
                                       <span className="sm:hidden">Stock<br />Level</span>
-                                      <span className="hidden sm:inline">{color.isUnlimited ? "Stock Level (Auto)" : "Stock Level"}</span>
+                                      <span className="hidden sm:inline">Stock Level</span>
                                     </label>
 
                                     <StockToggleSlider
@@ -1187,35 +1187,38 @@ const AddProduct = () => {
                                     />
                                   </div>
 
-                                  <div className={`group/input flex items-center h-10 w-52 sm:w-28 rounded-md border border-gray-300 bg-gray-50 overflow-hidden focus-within:border-[#B19CD9] transition-all ${color.isUnlimited ? 'opacity-50' : ''}`}>
-                                    <button
-                                      type="button"
-                                      onClick={() => updateVariantStock(color.name, Math.max(1, (color.stock || 1) - 1))}
-                                      disabled={color.isUnlimited}
-                                      className="h-full px-2.5 flex items-center justify-center text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed transition-colors shrink-0"
-                                      aria-label="Decrease stock"
-                                    >
-                                      <Minus className="w-3.5 h-3.5" />
-                                    </button>
-                                    <input
-                                      type="number"
-                                      value={color.isUnlimited ? "" : color.stock}
-                                      onChange={(e) => updateVariantStock(color.name, parseInt(e.target.value) || 0)}
-                                      disabled={color.isUnlimited}
-                                      className={`flex-1 min-w-0 h-full bg-transparent border-x border-gray-300 px-1 outline-none text-sm font-medium font-body text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${color.isUnlimited ? 'text-gray-800' : 'text-gray-900'}`}
-                                      placeholder={color.isUnlimited ? "Unlimited" : "1"}
-                                      min="1"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => updateVariantStock(color.name, (color.stock || 0) + 1)}
-                                      disabled={color.isUnlimited}
-                                      className="h-full px-2.5 flex items-center justify-center text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed transition-colors shrink-0"
-                                      aria-label="Increase stock"
-                                    >
-                                      <Plus className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
+                                  {color.isUnlimited ? (
+                                    <div className="flex items-center justify-center h-10 w-52 sm:w-28 rounded-md border border-gray-300 bg-gray-50 text-sm font-medium font-body text-gray-800">
+                                      Unlimited
+                                    </div>
+                                  ) : (
+                                    <div className="group/input flex items-center h-10 w-52 sm:w-28 rounded-md border border-gray-300 bg-gray-50 overflow-hidden focus-within:border-[#B19CD9] transition-all">
+                                      <button
+                                        type="button"
+                                        onClick={() => updateVariantStock(color.name, Math.max(1, (color.stock || 1) - 1))}
+                                        className="h-full px-2.5 flex items-center justify-center text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed transition-colors shrink-0"
+                                        aria-label="Decrease stock"
+                                      >
+                                        <Minus className="w-3.5 h-3.5" />
+                                      </button>
+                                      <input
+                                        type="number"
+                                        value={color.stock}
+                                        onChange={(e) => updateVariantStock(color.name, parseInt(e.target.value) || 0)}
+                                        className="flex-1 min-w-0 h-full bg-transparent border-x border-gray-300 px-1 outline-none text-sm font-medium font-body text-center text-gray-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        placeholder="1"
+                                        min="1"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => updateVariantStock(color.name, (color.stock || 0) + 1)}
+                                        className="h-full px-2.5 flex items-center justify-center text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed transition-colors shrink-0"
+                                        aria-label="Increase stock"
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1223,7 +1226,7 @@ const AddProduct = () => {
                             {/* Corner Action */}
                             <button
                               onClick={() => removeColor(color.name)}
-                              className="absolute top-4 right-4 p-2.5 text-gray-800/20 hover:text-red-500 hover:bg-red-50 rounded-md transition-all z-20 opacity-0 group-hover:opacity-100"
+                              className="absolute top-4 sm:top-1 right-4 sm:right-1 p-2.5 text-gray-800/70 hover:text-red-500 hover:bg-red-50 rounded-md transition-all z-20 opacity-100"
                             >
                               <X size={14} />
                             </button>
