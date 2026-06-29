@@ -90,7 +90,7 @@ function SectionCard({ icon: Icon, title, children }: { icon: typeof User; title
 function Field({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
   return (
     <div className="space-y-1">
-      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{label}</p>
+      <p className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">{label}</p>
       <p className={`text-sm text-gray-900 break-words ${mono ? "font-mono text-xs" : "font-medium"}`}>{value || "—"}</p>
     </div>
   );
@@ -670,11 +670,11 @@ const AdminOrderDetailPage = () => {
                     <Field label="Order ID" value={order.orderNumber} mono />
                     <Field label="Created Date" value={formatDateTime(order.createdAt)} />
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Order Status</p>
+                      <p className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Order Status</p>
                       <OrderStatusBadge status={order.status} />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Payment Status</p>
+                      <p className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Payment Status</p>
                       <PaymentStatusBadge status={order.paymentStatus} />
                     </div>
                     <Field label="Payment Method" value={order.paymentMethod?.toUpperCase()} />
@@ -738,7 +738,7 @@ const AdminOrderDetailPage = () => {
                     <span className="text-sm text-gray-600">Current</span>
                     <OrderStatusBadge status={order.status} />
                   </div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">
                     {correcting ? "Correct status to" : "Update status"}
                   </label>
                   {correcting ? (
@@ -780,7 +780,7 @@ const AdminOrderDetailPage = () => {
                   {!correcting && (
                     <div className="mt-2">
                       {terminal && (
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-600">
                           This order is {STATUS_LABELS[order.status].toLowerCase()} — a final state. No further status changes are allowed in the normal flow.
                         </p>
                       )}
@@ -812,8 +812,8 @@ const AdminOrderDetailPage = () => {
                   {/* Note — optional for a normal change, required for a correction. */}
                   {(!terminal || correcting) && (
                     <div className="mt-4">
-                      <label htmlFor="status-note" className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                        Note / reminder <span className="font-medium normal-case text-gray-300">(optional)</span>
+                      <label htmlFor="status-note" className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">
+                        Note / reminder <span className="font-medium normal-case text-gray-500">(optional)</span>
                       </label>
                       <Textarea
                         id="status-note"
@@ -823,7 +823,7 @@ const AdminOrderDetailPage = () => {
                         rows={2}
                         className="mt-1.5 resize-none border-gray-200 bg-gray-50/50 text-sm"
                       />
-                      <p className="mt-1 text-right text-[10px] text-gray-300">{note.length}/500</p>
+                      <p className="mt-1 text-right text-[10px] text-gray-500">{note.length}/500</p>
                     </div>
                   )}
 
@@ -888,7 +888,7 @@ const AdminOrderDetailPage = () => {
                     <span className="text-sm text-gray-600">Current</span>
                     <PaymentStatusBadge status={order.paymentStatus} />
                   </div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">
                     {correctingPayment ? "Correct payment status to" : "Update payment status"}
                   </label>
                   {correctingPayment ? (
@@ -928,7 +928,7 @@ const AdminOrderDetailPage = () => {
                   {!correctingPayment && (
                     <div className="mt-2">
                       {paymentTerminal && (
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-600">
                           This payment is {PAYMENT_STATUS_LABELS[order.paymentStatus].toLowerCase()} — a final state. No further payment changes are allowed in the normal flow.
                         </p>
                       )}
@@ -959,8 +959,8 @@ const AdminOrderDetailPage = () => {
                   {/* Note — optional for a normal change or a correction. */}
                   {(!paymentTerminal || correctingPayment) && (
                     <div className="mt-4">
-                      <label htmlFor="payment-note" className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                        Note / reminder <span className="font-medium normal-case text-gray-300">(optional)</span>
+                      <label htmlFor="payment-note" className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">
+                        Note / reminder <span className="font-medium normal-case text-gray-500">(optional)</span>
                       </label>
                       <Textarea
                         id="payment-note"
@@ -970,7 +970,7 @@ const AdminOrderDetailPage = () => {
                         rows={2}
                         className="mt-1.5 resize-none border-gray-200 bg-gray-50/50 text-sm"
                       />
-                      <p className="mt-1 text-right text-[10px] text-gray-300">{paymentNote.length}/500</p>
+                      <p className="mt-1 text-right text-[10px] text-gray-500">{paymentNote.length}/500</p>
                     </div>
                   )}
 

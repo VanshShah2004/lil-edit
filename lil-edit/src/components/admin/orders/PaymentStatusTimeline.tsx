@@ -65,14 +65,14 @@ function Node({
           )}
         </p>
         {/* Description: the change that was made + who made it. */}
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-gray-600 mt-1">
           {isOpening ? (
             <>Payment record opened</>
           ) : (
             <>Changed from <span className="font-medium text-gray-700">{fromLabel}</span> to <span className="font-medium text-gray-700">{toLabel}</span></>
           )}{" "}
           by <span className="font-medium text-gray-700">{actor}</span>
-          {email && <span className="text-gray-400"> · {email}</span>}
+          {email && <span className="text-gray-500"> · {email}</span>}
         </p>
         {/* Admin note/reminder left with this change, if any. */}
         {note && (
@@ -80,7 +80,7 @@ function Node({
             {note}
           </p>
         )}
-        <p className="text-[11px] text-gray-400 mt-1">{stamp}</p>
+        <p className="text-[11px] text-gray-500 mt-1">{stamp}</p>
       </div>
     </li>
   );
@@ -90,7 +90,7 @@ function Node({
 // most recent), driven by the real payment audit events. `events` arrive newest-first.
 export function PaymentStatusTimeline({ events }: { events: PaymentStatusEvent[] }) {
   if (events.length === 0) {
-    return <p className="text-sm text-gray-400">No payment history recorded yet.</p>;
+    return <p className="text-sm text-gray-600">No payment history recorded yet.</p>;
   }
 
   return (

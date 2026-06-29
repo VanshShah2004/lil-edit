@@ -21,36 +21,36 @@ export function OrdersTable({ orders, onView }: OrdersTableProps) {
   return (
     <>
       {/* ── Desktop / tablet: table ─────────────────────────────────────────── */}
-      <div className="hidden md:block overflow-x-auto border border-gray-200 rounded-xl bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
+      <div className="hidden md:block overflow-x-auto border border-foreground/50 rounded-xl bg-white shadow-sm">
+        <table className="w-full text-center text-sm">
+          <thead className="bg-gray-50 border-b border-foreground/50">
+            <tr className="divide-x divide-foreground/50">
               {["Order ID", "Customer", "Email", "Date", "Total", "Items", "Payment", "Status", ""].map((h, i) => (
                 <th
                   key={h || i}
-                  className={`px-4 py-3 text-[10px] font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap ${i === 4 || i === 5 ? "text-right" : ""}`}
+                  className="px-4 py-3 text-[10px] font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap"
                 >
                   {h || "Actions"}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-foreground/50">
             {orders.map((o) => (
               <tr
                 key={o.id}
                 onClick={() => onView(o.id)}
-                className="hover:bg-gray-50/60 cursor-pointer transition-colors"
+                className="divide-x divide-foreground/50 hover:bg-gray-50/60 cursor-pointer transition-colors"
               >
                 <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-900 whitespace-nowrap">{o.orderNumber}</td>
                 <td className="px-4 py-3 font-medium text-gray-800 max-w-[180px] truncate">{o.customer.name}</td>
                 <td className="px-4 py-3 text-gray-500 max-w-[220px] truncate">{o.customer.email || "—"}</td>
                 <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(o.createdAt)}</td>
-                <td className="px-4 py-3 text-right font-bold text-gray-900 whitespace-nowrap">{inr(o.total)}</td>
-                <td className="px-4 py-3 text-right text-gray-600">{o.itemCount}</td>
+                <td className="px-4 py-3 text-center font-bold text-gray-900 whitespace-nowrap">{inr(o.total)}</td>
+                <td className="px-4 py-3 text-center text-gray-600">{o.itemCount}</td>
                 <td className="px-4 py-3"><PaymentStatusBadge status={o.paymentStatus} /></td>
                 <td className="px-4 py-3"><OrderStatusBadge status={o.status} /></td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-center">
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onView(o.id); }}
@@ -72,7 +72,7 @@ export function OrdersTable({ orders, onView }: OrdersTableProps) {
             key={o.id}
             type="button"
             onClick={() => onView(o.id)}
-            className="w-full text-left bg-white border border-gray-200 rounded-xl p-4 shadow-sm active:bg-gray-50 transition-colors"
+            className="w-full text-left bg-white border border-foreground/50 rounded-xl p-4 shadow-sm active:bg-gray-50 transition-colors"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -82,7 +82,7 @@ export function OrdersTable({ orders, onView }: OrdersTableProps) {
               </div>
               <OrderStatusBadge status={o.status} />
             </div>
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-foreground/50">
               <div className="text-xs text-gray-500">
                 {formatDate(o.createdAt)} · {o.itemCount} item{o.itemCount !== 1 ? "s" : ""}
               </div>

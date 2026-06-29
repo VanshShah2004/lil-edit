@@ -123,13 +123,13 @@ const AdminOrdersPage = () => {
             <TableSkeleton />
           ) : error ? (
             <div className="w-full py-20 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
-              <PackageX size={44} className="text-gray-300 mb-4" />
+              <PackageX size={44} className="text-gray-400 mb-4" />
               <p className="text-lg font-semibold text-gray-800 mb-1">Couldn't load orders</p>
               <p className="text-sm text-gray-500">{error}</p>
             </div>
           ) : orders.length === 0 ? (
             <div className="w-full py-20 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
-              <PackageX size={44} className="text-gray-300 mb-4" />
+              <PackageX size={44} className="text-gray-400 mb-4" />
               <p className="text-lg font-semibold text-gray-800 mb-1">No orders found</p>
               <p className="text-sm text-gray-500">
                 {search || status !== "all" || payment !== "all"

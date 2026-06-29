@@ -126,7 +126,7 @@ function Node({
         </div>
         {/* Description: the state change that was made + who made it (the admin-only
             additions over the customer view). */}
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-gray-600 mt-1">
           {correction && (
             <span className="mr-1.5 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 align-middle text-[10px] font-semibold text-amber-700">
               <AlertTriangle className="h-2.5 w-2.5" /> Correction
@@ -138,7 +138,7 @@ function Node({
             <>Changed from <span className="font-medium text-gray-700">{fromLabel}</span> to <span className="font-medium text-gray-700">{toLabel}</span></>
           )}{" "}
           by <span className="font-medium text-gray-700">{actor}</span>
-          {email && <span className="text-gray-400"> · {email}</span>}
+          {email && <span className="text-gray-500"> · {email}</span>}
         </p>
         {/* Admin note/reminder left with this change, if any. */}
         {note && (
@@ -146,7 +146,7 @@ function Node({
             {note}
           </p>
         )}
-        <p className="text-[11px] text-gray-400 mt-1">{stamp}</p>
+        <p className="text-[11px] text-gray-500 mt-1">{stamp}</p>
       </div>
     </li>
   );
@@ -165,8 +165,8 @@ function PassedNode({ label, isLast }: { label: string; isLast: boolean }) {
         {!isLast && <span className="w-0.5 flex-1 bg-emerald-200" />}
       </div>
       <div className={`flex-1 ${isLast ? "" : "pb-6"}`}>
-        <p className="text-sm leading-4 font-medium text-gray-400">{label}</p>
-        <p className="text-[11px] text-gray-300 mt-1">Passed automatically</p>
+        <p className="text-sm leading-4 font-medium text-gray-500">{label}</p>
+        <p className="text-[11px] text-gray-500 mt-1">Passed automatically</p>
       </div>
     </li>
   );
@@ -184,7 +184,7 @@ export function OrderStatusTimeline({
   notifying?: boolean;
 }) {
   if (events.length === 0) {
-    return <p className="text-sm text-gray-400">No status history recorded yet.</p>;
+    return <p className="text-sm text-gray-600">No status history recorded yet.</p>;
   }
 
   // Build the display list: each real event, followed by greyed "passed" markers for

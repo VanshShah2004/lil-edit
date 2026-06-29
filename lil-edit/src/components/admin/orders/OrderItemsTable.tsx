@@ -17,7 +17,7 @@ function Thumb({ item }: { item: OrderItem }) {
           className="w-full h-full object-cover"
         />
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-gray-300">
+        <div className="w-full h-full flex items-center justify-center text-gray-400">
           <Package size={18} />
         </div>
       )}
@@ -36,7 +36,7 @@ export function OrderItemsTable({ items }: { items: OrderItem[] }) {
               {["Product", "SKU", "Qty", "Unit Price", "Subtotal"].map((h, i) => (
                 <th
                   key={h}
-                  className={`py-2.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider ${i >= 2 ? "text-right" : ""}`}
+                  className={`py-2.5 text-[10px] font-bold text-gray-600 uppercase tracking-wider ${i >= 2 ? "text-right" : ""}`}
                 >
                   {h}
                 </th>
@@ -76,7 +76,7 @@ export function OrderItemsTable({ items }: { items: OrderItem[] }) {
             <Thumb item={item} />
             <div className="flex-1 min-w-0">
               <p className="font-medium text-gray-900 text-sm line-clamp-2">{item.title}</p>
-              <p className="font-mono text-[11px] text-gray-400 mt-0.5">{item.sku || "—"}</p>
+              <p className="font-mono text-[11px] text-gray-500 mt-0.5">{item.sku || "—"}</p>
               <div className="flex items-center justify-between mt-1 text-xs text-gray-600">
                 <span>{inr(item.unitPrice)} × {item.quantity}</span>
                 <span className="font-semibold text-gray-900">{inr(item.lineTotal)}</span>
