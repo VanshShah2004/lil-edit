@@ -114,6 +114,7 @@ interface ProductVersionViewProps {
 }
 
 const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onDownloadPdf }: ProductVersionViewProps) => {
+  const navigate = useNavigate();
   const [activeImageTab, setActiveImageTab] = useState<string>("Global");
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -206,7 +207,7 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
 
         {version.type === "PUBLISHED" && (
           <button
-            onClick={() => window.open(buildPdpPath(p.category_slug, p.slug, resolvePdpSku(p.base_sku, variants.map((v) => ({ sku: v.variant_sku })))), "_blank", "noopener,noreferrer")}
+            onClick={() => navigate(buildPdpPath(p.category_slug, p.slug, resolvePdpSku(p.base_sku, variants.map((v) => ({ sku: v.variant_sku })))))}
             style={tagWidth ? ({ "--tag-w": `${tagWidth}px` } as React.CSSProperties) : undefined}
             className="flex w-full sm:w-[var(--tag-w,auto)] sm:absolute sm:right-0 sm:top-[17px] sm:h-8 items-center justify-center gap-2 px-4 py-3 sm:px-3 sm:py-0 rounded sm:rounded-sm bg-[#0F766E] text-white font-bold text-[11px] sm:text-[10px] uppercase tracking-widest hover:brightness-110 transition-all"
           >

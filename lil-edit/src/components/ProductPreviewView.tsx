@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Heart, Minus, Plus, Share2, ShoppingBag, Star, X, ChevronRight, ChevronLeft, Copy, Mail, Link2, MoreHorizontal } from "lucide-react";
+import { Heart, Minus, Plus, Share2, ShoppingBag, Star, X, Mail, Link2, MoreHorizontal } from "lucide-react";
 import { FaFacebook, FaTwitter, FaWhatsapp, FaInstagram, FaTelegramPlane, FaPinterestP, FaSnapchatGhost, FaRedditAlien } from "react-icons/fa";
 import { IoChatbubbleEllipses } from "react-icons/io5";
 import { motion, AnimatePresence } from "framer-motion";
@@ -629,26 +629,12 @@ const ProductPreviewView = ({
                 ))}
               </CarouselContent>
             </Carousel>
-
-            {/* Desktop Left / Right Controls */}
-            <button
-              className="hidden md:flex absolute left-4 md:left-8 xl:left-12 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 items-center justify-center rounded-full text-white backdrop-blur transition-all disabled:opacity-50 z-10"
-              onClick={(e) => { e.stopPropagation(); viewerApi?.scrollPrev(); }}
-            >
-              <ChevronLeft size={28} />
-            </button>
-            <button
-              className="hidden md:flex absolute right-4 md:right-8 xl:right-12 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 items-center justify-center rounded-full text-white backdrop-blur transition-all disabled:opacity-50 z-10"
-              onClick={(e) => { e.stopPropagation(); viewerApi?.scrollNext(); }}
-            >
-              <ChevronRight size={28} />
-            </button>
           </div>
 
           {/* THUMBNAIL STRIP */}
           <div className="w-full max-w-7xl mx-auto pb-3 md:pb-6 shrink-0 pointer-events-none">
             <div
-              className="h-[80px] sm:h-[90px] mx-auto flex items-center md:justify-center gap-3 overflow-x-auto px-4 md:px-8 pointer-events-auto no-scrollbar scroll-smooth snap-x snap-mandatory"
+              className="h-[80px] sm:h-[90px] mx-auto flex items-center justify-center gap-3 overflow-x-auto px-4 md:px-8 pointer-events-auto no-scrollbar scroll-smooth snap-x snap-mandatory"
               ref={thumbnailStripRef}
               onClick={(e) => e.stopPropagation()}
             >
