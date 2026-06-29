@@ -891,7 +891,10 @@ const SpotlightPage = () => {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
               {/* ── Sidebar: page groups → sections ── */}
-              <aside className="space-y-2.5 lg:border-r border-foreground/50 lg:pr-6 pt-8 -ml-3 lg:-ml-6">
+              <aside className="lg:border-r border-foreground/50 lg:pr-6 pt-8 -ml-3 lg:-ml-6">
+                {/* One overall border wraps every page group; groups sit inside with a
+                    small gap (and their own rounding) instead of each having its own border. */}
+                <div className="rounded-xl border border-foreground/50 shadow-sm bg-white p-2 space-y-2">
                 {SECTION_GROUPS.map((group) => {
                   const groupSections = group.keys
                     .map((k) => sections.find((s) => s.key === k))
@@ -900,7 +903,7 @@ const SpotlightPage = () => {
                   const isOpen = openGroups.has(group.label);
                   const GroupIcon = group.icon;
                   return (
-                    <div key={group.label} className="rounded-xl border border-foreground/50 shadow-sm overflow-hidden bg-white">
+                    <div key={group.label} className="rounded-lg overflow-hidden">
                       {/* Page header */}
                       <button
                         onClick={() => setOpenGroups((prev) => {
@@ -965,6 +968,7 @@ const SpotlightPage = () => {
                     </div>
                   );
                 })}
+                </div>
               </aside>
 
               {/* ── Editor ── */}
@@ -1116,7 +1120,10 @@ const SpotlightPage = () => {
                           </button>
                         </div>
                       </div>
-                      <div className={`bg-gray-100/60 ${previewDevice === "mobile" ? "p-3 sm:p-4" : "px-3 sm:px-4"}`}>
+                      {/* Desktop preview is full-bleed: no side padding and no frame ring, so
+                          it spans the whole pane width with no side margins. Mobile keeps the
+                          phone bezel + surround (a 390px phone is centered by nature). */}
+                      <div className={`bg-gray-100/60 ${previewDevice === "mobile" ? "p-3 sm:p-4" : ""}`}>
                         <div ref={previewWrapRef} className="flex justify-center">
                           {/* Sized box = scaled footprint; the iframe inside is laid out at
                               the true viewport size and transform-scaled to fit. The phone
@@ -1126,7 +1133,7 @@ const SpotlightPage = () => {
                             className={`overflow-hidden bg-white ${
                               previewDevice === "mobile"
                                 ? "rounded-[1.75rem] ring-[6px] ring-gray-900 shadow-xl my-2"
-                                : "ring-1 ring-gray-200"
+                                : ""
                             }`}
                             style={{
                               width: PREVIEW_VIEWPORTS[previewDevice].w * previewScale,

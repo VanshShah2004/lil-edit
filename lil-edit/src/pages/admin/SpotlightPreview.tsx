@@ -83,13 +83,21 @@ const SpotlightPreviewPage = () => {
     // h-screen + internal scroll (scrollbar hidden): if the document itself scrolled,
     // the iframe would paint its own scrollbar track as a white strip over the
     // section background.
-    <div className={`h-screen overflow-y-auto overflow-x-hidden no-scrollbar font-sans text-[#1a1a1a] ${state ? PREVIEW_BACKGROUNDS[state.key] : "bg-white"}`}>
+    // font-body (DM Sans) — NOT font-sans. The storefront <body> is font-body and the
+    // host pages (Home wrapper, search panel, Collections) inherit it, so every section's
+    // non-heading text is DM Sans there. font-sans resolves to Tailwind's default system
+    // stack (the config never redefines `sans`), which would render eyebrows/labels/buttons
+    // in the OS font and break parity with the live page. Headings stay Playfair via their
+    // explicit font-display + the h1–h6 base-layer rule, inherited from the same index.css.
+    <div className={`h-screen overflow-y-auto overflow-x-hidden no-scrollbar font-body text-[#1a1a1a] ${state ? PREVIEW_BACKGROUNDS[state.key] : "bg-white"}`}>
       {/* pt-16 absorbs the negative top margins some strips use to overlap their
           predecessor on the real page (e.g. RecommendedForYou's -mt-14), which would
           otherwise be clipped at the top of this standalone document. Clicks are
           captured so previewing never navigates or mutates wishlist/cart state. */}
       <div className="pt-16 pb-10" onClickCapture={(e) => { e.preventDefault(); e.stopPropagation(); }}>
         {state ? (
+          // Render the section whole — full preview width, no centered max-width column or
+          // side padding imposed here. Each component keeps its own intrinsic spacing.
           PREVIEW_RENDERERS[state.key](state.items)
         ) : (
           <div className="py-24 text-center text-sm text-gray-400">Loading preview…</div>
