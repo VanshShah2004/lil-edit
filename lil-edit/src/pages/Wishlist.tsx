@@ -382,7 +382,7 @@ const WishlistPage = () => {
                             onClick={(e) => { e.stopPropagation(); void handleMoveToCart(item.id); }}
                             size="sm"
                             disabled={!item.inStock || movingId === item.id}
-                            className="h-9 sm:h-10 flex-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center gap-1.5"
+                            className="h-9 sm:h-10 flex-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-xs sm:text-sm font-bold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center gap-1.5"
                           >
                             <ShoppingBag className="w-3.5 h-3.5" />
                             <span>{movingId === item.id ? "Moving…" : "Cart it"}</span>
@@ -391,7 +391,7 @@ const WishlistPage = () => {
                             onClick={(e) => { e.stopPropagation(); handleBuyNow(item); }}
                             size="sm"
                             disabled={!item.inStock}
-                            className="h-9 sm:h-10 flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white rounded-full text-xs sm:text-sm font-bold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center"
+                            className="h-9 sm:h-10 flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white rounded-lg text-xs sm:text-sm font-bold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap flex items-center justify-center"
                           >
                             Buy Now
                           </Button>
@@ -447,7 +447,7 @@ const WishlistPage = () => {
               <Button
                 onClick={() => void handleMoveAllToCart()}
                 disabled={movingAll || inStockCount === 0}
-                className="w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-full font-semibold text-sm sm:text-base transition-colors gap-2 disabled:opacity-50"
+                className="w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-colors gap-2 disabled:opacity-50"
               >
                 <ShoppingBag className="w-4 h-4" />
                 {movingAll ? "Moving…" : "Move All to Cart"}
@@ -455,7 +455,7 @@ const WishlistPage = () => {
               <Link to="/dashboard" className="block mt-4 sm:mt-6">
                 <Button
                   variant="outline"
-                  className="w-full border-gray-300 hover:bg-gray-50 text-gray-700 rounded-full py-3 sm:py-4 font-medium text-sm sm:text-base"
+                  className="w-full border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg py-3 sm:py-4 font-medium text-sm sm:text-base"
                 >
                   Continue Shopping
                 </Button>

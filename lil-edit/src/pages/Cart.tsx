@@ -220,7 +220,7 @@ export default function Cart() {
                     Sign in to access saved items and check out.
                   </p>
                   <Link to="/login">
-                    <Button className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full px-8 h-11">
+                    <Button className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-lg px-8 h-11">
                       Log In
                     </Button>
                   </Link>
@@ -239,7 +239,7 @@ export default function Cart() {
                     Add items to your cart to get started!
                   </p>
                   <Link to="/dashboard">
-                    <Button className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full px-8 h-11">
+                    <Button className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-lg px-8 h-11">
                       Continue Shopping
                     </Button>
                   </Link>
@@ -507,9 +507,9 @@ export default function Cart() {
               <div className="flex flex-row gap-2">
                 <Input
                   placeholder="Enter coupon code"
-                  className="flex-1 h-11 rounded-full text-sm"
+                  className="flex-1 h-11 rounded-lg text-sm"
                 />
-                <Button className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full px-5 h-11 text-sm font-semibold shrink-0 transition-colors">
+                <Button className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-lg px-5 h-11 text-sm font-semibold shrink-0 transition-colors">
                   Apply
                 </Button>
               </div>
@@ -519,7 +519,7 @@ export default function Cart() {
                   if (!user) { toast.error("Please log in to checkout"); return; }
                   navigate("/checkout");
                 }}
-                className="w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-full font-semibold text-sm sm:text-base transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-colors flex items-center justify-center gap-2"
                 disabled={cartItems.length === 0}
               >
                 <Lock size={14} />
