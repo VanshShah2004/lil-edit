@@ -71,16 +71,19 @@ const AdminSettings = () => {
     <div className="min-h-screen bg-white text-[#1a1a1a] flex flex-col font-sans">
       <UserNavbar />
 
-      <div className="relative pt-[160px] md:pt-[128px] bg-white border-b border-gray-100 pb-8">
+      <div className="relative pt-[160px] md:pt-[128px] bg-white pb-8">
         <AdminSubNav />
-        <div className="max-w-screen-2xl mx-auto px-6 lg:px-12 space-y-1">
-          <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
-            <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>
-              Admin
-            </p>
+        <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">
+          <div className="space-y-1 mb-8">
+            <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
+              <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>
+                Admin
+              </p>
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">Admin Settings</h1>
+            <p className="text-sm text-gray-500">Manage products, orders, and storefront content from one place.</p>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">Admin Settings</h1>
-          <p className="text-sm text-gray-500">Manage products, orders, and storefront content from one place.</p>
+          <hr className="-mx-6 lg:-mx-12 border-t border-foreground/50" />
         </div>
       </div>
 

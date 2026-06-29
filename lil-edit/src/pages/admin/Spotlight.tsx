@@ -533,7 +533,7 @@ function ItemRow({
 // exact size (so the components see a real desktop/phone viewport and render exactly
 // as on the live site) and is then visually scaled down to fit the editor pane.
 const PREVIEW_VIEWPORTS = {
-  desktop: { w: 1440, h: 900 },
+  desktop: { w: 1024, h: 900 },
   mobile:  { w: 390,  h: 844 },
 } as const;
 
@@ -864,23 +864,26 @@ const SpotlightPage = () => {
       {user ? <UserNavbar /> : <Navbar />}
 
       {/* Header */}
-      <div className="relative pt-[160px] md:pt-[128px] bg-white border-b border-gray-100 pb-8">
+      <div className="relative pt-[160px] md:pt-[128px] bg-white pb-0">
         <AdminSubNav />
-        <div className="max-w-screen-2xl mx-auto px-6 lg:px-12 space-y-1">
-          <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
-            <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>Merchandising</p>
+        <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">
+          <div className="space-y-1 mb-8">
+            <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
+              <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>Merchandising</p>
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">The Spotlight</h1>
+            <p className="text-sm text-gray-500">Control which products and tiles appear across the storefront.</p>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">The Spotlight</h1>
-          <p className="text-sm text-gray-500">Control which products and tiles appear across the storefront.</p>
+          <hr className="-mx-6 lg:-mx-12 border-t border-foreground/50" />
         </div>
       </div>
 
-      <main className="flex-1 px-6 lg:px-12 py-8">
+      <main className="flex-1 px-6 lg:px-12 pb-8 pt-0">
         <div className="max-w-screen-2xl mx-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-24 text-gray-400"><Loader2 className="w-6 h-6 animate-spin" /></div>
+            <div className="flex items-center justify-center py-24 mt-8 text-gray-400"><Loader2 className="w-6 h-6 animate-spin" /></div>
           ) : error ? (
-            <div className="w-full py-20 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
+            <div className="w-full py-20 mt-8 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
               <PackageX size={44} className="text-gray-300 mb-4" />
               <p className="text-lg font-semibold text-gray-800 mb-1">Couldn't load sections</p>
               <p className="text-sm text-gray-500">{error}</p>
@@ -888,7 +891,7 @@ const SpotlightPage = () => {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
               {/* ── Sidebar: page groups → sections ── */}
-              <aside className="space-y-2.5">
+              <aside className="space-y-2.5 lg:border-r border-foreground/50 lg:pr-6 pt-8 -ml-3 lg:-ml-6">
                 {SECTION_GROUPS.map((group) => {
                   const groupSections = group.keys
                     .map((k) => sections.find((s) => s.key === k))
@@ -897,7 +900,7 @@ const SpotlightPage = () => {
                   const isOpen = openGroups.has(group.label);
                   const GroupIcon = group.icon;
                   return (
-                    <div key={group.label} className="rounded-xl border border-gray-100 overflow-hidden bg-white">
+                    <div key={group.label} className="rounded-xl border border-foreground/50 shadow-sm overflow-hidden bg-white">
                       {/* Page header */}
                       <button
                         onClick={() => setOpenGroups((prev) => {
@@ -929,7 +932,7 @@ const SpotlightPage = () => {
                                 <ChevronRight className="w-3.5 h-3.5 text-gray-500 shrink-0" />
                                 <button
                                   onClick={() => openSection(s.key)}
-                                  className={`flex-1 min-w-0 text-left p-3 rounded-lg border-2 bg-gray-200 transition-all ${active ? "border-gray-900 shadow-sm" : "border-transparent hover:bg-gray-300/70"}`}
+                                  className={`flex-1 min-w-0 text-left p-3 rounded-lg border border-foreground/50 transition-all ${active ? "border-[1.5px] border-gray-600 bg-white shadow-sm" : "bg-gray-50 hover:bg-gray-100"}`}
                                 >
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex items-center gap-2 min-w-0">
@@ -965,11 +968,11 @@ const SpotlightPage = () => {
               </aside>
 
               {/* ── Editor ── */}
-              <section className="min-w-0">
+              <section className="min-w-0 pt-8">
                 {/* Chrome-style tab strip for the open sections */}
                 {openTabs.length > 0 && (
-                  <div className="flex items-end gap-2">
-                    <div className="flex items-end gap-1 overflow-x-auto no-scrollbar flex-1 min-w-0">
+                  <div className="flex items-end gap-2 -mb-[1.5px] relative z-10">
+                    <div className="flex items-end gap-[2px] overflow-x-auto no-scrollbar flex-1 min-w-0">
                     {openTabs.map((key) => {
                       const sec = sections.find((s) => s.key === key);
                       if (!sec) return null;
@@ -983,7 +986,8 @@ const SpotlightPage = () => {
                           tabIndex={0}
                           onKeyDown={(e) => { if (e.key === "Enter") setActiveKey(key); }}
                           title="Middle-click to close"
-                          className={`group/tab flex items-center gap-1.5 pl-2.5 pr-1 py-1.5 rounded-t-lg border border-b-0 cursor-pointer whitespace-nowrap transition-colors max-w-[180px] ${isActive ? "bg-white border-gray-200 shadow-sm" : "bg-gray-100/70 border-transparent hover:bg-gray-100"}`}
+                          className={`group/tab relative flex items-center gap-1.5 pl-2.5 pr-1 py-1.5 rounded-t-sm border border-foreground/50 cursor-pointer whitespace-nowrap transition-colors max-w-[180px] ${isActive ? "border-[1.5px] border-gray-600 bg-white z-10" : "bg-gray-100/70 hover:bg-gray-100 z-0 bg-clip-padding border-b-[1.5px] border-b-transparent"}`}
+                          style={isActive ? { borderBottomColor: "white" } : {}}
                         >
                           <span className={`font-display text-xs truncate ${isActive ? "font-semibold text-gray-900" : "font-medium text-gray-500"}`}>{sec.title}</span>
                           {isTabDirty(key) && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title="Unsaved changes" />}
@@ -1001,7 +1005,7 @@ const SpotlightPage = () => {
                     {openTabs.length > 1 && (
                       <button
                         onClick={closeAllTabs}
-                        className="shrink-0 mb-1 text-xs font-semibold text-gray-500 hover:text-red-600 px-2 py-1 rounded transition-colors whitespace-nowrap"
+                        className="shrink-0 mb-1 text-xs font-semibold text-red-500 hover:text-red-600 px-2 py-1 rounded transition-colors whitespace-nowrap"
                       >
                         Close all
                       </button>
@@ -1011,7 +1015,7 @@ const SpotlightPage = () => {
                 {!selected ? (
                   <div className="py-20 text-center text-gray-400">Select a section from the sidebar to open it in a tab.</div>
                 ) : (
-                  <div className="border border-gray-100 rounded-2xl rounded-tl-none bg-white shadow-sm overflow-hidden">
+                  <div className="border-[1.5px] border-gray-600 rounded-2xl rounded-tl-none bg-white shadow-md overflow-hidden">
                     {/* Editor header */}
                     <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-gray-100">
                       <div className="min-w-0">
@@ -1088,7 +1092,7 @@ const SpotlightPage = () => {
                     {/* Live preview — the real storefront component rendered inside an
                         iframe, so its viewport (and therefore the mobile/desktop styles)
                         matches the chosen device width instead of the editor column. */}
-                    <div className="mt-40 border-t border-gray-100">
+                    <div className="mt-40 border-t-[1.5px] border-gray-600">
                       <div className="flex items-center gap-2 px-5 py-3 bg-gray-50/60">
                         <Eye className="w-4 h-4 text-gray-500 shrink-0" />
                         <span className="text-sm font-semibold text-gray-700">Live preview</span>
@@ -1112,7 +1116,7 @@ const SpotlightPage = () => {
                           </button>
                         </div>
                       </div>
-                      <div className="bg-gray-100/60 p-3 sm:p-4">
+                      <div className={`bg-gray-100/60 ${previewDevice === "mobile" ? "p-3 sm:p-4" : "px-3 sm:px-4"}`}>
                         <div ref={previewWrapRef} className="flex justify-center">
                           {/* Sized box = scaled footprint; the iframe inside is laid out at
                               the true viewport size and transform-scaled to fit. The phone
@@ -1122,7 +1126,7 @@ const SpotlightPage = () => {
                             className={`overflow-hidden bg-white ${
                               previewDevice === "mobile"
                                 ? "rounded-[1.75rem] ring-[6px] ring-gray-900 shadow-xl my-2"
-                                : "rounded-lg ring-1 ring-gray-200 shadow-sm"
+                                : "ring-1 ring-gray-200"
                             }`}
                             style={{
                               width: PREVIEW_VIEWPORTS[previewDevice].w * previewScale,
