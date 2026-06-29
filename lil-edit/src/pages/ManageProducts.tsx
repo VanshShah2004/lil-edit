@@ -15,10 +15,7 @@ import {
   Activity,
   Zap,
   ExternalLink,
-  Maximize2,
-  X,
-  ChevronLeft,
-  ChevronRight
+  X
 } from "lucide-react";
 import { getBackendBaseUrl } from "@/lib/backend";
 import { authHeader } from "@/lib/apiAuth";
@@ -99,6 +96,14 @@ const isPlaceholderDescription = (pts?: string[]) => {
 };
 
 
+// Slide transition for the image carousel — shared by the inline view and the lightbox.
+const slideVariants = {
+  enter: (dir: number) => ({ x: dir >= 0 ? "100%" : "-100%", opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (dir: number) => ({ x: dir >= 0 ? "-100%" : "100%", opacity: 0 }),
+};
+const slideTransition = { x: { type: "spring", stiffness: 320, damping: 34 }, opacity: { duration: 0.18 } } as const;
+
 interface ProductVersionViewProps {
   version: { type: "PUBLISHED" | "DRAFT"; data: ProductItem; label: string };
   isUpdate?: boolean;
@@ -112,6 +117,7 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
   const [activeImageTab, setActiveImageTab] = useState<string>("Global");
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [direction, setDirection] = useState(0); // slide direction: 1 = next, -1 = prev
   // True when the last pointer interaction was a drag — used to tell a swipe
   // (navigate) apart from a click (open full view) on the same image.
   const draggedRef = useRef(false);
@@ -144,13 +150,19 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
     ? images.filter((img) => !img.variant_id)
     : images.filter((img) => img.variant_id === variants.find((v) => v.color_name === activeImageTab)?.id);
   const activeIndex = Math.max(0, tabImages.findIndex((img) => img.image_url === activeImage));
-  const showImageAt = (i: number) => {
+  const paginate = (dir: number) => {
     if (tabImages.length === 0) return;
-    const n = ((i % tabImages.length) + tabImages.length) % tabImages.length; // wrap-around
+    setDirection(dir);
+    const n = (((activeIndex + dir) % tabImages.length) + tabImages.length) % tabImages.length; // wrap-around
     setActiveImage(tabImages[n].image_url);
   };
-  const nextImage = () => showImageAt(activeIndex + 1);
-  const prevImage = () => showImageAt(activeIndex - 1);
+  const nextImage = () => paginate(1);
+  const prevImage = () => paginate(-1);
+  const goToIndex = (i: number) => {
+    if (i === activeIndex || !tabImages[i]) return;
+    setDirection(i > activeIndex ? 1 : -1);
+    setActiveImage(tabImages[i].image_url);
+  };
 
   // Lightbox: lock body scroll + keyboard nav (←/→/Esc) while open.
   useEffect(() => {
@@ -260,41 +272,35 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
           <div className={`relative aspect-[3/4] w-72 sm:w-80 lg:w-full mx-auto lg:mx-0 border ${activeImage ? "border-gray-200" : "border-gray-400"} bg-gray-50/50 rounded-sm overflow-hidden flex items-center justify-center`}>
             {activeImage ? (
               <>
-                <motion.img
-                  key={activeImage}
-                  src={activeImage}
-                  alt={p.title}
-                  className="w-full h-full object-cover cursor-zoom-in select-none"
-                  draggable={false}
-                  drag={tabImages.length > 1 ? "x" : false}
-                  dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.2}
-                  onPointerDown={() => { draggedRef.current = false; }}
-                  onDragStart={() => { draggedRef.current = true; }}
-                  onDragEnd={(_, info) => {
-                    if (info.offset.x < -60) nextImage();
-                    else if (info.offset.x > 60) prevImage();
-                  }}
-                  onClick={() => { if (!draggedRef.current) setLightboxOpen(true); }}
-                  initial={{ opacity: 0.5 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.2 }}
-                />
-                <button type="button" onClick={() => setLightboxOpen(true)} aria-label="View fullscreen" className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-black/50 text-white hover:bg-black/70 transition-colors">
-                  <Maximize2 size={14} />
-                </button>
+                <AnimatePresence custom={direction} initial={false}>
+                  <motion.img
+                    key={activeImage}
+                    src={activeImage}
+                    alt={p.title}
+                    custom={direction}
+                    variants={slideVariants}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={slideTransition}
+                    className="absolute inset-0 w-full h-full object-cover cursor-zoom-in select-none"
+                    draggable={false}
+                    drag={tabImages.length > 1 ? "x" : false}
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={1}
+                    onPointerDown={() => { draggedRef.current = false; }}
+                    onDragStart={() => { draggedRef.current = true; }}
+                    onDragEnd={(_, info) => {
+                      if (info.offset.x < -60) nextImage();
+                      else if (info.offset.x > 60) prevImage();
+                    }}
+                    onClick={() => { if (!draggedRef.current) setLightboxOpen(true); }}
+                  />
+                </AnimatePresence>
                 {tabImages.length > 1 && (
-                  <>
-                    <button type="button" onClick={prevImage} aria-label="Previous image" className="absolute left-1 top-1/2 -translate-y-1/2 z-10 p-1 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors">
-                      <ChevronLeft size={18} />
-                    </button>
-                    <button type="button" onClick={nextImage} aria-label="Next image" className="absolute right-1 top-1/2 -translate-y-1/2 z-10 p-1 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors">
-                      <ChevronRight size={18} />
-                    </button>
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 px-2 py-0.5 rounded-full bg-black/50 text-white text-[10px] font-bold">
-                      {activeIndex + 1} / {tabImages.length}
-                    </div>
-                  </>
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 px-2 py-0.5 rounded-full bg-black/50 text-white text-[10px] font-bold">
+                    {activeIndex + 1} / {tabImages.length}
+                  </div>
                 )}
               </>
             ) : (
@@ -452,46 +458,62 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
         <AnimatePresence>
           {lightboxOpen && activeImage && (
             <motion.div
-              className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center"
+              className="fixed inset-0 z-[100] bg-black/90 flex flex-col"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setLightboxOpen(false)}
             >
-              <button type="button" onClick={() => setLightboxOpen(false)} aria-label="Close" className="absolute top-4 right-4 z-10 p-2 text-white/80 hover:text-white transition-colors">
-                <X size={28} />
-              </button>
-              {tabImages.length > 1 && (
-                <button type="button" onClick={(e) => { e.stopPropagation(); prevImage(); }} aria-label="Previous image" className="absolute left-2 sm:left-6 z-10 p-2 text-white/70 hover:text-white transition-colors">
-                  <ChevronLeft size={36} />
+              {/* Top bar: counter + close */}
+              <div className="flex items-center justify-between px-4 py-3 shrink-0">
+                <span className="text-white/70 text-xs font-bold tracking-wider">
+                  {tabImages.length > 1 ? `${activeIndex + 1} / ${tabImages.length}` : ""}
+                </span>
+                <button type="button" onClick={() => setLightboxOpen(false)} aria-label="Close" className="p-2 text-white/80 hover:text-white transition-colors">
+                  <X size={28} />
                 </button>
-              )}
-              <motion.img
-                key={activeImage}
-                src={activeImage}
-                alt={p.title}
-                className="max-h-[90vh] max-w-[90vw] object-contain select-none"
-                draggable={false}
-                onClick={(e) => e.stopPropagation()}
-                drag={tabImages.length > 1 ? "x" : false}
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.2}
-                onDragEnd={(_, info) => {
-                  if (info.offset.x < -80) nextImage();
-                  else if (info.offset.x > 80) prevImage();
-                }}
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.2 }}
-              />
+              </div>
+
+              {/* Image stage — backdrop click closes; swipe/drag navigates */}
+              <div className="relative flex-1 overflow-hidden" onClick={() => setLightboxOpen(false)}>
+                <AnimatePresence custom={direction} initial={false}>
+                  <motion.img
+                    key={activeImage}
+                    src={activeImage}
+                    alt={p.title}
+                    custom={direction}
+                    variants={slideVariants}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={slideTransition}
+                    className="absolute inset-0 m-auto max-h-full max-w-[92vw] object-contain select-none"
+                    draggable={false}
+                    onClick={(e) => e.stopPropagation()}
+                    drag={tabImages.length > 1 ? "x" : false}
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={1}
+                    onDragEnd={(_, info) => {
+                      if (info.offset.x < -80) nextImage();
+                      else if (info.offset.x > 80) prevImage();
+                    }}
+                  />
+                </AnimatePresence>
+              </div>
+
+              {/* Thumbnail strip */}
               {tabImages.length > 1 && (
-                <button type="button" onClick={(e) => { e.stopPropagation(); nextImage(); }} aria-label="Next image" className="absolute right-2 sm:right-6 z-10 p-2 text-white/70 hover:text-white transition-colors">
-                  <ChevronRight size={36} />
-                </button>
-              )}
-              {tabImages.length > 1 && (
-                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10 px-3 py-1 rounded-full bg-white/10 text-white/80 text-xs font-bold">
-                  {activeIndex + 1} / {tabImages.length}
+                <div className="shrink-0 flex gap-2 justify-center p-4 overflow-x-auto no-scrollbar">
+                  {tabImages.map((img, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => goToIndex(i)}
+                      aria-label={`Go to image ${i + 1}`}
+                      className={`w-12 h-16 shrink-0 overflow-hidden rounded border-2 transition-all ${i === activeIndex ? "border-white" : "border-transparent opacity-50 hover:opacity-90"}`}
+                    >
+                      <img src={img.image_url} className="w-full h-full object-cover" alt="" />
+                    </button>
+                  ))}
                 </div>
               )}
             </motion.div>
