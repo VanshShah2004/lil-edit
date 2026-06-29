@@ -44,8 +44,30 @@ interface OrderFiltersProps {
   onSortChange: (v: OrderSortKey) => void;
 }
 
-const triggerClass =
-  "h-10 w-full sm:w-auto gap-1.5 rounded-md border-gray-200 bg-gray-50/50 px-3 text-xs font-medium text-gray-700 focus:border-gray-900 focus:ring-0";
+const baseTriggerClass =
+  "h-10 w-full sm:w-auto gap-1.5 rounded-md px-3 text-xs font-medium focus:ring-0 transition-all";
+
+const baseTriggerStyle = { borderWidth: "1.25px", borderColor: "#9ca3af", focusBorderColor: "#111827" };
+
+const getStatusTriggerClass = (isActive: boolean) =>
+  isActive
+    ? `${baseTriggerClass} bg-purple-100 text-gray-700`
+    : `${baseTriggerClass} bg-gray-50/50 text-gray-700`;
+
+const getStatusTriggerStyle = (isActive: boolean) => ({
+  ...baseTriggerStyle,
+  borderColor: isActive ? "#9ca3af" : "#9ca3af",
+});
+
+const getPaymentTriggerClass = (isActive: boolean) =>
+  isActive
+    ? `${baseTriggerClass} bg-purple-100 text-gray-700`
+    : `${baseTriggerClass} bg-gray-50/50 text-gray-700`;
+
+const getPaymentTriggerStyle = (isActive: boolean) => ({
+  ...baseTriggerStyle,
+  borderColor: isActive ? "#9ca3af" : "#9ca3af",
+});
 
 export function OrderFilters({
   search,
@@ -57,23 +79,27 @@ export function OrderFilters({
   onPaymentChange,
   onSortChange,
 }: OrderFiltersProps) {
+  const statusIsActive = status !== "all";
+  const paymentIsActive = payment !== "all";
+
   return (
     <div className="flex flex-col lg:flex-row lg:items-center gap-3">
       {/* Search — updates results immediately (debounced by the page). */}
       <div className="relative flex-1 min-w-0">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
         <input
           type="text"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Search by Order ID, customer name or email…"
-          className="w-full h-10 pl-9 pr-4 text-sm border border-gray-200 rounded-md bg-gray-50/50 outline-none focus:border-gray-900 transition-all"
+          className="w-full h-10 pl-9 pr-4 text-sm border border-gray-400 rounded-md bg-gray-50/50 outline-none focus:border-gray-900 transition-all"
+          style={{ borderWidth: "1.25px" }}
         />
       </div>
 
       <div className="grid grid-cols-3 sm:flex gap-2 sm:gap-3">
         <Select value={status} onValueChange={(v) => onStatusChange(v as StatusFilter)}>
-          <SelectTrigger className={triggerClass} aria-label="Filter by status">
+          <SelectTrigger className={getStatusTriggerClass(statusIsActive)} style={getStatusTriggerStyle(statusIsActive)} aria-label="Filter by status">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -84,7 +110,7 @@ export function OrderFilters({
         </Select>
 
         <Select value={payment} onValueChange={(v) => onPaymentChange(v as PaymentFilter)}>
-          <SelectTrigger className={triggerClass} aria-label="Filter by payment">
+          <SelectTrigger className={getPaymentTriggerClass(paymentIsActive)} style={getPaymentTriggerStyle(paymentIsActive)} aria-label="Filter by payment">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -95,7 +121,7 @@ export function OrderFilters({
         </Select>
 
         <Select value={sort} onValueChange={(v) => onSortChange(v as OrderSortKey)}>
-          <SelectTrigger className={triggerClass} aria-label="Sort orders">
+          <SelectTrigger className={baseTriggerClass + " bg-gray-50/50 text-gray-700"} style={baseTriggerStyle} aria-label="Sort orders">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

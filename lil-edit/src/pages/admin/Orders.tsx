@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, PackageX } from "lucide-react";
+import { ChevronLeft, ChevronRight, PackageX, Download, X } from "lucide-react";
 import { toast } from "sonner";
 
 import UserNavbar from "@/components/home/UserNavbar";
@@ -48,6 +48,12 @@ const AdminOrdersPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [downloadType, setDownloadType] = useState<"excel" | "pdf" | null>(null);
+  const [dateRange, setDateRange] = useState<"all" | "custom">("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   // Debounce the search box so typing updates results "immediately" without a
   // request per keystroke.
   useEffect(() => {
@@ -87,11 +93,149 @@ const AdminOrdersPage = () => {
   const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const rangeEnd = Math.min(page * PAGE_SIZE, total);
 
+  const getFilteredOrdersByDate = () => {
+    if (dateRange === "all") return orders;
+    if (!startDate || !endDate) return orders;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    return orders.filter((o) => {
+      const orderDate = new Date(o.createdAt);
+      return orderDate >= start && orderDate <= end;
+    });
+  };
+
+  const performDownloadExcel = () => {
+    const filteredOrders = getFilteredOrdersByDate();
+    if (filteredOrders.length === 0) {
+      toast.error("No orders found for the selected date range");
+      return;
+    }
+
+    const headers = ["Order ID", "Customer", "Email", "Date", "Total (₹)", "Items", "Payment Status", "Order Status"];
+    const data = filteredOrders.map((o) => [
+      o.orderNumber,
+      o.customer.name,
+      o.customer.email || "—",
+      new Date(o.createdAt).toLocaleDateString("en-IN"),
+      Math.round(o.total),
+      o.itemCount,
+      o.paymentStatus,
+      o.status,
+    ]);
+
+    const csvContent = [
+      headers.join("\t"),
+      ...data.map((row) => row.join("\t")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/plain;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `orders-${new Date().toISOString().split("T")[0]}.xls`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Downloaded ${filteredOrders.length} order${filteredOrders.length !== 1 ? "s" : ""} as Excel`);
+    setShowDateModal(false);
+  };
+
+  const performDownloadPdf = () => {
+    const filteredOrders = getFilteredOrdersByDate();
+    if (filteredOrders.length === 0) {
+      toast.error("No orders found for the selected date range");
+      return;
+    }
+
+    const rows = filteredOrders
+      .map((o) => `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;">${o.orderNumber}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;">${o.customer.name}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;">${o.customer.email || "—"}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;">${new Date(o.createdAt).toLocaleDateString("en-IN")}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:right;">₹${Math.round(o.total).toLocaleString("en-IN")}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:center;">${o.itemCount}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;"><span style="padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;background:#e0f2fe;color:#0369a1;">${o.paymentStatus}</span></td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;"><span style="padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;background:#fef3c7;color:#92400e;">${o.status}</span></td>
+      </tr>`)
+      .join("");
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Orders Report</title>
+        <style>
+          @page { size: auto; margin: 0; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #111;
+            padding: 1.5cm 2cm;
+            font-size: 12px;
+            line-height: 1.6;
+          }
+          h1 { font-size: 20px; font-weight: 800; margin-bottom: 12px; }
+          .meta { color: #999; font-size: 11px; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          th {
+            background: #f8f8f8;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            border-bottom: 2px solid #111;
+          }
+          @media print {
+            body { padding: 1.5cm 2cm; }
+            th { background: #f8f8f8 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Order Management Report</h1>
+        <div class="meta">
+          Generated on ${new Date().toLocaleString("en-IN")}<br/>
+          Total Orders: ${filteredOrders.length}
+        </div>
+        <table>
+          <thead><tr>
+            <th>Order ID</th>
+            <th>Customer</th>
+            <th>Email</th>
+            <th>Date</th>
+            <th style="text-align:right;">Total</th>
+            <th style="text-align:center;">Items</th>
+            <th>Payment</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </body>
+      </html>`;
+
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 600);
+    toast.success(`Generated PDF for ${filteredOrders.length} order${filteredOrders.length !== 1 ? "s" : ""}`);
+    setShowDateModal(false);
+  };
+
   return (
     <div className="min-h-screen bg-white text-[#1a1a1a] flex flex-col font-sans">
       {user ? <UserNavbar /> : <Navbar />}
 
-      <div className="relative pt-[160px] md:pt-[128px] bg-white pb-8">
+      <div className="relative pt-[160px] md:pt-[128px] bg-white pb-2">
         <AdminSubNav />
         <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">
           <div className="space-y-1 mb-8">
@@ -107,6 +251,23 @@ const AdminOrdersPage = () => {
 
       <main className="flex-1 px-6 lg:px-12 py-8">
         <div className="max-w-screen-2xl mx-auto space-y-6">
+          <div className="flex justify-end gap-2 -mt-4">
+            <button
+              type="button"
+              onClick={() => { setDownloadType("excel"); setShowDateModal(true); }}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-green-600 rounded-md px-4 py-2.5 hover:bg-green-700 transition-colors whitespace-nowrap"
+            >
+              <Download className="w-4 h-4" /> Download XL
+            </button>
+            <button
+              type="button"
+              onClick={() => { setDownloadType("pdf"); setShowDateModal(true); }}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-red-600 rounded-md px-4 py-2.5 hover:bg-red-700 transition-colors whitespace-nowrap"
+            >
+              <Download className="w-4 h-4" /> Download PDF
+            </button>
+          </div>
+
           <OrderFilters
             search={searchInput}
             status={status}
@@ -171,6 +332,100 @@ const AdminOrdersPage = () => {
           )}
         </div>
       </main>
+
+      {showDateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-96 max-w-[90%]">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-900">Select Date Range</h2>
+              <button
+                type="button"
+                onClick={() => setShowDateModal(false)}
+                className="text-gray-500 hover:text-gray-900"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-600 block mb-2">
+                  <input
+                    type="radio"
+                    name="dateRange"
+                    value="all"
+                    checked={dateRange === "all"}
+                    onChange={() => setDateRange("all")}
+                    className="mr-2"
+                  />
+                  All Orders
+                </label>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-600 block mb-2">
+                  <input
+                    type="radio"
+                    name="dateRange"
+                    value="custom"
+                    checked={dateRange === "custom"}
+                    onChange={() => setDateRange("custom")}
+                    className="mr-2"
+                  />
+                  Custom Date Range
+                </label>
+
+                {dateRange === "custom" && (
+                  <div className="space-y-3 mt-3 ml-6">
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 block mb-1">Start Date</label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 block mb-1">End Date</label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setShowDateModal(false)}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (dateRange === "custom" && (!startDate || !endDate)) {
+                    toast.error("Please select both start and end dates");
+                    return;
+                  }
+                  if (downloadType === "excel") performDownloadExcel();
+                  else if (downloadType === "pdf") performDownloadPdf();
+                }}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800 transition-colors"
+              >
+                Download
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>
