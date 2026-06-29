@@ -1019,7 +1019,7 @@ const SpotlightPage = () => {
                     {/* Editor header */}
                     <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-gray-100">
                       <div className="min-w-0">
-                        <h2 className="text-lg font-bold text-gray-900 truncate">{selected.title}</h2>
+                        <h2 className="font-display text-2xl font-black text-foreground truncate">{selected.title}</h2>
                         <p className="text-xs text-gray-500">
                           {selected.itemType === "product" && "Holds catalog products. Empty = random products shown automatically."}
                           {selected.itemType === "editorial" && "Holds custom image/title/link tiles."}
