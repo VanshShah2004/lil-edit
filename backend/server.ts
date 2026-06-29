@@ -1,6 +1,7 @@
 import path from "node:path";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import express from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import compression from "compression";
 import dotenv from "dotenv";
@@ -13,6 +14,10 @@ import ordersRouter from "./routes/orders.js";
 import adminOrdersRouter from "./routes/adminOrders.js";
 import curationRouter from "./routes/curation.js";
 import checkoutRouter, { webhookHandler } from "./routes/checkout.js";
+import shareRouter from "./routes/share.js";
+import { buildProductOgMeta, injectOgIntoHtml } from "./lib/ogTags.js";
+import { fetchProductBySku } from "./lib/persistCatalog.js";
+import { publicSiteUrl } from "./lib/siteUrl.js";
 import { globalLimiter, mutationLimiter } from "./middleware/rateLimiters.js";
 import { warmupRedis, startRedisKeepalive, getRedis, redisSet, redisKey, CATALOG_LIST_TTL_S } from "./lib/redis.js";
 import { fetchThinProductList } from "./lib/persistCatalog.js";
@@ -93,9 +98,96 @@ app.use("/api/curation",     curationRouter);
 // service-role client + the place_order RPC.
 app.use("/api/checkout",     checkoutRouter);
 
-app.get("/", (_req, res) => {
+// Link-preview Open Graph tags for shared PDP URLs (host-agnostic — see routes/share.ts).
+app.use("/share", shareRouter);
+
+// ─── Optional: host the built storefront from this server ─────────────────────
+// Off by default — pure-API deployments (frontend on a separate static host) are
+// untouched. When SERVE_FRONTEND=true and a build exists, this server serves the
+// SPA AND injects per-product Open Graph tags into the PDP's HTML, so link-preview
+// crawlers (WhatsApp/Telegram/Facebook/iMessage/Slack) show the product photo,
+// title and price on the SAME clean PDP URL — no separate /share link needed.
+function setupFrontendServing(): boolean {
+  if (process.env.SERVE_FRONTEND !== "true") return false;
+
+  const distDir = process.env.FRONTEND_DIST_DIR
+    ? path.resolve(process.env.FRONTEND_DIST_DIR)
+    : path.join(__dirname, "../lil-edit/dist");
+  const indexPath = path.join(distDir, "index.html");
+
+  if (!fs.existsSync(indexPath)) {
+    console.warn(`[server] SERVE_FRONTEND=true but no build at ${indexPath} — skipping SPA serving`);
+    return false;
+  }
+
+  const indexTemplate = fs.readFileSync(indexPath, "utf8");
+
+  // Hashed asset files (JS/CSS/images). index:false so "/" flows to our handler below.
+  app.use(express.static(distDir, { index: false, maxAge: "1y" }));
+
+  const PDP_RE = /^\/collections\/([^/]+)\/product\/([^/]+)\/?$/;
+
+  // Catch-all (Express 5 regex route). PDP paths get product OG tags injected;
+  // every other route gets the plain SPA shell. /api and /share are excluded.
+  app.get(/.*/, async (req: Request, res: Response, next: NextFunction) => {
+    if (req.path.startsWith("/api") || req.path.startsWith("/share")) {
+      next();
+      return;
+    }
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+
+    const match = req.path.match(PDP_RE);
+    if (!match) {
+      res.send(indexTemplate);
+      return;
+    }
+
+    const category = decodeURIComponent(match[1] ?? "");
+    const productPath = decodeURIComponent(match[2] ?? "");
+    const sep = productPath.indexOf("$");
+    const slug = sep >= 0 ? productPath.slice(0, sep) : productPath;
+    const sku = sep >= 0 ? productPath.slice(sep + 1) : "";
+
+    if (!sku) {
+      res.send(indexTemplate);
+      return;
+    }
+
+    const log = createLog().start("OG INJECT");
+    try {
+      const product = await fetchProductBySku(sku, log);
+      if (!product || product.slug !== slug || product.category_slug !== category) {
+        log.warn("no match — serving plain shell").end("OG INJECT");
+        res.send(indexTemplate);
+        return;
+      }
+      const canonicalUrl = `${publicSiteUrl()}${req.path}`;
+      const meta = buildProductOgMeta(product, canonicalUrl, sku);
+      log.success(`injected  image=${meta.image ? "yes" : "none"}`).end("OG INJECT");
+      res.send(injectOgIntoHtml(indexTemplate, meta));
+    } catch (err) {
+      log.error("failed — serving plain shell", err).end("OG INJECT");
+      res.send(indexTemplate);
+    }
+  });
+
+  console.log(`[server] serving storefront from ${distDir} (with PDP OG injection)`);
+  return true;
+}
+
+// Health check. Always available at /healthz; also at "/" unless this server is
+// hosting the storefront (in which case "/" serves the SPA home).
+app.get("/healthz", (_req, res) => {
   res.json({ ok: true, message: "new-ecomm backend" });
 });
+
+const servingFrontend = setupFrontendServing();
+
+if (!servingFrontend) {
+  app.get("/", (_req, res) => {
+    res.json({ ok: true, message: "new-ecomm backend" });
+  });
+}
 
 const DB_KEEPALIVE_MS = 4 * 60 * 1000; // 4 min — Supabase idles after ~5 min
 

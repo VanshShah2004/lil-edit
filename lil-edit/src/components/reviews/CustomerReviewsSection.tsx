@@ -6,19 +6,15 @@ import { getUserReviewForProduct, type Review } from "@/lib/reviewsApi";
 interface CustomerReviewsSectionProps {
   productSlug: string;
   sku: string;
-  categorySlug: string;
-  title: string;
 }
 
 
 export default function CustomerReviewsSection({
   productSlug,
   sku,
-  categorySlug,
-  title,
 }: CustomerReviewsSectionProps) {
   const [userReview, setUserReview] = useState<Review | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
@@ -83,7 +79,6 @@ export default function CustomerReviewsSection({
                         </span>
                       )}
                     </div>
-                    <p className="font-semibold text-gray-900">{userReview.title}</p>
                   </div>
                 </div>
                 {userReview.comment && (

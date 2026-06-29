@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Star, X, Loader2, Upload, Trash2 } from "lucide-react";
+import { Star, X, Loader2, Upload } from "lucide-react";
 import { createReview, updateReview, type CreateReviewInput, type UpdateReviewInput, type Review } from "@/lib/reviewsApi";
 import { uploadReviewImage, createImagePreview, revokeImagePreview, type UploadedImage } from "@/lib/imageUpload";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,7 +9,6 @@ interface ReviewFormProps {
   // Variant SKU the review is for. Reviews are keyed per (productSlug, sku);
   // defaults to '' for legacy product-level callers.
   sku?: string;
-  userName?: string;
   existingReview?: Review | null;
   onSuccess?: (review: Review) => void;
   onCancel?: () => void;
@@ -19,7 +18,6 @@ interface ReviewFormProps {
 export default function ReviewForm({
   productSlug,
   sku = "",
-  userName,
   existingReview,
   onSuccess,
   onCancel,

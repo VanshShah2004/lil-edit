@@ -30,7 +30,7 @@ export default function OrderReviewsSection({ items }: OrderReviewsSectionProps)
 
       {/* Reviews for each product */}
       <div className="divide-y divide-gray-200">
-        {items.map((item, idx) => (
+        {items.map((item) => (
           <div key={item.id} className="p-4 sm:p-5">
             {/* Product header */}
             <div className="flex gap-3 mb-4">
@@ -60,8 +60,6 @@ export default function OrderReviewsSection({ items }: OrderReviewsSectionProps)
             <CustomerReviewsSection
               productSlug={item.productSlug}
               sku={item.sku}
-              categorySlug={item.categorySlug}
-              title={item.title}
             />
           </div>
         ))}

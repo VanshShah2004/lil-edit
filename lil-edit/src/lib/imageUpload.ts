@@ -16,7 +16,6 @@ export async function uploadReviewImage(
   userId: string,
   productSlug: string,
   file: File,
-  onProgress?: (progress: number) => void,
 ): Promise<string> {
   // Validate
   if (!ALLOWED_TYPES.includes(file.type)) {

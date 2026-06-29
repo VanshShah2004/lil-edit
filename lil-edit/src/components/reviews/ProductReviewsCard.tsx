@@ -7,15 +7,11 @@ import { fetchReviewsForProduct, getUserReviewForProduct, type Review, type Revi
 interface ProductReviewsCardProps {
   productSlug: string;
   sku: string;
-  categorySlug: string;
-  title: string;
 }
 
 export default function ProductReviewsCard({
   productSlug,
   sku,
-  categorySlug,
-  title,
 }: ProductReviewsCardProps) {
   const [reviewsData, setReviewsData] = useState<ReviewsData | null>(null);
   const [userReview, setUserReview] = useState<Review | null>(null);
@@ -95,7 +91,6 @@ export default function ProductReviewsCard({
                       </span>
                     ))}
                   </div>
-                  <p className="font-semibold text-sm text-gray-900">{userReview.title}</p>
                 </div>
                 {userReview.verified && (
                   <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-medium shrink-0">
