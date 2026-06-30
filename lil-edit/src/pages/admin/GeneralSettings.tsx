@@ -14,6 +14,7 @@ import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import AdminSubNav from "@/components/admin/AdminSubNav";
 import CouponsManager from "@/components/admin/CouponsManager";
+import MaintenanceControl from "@/components/admin/MaintenanceControl";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -161,7 +162,7 @@ const GeneralSettings = () => {
       </div>
 
       <main className="flex-1 px-6 lg:px-12 pt-4 pb-24 bg-gray-100">
-        <div className="max-w-4xl sm:max-w-3xl mx-auto pt-10 space-y-12">
+        <div className="max-w-4xl sm:max-w-3xl mx-auto pt-4 space-y-12">
           <section>
             <div className="flex items-center gap-4 mb-6">
               <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-gray-900 shrink-0 flex items-center gap-2">
@@ -333,6 +334,8 @@ const GeneralSettings = () => {
           </section>
 
           <CouponsManager />
+
+          <MaintenanceControl />
         </div>
       </main>
 

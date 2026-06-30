@@ -17,6 +17,9 @@ import couponsRouter from "./routes/coupons.js";
 import curationRouter from "./routes/curation.js";
 import checkoutRouter, { webhookHandler } from "./routes/checkout.js";
 import shareRouter from "./routes/share.js";
+import maintenanceRouter from "./routes/maintenance.js";
+import { maintenanceGate } from "./middleware/maintenanceGate.js";
+import { startMaintenanceWatcher } from "./lib/maintenance.js";
 import { buildProductOgMeta, injectOgIntoHtml } from "./lib/ogTags.js";
 import { fetchProductBySku } from "./lib/persistCatalog.js";
 import { publicSiteUrl } from "./lib/siteUrl.js";
@@ -81,7 +84,17 @@ app.use(express.json({ limit: "1mb" }));
 // Global rate limiter — applied before routing so every path is covered.
 app.use(globalLimiter);
 
+// Mounted ABOVE the maintenance gate so they always work while the site is off:
+//   /api/maintenance → public status (drives the coming-soon page) + admin toggle.
+//   /api/auth        → login/OTP, so a logged-out admin can sign in and flip it back.
+app.use("/api/maintenance",  maintenanceRouter);
 app.use("/api/auth",         authRouter);
+
+// Site kill switch. When ON, every customer-facing /api call below is refused with
+// 503 for non-admins (the frontend shows the branded coming-soon page; this is the
+// airtight API backstop). When OFF this is a single boolean read — no added latency.
+app.use(maintenanceGate);
+
 app.use("/api/products",     productsRouter);
 app.use("/api/sku",          skuRouter);
 // Limiter BEFORE the router so it actually gates the request (a router placed first
@@ -259,4 +272,7 @@ app.listen(PORT, () => {
   void warmupStorage();
 
   startDbKeepAlive();
+
+  // Prime the maintenance flag and keep it fresh (fail-open to live).
+  startMaintenanceWatcher();
 });
