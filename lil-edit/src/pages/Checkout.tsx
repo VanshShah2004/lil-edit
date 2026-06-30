@@ -81,6 +81,12 @@ export default function Checkout() {
   const couponContainerRef = useRef<HTMLDivElement>(null);
   const carriedCouponSyncedRef = useRef(!carriedCoupon?.code);
 
+  useEffect(() => {
+    const prev = document.title;
+    document.title = "Checkout | The Lil Edit";
+    return () => { document.title = prev; };
+  }, []);
+
   // Subtotal for coupon applicability checks — computed early so the coupon fetch
   // can depend on it. The full `totals` object is built further down.
   const couponSubtotal = useMemo(

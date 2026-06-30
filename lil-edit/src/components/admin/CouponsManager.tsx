@@ -197,25 +197,25 @@ const CouponsManager = () => {
     }
   };
 
-  const inputClass = "w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none transition-colors focus:border-[#B19CD9] focus:ring-2 focus:ring-[#B19CD9]/30 disabled:opacity-60";
-  const labelClass = "block text-xs font-semibold text-gray-700 mb-1";
+  const inputClass = "w-full rounded-md border border-gray-400 px-3 py-2 text-sm text-gray-900 outline-none transition-colors focus:border-[#B19CD9] focus:ring-2 focus:ring-[#B19CD9]/30 disabled:opacity-60";
+  const labelClass = "block text-xs font-semibold text-gray-800 mb-1";
 
   return (
     <section>
       {/* Section heading */}
       <div className="flex items-center gap-4 mb-6">
-        <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-gray-700 shrink-0 flex items-center gap-2">
+        <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-gray-900 shrink-0 flex items-center gap-2">
           <Tag className="w-4 h-4" style={{ color: ACCENT }} />
-          Coupons
+          Coupon Management
         </h2>
-        <div className="flex-1 h-px bg-gray-400" />
+        <div className="flex-1 h-px bg-gray-900" />
       </div>
 
-      <div className="rounded-lg border border-gray-300 bg-white overflow-hidden shadow-sm">
+      <div className="rounded-lg border border-gray-900 bg-white overflow-hidden shadow-sm">
 
         {/* Toolbar — count + create toggle */}
         <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-gray-200">
-          <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-700">
             All coupons{!loading && !loadError ? ` (${coupons.length})` : ""}
           </p>
           {!editTarget && (
@@ -262,7 +262,7 @@ const CouponsManager = () => {
                     className={inputClass}
                     maxLength={32}
                   />
-                  <p className="text-[11px] text-gray-400 mt-1">Uppercase letters, numbers, - or _</p>
+                  <p className="text-[11px] text-gray-500 mt-1">Uppercase letters, numbers, - or _</p>
                 </div>
 
                 <div>
@@ -310,12 +310,12 @@ const CouponsManager = () => {
                       disabled={creating}
                       className={inputClass}
                     />
-                    <p className="text-[11px] text-gray-400 mt-1">Caps the deduction, e.g. 20% up to ₹500.</p>
+                    <p className="text-[11px] text-gray-500 mt-1">Caps the deduction, e.g. 20% up to ₹500.</p>
                   </div>
                 )}
 
                 <div>
-                  <label className={labelClass}>Min order amount (₹) <span className="font-normal text-gray-500">Optional</span></label>
+                  <label className={labelClass}>Min order amount (₹) <span className="font-normal text-gray-600">Optional</span></label>
                   <input
                     type="number"
                     min={0}
@@ -340,12 +340,12 @@ const CouponsManager = () => {
                     unlimitedLabel="Unlimited"
                   />
                   {form.max_uses !== null && (
-                    <div className="flex items-center mt-2 rounded-md border border-gray-300 overflow-hidden">
+                    <div className="flex items-center mt-2 rounded-md border border-gray-400 overflow-hidden">
                       <button
                         type="button"
                         onClick={() => setForm((f) => ({ ...f, max_uses: Math.max(1, (f.max_uses ?? 1) - 1) }))}
                         disabled={creating || (form.max_uses ?? 1) <= 1}
-                        className="px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-40 border-r border-gray-300"
+                        className="px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-40 border-r border-gray-400"
                       >
                         −
                       </button>
@@ -364,7 +364,7 @@ const CouponsManager = () => {
                         type="button"
                         onClick={() => setForm((f) => ({ ...f, max_uses: (f.max_uses ?? 1) + 1 }))}
                         disabled={creating}
-                        className="px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors border-l border-gray-300"
+                        className="px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors border-l border-gray-400"
                       >
                         +
                       </button>
@@ -396,11 +396,11 @@ const CouponsManager = () => {
                         once_per_user: e.target.checked ? true : false,
                       }))}
                       disabled={creating}
-                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#9A82C9] focus:ring-[#B19CD9]/40"
+                      className="mt-0.5 h-4 w-4 rounded border-gray-400 text-[#9A82C9] focus:ring-[#B19CD9]/40"
                     />
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-gray-800">
                       First purchase only
-                      <span className="block text-[11px] text-gray-400">Valid only on a customer's first-ever order.</span>
+                      <span className="block text-[11px] text-gray-500">Valid only on a customer's first-ever order.</span>
                     </span>
                   </label>
                   <label className={`flex items-start gap-2.5 ${form.first_order_only ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
@@ -409,11 +409,11 @@ const CouponsManager = () => {
                       checked={(form.once_per_user ?? false) || (form.first_order_only ?? false)}
                       onChange={(e) => setForm((f) => ({ ...f, once_per_user: e.target.checked }))}
                       disabled={creating || (form.first_order_only ?? false)}
-                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#9A82C9] focus:ring-[#B19CD9]/40"
+                      className="mt-0.5 h-4 w-4 rounded border-gray-400 text-[#9A82C9] focus:ring-[#B19CD9]/40"
                     />
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-gray-800">
                       One use per customer
-                      <span className="block text-[11px] text-gray-400">Each customer can redeem this code only once.</span>
+                      <span className="block text-[11px] text-gray-500">Each customer can redeem this code only once.</span>
                     </span>
                   </label>
                 </div>
@@ -478,15 +478,15 @@ const CouponsManager = () => {
         {/* Empty state */}
         {!loading && !loadError && coupons.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center px-6">
-            <Tag className="w-8 h-8 text-gray-300 mb-3" />
-            <p className="text-sm font-semibold text-gray-500">No coupons yet</p>
-            <p className="text-xs text-gray-400 mt-1">Click "New coupon" to create your first discount code.</p>
+            <Tag className="w-8 h-8 text-gray-400 mb-3" />
+            <p className="text-sm font-semibold text-gray-700">No coupons yet</p>
+            <p className="text-xs text-gray-500 mt-1">Click "New coupon" to create your first discount code.</p>
           </div>
         )}
 
         {/* Coupon list */}
         {!loading && !loadError && coupons.length > 0 && (
-          <ul className="divide-y divide-gray-300">
+          <ul className="divide-y divide-gray-400">
               {coupons.map((coupon) => {
                 const expired = isExpired(coupon.expires_at);
                 const exhausted = coupon.max_uses !== null && coupon.uses_count >= coupon.max_uses;
@@ -501,46 +501,46 @@ const CouponsManager = () => {
                           {coupon.code}
                         </span>
                         {expired && (
-                          <span className="px-1.5 py-0.5 rounded-full bg-red-100 text-[10px] font-bold uppercase tracking-wide text-red-600">
+                          <span className="px-1.5 py-0.5 rounded-md bg-red-100 text-[10px] font-bold uppercase tracking-wide text-red-600">
                             Expired
                           </span>
                         )}
                         {exhausted && !expired && (
-                          <span className="px-1.5 py-0.5 rounded-full bg-orange-100 text-[10px] font-bold uppercase tracking-wide text-orange-600">
+                          <span className="px-1.5 py-0.5 rounded-md bg-orange-100 text-[10px] font-bold uppercase tracking-wide text-orange-600">
                             Exhausted
                           </span>
                         )}
                         {!effectivelyInactive && (
-                          <span className="px-1.5 py-0.5 rounded-full bg-green-100 text-[10px] font-bold uppercase tracking-wide text-green-700">
+                          <span className="px-1.5 py-0.5 rounded-md bg-green-100 text-[10px] font-bold uppercase tracking-wide text-green-700">
                             Active
                           </span>
                         )}
                         {!coupon.is_active && !expired && !exhausted && (
-                          <span className="px-1.5 py-0.5 rounded-full bg-gray-200 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                          <span className="px-1.5 py-0.5 rounded-md bg-gray-200 text-[10px] font-bold uppercase tracking-wide text-gray-500">
                             Inactive
                           </span>
                         )}
                         {coupon.first_order_only && (
-                          <span className="px-1.5 py-0.5 rounded-full bg-[#B19CD9]/15 text-[10px] font-bold uppercase tracking-wide text-[#6B5B95]">
-                            First order
+                          <span className="px-1.5 py-0.5 rounded-md bg-[#B19CD9]/15 text-[10px] font-bold uppercase tracking-wide text-[#6B5B95]">
+                            First
                           </span>
                         )}
                         {coupon.once_per_user && !coupon.first_order_only && (
-                          <span className="px-1.5 py-0.5 rounded-full bg-[#B19CD9]/15 text-[10px] font-bold uppercase tracking-wide text-[#6B5B95]">
+                          <span className="px-1.5 py-0.5 rounded-md bg-[#B19CD9]/15 text-[10px] font-bold uppercase tracking-wide text-[#6B5B95]">
                             1 / customer
                           </span>
                         )}
                       </div>
 
                       <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-                        <p className="text-xs text-gray-600">{formatDiscount(coupon)}</p>
+                        <p className="text-xs font-medium text-gray-700">{formatDiscount(coupon)}</p>
                         {coupon.min_order_amount != null && (
-                          <p className="text-xs text-gray-400">Min ₹{coupon.min_order_amount}</p>
+                          <p className="text-xs text-gray-600">Min ₹{coupon.min_order_amount}</p>
                         )}
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-600">
                           {coupon.uses_count} / {coupon.max_uses ?? "∞"} uses
                         </p>
-                        <p className="text-xs text-gray-400">Expires: {formatExpiry(coupon.expires_at)}</p>
+                        <p className="text-xs text-gray-600">Expires: {formatExpiry(coupon.expires_at)}</p>
                       </div>
                     </div>
 
@@ -550,7 +550,7 @@ const CouponsManager = () => {
                         type="button"
                         onClick={() => startEdit(coupon)}
                         title="Edit coupon"
-                        className="inline-flex items-center rounded-md border border-gray-300 p-1.5 text-gray-500 hover:bg-gray-50 transition-colors"
+                        className="inline-flex items-center rounded-md border border-gray-400 p-1.5 text-gray-500 hover:bg-gray-50 transition-colors"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
@@ -560,7 +560,7 @@ const CouponsManager = () => {
                         title={coupon.is_active ? "Deactivate" : "Activate"}
                         className={`inline-flex items-center rounded-md border p-1.5 transition-colors ${
                           coupon.is_active
-                            ? "border-gray-300 hover:bg-gray-50"
+                            ? "border-gray-400 hover:bg-gray-50"
                             : "border-red-300 hover:bg-red-50"
                         }`}
                       >
@@ -573,7 +573,7 @@ const CouponsManager = () => {
                         type="button"
                         onClick={() => setDeleteTarget(coupon)}
                         title="Delete coupon"
-                        className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-400 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5 text-red-500" />
                       </button>

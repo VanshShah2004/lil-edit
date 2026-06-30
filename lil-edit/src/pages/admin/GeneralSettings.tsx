@@ -164,15 +164,15 @@ const GeneralSettings = () => {
         <div className="max-w-4xl sm:max-w-3xl mx-auto pt-10 space-y-12">
           <section>
             <div className="flex items-center gap-4 mb-6">
-              <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-gray-700 shrink-0 flex items-center gap-2">
+              <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-gray-900 shrink-0 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4" style={{ color: ACCENT }} />
-                Administrator access
+                Administrator Access
               </h2>
-              <div className="flex-1 h-px bg-gray-400" />
+              <div className="flex-1 h-px bg-gray-900" />
             </div>
 
             {/* Single unified card */}
-            <div className="rounded-lg border border-gray-300 bg-white overflow-hidden shadow-sm">
+            <div className="rounded-lg border border-gray-900 bg-white overflow-hidden shadow-sm">
 
               {/* Grant form */}
               <div className="p-5">
@@ -189,7 +189,7 @@ const GeneralSettings = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={granting}
-                      className="flex-1 rounded-md border border-gray-300 px-4 py-2.5 text-sm text-gray-900 outline-none transition-colors focus:border-[#B19CD9] focus:ring-2 focus:ring-[#B19CD9]/30 disabled:opacity-60"
+                      className="flex-1 rounded-md border border-gray-400 px-4 py-2.5 text-sm text-gray-900 outline-none transition-colors focus:border-[#B19CD9] focus:ring-2 focus:ring-[#B19CD9]/30 disabled:opacity-60"
                     />
                     <button
                       type="submit"
@@ -246,7 +246,7 @@ const GeneralSettings = () => {
                       Administrators ({admins.length})
                     </p>
                   </div>
-                  <ul className="divide-y divide-gray-300">
+                  <ul className="divide-y divide-gray-400">
                     {admins.map((entry: AdminEntry) => {
                       const canRevoke = !entry.isSelf;
                       const reason = entry.isSelf ? "You can't revoke your own access" : "";
@@ -266,7 +266,7 @@ const GeneralSettings = () => {
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="text-sm font-semibold text-gray-900 break-all">{displayName(entry)}</p>
                               {entry.isSelf && (
-                                <span className="px-1.5 py-0.5 rounded-full bg-[#B19CD9]/15 text-[10px] font-bold uppercase tracking-wide text-[#6B5B95]">
+                                <span className="px-1.5 py-0.5 rounded-md bg-[#B19CD9]/15 text-[10px] font-bold uppercase tracking-wide text-[#6B5B95]">
                                   You
                                 </span>
                               )}
@@ -281,7 +281,7 @@ const GeneralSettings = () => {
                             onClick={() => setRemoveTarget({ email: entry.email, isPending: false })}
                             disabled={!canRevoke}
                             title={canRevoke ? "Revoke admin access" : reason}
-                            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors shrink-0 disabled:cursor-not-allowed disabled:opacity-40 border-gray-300 text-gray-600 enabled:hover:border-red-300 enabled:hover:bg-red-50 enabled:hover:text-red-600"
+                            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors shrink-0 disabled:cursor-not-allowed disabled:opacity-40 border-gray-400 text-gray-600 enabled:hover:border-red-300 enabled:hover:bg-red-50 enabled:hover:text-red-600"
                           >
                             <Trash2 className="w-3.5 h-3.5" /> Revoke
                           </button>
@@ -300,7 +300,7 @@ const GeneralSettings = () => {
                       Pending invitations ({pending.length})
                     </p>
                   </div>
-                  <ul className="divide-y divide-gray-300">
+                  <ul className="divide-y divide-gray-400">
                     {pending.map((entry) => (
                       <li key={entry.email} className="flex items-center gap-4 px-5 py-3.5">
                         <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
@@ -309,7 +309,7 @@ const GeneralSettings = () => {
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="text-sm font-semibold text-gray-900 break-all">{entry.email}</p>
-                            <span className="px-1.5 py-0.5 rounded-full bg-gray-200 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                            <span className="px-1.5 py-0.5 rounded-md bg-gray-200 text-[10px] font-bold uppercase tracking-wide text-gray-500">
                               Invited
                             </span>
                           </div>
@@ -319,7 +319,7 @@ const GeneralSettings = () => {
                           type="button"
                           onClick={() => setRemoveTarget({ email: entry.email, isPending: true })}
                           title="Cancel invitation"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-colors shrink-0"
+                          className="inline-flex items-center gap-1.5 rounded-md border border-gray-400 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-colors shrink-0"
                         >
                           <Trash2 className="w-3.5 h-3.5" /> Cancel
                         </button>
