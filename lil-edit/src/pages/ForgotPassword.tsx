@@ -111,7 +111,7 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[#E9DFF5]">
       {user ? <UserNavbar /> : <Navbar />}
       <main className="flex-1 flex items-center justify-center py-16 px-4">
         <div className="w-full max-w-md">

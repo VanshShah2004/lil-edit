@@ -21,18 +21,18 @@ const About = () => {
       <main className="flex-1">
         {/* The Lil Edit Story Section */}
         <section className="w-full bg-[#E9DFF5] border-y border-[#DCD0EB]/50">
-          <div className="page-container pt-2 pb-6 lg:pt-2 lg:pb-2">
-            <div className="flex flex-col lg:flex-row items-center">
-              {/* Left Side: Logo/Image */}
-              <div className="w-full lg:w-[45%] p-8 lg:p-6 flex justify-center items-center">
-                <div className="bg-[#F8F5EE] aspect-square w-full max-w-[400px] rounded-3xl shadow-xl shadow-purple-900/5 flex flex-col items-center justify-center overflow-hidden p-0 relative group transition-transform duration-500 hover:scale-[1.02]">
-                  {/* Decorative Icon */}
-                  <img src={logo} alt="The Lil Edit" className="w-full h-full object-cover drop-shadow-md" />
-                </div>
-              </div>
+          <div className="page-container pt-0 pb-2 lg:pt-2 lg:pb-2">
+              <div className="flex flex-col lg:flex-row items-center">
+               {/* Left Side: Logo/Image */}
+               <div className="w-full lg:w-[45%] p-3 lg:p-6 flex justify-center items-center">
+                 <div className="bg-[#F8F5EE] aspect-square w-full max-w-[400px] rounded-3xl shadow-xl shadow-purple-900/5 flex flex-col items-center justify-center overflow-hidden p-0 relative group transition-transform duration-500 hover:scale-[1.02]">
+                   {/* Decorative Icon */}
+                   <img src={logo} alt="The Lil Edit" className="w-full h-full object-cover drop-shadow-md" />
+                 </div>
+               </div>
 
               {/* Right Side: Content */}
-              <div className="w-full lg:w-[55%] p-8 lg:p-8 lg:pl-4 flex flex-col items-center text-center lg:items-start lg:text-left justify-center">
+              <div className="w-full lg:w-[55%] p-8 lg:p-8 lg:pl-4 flex flex-col items-center text-center lg:items-start lg:text-left justify-center -mt-[20px] lg:mt-0">
                 <span className="text-xs md:text-sm font-body font-bold tracking-[0.4em] text-[#0B5B55] mb-6 uppercase">
                   THE LIL EDIT STORY
                 </span>

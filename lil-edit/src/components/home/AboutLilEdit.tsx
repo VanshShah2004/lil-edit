@@ -20,7 +20,7 @@ const AboutLilEdit = () => {
   return (
     <section className="py-12 md:py-16 lg:py-20 bg-[#E8DDF7]">
       <div className="container px-6 lg:px-16 mx-auto">
-        <div className="flex flex-col md:flex-row items-center justify-center gap-10 md:gap-16 lg:gap-24">
+        <div className="flex flex-col-reverse md:flex-row items-center justify-center gap-10 md:gap-16 lg:gap-24">
 
           {/* Logo Block (Always First in DOM for clean accessibility and mobile-top behavior) */}
           <div className="w-full md:w-[35%] lg:w-[30%] flex justify-center md:justify-end">
@@ -35,7 +35,7 @@ const AboutLilEdit = () => {
           </div>
 
           {/* Content Block */}
-          <div className="w-full md:w-[65%] lg:w-[60%] flex flex-col items-center md:items-start text-center md:text-left">
+          <div className="w-full md:w-[65%] lg:w-[60%] flex flex-col items-center md:items-start text-center md:text-left -mt-[15px] md:mt-0">
             <span className="text-xs md:text-sm font-black tracking-[0.6em] uppercase text-[#0F766E] mb-5 block">
               The Lil Edit Story
             </span>
