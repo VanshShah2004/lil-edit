@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Package, Sparkles, Star, MessageSquare, Check } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Package, Sparkles, Star, MessageSquare, Check, ArrowRight } from "lucide-react";
 import type { Review } from "@/lib/reviewsApi";
 import ReviewForm from "@/components/reviews/ReviewForm";
 
@@ -313,6 +314,7 @@ export function ReviewHistorySection({
   pendingItems = [],
   productInfoByVariant,
   onReviewSaved,
+  viewAllHref,
   // Hides the "Your Reviews" tinted header band + accent strip — used where the
   // page already supplies its own heading (e.g. the dedicated Reviews page).
   hideHeader = false,
@@ -322,6 +324,7 @@ export function ReviewHistorySection({
   pendingItems?: { item: SidebarProduct; orderId: string }[];
   productInfoByVariant?: Map<string, { title: string; image: string }>;
   onReviewSaved?: () => void;
+  viewAllHref?: string;
   hideHeader?: boolean;
 }) {
   const total = reviews.length + pendingItems.length;
@@ -423,6 +426,15 @@ export function ReviewHistorySection({
           );
         })}
         </div>
+        )}
+
+        {viewAllHref && (
+          <Link
+            to={viewAllHref}
+            className="mx-auto flex w-fit items-center justify-center gap-1.5 rounded-lg border-[1.5px] border-brand-teal bg-white px-4 py-2.5 text-sm font-semibold text-brand-teal hover:gap-2.5 transition-all"
+          >
+            View all reviews <ArrowRight className="w-4 h-4" />
+          </Link>
         )}
       </div>
     </div>
