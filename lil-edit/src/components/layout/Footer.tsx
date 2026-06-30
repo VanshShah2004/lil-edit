@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Heart } from "lucide-react";
 
 const Footer = () => (
-  <footer className="bg-card border-t border-border">
+  <footer className="bg-card border-t border-gray-400">
     <div className="container mx-auto px-4 lg:px-8 py-12 md:py-16">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10">
         {/* Brand */}
