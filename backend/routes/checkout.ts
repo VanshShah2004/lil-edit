@@ -15,6 +15,7 @@ import { verifyReviewsForOrder } from "../lib/reviewsVerification.js";
 // was recorded, so a placement that was interrupted before its detached send can't silently
 // lose the receipt. No-op on the happy path (a recorded receipt). Fire-and-forget; never throws.
 import { sendReceiptIfMissing } from "../lib/orderReceipt.js";
+import { validateCoupon } from "../lib/coupons.js";
 import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
 
 // ─── Razorpay-prepaid checkout: cart → order placement ──────────────────────────
@@ -58,11 +59,9 @@ function computeShipping(subtotal: number): number {
   return subtotal > 0 && subtotal <= FREE_SHIPPING_THRESHOLD ? SHIPPING_FEE : 0;
 }
 
-// One concrete coupon: FIRST10 = 10% off the subtotal, eligible only on a customer's
-// first order. Validated live at /coupon, re-checked at /initiate + /verify, and
-// finally asserted in the RPC (p_expect_first_order).
-const COUPON_CODE = "FIRST10";
-const COUPON_RATE = 0.1;
+// Coupons are fully table-driven (admin-managed in the `coupons` table) and validated
+// server-side via lib/coupons.ts validateCoupon(). FIRST10 used to be hardcoded here; it
+// now lives in that table like any other coupon (first_order_only + once_per_user flags).
 
 // ─── Types ────────────────────────────────────────────────────────────────────────
 type CheckoutProduct = ProductRow & { id: string };
@@ -124,7 +123,9 @@ interface CheckoutSnapshot {
   shippingFee: number;
   total: number;
   itemCount: number;
-  expectFirstOrder: boolean;
+  // The coupon code applied to this order, or null. Carried so placement records it on
+  // the order and increments the coupon's usage count.
+  couponCode: string | null;
 }
 
 type Source = { mode: "cart" } | { mode: "direct"; item: RawLine };
@@ -149,22 +150,6 @@ function pickImage(product: CheckoutProduct, variant: VariantRow | null): string
     images[0]?.image_url ||
     ""
   );
-}
-
-// Returns true when the user has placed zero orders (FIRST10 eligibility).
-async function isFirstOrder(userId: string, log: OpLogger): Promise<boolean> {
-  const t0 = performance.now();
-  const { count, error } = await db()
-    .from("orders")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId);
-  if (error) {
-    log.error(`first-order check failed  ${error.message}`, error);
-    throw new PriceError(500, "Could not check order history");
-  }
-  const first = (count ?? 0) === 0;
-  log.step(`DB first-order check: ${fms(performance.now() - t0)}  existingOrders=${count ?? 0}  → ${first ? "FIRST order (eligible)" : "not first"}`);
-  return first;
 }
 
 // Price a cart or a single direct item into line snapshots + subtotal/shipping. No
@@ -283,9 +268,9 @@ function toRpcItems(items: PricedLine[]) {
   return items.map(({ stock: _stock, is_unlimited: _is_unlimited, ...snapshot }) => snapshot);
 }
 
-// Place the order through the locked RPC. Handles the rare discount_invalid retry
-// (drop only the first-order assertion — the priced totals already match what was
-// charged). Returns the RPC result row.
+// Place the order through the locked RPC. Returns the RPC result row. Coupon validity is
+// enforced preventively at /coupon + /initiate (verify-then-create means a paid order is
+// always honored), so placement just records the coupon + increments its usage.
 async function callPlaceOrder(
   snap: CheckoutSnapshot,
   paymentId: string,
@@ -304,27 +289,18 @@ async function callPlaceOrder(
     p_payment_status: "paid",
     p_status: "confirmed",
     p_transaction_id: paymentId,
-    p_expect_first_order: snap.expectFirstOrder,
     p_clear_cart: snap.mode === "cart",
+    p_coupon_code: snap.couponCode ?? null,
   };
 
-  log.step(`RPC place_order →  user=${snap.userId}  items=${args.p_items.length}  total=₹${snap.total}  txn=${paymentId}  clearCart=${args.p_clear_cart}  expectFirst=${snap.expectFirstOrder}`);
+  log.step(`RPC place_order →  user=${snap.userId}  items=${args.p_items.length}  total=₹${snap.total}  txn=${paymentId}  clearCart=${args.p_clear_cart}  coupon=${snap.couponCode ?? "none"}`);
   const t0 = performance.now();
-  let { data, error } = await db().rpc("place_order", args);
+  const { data, error } = await db().rpc("place_order", args);
   if (error) { log.error(`place_order RPC failed  ${error.message}`, error); throw new Error(`place_order failed: ${error.message}`); }
-  let result = (Array.isArray(data) ? data[0] : data) as
+  const result = (Array.isArray(data) ? data[0] : data) as
     | { order_id: string | null; order_number: string | null; result: string }
     | undefined;
   log.step(`RPC place_order returned: ${fms(performance.now() - t0)}  result=${result?.result ?? "∅"}  order=${result?.order_number ?? "—"}`);
-
-  if (result?.result === "discount_invalid") {
-    log.warn("first-order assertion failed at placement — retrying once without it (totals already match the charge)");
-    const t1 = performance.now();
-    ({ data, error } = await db().rpc("place_order", { ...args, p_expect_first_order: false }));
-    if (error) { log.error(`place_order retry failed  ${error.message}`, error); throw new Error(`place_order retry failed: ${error.message}`); }
-    result = (Array.isArray(data) ? data[0] : data) as typeof result;
-    log.step(`RPC place_order retry: ${fms(performance.now() - t1)}  result=${result?.result ?? "∅"}  order=${result?.order_number ?? "—"}`);
-  }
 
   if (!result) throw new Error("place_order returned no row");
   return result;
@@ -456,9 +432,19 @@ async function recoverSnapshot(razorpayOrderId: string, capturedPaise: number, l
   const priced = await priceOrder(userId, source, log);
   if (priced.items.length === 0) { log.error("notes fallback — nothing to price"); return null; }
   if (priced.unavailable.length > 0) { log.error(`notes fallback — ${priced.unavailable.length} line(s) now unavailable; refusing to place`); return null; }
-  const firstOrder = await isFirstOrder(userId, log);
-  // Re-apply FIRST10 if still eligible; the assert below guards against any drift.
-  const discount = firstOrder ? Math.round(priced.subtotal * COUPON_RATE) : 0;
+
+  // Re-derive the discount from the coupon recorded in the Razorpay notes (the Redis
+  // snapshot is the normal, exact path — this only runs if it was evicted). The coupon is
+  // re-validated against the table for this user; the capturedPaise assert below refuses
+  // to place if anything drifted (e.g. a coupon that expired post-payment), so a
+  // mismatched order is never written.
+  const notesCoupon = (typeof notes.coupon === "string" ? notes.coupon : "").trim().toUpperCase();
+  let discount = 0;
+  let couponCode: string | null = null;
+  if (notesCoupon) {
+    const v = await validateCoupon(db(), notesCoupon, priced.subtotal, userId, log);
+    if (v.valid) { discount = v.discount; couponCode = notesCoupon; }
+  }
   const total = priced.subtotal + priced.shippingFee - discount;
 
   if (Math.round(total * 100) !== capturedPaise) {
@@ -471,7 +457,7 @@ async function recoverSnapshot(razorpayOrderId: string, capturedPaise: number, l
     item: directItem,
     items: priced.items, subtotal: priced.subtotal, discount,
     shippingFee: priced.shippingFee, total, itemCount: priced.itemCount,
-    expectFirstOrder: firstOrder,
+    couponCode,
   };
 }
 
@@ -603,32 +589,49 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
       return;
     }
 
-    // Coupon: FIRST10 = 10% off subtotal, first order only. `isFirstOrder` reads the
-    // user's placed-order count, but orders aren't written until /verify — so two
-    // /initiate calls fired before either pays would BOTH read zero and BOTH mint a
-    // discounted Razorpay order (the customer then pays both and keeps the discount on
-    // each). To close that pre-payment window we take a short-lived per-user hold on the
-    // coupon here: only one in-flight checkout can hold FIRST10 at a time; a concurrent
-    // one is priced at full price. The DB still re-asserts first-order authoritatively in
-    // place_order (sequential reuse was always blocked there). Redis down ⇒ "unavailable"
-    // ⇒ fail OPEN to the prior, rare race rather than ever denying a legit discount.
-    const firstOrder = await isFirstOrder(userId, log);
-    const wantsCoupon = couponCode === COUPON_CODE && firstOrder;
-    let couponApplied = wantsCoupon;
-    if (wantsCoupon) {
-      const hold = await redisSetNX(couponHoldKey(userId, COUPON_CODE), String(log.sr), CHECKOUT_TTL_S, log);
-      couponApplied = hold !== "held"; // acquired / unavailable → apply; held → a concurrent checkout already has it
-      if (hold === "held") log.warn("FIRST10 already held by another in-flight checkout for this user — pricing at full price");
+    // ── Coupon resolution (discount is ALWAYS computed server-side; never trusted) ──
+    // All coupons are admin-managed rows validated against the `coupons` table (active /
+    // not expired / not exhausted / min-order / per-user rules). Usage is incremented
+    // atomically inside place_order on the created path (exactly once).
+    //
+    // For a coupon with a per-user rule (first_order_only / once_per_user) we take a
+    // short-lived per-user Redis hold: validateCoupon reads order history, but orders
+    // aren't written until /verify, so two /initiate calls fired before either pays would
+    // both pass and both mint a discounted order. The hold lets only one in-flight
+    // checkout carry such a code; a concurrent one is priced full. Redis down ⇒
+    // "unavailable" ⇒ fail OPEN (apply) rather than deny a legit discount. A reusable
+    // coupon needs no hold (it's allowed multiple times anyway, bounded by max_uses).
+    let discount = 0;
+    let appliedCode: string | null = null;
+
+    if (couponCode) {
+      const v = await validateCoupon(db(), couponCode, priced.subtotal, userId, log);
+      if (v.valid && v.coupon) {
+        const perUser = v.coupon.first_order_only || v.coupon.once_per_user;
+        let held = false;
+        if (perUser) {
+          const hold = await redisSetNX(couponHoldKey(userId, v.coupon.code), String(log.sr), CHECKOUT_TTL_S, log);
+          held = hold === "held";
+          if (held) log.warn(`coupon "${v.coupon.code}" already held by another in-flight checkout for this user — pricing at full price`);
+        }
+        if (!held) {
+          discount = v.discount;
+          appliedCode = v.coupon.code;
+        }
+      } else {
+        log.warn(`coupon "${couponCode}" rejected: ${v.reason}`);
+      }
     }
-    const discount = couponApplied ? Math.round(priced.subtotal * COUPON_RATE) : 0;
+
     const total = priced.subtotal + priced.shippingFee - discount;
-    log.step(`coupon "${couponCode || "none"}" → ${couponApplied ? "VALID (FIRST10, 10% off)" : couponCode ? "rejected" : "none"}`);
-    log.step(`subtotal=₹${priced.subtotal}  shipping=₹${priced.shippingFee}  discount=₹${discount}  total=₹${total}  firstOrder=${firstOrder}`);
+    log.step(`coupon "${couponCode || "none"}" → ${appliedCode ? `APPLIED (${appliedCode}, -₹${discount})` : couponCode ? "rejected" : "none"}`);
+    log.step(`subtotal=₹${priced.subtotal}  shipping=₹${priced.shippingFee}  discount=₹${discount}  total=₹${total}`);
 
     // Create the Razorpay order. Notes are the durable fallback the webhook can read
     // even if Redis evicted the snapshot (direct item stashed as JSON).
     const notes: Record<string, string> = { userId, addressId, mode };
     if (directItem) notes.item = JSON.stringify(directItem);
+    if (appliedCode) notes.coupon = appliedCode;
     const amountPaise = Math.round(total * 100);
     log.step(`creating Razorpay order  amount=${amountPaise}p  notes=[${Object.keys(notes).join(",")}]`);
     const t0Rzp = performance.now();
@@ -641,7 +644,7 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
       item: directItem,
       items: priced.items, subtotal: priced.subtotal, discount,
       shippingFee: priced.shippingFee, total, itemCount: priced.itemCount,
-      expectFirstOrder: couponApplied, // only assert first-order when the discount was applied
+      couponCode: appliedCode,
     };
     await redisSet(checkoutKey(rzpOrder.id), snapshot, CHECKOUT_TTL_S, log);
 
@@ -658,7 +661,7 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
         shippingFee: priced.shippingFee,
         total,
         itemCount: priced.itemCount,
-        couponApplied: couponApplied ? COUPON_CODE : null,
+        couponApplied: appliedCode,
       },
     });
   } catch (err) {
@@ -796,20 +799,16 @@ router.get("/coupon", requireAuth, async (req: Request, res: Response) => {
   log.step(`user=${userId}  code=${code}  subtotal=₹${subtotal}`);
 
   try {
-    if (code !== COUPON_CODE) {
-      log.success("unknown code").end("CHECKOUT COUPON");
+    if (!code) {
+      log.success("empty code").end("CHECKOUT COUPON");
       res.json({ valid: false, discount: 0, reason: "Invalid coupon code." });
       return;
     }
-    const firstOrder = await isFirstOrder(userId, log);
-    if (!firstOrder) {
-      log.success("not first order").end("CHECKOUT COUPON");
-      res.json({ valid: false, discount: 0, reason: "FIRST10 is only valid on your first order." });
-      return;
-    }
-    const discount = Math.round(subtotal * COUPON_RATE);
-    log.success(`valid  discount=₹${discount}`).end("CHECKOUT COUPON");
-    res.json({ valid: true, discount, reason: "10% off your first order!" });
+
+    // All coupons are admin-managed rows validated against the table (incl. per-user rules).
+    const v = await validateCoupon(db(), code, subtotal, userId, log);
+    log.success(`${v.valid ? `valid  discount=₹${v.discount}` : `invalid: ${v.reason}`}`).end("CHECKOUT COUPON");
+    res.json({ valid: v.valid, discount: v.discount, reason: v.reason });
   } catch (err) {
     if (err instanceof PriceError) {
       log.warn(`coupon check rejected (${err.status})  ${err.message}`).end("CHECKOUT COUPON");

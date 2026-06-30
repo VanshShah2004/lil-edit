@@ -52,9 +52,14 @@ const groups: AdminSettingsGroup[] = [
     ],
   },
   {
+    title: "Platform",
+    tiles: [
+      { to: "/admin/general-settings", label: "General Settings", description: "Manage admin access and coupons", icon: Settings },
+    ],
+  },
+  {
     title: "Future Expansion",
     tiles: [
-      { to: "#", label: "Admin Settings General", description: "General platform configuration", icon: Settings, comingSoon: true },
       { to: "#", label: "Roles & Permissions", description: "Manage staff access levels", icon: ShieldCheck, comingSoon: true },
       { to: "#", label: "Analytics", description: "Store performance insights", icon: BarChart3, comingSoon: true },
       { to: "#", label: "Site Configuration", description: "Storefront-wide settings", icon: SlidersHorizontal, comingSoon: true },

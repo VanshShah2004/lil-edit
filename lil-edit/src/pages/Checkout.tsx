@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { supabase } from "@/lib/supabase";
 import type { Address } from "@/components/profile/AddressManager";
-import { computeCartTotals, computeSubtotal } from "@/lib/pricing";
+import { computeCartTotals } from "@/lib/pricing";
 import {
   initiateCheckout,
   verifyCheckout,
@@ -39,7 +39,6 @@ interface CheckoutNavState {
 }
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
-const COUPON_RATE = 0.1; // FIRST10 = 10% off; the backend is authoritative.
 
 export default function Checkout() {
   const { user, profile, loading: authLoading } = useAuth();
@@ -61,7 +60,7 @@ export default function Checkout() {
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
 
   const [couponInput, setCouponInput] = useState("");
-  const [coupon, setCoupon] = useState<{ code: string } | null>(null);
+  const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
   const [couponMsg, setCouponMsg] = useState<string>("");
   const [couponChecking, setCouponChecking] = useState(false);
 
@@ -132,13 +131,15 @@ export default function Checkout() {
     }));
   }, [mode, directItem, cartItems]);
 
-  // Discount is DERIVED from the current subtotal (never stored), so editing the cart
-  // can't leave a stale coupon amount. The backend re-validates authoritatively anyway.
+  // The applied discount is the exact amount the backend returned for this coupon (every
+  // coupon's discount is computed server-side). This summary is read-only, so the subtotal
+  // it was validated against can't change here; /initiate re-validates and re-prices
+  // authoritatively before charging regardless.
   const lineInputs = useMemo(
     () => summaryLines.map((l) => ({ price: l.price, originalPrice: l.originalPrice, quantity: l.quantity })),
     [summaryLines],
   );
-  const discount = coupon ? Math.round(computeSubtotal(lineInputs) * COUPON_RATE) : 0;
+  const discount = coupon?.discount ?? 0;
   const totals = computeCartTotals(lineInputs, discount);
 
   const applyCoupon = async () => {
@@ -151,7 +152,7 @@ export default function Checkout() {
       const res = await validateCoupon(code, totals.subtotal);
       console.log(`[Checkout] coupon "${code}" → valid=${res.valid}  discount=${res.discount}  (${res.reason})`);
       if (res.valid) {
-        setCoupon({ code });
+        setCoupon({ code, discount: res.discount });
         setCouponMsg(res.reason);
         toast.success(res.reason);
       } else {
@@ -406,7 +407,7 @@ export default function Checkout() {
               <div>
                 <div className="flex flex-row gap-2">
                   <Input
-                    placeholder="Coupon code (try FIRST10)"
+                    placeholder="Coupon code"
                     value={couponInput}
                     onChange={(e) => setCouponInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void applyCoupon(); } }}

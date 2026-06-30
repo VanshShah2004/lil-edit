@@ -33,7 +33,7 @@ export function OrderItemsTable({ items }: { items: OrderItem[] }) {
         <table className="w-full text-center text-sm border-collapse">
           <thead>
             <tr className="border-b border-foreground/50">
-              {["Product", "SKU", "Qty", "Unit Price", "Subtotal"].map((h, i, arr) => (
+              {["Product", "SKU", "Qty", "Unit Price", "Subtotal"].map((h) => (
                 <th
                   key={h}
                   className="px-5 sm:px-6 py-3 text-xs font-bold text-gray-600 uppercase tracking-wider align-middle text-center"

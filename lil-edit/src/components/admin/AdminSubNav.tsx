@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ChevronDown, ClipboardList, LayoutDashboard, LayoutGrid, Plus, Shirt } from "lucide-react";
+import { ChevronDown, ClipboardList, LayoutDashboard, LayoutGrid, Plus, Settings, Shirt } from "lucide-react";
 
 const ACCENT = "#0F766E";
 
@@ -10,6 +10,7 @@ const TABS = [
   { to: "/admin/manage-products", label: "Manage Products", icon: Shirt, section: "Catalog Management" },
   { to: "/admin/orders", label: "Manage Orders", icon: ClipboardList, section: "Order Management" },
   { to: "/admin/spotlight", label: "The Spotlight", icon: LayoutGrid, section: "Content Management" },
+  { to: "/admin/general-settings", label: "General Settings", icon: Settings, section: "Platform" },
 ];
 
 const AdminSubNav = () => {

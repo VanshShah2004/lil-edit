@@ -41,9 +41,12 @@ const sections: AdminMenuSection[] = [
     items: [{ to: "/admin/spotlight", label: "The Spotlight", icon: LayoutGrid }],
   },
   {
+    title: "Platform",
+    items: [{ to: "/admin/general-settings", label: "General Settings", icon: Settings }],
+  },
+  {
     title: "Future Expansion",
     items: [
-      { to: "#", label: "Admin Settings General", icon: Settings, comingSoon: true },
       { to: "#", label: "Roles & Permissions", icon: ShieldCheck, comingSoon: true },
       { to: "#", label: "Analytics", icon: BarChart3, comingSoon: true },
       { to: "#", label: "Site Configuration", icon: SlidersHorizontal, comingSoon: true },

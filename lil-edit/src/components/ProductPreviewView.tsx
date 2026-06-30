@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Heart, Minus, Plus, Share2, Star, X, Mail, Link2, MoreHorizontal, Check } from "lucide-react";
+import { Heart, Minus, Plus, Share2, X, Mail, Link2, MoreHorizontal, Check } from "lucide-react";
 import { FaFacebook, FaTwitter, FaWhatsapp, FaInstagram, FaTelegramPlane, FaPinterestP, FaSnapchatGhost, FaRedditAlien } from "react-icons/fa";
 import { IoChatbubbleEllipses } from "react-icons/io5";
 import { motion, AnimatePresence } from "framer-motion";

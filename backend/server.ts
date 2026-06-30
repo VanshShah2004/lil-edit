@@ -12,6 +12,8 @@ import cartRouter from "./routes/cart.js";
 import wishlistRouter from "./routes/wishlist.js";
 import ordersRouter from "./routes/orders.js";
 import adminOrdersRouter from "./routes/adminOrders.js";
+import adminAccessRouter from "./routes/adminAccess.js";
+import couponsRouter from "./routes/coupons.js";
 import curationRouter from "./routes/curation.js";
 import checkoutRouter, { webhookHandler } from "./routes/checkout.js";
 import shareRouter from "./routes/share.js";
@@ -90,6 +92,10 @@ app.use("/api/orders",       ordersRouter);
 // Admin GETs ride the global limiter; the tight write-limiter is applied to the PATCH
 // handlers inside the router (see adminOrders.ts).
 app.use("/api/admin/orders", adminOrdersRouter);
+// Admin account management (grant/revoke admin status). GET rides the global limiter;
+// the grant/revoke POSTs apply the tight admin write-limiter inside the router.
+app.use("/api/admin/access",   adminAccessRouter);
+app.use("/api/admin/coupons",  couponsRouter);
 // Public GET /sections rides the global limiter; admin writes get the tight
 // write-limiter applied to the PUT/PATCH handlers inside the router (see curation.ts).
 app.use("/api/curation",     curationRouter);
