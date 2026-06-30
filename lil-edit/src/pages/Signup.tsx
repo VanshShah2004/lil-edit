@@ -123,7 +123,7 @@ const Signup = () => {
   return (
     <div className="min-h-screen flex flex-col bg-[#E9DFF5]">
       {user ? <UserNavbar /> : <Navbar />}
-      <main className="flex-1 flex items-center justify-center py-16 px-4">
+      <main className="flex-1 flex items-center justify-center pb-16 px-4" style={{ paddingTop: 'calc(var(--navbar-height, 80px) + 2rem)' }}>
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <img src={logo} alt="The Lil Edit" className="h-16 mx-auto mb-6" />
