@@ -590,7 +590,11 @@ export default function Cart() {
                           void applyCoupon();
                         }
                       }}
-                      className="w-full h-11 rounded-lg text-sm bg-white"
+                      className={`w-full h-11 rounded-lg text-sm ${
+                        coupon || couponInput.trim()
+                          ? "bg-[#E6FFFA] border-brand-teal/60 text-brand-teal"
+                          : "bg-white"
+                      }`}
                     />
                     {showCoupons && (
                       <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-72 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
@@ -627,10 +631,10 @@ export default function Cart() {
                                       setCouponInput(c.code);
                                       void applyCoupon(c.code);
                                     }}
-                                    className="w-full text-left px-3 py-2.5 hover:bg-teal-50/60 transition-colors flex flex-col gap-1"
+                                    className="w-full text-left px-3 py-2.5 bg-[#E6FFFA] hover:bg-teal-100 transition-colors flex flex-col gap-1"
                                   >
                                     <div className="flex items-center justify-between">
-                                      <span className="font-bold text-xs bg-brand-teal/10 text-brand-teal border border-brand-teal px-2 py-0.5 rounded font-mono uppercase tracking-wider">
+                                      <span className="font-bold text-xs bg-teal-100 text-brand-teal border border-brand-teal px-2 py-0.5 rounded font-mono uppercase tracking-wider">
                                         {c.code}
                                       </span>
                                       <span className="text-base font-bold text-brand-teal">{discountText}</span>
@@ -702,7 +706,14 @@ export default function Cart() {
               <Button
                 onClick={() => {
                   if (!user) { toast.error("Please log in to checkout"); return; }
-                  navigate("/checkout");
+                  navigate("/checkout", {
+                    state: {
+                      mode: "cart",
+                      ...(coupon
+                        ? { coupon: { code: coupon.code, discount: coupon.discount, reason: couponMsg || undefined } }
+                        : {}),
+                    },
+                  });
                 }}
                 className="w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-colors flex items-center justify-center gap-2"
                 disabled={cartItems.length === 0}

@@ -40,6 +40,7 @@ interface DirectNavItem extends CheckoutItemInput {
 interface CheckoutNavState {
   mode?: "cart" | "direct";
   item?: DirectNavItem;
+  coupon?: { code: string; discount: number; reason?: string };
 }
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
@@ -58,20 +59,27 @@ export default function Checkout() {
       ? navState.item
       : null;
   const mode: "cart" | "direct" = directItem ? "direct" : "cart";
+  const carriedCoupon =
+    mode === "cart" && navState?.coupon?.code
+      ? navState.coupon
+      : null;
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
 
-  const [couponInput, setCouponInput] = useState("");
-  const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
-  const [couponMsg, setCouponMsg] = useState<string>("");
+  const [couponInput, setCouponInput] = useState(() => carriedCoupon?.code ?? "");
+  const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(() =>
+    carriedCoupon ? { code: carriedCoupon.code, discount: carriedCoupon.discount } : null,
+  );
+  const [couponMsg, setCouponMsg] = useState(() => carriedCoupon?.reason ?? "");
   const [couponChecking, setCouponChecking] = useState(false);
 
   const [activeCoupons, setActiveCoupons] = useState<ActiveCoupon[]>([]);
   const [showCoupons, setShowCoupons] = useState(false);
   const [couponsLoaded, setCouponsLoaded] = useState(false);
   const couponContainerRef = useRef<HTMLDivElement>(null);
+  const carriedCouponSyncedRef = useRef(!carriedCoupon?.code);
 
   // Subtotal for coupon applicability checks — computed early so the coupon fetch
   // can depend on it. The full `totals` object is built further down.
@@ -103,6 +111,37 @@ export default function Checkout() {
       active = false;
     };
   }, [user, couponSubtotal]);
+
+  // Coupon carried from Cart → re-validate against checkout subtotal once the cart is ready.
+  useEffect(() => {
+    if (!carriedCoupon?.code || mode !== "cart" || cartLoading || carriedCouponSyncedRef.current) return;
+    if (couponSubtotal <= 0) return;
+
+    carriedCouponSyncedRef.current = true;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await validateCoupon(carriedCoupon.code, couponSubtotal);
+        if (cancelled) return;
+        if (res.valid) {
+          setCouponInput(carriedCoupon.code);
+          setCoupon({ code: carriedCoupon.code, discount: res.discount });
+          setCouponMsg(res.reason);
+        } else {
+          setCoupon(null);
+          setCouponMsg(res.reason);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setCoupon(null);
+          setCouponMsg(e instanceof Error ? e.message : "Could not apply coupon");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [carriedCoupon, mode, cartLoading, couponSubtotal]);
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -347,7 +386,7 @@ export default function Checkout() {
             </h1>
 
             {/* Address */}
-            <div className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 shadow-sm">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm">
               <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-brand-teal" /> Delivery Address
               </h2>
@@ -355,7 +394,7 @@ export default function Checkout() {
               {addressesLoading ? (
                 <p className="text-sm text-gray-500">Loading your addresses…</p>
               ) : addresses.length === 0 ? (
-                <div className="text-center py-8 border border-dashed border-gray-300 rounded-xl">
+                <div className="text-center py-8 border border-dashed border-gray-300 rounded-md">
                   <p className="text-sm text-gray-600 mb-3">You don't have a saved address yet.</p>
                   <Link to="/profile" className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-teal hover:underline">
                     <Plus className="w-4 h-4" /> Add an address in your profile
@@ -370,7 +409,7 @@ export default function Checkout() {
                         key={addr.id}
                         type="button"
                         onClick={() => setSelectedAddressId(addr.id)}
-                        className={`text-left p-4 rounded-xl border transition-all relative ${
+                        className={`text-left p-4 rounded-md border transition-all relative ${
                           selected ? "border-brand-teal ring-1 ring-brand-teal bg-brand-teal/5" : "border-gray-200 hover:border-gray-300"
                         }`}
                       >
@@ -382,7 +421,7 @@ export default function Checkout() {
                         <p className="font-semibold text-gray-800 capitalize pr-6">
                           {addr.type === "other" ? addr.label : addr.type}
                           {addr.is_default && (
-                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-teal-100 text-teal-800">Default</span>
+                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-medium bg-teal-100 text-teal-800">Default</span>
                           )}
                         </p>
                         <div className="text-xs text-gray-500 mt-1 space-y-0.5">
@@ -398,7 +437,7 @@ export default function Checkout() {
             </div>
 
             {/* Items */}
-            <div className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 shadow-sm">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm">
               <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">
                 {mode === "direct" ? "Your Item" : `Your Bag (${summaryLines.length})`}
               </h2>
@@ -408,14 +447,14 @@ export default function Checkout() {
                   <Package className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                   <p className="text-sm text-gray-600 mb-4">Your cart is empty.</p>
                   <Link to="/">
-                    <Button className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full px-6">Continue Shopping</Button>
+                    <Button className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-lg px-6">Continue Shopping</Button>
                   </Link>
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
                   {summaryLines.map((line) => (
                     <div key={line.key} className="flex gap-3 py-3 first:pt-0 last:pb-0">
-                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+                      <div className="w-16 h-16 rounded-md overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
                         {line.image ? (
                           <img
                             src={line.image}
@@ -453,7 +492,7 @@ export default function Checkout() {
 
           {/* RIGHT: summary + pay */}
           <aside className="w-full lg:w-[40%] self-start lg:sticky lg:top-6">
-            <div className="bg-[hsl(268_45%_87%)] border border-[hsl(268_45%_77%)] shadow-lg rounded-2xl lg:rounded-3xl p-4 sm:p-6 space-y-5">
+            <div className="bg-[hsl(268_45%_87%)] border border-[hsl(268_45%_77%)] shadow-lg rounded-lg p-4 sm:p-6 space-y-5">
               <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">Order Summary</h3>
 
               {/* Coupon */}
@@ -471,11 +510,15 @@ export default function Checkout() {
                           void applyCoupon();
                         }
                       }}
-                      className="w-full h-11 rounded-full text-sm bg-white"
+                      className={`w-full h-11 rounded-lg text-sm ${
+                        coupon || couponInput.trim()
+                          ? "bg-[#E6FFFA] border-brand-teal/60 text-brand-teal"
+                          : "bg-white"
+                      }`}
                       disabled={paying}
                     />
                     {showCoupons && (
-                      <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-md shadow-xl max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
                         <div className="p-2.5 border-b border-gray-100 text-xs font-semibold text-gray-500 flex items-center gap-1.5">
                           <Tag className="w-3.5 h-3.5 text-brand-teal" />
                           Available Coupons
@@ -509,10 +552,10 @@ export default function Checkout() {
                                       setCouponInput(c.code);
                                       void applyCoupon(c.code);
                                     }}
-                                    className="w-full text-left px-3 py-2.5 hover:bg-teal-50/60 transition-colors flex flex-col gap-1 text-gray-900"
+                                    className="w-full text-left px-3 py-2.5 bg-[#E6FFFA] hover:bg-teal-100 transition-colors flex flex-col gap-1 text-gray-900"
                                   >
                                     <div className="flex items-center justify-between">
-                                      <span className="font-bold text-xs bg-brand-teal/10 text-brand-teal border border-brand-teal px-2 py-0.5 rounded font-mono uppercase tracking-wider">
+                                      <span className="font-bold text-xs bg-teal-100 text-brand-teal border border-brand-teal px-2 py-0.5 rounded-sm font-mono uppercase tracking-wider">
                                         {c.code}
                                       </span>
                                       <span className="text-base font-bold text-brand-teal">{discountText}</span>
@@ -520,7 +563,7 @@ export default function Checkout() {
                                     <div className="flex flex-wrap items-center justify-between text-xs text-gray-500 gap-1.5 mt-0.5">
                                       <span>{couponOfferText}</span>
                                       {ruleBadge && (
-                                        <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-medium">
+                                        <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded-sm font-medium">
                                           {ruleBadge}
                                         </span>
                                       )}
@@ -539,7 +582,7 @@ export default function Checkout() {
                                   className="w-full text-left px-3 py-2.5 flex flex-col gap-1 bg-gray-50/80 cursor-default select-none"
                                 >
                                   <div className="flex items-center justify-between">
-                                    <span className="font-bold text-xs bg-gray-300 text-gray-700 px-2 py-0.5 rounded font-mono uppercase tracking-wider">
+                                    <span className="font-bold text-xs bg-gray-300 text-gray-700 px-2 py-0.5 rounded-sm font-mono uppercase tracking-wider">
                                       {c.code}
                                     </span>
                                     <span className="text-base font-bold text-gray-600">{discountText}</span>
@@ -549,7 +592,7 @@ export default function Checkout() {
                                       {reasonText}
                                     </span>
                                     {ruleBadge && (
-                                      <span className="bg-gray-300 text-gray-700 px-1.5 py-0.5 rounded font-medium">
+                                      <span className="bg-gray-300 text-gray-700 px-1.5 py-0.5 rounded-sm font-medium">
                                         {ruleBadge}
                                       </span>
                                     )}
@@ -565,7 +608,7 @@ export default function Checkout() {
                   <Button
                     onClick={() => void applyCoupon()}
                     disabled={couponChecking || paying || !couponInput.trim()}
-                    className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full px-5 h-11 text-sm font-semibold shrink-0"
+                    className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-lg px-5 h-11 text-sm font-semibold shrink-0"
                   >
                     {couponChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Apply"}
                   </Button>
@@ -612,7 +655,7 @@ export default function Checkout() {
               <Button
                 onClick={() => void handlePay()}
                 disabled={paying || summaryLines.length === 0 || !selectedAddressId}
-                className="w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-full font-semibold text-sm sm:text-base flex items-center justify-center gap-2"
+                className="w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base flex items-center justify-center gap-2"
               >
                 {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock size={14} />}
                 {paying ? "Processing…" : `Pay ${inr(totals.total)}`}
