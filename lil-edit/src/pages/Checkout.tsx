@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ChevronRight, ChevronDown, Lock, MapPin, Tag, Loader2, Check, ShieldCheck, Plus, Package } from "lucide-react";
+import { ChevronRight, ChevronDown, Lock, MapPin, Tag, Loader2, Check, ShieldCheck, Plus, Package, Sparkles, Award } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
@@ -45,6 +46,8 @@ interface CheckoutNavState {
 }
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+const titleCase = (value: string) =>
+  value.replace(/\b\w/g, (char) => char.toUpperCase());
 
 // Inline "add address" form on checkout — mirrors the Profile AddressManager fields, but
 // saves straight to the addresses table so the new row gets a real id we can select for
@@ -822,12 +825,12 @@ export default function Checkout() {
           </div>
 
           {/* RIGHT: summary + pay */}
-          <aside className="w-full lg:w-[40%] self-start lg:sticky lg:top-6">
-            <div className="bg-[hsl(268_45%_87%)] border border-[hsl(268_45%_77%)] shadow-lg rounded-lg p-4 sm:p-6 space-y-5">
-              <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">Order Summary</h3>
+          <aside className="w-full lg:w-[34%] self-start lg:sticky lg:top-6 lg:mt-[60px]">
+            <Card className="bg-[hsl(268_45%_87%)] backdrop-blur-sm border border-[hsl(268_45%_77%)] shadow-lg rounded-2xl lg:rounded-3xl p-3 sm:p-5 lg:p-6 flex flex-col gap-4 sm:gap-5">
+              <h3 className="order-0 text-xl sm:text-2xl font-semibold text-gray-900">Order Summary</h3>
 
               {/* Coupon */}
-              <div className="relative">
+              <div className="relative order-3">
                 {celebrating && (
                   <div className="absolute inset-x-0 pointer-events-none z-50 overflow-visible" style={{ top: 16 }}>
                     {["🎉","✨","🎊","⭐","💫","🎉","✨","🎊","⭐","💫"].map((emoji, i, arr) => {
@@ -871,7 +874,7 @@ export default function Checkout() {
                           void applyCoupon();
                         }
                       }}
-                      className={`w-full h-11 rounded-lg text-sm bg-white focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:font-light ${
+                      className={`w-full h-[41px] rounded-lg text-sm bg-white focus-visible:ring-0 focus-visible:ring-offset-0 ${
                         coupon || couponInput.trim()
                           ? "border-brand-teal/60 text-brand-teal font-extrabold"
                           : ""
@@ -879,18 +882,18 @@ export default function Checkout() {
                       disabled={paying}
                     />
                     {showCoupons && (
-                      <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-md shadow-xl max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
-                        <div className="p-2.5 border-b border-gray-200 text-xs font-semibold text-gray-600 flex items-center gap-1.5">
+                      <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-72 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
+                        <div className="p-2.5 border-b border-gray-100 text-xs font-semibold text-gray-500 flex items-center gap-1.5">
                           <Tag className="w-3.5 h-3.5 text-brand-teal" />
                           Available Coupons
                         </div>
                         {!couponsLoaded ? (
-                          <div className="p-4 flex items-center justify-center gap-2 text-xs text-gray-500">
+                          <div className="p-4 flex items-center justify-center gap-2 text-xs text-gray-400">
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                             Loading coupons…
                           </div>
                         ) : activeCoupons.length === 0 ? (
-                          <div className="p-4 text-center text-xs text-gray-500">
+                          <div className="p-4 text-center text-xs text-gray-400">
                             No coupons available right now
                           </div>
                         ) : (
@@ -919,18 +922,18 @@ export default function Checkout() {
                                       setCouponInput(c.code);
                                       void applyCoupon(c.code);
                                     }}
-                                    className="w-full text-left px-3 py-2.5 bg-white hover:bg-gray-50 transition-colors flex flex-col gap-1 text-gray-900"
+                                    className="w-full text-left px-3 py-2.5 bg-white hover:bg-gray-50 transition-colors flex flex-col gap-1"
                                   >
                                     <div className="flex items-center justify-between">
-                                      <span className="font-bold text-xs bg-brand-teal text-white border border-brand-teal px-2 py-0.5 rounded-sm font-mono uppercase tracking-wider">
+                                      <span className="font-bold text-xs bg-brand-teal text-white border border-brand-teal px-2 py-0.5 rounded font-mono uppercase tracking-wider">
                                         {c.code}
                                       </span>
                                       <span className="text-base font-bold text-brand-teal">{discountText}</span>
                                     </div>
-                                    <div className="flex flex-wrap items-center justify-between text-xs text-gray-600 gap-1.5 mt-0.5">
+                                    <div className="flex flex-wrap items-center justify-between text-xs text-gray-500 gap-1.5 mt-0.5">
                                       <span>{couponOfferText}</span>
                                       {ruleBadge && (
-                                        <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded-sm font-medium">
+                                        <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-medium">
                                           {ruleBadge}
                                         </span>
                                       )}
@@ -949,7 +952,7 @@ export default function Checkout() {
                                   className="w-full text-left px-3 py-2.5 flex flex-col gap-1 bg-gray-200 cursor-default select-none"
                                 >
                                   <div className="flex items-center justify-between">
-                                    <span className="font-bold text-xs bg-gray-300 text-gray-700 px-2 py-0.5 rounded-sm font-mono uppercase tracking-wider">
+                                    <span className="font-bold text-xs bg-gray-300 text-gray-700 px-2 py-0.5 rounded font-mono uppercase tracking-wider">
                                       {c.code}
                                     </span>
                                     <span className="text-base font-bold text-gray-600">{discountText}</span>
@@ -959,7 +962,7 @@ export default function Checkout() {
                                       {reasonText}
                                     </span>
                                     {ruleBadge && (
-                                      <span className="bg-gray-300 text-gray-700 px-1.5 py-0.5 rounded-sm font-medium">
+                                        <span className="bg-gray-300 text-gray-700 px-1.5 py-0.5 rounded font-medium">
                                         {ruleBadge}
                                       </span>
                                     )}
@@ -975,7 +978,7 @@ export default function Checkout() {
                   <Button
                     onClick={() => void applyCoupon()}
                     disabled={couponChecking || paying || !couponInput.trim()}
-                    className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-lg px-5 h-11 text-sm font-semibold shrink-0"
+                    className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-lg px-5 h-[41px] text-sm font-semibold shrink-0 transition-colors"
                   >
                     {couponChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Apply"}
                   </Button>
@@ -991,30 +994,30 @@ export default function Checkout() {
                 )}
               </div>
 
-              <div className="space-y-3 text-sm sm:text-base border-t border-gray-400 pt-4">
+              <div className="order-1 space-y-3 sm:space-y-4 text-sm sm:text-base">
                 <div className="flex justify-between">
-                  <span className="text-gray-700">Subtotal</span>
+                  <span className="text-gray-600">Subtotal</span>
                   <span className="font-medium">{inr(totals.subtotal)}</span>
                 </div>
                 {totals.totalSavings > 0 && (
-                  <div className="flex justify-between text-green-700">
+                  <div className="flex justify-between text-green-600 font-medium">
                     <span>You save</span>
                     <span>-{inr(totals.totalSavings)}</span>
                   </div>
                 )}
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Delivery</span>
+                  <span className="font-medium">{totals.shippingFee === 0 ? (totals.subtotal > 0 ? "Free" : "—") : inr(totals.shippingFee)}</span>
+                </div>
                 {totals.discount > 0 && (
-                  <div className="flex justify-between text-green-700 font-medium">
-                    <span>Coupon{coupon ? ` (${coupon.code})` : ""}</span>
+                  <div className="flex justify-between text-green-600">
+                    <span>COUPON{coupon ? ` (${coupon.code})` : ""}</span>
                     <span>-{inr(totals.discount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-gray-700">Delivery</span>
-                  <span className="font-medium">{totals.shippingFee === 0 ? (totals.subtotal > 0 ? "Free" : "—") : inr(totals.shippingFee)}</span>
-                </div>
               </div>
 
-              <div className="border-t border-gray-400 pt-4 flex justify-between items-center">
+              <div className="order-2 border-t border-gray-400 pt-4 flex justify-between items-center">
                 <span className="text-base sm:text-lg font-semibold">Total</span>
                 <span className="text-xl sm:text-2xl font-bold text-brand-teal">{inr(totals.total)}</span>
               </div>
@@ -1022,26 +1025,37 @@ export default function Checkout() {
               <Button
                 onClick={() => void handlePay()}
                 disabled={paying || summaryLines.length === 0 || !selectedAddressId}
-                className="w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base flex items-center justify-center gap-2"
+                className="order-4 w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base flex items-center justify-center gap-2 transition-colors"
               >
                 {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock size={14} />}
                 {paying ? "Processing…" : `Pay ${inr(totals.total)}`}
               </Button>
 
               {!selectedAddressId && addresses.length > 0 && (
-                <p className="text-xs text-rose-600 text-center -mt-2">Select a delivery address to continue.</p>
+                <p className="order-5 text-xs text-rose-600 text-center -mt-2">Select a delivery address to continue.</p>
               )}
 
-              <p className="flex items-center justify-center gap-1.5 text-xs text-gray-700">
-                <ShieldCheck size={14} className="text-brand-teal" /> Secured by Razorpay
-              </p>
+              <div className="order-6 grid grid-cols-3 gap-2 pt-1 sm:pt-2">
+                <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 flex flex-col items-center gap-1 text-xs font-medium text-gray-700">
+                  <Sparkles size={14} className="text-purple-500" />
+                  Classy Styles
+                </div>
+                <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 flex flex-col items-center gap-1 text-xs font-medium text-gray-700">
+                  <ShieldCheck size={14} className="text-brand-teal" />
+                  Safe Payments
+                </div>
+                <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 flex flex-col items-center gap-1 text-xs font-medium text-gray-700">
+                  <Award size={14} className="text-amber-500" />
+                  Premium Quality
+                </div>
+              </div>
 
               {selectedAddress && (
-                <p className="text-xs text-gray-700 text-center">
-                  Delivering to {selectedAddress.type === "other" ? selectedAddress.label : selectedAddress.type} · {selectedAddress.city}
+                <p className="order-7 text-xs text-gray-700 text-center">
+                  Delivering to {titleCase(selectedAddress.type === "other" ? selectedAddress.label : selectedAddress.type)} <span className="relative top-[2px] text-lg leading-none">·</span> {selectedAddress.city}
                 </p>
               )}
-            </div>
+            </Card>
           </aside>
         </section>
       </main>

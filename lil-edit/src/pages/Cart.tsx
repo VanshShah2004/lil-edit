@@ -566,7 +566,7 @@ export default function Cart() {
                 </div>
                 {discount > 0 && (
                   <div className="flex justify-between text-green-600">
-                    <span>Discount</span>
+                    <span>COUPON{coupon ? ` (${coupon.code})` : ""}</span>
                     <span>-₹{discount}</span>
                   </div>
                 )}
