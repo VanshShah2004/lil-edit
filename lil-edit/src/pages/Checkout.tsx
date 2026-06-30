@@ -592,7 +592,7 @@ export default function Checkout() {
                             <p className="font-semibold text-gray-800 capitalize pr-6">
                               {addr.type === "other" ? addr.label : addr.type}
                               {addr.is_default && (
-                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-medium bg-teal-100 text-teal-800">Default</span>
+                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-[8px] text-[10px] font-medium bg-teal-100 text-teal-800 border border-teal-800">Default</span>
                               )}
                             </p>
                             <div className="text-xs text-gray-600 mt-1 space-y-0.5">
