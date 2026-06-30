@@ -411,7 +411,7 @@ const OrdersPage = () => {
                         {/* Header row */}
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">{order.orderNumber}</p>
+                            <p className="text-xs font-mono font-semibold uppercase tracking-wider text-gray-400">{order.orderNumber}</p>
                             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight line-clamp-2 mt-0.5">
                               {order.items.length > 0
                                 ? order.items.map((i) => i.title).join(", ")

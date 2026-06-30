@@ -299,7 +299,7 @@ const OrderDetailPage = () => {
             <ChevronRight className="w-4 h-4 mx-1" />
             <Link to="/orders" className="hover:underline">Orders</Link>
             <ChevronRight className="w-4 h-4 mx-1" />
-            <span className="text-gray-800 font-medium">{order?.orderNumber ?? "Order"}</span>
+            <span className="text-gray-800 font-medium font-mono">{order?.orderNumber ?? "Order"}</span>
           </div>
         </div>
 
@@ -345,7 +345,7 @@ const OrderDetailPage = () => {
               <div className="p-4 sm:p-5 pt-5 sm:pt-6">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{order.orderNumber}</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold font-mono text-gray-900">{order.orderNumber}</h1>
                     <p className="text-sm sm:text-base text-gray-500 mt-1">Placed on {formatDate(order.createdAt)}</p>
                   </div>
                   <span className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-md border capitalize ${STATUS_STYLES[order.status]}`}>
