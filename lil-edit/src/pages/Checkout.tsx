@@ -85,6 +85,12 @@ export default function Checkout() {
   const [addingAddress, setAddingAddress] = useState(false);
   const [savingAddress, setSavingAddress] = useState(false);
   const [addrForm, setAddrForm] = useState<AddrForm>(EMPTY_ADDR_FORM);
+  const [dragPillPct, setDragPillPct] = useState<number | null>(null);
+  const addrSliderRef = useRef<HTMLDivElement>(null);
+  const addrFormRef = useRef(addrForm);
+  addrFormRef.current = addrForm;
+  const addressesRef = useRef(addresses);
+  addressesRef.current = addresses;
 
   const [couponInput, setCouponInput] = useState(() => carriedCoupon?.code ?? "");
   const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(() =>
@@ -479,6 +485,41 @@ export default function Checkout() {
     }
   };
 
+  const ADDR_TYPES = ["home", "work", "other"] as const;
+
+  const handlePillPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const container = addrSliderRef.current;
+    if (!container) return;
+    const slotWidth = container.offsetWidth / 3;
+    const startX = e.clientX;
+    const startIdx = ADDR_TYPES.indexOf(addrFormRef.current.type as typeof ADDR_TYPES[number]);
+
+    const onMove = (ev: PointerEvent) => {
+      const delta = ev.clientX - startX;
+      const raw = startIdx * 100 + (delta / slotWidth) * 100;
+      setDragPillPct(Math.max(0, Math.min(200, raw)));
+    };
+
+    const onUp = (ev: PointerEvent) => {
+      const delta = ev.clientX - startX;
+      const rawIdx = startIdx + delta / slotWidth;
+      let snapped = Math.round(Math.max(0, Math.min(2, rawIdx)));
+      const isTaken = (i: number) => {
+        const t = ADDR_TYPES[i];
+        return (t === "home" || t === "work") && addressesRef.current.some((a) => a.type === t);
+      };
+      if (isTaken(snapped)) snapped = startIdx;
+      setAddrForm({ ...addrFormRef.current, type: ADDR_TYPES[snapped] });
+      setDragPillPct(null);
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+    };
+
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  };
+
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -583,17 +624,37 @@ export default function Checkout() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs font-medium text-gray-600 mb-1">Address Type</label>
-                          <div className="relative">
-                            <select
-                              value={addrForm.type}
-                              onChange={(e) => setAddrForm({ ...addrForm, type: e.target.value })}
-                              className={`${ADDR_INPUT_CLS} appearance-none cursor-pointer pr-9`}
-                            >
-                              <option value="home" disabled={addresses.some((a) => a.type === "home")}>Home</option>
-                              <option value="work" disabled={addresses.some((a) => a.type === "work")}>Work</option>
-                              <option value="other">Other</option>
-                            </select>
-                            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <div
+                            ref={addrSliderRef}
+                            className="relative flex rounded-md border border-gray-300 bg-gray-100 overflow-hidden w-full h-[38px] select-none"
+                          >
+                            {/* draggable sliding pill */}
+                            <div
+                              onPointerDown={handlePillPointerDown}
+                              className={`absolute inset-y-0 w-1/3 bg-brand-teal cursor-grab active:cursor-grabbing touch-none ${dragPillPct === null ? "transition-transform duration-200 ease-in-out" : ""}`}
+                              style={{ transform: `translateX(${dragPillPct ?? ADDR_TYPES.indexOf(addrForm.type as typeof ADDR_TYPES[number]) * 100}%)` }}
+                            />
+                            {ADDR_TYPES.map((type, i) => {
+                              const taken = (type === "home" || type === "work") && addresses.some((a) => a.type === type);
+                              const active = addrForm.type === type;
+                              return (
+                                <button
+                                  key={type}
+                                  type="button"
+                                  disabled={taken}
+                                  onClick={() => setAddrForm({ ...addrForm, type })}
+                                  className={`relative z-10 flex-1 text-sm capitalize font-medium transition-colors pointer-events-auto ${i > 0 ? "border-l border-gray-300" : ""} ${
+                                    active
+                                      ? "text-white"
+                                      : taken
+                                      ? "text-gray-400 cursor-not-allowed"
+                                      : "text-gray-600 hover:text-gray-800"
+                                  }`}
+                                >
+                                  {type}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                         {addrForm.type === "other" && (
