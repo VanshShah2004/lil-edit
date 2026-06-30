@@ -42,7 +42,7 @@ import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/Qui
 import type { CartItem } from "@/lib/cartApi";
 import { computeCartTotals } from "@/lib/pricing";
 import { useRecommendations } from "@/hooks/useRecommendations";
-import { validateCoupon, fetchActiveCoupons, formatCouponSavings, formatCouponOffer, type ActiveCoupon } from "@/lib/checkoutApi";
+import { validateCoupon, fetchActiveCoupons, formatCouponSavings, formatCouponOffer, computeCouponSavings, type ActiveCoupon } from "@/lib/checkoutApi";
 
 const abbreviateSize = (size: string) =>
   size.replace(/months?/gi, "M").replace(/years?/gi, "Y").trim();
@@ -582,7 +582,14 @@ export default function Cart() {
                     <Input
                       placeholder="Enter coupon code"
                       value={couponInput}
-                      onChange={(e) => setCouponInput(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCouponInput(val);
+                        if (coupon && val.trim().toUpperCase() !== coupon.code) {
+                          setCoupon(null);
+                          setCouponMsg("");
+                        }
+                      }}
                       onFocus={() => setShowCoupons(true)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
@@ -590,10 +597,10 @@ export default function Cart() {
                           void applyCoupon();
                         }
                       }}
-                      className={`w-full h-11 rounded-lg text-sm ${
+                      className={`w-full h-11 rounded-lg text-sm bg-white focus-visible:ring-0 focus-visible:ring-offset-0 ${
                         coupon || couponInput.trim()
-                          ? "bg-[#E6FFFA] border-brand-teal/60 text-brand-teal"
-                          : "bg-white"
+                          ? "border-brand-teal/60 text-brand-teal font-extrabold"
+                          : ""
                       }`}
                     />
                     {showCoupons && (
@@ -613,7 +620,13 @@ export default function Cart() {
                           </div>
                         ) : (
                           <div className="divide-y divide-gray-500">
-                            {activeCoupons.map((c) => {
+                            {[...activeCoupons]
+                              .sort((a, b) => {
+                                if (a.applicable !== b.applicable) return a.applicable ? -1 : 1;
+                                if (a.applicable) return computeCouponSavings(b, subtotal) - computeCouponSavings(a, subtotal);
+                                return 0;
+                              })
+                              .map((c) => {
                               const discountText = formatCouponSavings(subtotal, c);
                               const couponOfferText = formatCouponOffer(c);
                               const ruleBadge = c.first_order_only
@@ -631,10 +644,10 @@ export default function Cart() {
                                       setCouponInput(c.code);
                                       void applyCoupon(c.code);
                                     }}
-                                    className="w-full text-left px-3 py-2.5 bg-[#E6FFFA] hover:bg-teal-100 transition-colors flex flex-col gap-1"
+                                    className="w-full text-left px-3 py-2.5 bg-white hover:bg-gray-50 transition-colors flex flex-col gap-1"
                                   >
                                     <div className="flex items-center justify-between">
-                                      <span className="font-bold text-xs bg-teal-100 text-brand-teal border border-brand-teal px-2 py-0.5 rounded font-mono uppercase tracking-wider">
+                                      <span className="font-bold text-xs bg-brand-teal text-white border border-brand-teal px-2 py-0.5 rounded font-mono uppercase tracking-wider">
                                         {c.code}
                                       </span>
                                       <span className="text-base font-bold text-brand-teal">{discountText}</span>
@@ -658,7 +671,7 @@ export default function Cart() {
                               return (
                                 <div
                                   key={c.code}
-                                  className="w-full text-left px-3 py-2.5 flex flex-col gap-1 bg-gray-50/80 cursor-default select-none"
+                                  className="w-full text-left px-3 py-2.5 flex flex-col gap-1 bg-gray-200 cursor-default select-none"
                                 >
                                   <div className="flex items-center justify-between">
                                     <span className="font-bold text-xs bg-gray-300 text-gray-700 px-2 py-0.5 rounded font-mono uppercase tracking-wider">
@@ -679,7 +692,7 @@ export default function Cart() {
                                 </div>
                               );
                             })}
-                          </div>
+                            </div>
                         )}
                       </div>
                     )}

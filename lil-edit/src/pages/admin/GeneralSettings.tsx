@@ -160,7 +160,7 @@ const GeneralSettings = () => {
         </div>
       </div>
 
-      <main className="flex-1 px-6 lg:px-12 pt-4 pb-10 bg-gray-100">
+      <main className="flex-1 px-6 lg:px-12 pt-4 pb-24 bg-gray-100">
         <div className="max-w-4xl sm:max-w-3xl mx-auto pt-10 space-y-12">
           <section>
             <div className="flex items-center gap-4 mb-6">
@@ -336,6 +336,7 @@ const GeneralSettings = () => {
         </div>
       </main>
 
+      <div className="border-t border-gray-400" />
       <Footer />
 
       <AlertDialog
