@@ -95,6 +95,7 @@ export default function Cart() {
   const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
   const [couponMsg, setCouponMsg] = useState<string>("");
   const [couponChecking, setCouponChecking] = useState(false);
+  const [celebrating, setCelebrating] = useState(false);
   const [activeCoupons, setActiveCoupons] = useState<ActiveCoupon[]>([]);
   const [showCoupons, setShowCoupons] = useState(false);
   const [couponsLoaded, setCouponsLoaded] = useState(false);
@@ -149,6 +150,8 @@ export default function Cart() {
       if (result.valid) {
         setCoupon({ code, discount: result.discount });
         setCouponMsg(result.reason);
+        setCelebrating(true);
+        setTimeout(() => setCelebrating(false), 1500);
         toast.success(`Coupon "${code}" applied successfully!`);
       } else {
         setCoupon(null);
@@ -569,7 +572,7 @@ export default function Cart() {
                 )}
               </div>
 
-              <div className="border-t border-purple-300 pt-3 sm:pt-4 flex justify-between items-center">
+              <div className="border-t border-gray-400 pt-3 sm:pt-4 flex justify-between items-center">
                 <span className="text-base sm:text-lg font-semibold">Total</span>
                 <span className="text-xl sm:text-2xl font-bold text-brand-teal">
                   ₹{total}
@@ -577,6 +580,29 @@ export default function Cart() {
               </div>
 
               <div className="relative">
+                {celebrating && (
+                  <div className="absolute inset-x-0 pointer-events-none z-50 overflow-visible" style={{ top: 16 }}>
+                    {["🎉","✨","🎊","⭐","💫","🎉","✨","🎊","⭐","💫"].map((emoji, i, arr) => {
+                      const spread = arr.length === 1 ? 0 : (i / (arr.length - 1) - 0.5) * 2; // -1 (left) → 1 (right)
+                      const arc = 1 - spread * spread; // parabola: 1 at center, 0 at edges
+                      const tx = Math.round(spread * 130 + (Math.random() - 0.5) * 30);
+                      const ty = -Math.round(80 + arc * 95 + Math.random() * 25); // upward; center flies highest
+                      const rot = Math.round(spread * 65 + (Math.random() - 0.5) * 45);
+                      return (
+                        <span
+                          key={i}
+                          className="absolute left-1/2 -ml-3 text-xl select-none will-change-transform"
+                          style={{
+                            "--tx": `${tx}px`, "--ty": `${ty}px`, "--rot": `${rot}deg`,
+                            animation: `coupon-emoji-fly ${1 + Math.random() * 0.45}s cubic-bezier(0.18, 0.72, 0.32, 1) forwards`,
+                          } as React.CSSProperties}
+                        >
+                          {emoji}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
                 <div className="flex flex-row gap-2">
                   <div className="relative flex-1" ref={couponContainerRef}>
                     <Input

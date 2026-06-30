@@ -173,3 +173,9 @@
     display: none;            /* Chrome, Safari and Opera */
   }
 }
+
+@keyframes coupon-emoji-fly {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.3) rotate(0deg); }
+  15%  { opacity: 1; transform: translate(calc(var(--tx) * 0.14), calc(var(--ty) * 0.14)) scale(1.25) rotate(calc(var(--rot) * 0.14)); }
+  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.8) rotate(var(--rot)); }
+}

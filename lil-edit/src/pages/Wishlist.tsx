@@ -440,7 +440,7 @@ const WishlistPage = () => {
                   <span className="font-medium">₹{totalValue}</span>
                 </div>
               </div>
-              <div className="border-t pt-3 sm:pt-4 flex justify-between items-center">
+              <div className="border-t border-gray-400 pt-3 sm:pt-4 flex justify-between items-center">
                 <span className="text-base sm:text-lg font-semibold">Payable</span>
                 <span className="text-xl sm:text-2xl font-bold text-brand-teal">₹{totalValue}</span>
               </div>
