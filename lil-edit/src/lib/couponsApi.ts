@@ -13,6 +13,7 @@ export interface Coupon {
   is_active: boolean;
   first_order_only: boolean;
   once_per_user: boolean;
+  max_discount_amount: number | null;
   created_at: string;
 }
 
@@ -25,6 +26,7 @@ export interface CreateCouponPayload {
   expires_at?: string | null;
   first_order_only?: boolean;
   once_per_user?: boolean;
+  max_discount_amount?: number | null;
 }
 
 async function getToken(): Promise<string | null> {

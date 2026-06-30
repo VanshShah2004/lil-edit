@@ -99,7 +99,7 @@ export async function validateCoupon(
 
   const { data, error } = await db
     .from("coupons")
-    .select("id, code, discount_type, discount_value, min_order_amount, max_uses, uses_count, expires_at, is_active, first_order_only, once_per_user")
+    .select("id, code, discount_type, discount_value, min_order_amount, max_uses, uses_count, expires_at, is_active, first_order_only, once_per_user, max_discount_amount")
     .eq("code", code)
     .maybeSingle();
 

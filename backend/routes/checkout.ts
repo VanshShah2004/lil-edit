@@ -15,7 +15,7 @@ import { verifyReviewsForOrder } from "../lib/reviewsVerification.js";
 // was recorded, so a placement that was interrupted before its detached send can't silently
 // lose the receipt. No-op on the happy path (a recorded receipt). Fire-and-forget; never throws.
 import { sendReceiptIfMissing } from "../lib/orderReceipt.js";
-import { validateCoupon } from "../lib/coupons.js";
+import { validateCoupon, type CouponRow } from "../lib/coupons.js";
 import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
 
 // ─── Razorpay-prepaid checkout: cart → order placement ──────────────────────────

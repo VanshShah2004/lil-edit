@@ -77,6 +77,7 @@ router.post("/", adminMutationLimiter, async (req: Request, res: Response) => {
     expires_at?: unknown;
     first_order_only?: unknown;
     once_per_user?: unknown;
+    max_discount_amount?: unknown;
   };
 
   const code = String(body.code ?? "").trim().toUpperCase();
@@ -84,6 +85,12 @@ router.post("/", adminMutationLimiter, async (req: Request, res: Response) => {
   const discount_value = Number(body.discount_value);
   const min_order_amount = body.min_order_amount != null && body.min_order_amount !== "" ? Number(body.min_order_amount) : null;
   const max_uses = body.max_uses != null && body.max_uses !== "" ? Number(body.max_uses) : null;
+  // Caps the rupee discount (mainly for % coupons). Only meaningful for percentage; ignored
+  // for fixed (a fixed discount is already a flat amount).
+  const max_discount_amount =
+    discount_type === "percentage" && body.max_discount_amount != null && body.max_discount_amount !== ""
+      ? Number(body.max_discount_amount)
+      : null;
   const first_order_only = Boolean(body.first_order_only);
   // A first-order coupon is inherently once-per-customer, so persist that implication.
   const once_per_user = Boolean(body.once_per_user) || first_order_only;
@@ -111,12 +118,16 @@ router.post("/", adminMutationLimiter, async (req: Request, res: Response) => {
     res.status(400).json({ error: "Percentage discount cannot exceed 100." });
     return;
   }
+  if (max_discount_amount !== null && (isNaN(max_discount_amount) || max_discount_amount <= 0)) {
+    res.status(400).json({ error: "Max discount must be a positive number." });
+    return;
+  }
 
-  log.step(`actor=${actorId}  code=${code}  type=${discount_type}  value=${discount_value}`);
+  log.step(`actor=${actorId}  code=${code}  type=${discount_type}  value=${discount_value}  maxDisc=${max_discount_amount ?? "none"}`);
 
   const { data, error } = await db
     .from("coupons")
-    .insert({ code, discount_type, discount_value, min_order_amount, max_uses, expires_at, first_order_only, once_per_user, created_by: actorId })
+    .insert({ code, discount_type, discount_value, min_order_amount, max_uses, expires_at, first_order_only, once_per_user, max_discount_amount, created_by: actorId })
     .select()
     .single();
 

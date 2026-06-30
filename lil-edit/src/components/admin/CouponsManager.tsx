@@ -21,6 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import StockToggleSlider from "@/components/StockToggleSlider";
 import {
   fetchCoupons,
   createCoupon,
@@ -41,12 +42,15 @@ const EMPTY_FORM: CreateCouponPayload = {
   expires_at: null,
   first_order_only: false,
   once_per_user: false,
+  max_discount_amount: null,
 };
 
 function formatDiscount(coupon: Coupon): string {
-  return coupon.discount_type === "percentage"
-    ? `${coupon.discount_value}% off`
-    : `₹${coupon.discount_value} off`;
+  if (coupon.discount_type === "percentage") {
+    const cap = coupon.max_discount_amount != null ? ` (up to ₹${coupon.max_discount_amount})` : "";
+    return `${coupon.discount_value}% off${cap}`;
+  }
+  return `₹${coupon.discount_value} off`;
 }
 
 function formatExpiry(expires_at: string | null): string {
@@ -225,6 +229,24 @@ const CouponsManager = () => {
                   />
                 </div>
 
+                {/* Max discount cap — only meaningful for percentage coupons */}
+                {form.discount_type === "percentage" && (
+                  <div>
+                    <label className={labelClass}>Max discount (₹)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      step="0.01"
+                      placeholder="No cap"
+                      value={form.max_discount_amount ?? ""}
+                      onChange={(e) => setForm((f) => ({ ...f, max_discount_amount: e.target.value ? Number(e.target.value) : null }))}
+                      disabled={creating}
+                      className={inputClass}
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1">Caps the deduction, e.g. 20% up to ₹500.</p>
+                  </div>
+                )}
+
                 <div>
                   <label className={labelClass}>Min order amount (₹)</label>
                   <input
@@ -241,16 +263,46 @@ const CouponsManager = () => {
 
                 <div>
                   <label className={labelClass}>Max uses</label>
-                  <input
-                    type="number"
-                    min={1}
-                    step={1}
-                    placeholder="Unlimited"
-                    value={form.max_uses ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, max_uses: e.target.value ? Number(e.target.value) : null }))}
-                    disabled={creating}
-                    className={inputClass}
+                  <StockToggleSlider
+                    isUnlimited={form.max_uses === null}
+                    onChange={(unlimited) =>
+                      setForm((f) => ({ ...f, max_uses: unlimited ? null : 1 }))
+                    }
+                    className="h-9"
+                    limitedLabel="Limited"
+                    unlimitedLabel="Unlimited"
                   />
+                  {form.max_uses !== null && (
+                    <div className="flex items-center mt-2 rounded-md border border-gray-300 overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, max_uses: Math.max(1, (f.max_uses ?? 1) - 1) }))}
+                        disabled={creating || (form.max_uses ?? 1) <= 1}
+                        className="px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-40 border-r border-gray-300"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={form.max_uses}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, max_uses: e.target.value ? Math.max(1, Number(e.target.value)) : 1 }))
+                        }
+                        disabled={creating}
+                        className="flex-1 text-center text-sm text-gray-900 py-2 outline-none focus:ring-2 focus:ring-[#B19CD9]/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, max_uses: (f.max_uses ?? 1) + 1 }))}
+                        disabled={creating}
+                        className="px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors border-l border-gray-300"
+                      >
+                        +
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div>
