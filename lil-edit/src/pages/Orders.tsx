@@ -430,7 +430,10 @@ const OrdersPage = () => {
                           <div className="flex items-center w-full sm:w-[290px] sm:shrink-0 sm:overflow-hidden">
                             <div className="flex -space-x-3">
                               {order.items.slice(0, 4).map((item) => (
-                                <div key={item.id} className="w-14 h-16 sm:w-16 sm:h-20 rounded-xl overflow-hidden bg-gray-100 shrink-0 ring-2 ring-white shadow-sm">
+                                <div
+                                  key={item.id}
+                                  className={`w-14 h-16 sm:w-16 sm:h-20 rounded-xl overflow-hidden bg-gray-100 shrink-0 ring-2 ring-white shadow-sm ${item.image ? "" : "border border-gray-900"}`}
+                                >
                                   {item.image ? (
                                     <img
                                       src={item.image}

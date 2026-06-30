@@ -823,7 +823,7 @@ export default function Checkout() {
 
           {/* RIGHT: summary + pay */}
           <aside className="w-full lg:w-[40%] self-start lg:sticky lg:top-6">
-            <div className="bg-[hsl(268_45%_87%)] border border-gray-400 shadow-lg rounded-lg p-4 sm:p-6 space-y-5">
+            <div className="bg-[hsl(268_45%_87%)] border border-[hsl(268_45%_77%)] shadow-lg rounded-lg p-4 sm:p-6 space-y-5">
               <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">Order Summary</h3>
 
               {/* Coupon */}

@@ -383,7 +383,7 @@ const OrderDetailPage = () => {
                         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openQuickView(item); } }}
                         className="flex gap-3 sm:gap-4 cursor-pointer group -mx-2 px-2 rounded-lg hover:bg-gray-50 transition-colors"
                       >
-                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+                        <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0 border ${item.image ? "border-gray-100" : "border-gray-900"}`}>
                           {item.image ? (
                             <img
                               src={item.image}
