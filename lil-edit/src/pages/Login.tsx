@@ -63,10 +63,10 @@ const Login = () => {
   return (
     <div className="min-h-screen flex flex-col bg-[#E9DFF5]">
       {user ? <UserNavbar /> : <Navbar />}
-      <main className="flex-1 flex items-center justify-center pb-16 px-4" style={{ paddingTop: 'calc(var(--navbar-height, 80px) + 2rem)' }}>
+      <main className="flex-1 flex items-center justify-center pb-[89px] sm:pb-16 px-4" style={{ paddingTop: 'calc(var(--navbar-height, 80px) + 2rem)' }}>
         <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <img src={logo} alt="The Lil Edit" className="h-16 mx-auto mb-6" />
+          <div className="text-center mb-8 sm:mb-3">
+            <img src={logo} alt="The Lil Edit" className="h-28 sm:h-24 mx-auto mb-6 sm:mb-[9px] sm:-mt-[5px]" />
             <h1 className="font-display text-3xl text-foreground mb-2">Welcome back</h1>
             <p className="text-muted-foreground font-body text-sm">Log in to your account</p>
           </div>
