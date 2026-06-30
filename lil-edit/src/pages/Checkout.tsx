@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ChevronRight, ChevronDown, Lock, MapPin, Tag, Loader2, Check, ShieldCheck, Plus, Package, Sparkles, Award } from "lucide-react";
+import { ChevronRight, ChevronDown, Lock, MapPin, Tag, Loader2, Check, ShieldCheck, Plus, Package, Sparkles, Award, Banknote } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1022,20 +1022,45 @@ export default function Checkout() {
                 <span className="text-xl sm:text-2xl font-bold text-brand-teal">{inr(totals.total)}</span>
               </div>
 
+              {/* Payment method selector */}
+              <div className="order-4 space-y-2">
+                <p className="text-sm font-semibold text-gray-700">Payment Method</p>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-3 p-3 rounded-lg border-2 border-brand-teal bg-white">
+                    <div className="w-4 h-4 rounded-full border-2 border-brand-teal flex items-center justify-center shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-brand-teal" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">Pay Online</p>
+                      <p className="text-xs text-gray-500">UPI, Cards, Net Banking & more</p>
+                    </div>
+                    <ShieldCheck className="w-4 h-4 text-brand-teal shrink-0" />
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-400 bg-gray-200 cursor-not-allowed select-none">
+                    <div className="w-4 h-4 rounded-full border-2 border-gray-300 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-600">Cash on Delivery</p>
+                      <p className="text-xs text-gray-500">Currently unavailable</p>
+                    </div>
+                    <Banknote className="w-4 h-4 text-gray-300 shrink-0" />
+                  </div>
+                </div>
+              </div>
+
               <Button
                 onClick={() => void handlePay()}
                 disabled={paying || summaryLines.length === 0 || !selectedAddressId}
-                className="order-4 w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base flex items-center justify-center gap-2 transition-colors"
+                className="order-5 w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base flex items-center justify-center gap-2 transition-colors"
               >
                 {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock size={14} />}
                 {paying ? "Processing…" : `Pay ${inr(totals.total)}`}
               </Button>
 
               {!selectedAddressId && addresses.length > 0 && (
-                <p className="order-5 text-xs text-rose-600 text-center -mt-2">Select a delivery address to continue.</p>
+                <p className="order-6 text-xs text-rose-600 text-center -mt-2">Select a delivery address to continue.</p>
               )}
 
-              <div className="order-6 grid grid-cols-3 gap-2 pt-1 sm:pt-2">
+              <div className="order-7 grid grid-cols-3 gap-2 pt-1 sm:pt-2">
                 <div className="bg-[#FAF9F7] rounded-lg sm:rounded-xl py-2 sm:py-3 flex flex-col items-center gap-1 text-xs font-medium text-gray-700">
                   <Sparkles size={14} className="text-purple-500" />
                   Classy Styles
@@ -1051,7 +1076,7 @@ export default function Checkout() {
               </div>
 
               {selectedAddress && (
-                <p className="order-7 text-xs text-gray-700 text-center">
+                <p className="order-8 text-xs text-gray-700 text-center">
                   Delivering to {titleCase(selectedAddress.type === "other" ? selectedAddress.label : selectedAddress.type)} <span className="relative top-[2px] text-lg leading-none">·</span> {selectedAddress.city}
                 </p>
               )}
