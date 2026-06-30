@@ -111,7 +111,7 @@ export default function Checkout() {
 
   useEffect(() => {
     const prev = document.title;
-    document.title = "Checkout | The Lil Edit";
+    document.title = "Checkout | Lil Edit";
     return () => { document.title = prev; };
   }, []);
 
