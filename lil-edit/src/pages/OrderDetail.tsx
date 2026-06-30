@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ChevronRight, Package, MapPin, ArrowLeft, RotateCcw, CheckCircle2 } from "lucide-react";
+import { Link, useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { ChevronRight, Package, MapPin, ArrowLeft, RotateCcw, CheckCircle2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Card } from "@/components/ui/card";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import { fetchOrderById, fetchBoughtItems, type OrderDetail, type OrderItem, type OrderStatus } from "@/lib/ordersApi";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import { getBackendBaseUrl } from "@/lib/backend";
@@ -59,6 +61,9 @@ function DetailSkeleton() {
 const OrderDetailPage = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const { user, loading: authLoading } = useAuth();
+  const { reorder } = useCart();
+  const navigate = useNavigate();
+  const [reordering, setReordering] = useState(false);
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +107,36 @@ const OrderDetailPage = () => {
     }).catch((err) => console.error("[OrderDetailPage] fetchBoughtItems failed", err));
   }, [userId]);
   const buyAgainItemsWithBadges = useBuyAgainBadges(buyAgainItems);
+
+  // Re-add every line of this order to the bag, then route to the cart. Tolerates
+  // lines whose product was since removed (counted as failed, not fatal).
+  const handleReorder = async () => {
+    if (!order || reordering) return;
+    setReordering(true);
+    console.log(`[OrderDetailPage] reorder  order=${order.orderNumber}  items=${order.items.length}`);
+    try {
+      const { added, failed } = await reorder(
+        order.items.map((it) => ({
+          product_slug: it.productSlug,
+          sku: it.sku,
+          size: it.size,
+          quantity: it.quantity,
+        })),
+      );
+      if (added === 0) {
+        toast.error("None of these items are available anymore.");
+        return;
+      }
+      toast.success(
+        failed > 0
+          ? `Added ${added} item${added !== 1 ? "s" : ""} to your cart — ${failed} no longer available.`
+          : "Added to your cart!",
+      );
+      navigate("/cart");
+    } finally {
+      setReordering(false);
+    }
+  };
 
   // Map an order-line snapshot into the shared quick-view shape. The snapshot only
   // stores the single primary image, so the drawer opens with that immediately, then
@@ -358,12 +393,18 @@ const OrderDetailPage = () => {
                     <span>Payment: <span className="font-medium text-gray-800 uppercase">{order.paymentMethod}</span></span>
                     <span>Payment status: <span className="font-medium text-gray-800 capitalize">{order.paymentStatus}</span></span>
                   </div>
-                  {/* Reorder — placeholder for now; placement pipeline ships with checkout */}
+                  {/* Reorder — re-adds this order's items to the bag, then routes to /cart */}
                   <button
                     type="button"
-                    className="shrink-0 inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-brand-teal rounded-lg px-4 py-3 hover:bg-brand-teal/90 transition-colors shadow-sm"
+                    onClick={handleReorder}
+                    disabled={reordering}
+                    className="shrink-0 inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-brand-teal rounded-lg px-4 py-3 hover:bg-brand-teal/90 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <RotateCcw className="w-4 h-4" /> Reorder
+                    {reordering ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Adding…</>
+                    ) : (
+                      <><RotateCcw className="w-4 h-4" /> Reorder</>
+                    )}
                   </button>
                 </div>
               </div>

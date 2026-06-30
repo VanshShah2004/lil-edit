@@ -26,6 +26,7 @@ interface CartContextType {
   cartCount: number;
   loading: boolean;
   addToCart: (payload: AddToCartPayload) => Promise<void>;
+  reorder: (items: AddToCartPayload[]) => Promise<{ added: number; failed: number }>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   updateSize: (cartItemId: string, size: string) => Promise<void>;
   updateColor: (cartItemId: string, sku: string) => Promise<void>;
@@ -105,6 +106,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Could not add to cart");
       }
+    },
+    [user, refetchCart]
+  );
+
+  // Re-add a whole order's worth of lines to the cart (the Reorder button on the
+  // Orders / Order detail pages). Adds sequentially — not in parallel — so the
+  // increment-or-insert in /cart/add stays race-free per (sku,size) and we don't
+  // fire a burst of writes. A line whose product/variant has since been removed
+  // throws (404) and is counted as failed rather than aborting the rest, so one
+  // discontinued item can't block re-adding everything else. Refetches once at the
+  // end (not per item) so the bag + count update in a single pass.
+  const reorder = useCallback(
+    async (items: AddToCartPayload[]): Promise<{ added: number; failed: number }> => {
+      if (!user) {
+        toast.error("Please log in to reorder");
+        return { added: 0, failed: 0 };
+      }
+      let added = 0;
+      let failed = 0;
+      for (const item of items) {
+        try {
+          await apiAdd(item);
+          added += 1;
+        } catch (err) {
+          console.error("[CartContext] reorder: could not add", item.sku, err);
+          failed += 1;
+        }
+      }
+      console.log(`[CartContext] reorder done  added=${added}  failed=${failed}`);
+      if (added > 0) refetchCart();
+      return { added, failed };
     },
     [user, refetchCart]
   );
@@ -200,6 +232,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         cartCount,
         loading,
         addToCart,
+        reorder,
         updateQuantity,
         updateSize,
         updateColor,

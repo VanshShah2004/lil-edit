@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { ChevronRight, Package, ArrowRight, RotateCcw, ArrowUpDown } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ChevronRight, Package, ArrowRight, RotateCcw, ArrowUpDown, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Card } from "@/components/ui/card";
 import {
@@ -14,6 +15,7 @@ import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import { fetchOrders, type OrderStatus, type OrderSummary } from "@/lib/ordersApi";
 import { getBackendBaseUrl } from "@/lib/backend";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
@@ -105,6 +107,9 @@ function OrdersSkeleton() {
 
 const OrdersPage = () => {
   const { user, loading: authLoading } = useAuth();
+  const { reorder } = useCart();
+  const navigate = useNavigate();
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -286,6 +291,40 @@ const OrdersPage = () => {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
+  // Re-add every line of an order to the bag, then send the shopper to the cart.
+  // preventDefault/stopPropagation keep the click off the card's wrapping <Link>.
+  // Single-flight: while one card is reordering, other Reorder clicks no-op (but
+  // still don't fall through to the card's navigation).
+  const handleReorder = async (e: React.MouseEvent, order: OrderSummary) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (reorderingId) return;
+    setReorderingId(order.id);
+    console.log(`[OrdersPage] reorder  order=${order.orderNumber}  items=${order.items.length}`);
+    try {
+      const { added, failed } = await reorder(
+        order.items.map((it) => ({
+          product_slug: it.productSlug,
+          sku: it.sku,
+          size: it.size,
+          quantity: it.quantity,
+        })),
+      );
+      if (added === 0) {
+        toast.error("None of these items are available anymore.");
+        return;
+      }
+      toast.success(
+        failed > 0
+          ? `Added ${added} item${added !== 1 ? "s" : ""} to your cart — ${failed} no longer available.`
+          : "Added to your cart!",
+      );
+      navigate("/cart");
+    } finally {
+      setReorderingId(null);
+    }
+  };
+
   const openSidebarQuickView = (item: SidebarProduct) => {
     setSelectedProduct({
       source: "order",
@@ -338,46 +377,50 @@ const OrdersPage = () => {
 
       <main className="flex-1 flex flex-col w-full pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)]">
         {/* Breadcrumb */}
-        <div className="page-container px-4 sm:px-6 pt-1 pb-6">
-          <div className="flex flex-wrap items-center text-xs sm:text-sm text-gray-600 gap-y-2">
+        <div className="page-container px-4 sm:px-6 pt-3 pb-2 mt-1.5">
+          <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
             <Link to="/" className="hover:underline">Home</Link>
-            <ChevronRight className="w-4 h-4 mx-1" />
+            <ChevronRight className="w-4 h-4" />
             <span className="text-gray-800 font-medium">Orders</span>
           </div>
         </div>
 
         <section className="page-container flex-1 w-full max-w-3xl mx-auto px-3 sm:px-6 pb-16">
+          {/* Heading */}
+          <div className="mb-2 flex flex-col sm:flex-row sm:gap-6 sm:items-end">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 flex items-center gap-2">
+                Your Orders
+                <Package className="w-6 h-6 sm:w-7 sm:h-7 text-brand-teal" />
+              </h1>
+              <div className="flex items-center justify-between gap-3 mt-1 w-full">
+                <p className="text-sm text-gray-500">{orders.length} order{orders.length !== 1 ? "s" : ""} placed</p>
+                {user && !loading && !error && orders.length > 1 && (
+                  <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
+                    <SelectTrigger className="h-8 w-auto gap-1.5 rounded-md border-gray-400 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-brand-teal/20 [&>svg]:h-3.5 [&>svg]:w-3.5">
+                      <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
+                      <SelectValue placeholder="Sort" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {SORT_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value} className="text-xs">
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
+            <div className="hidden sm:block sm:w-[35%] sm:shrink-0" aria-hidden="true" />
+          </div>
+
+          <hr className="relative left-1/2 w-screen -translate-x-1/2 border-t border-foreground/50 mt-6 mb-8" />
+
           <div className="flex flex-col sm:flex-row sm:gap-6 sm:items-start">
 
             {/* ── Left column: orders list ─────────────────────────────────── */}
             <div className="flex-1 min-w-0">
-              {/* Heading */}
-              <div className="mb-2">
-                <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 flex items-center gap-2">
-                  Your Orders
-                  <Package className="w-6 h-6 sm:w-7 sm:h-7 text-brand-teal" />
-                </h1>
-                {/* Order count + sort — sort only meaningful with >1 order */}
-                <div className="flex items-center justify-between gap-3 mt-1 w-full">
-                  <p className="text-sm text-gray-500">{orders.length} order{orders.length !== 1 ? "s" : ""} placed</p>
-                  {user && !loading && !error && orders.length > 1 && (
-                    <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
-                      <SelectTrigger className="relative -top-[12px] h-8 w-auto gap-1.5 rounded-md border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-brand-teal/20 [&>svg]:h-3.5 [&>svg]:w-3.5">
-                        <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
-                        <SelectValue placeholder="Sort" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        {SORT_OPTIONS.map((o) => (
-                          <SelectItem key={o.value} value={o.value} className="text-xs">
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-              </div>
-
               <div className="space-y-5">
               {loading ? (
                 <OrdersSkeleton />
@@ -465,13 +508,18 @@ const OrdersPage = () => {
 
                           {/* Actions — far right on desktop; right of the meta on mobile */}
                           <div className="flex items-center gap-3 shrink-0">
-                            {/* Reorder — placeholder for now; only blocks the card's link nav */}
+                            {/* Reorder — re-adds this order's items to the bag, then routes to /cart */}
                             <button
                               type="button"
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                              className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-white bg-brand-teal rounded-lg px-3 py-2.5 hover:bg-brand-teal/90 transition-colors shadow-sm shrink-0"
+                              onClick={(e) => handleReorder(e, order)}
+                              disabled={reorderingId === order.id}
+                              className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-white bg-brand-teal rounded-lg px-3 py-2.5 hover:bg-brand-teal/90 transition-colors shadow-sm shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
                             >
-                              <RotateCcw className="w-3.5 h-3.5" /> Reorder
+                              {reorderingId === order.id ? (
+                                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Adding…</>
+                              ) : (
+                                <><RotateCcw className="w-3.5 h-3.5" /> Reorder</>
+                              )}
                             </button>
                             <span className="hidden sm:flex items-center gap-1 text-sm font-semibold text-brand-teal border-[1.5px] border-brand-teal rounded-lg px-3 py-2.5 group-hover:gap-2 transition-all shrink-0">
                               View details <ArrowRight className="w-4 h-4" />
@@ -488,8 +536,8 @@ const OrdersPage = () => {
 
             {/* ── Right sidebar: review history ──────────────────────────── */}
             {showSidebar && (
-              <aside className="w-full sm:w-[35%] sm:shrink-0 mt-8 sm:mt-7 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
-                <div className="mt-10 sm:mt-16" style={{ position: "relative", top: "-12px" }}>
+              <aside className="w-full sm:w-[35%] sm:shrink-0 mt-8 sm:mt-0 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
+                <div>
                 <ReviewHistorySection
                   reviews={reviewHistory.slice(0, 5)}
                   loading={reviewHistoryLoading}
