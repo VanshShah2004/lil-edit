@@ -9,6 +9,7 @@ import {
   Trash2,
   ToggleLeft,
   ToggleRight,
+  X,
 } from "lucide-react";
 
 import {
@@ -172,7 +173,7 @@ const CouponsManager = () => {
             style={{ background: `linear-gradient(135deg, ${ACCENT}, #9A82C9)` }}
           >
             <Plus className="w-3.5 h-3.5" />
-            {showForm ? "Cancel" : "New coupon"}
+            New coupon
           </button>
         </div>
 
@@ -180,7 +181,17 @@ const CouponsManager = () => {
         {showForm && (
           <div className="p-5 border-b border-gray-200">
             <form onSubmit={handleCreate} className="space-y-4">
-              <p className="text-sm font-semibold text-gray-800">Create coupon</p>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-semibold text-gray-800">Create coupon</p>
+                <button
+                  type="button"
+                  onClick={() => { setShowForm(false); setForm(EMPTY_FORM); }}
+                  className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -248,12 +259,12 @@ const CouponsManager = () => {
                 )}
 
                 <div>
-                  <label className={labelClass}>Min order amount (₹)</label>
+                  <label className={labelClass}>Min order amount (₹) <span className="font-normal text-gray-500">Optional</span></label>
                   <input
                     type="number"
                     min={0}
                     step="0.01"
-                    placeholder="Optional"
+                    placeholder="e.g. 500"
                     value={form.min_order_amount ?? ""}
                     onChange={(e) => setForm((f) => ({ ...f, min_order_amount: e.target.value ? Number(e.target.value) : null }))}
                     disabled={creating}
@@ -326,7 +337,7 @@ const CouponsManager = () => {
                         ...f,
                         first_order_only: e.target.checked,
                         // A first-order coupon is inherently once-per-customer.
-                        once_per_user: e.target.checked ? true : f.once_per_user,
+                        once_per_user: e.target.checked ? true : false,
                       }))}
                       disabled={creating}
                       className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#9A82C9] focus:ring-[#B19CD9]/40"
@@ -357,7 +368,7 @@ const CouponsManager = () => {
                   type="button"
                   onClick={() => { setShowForm(false); setForm(EMPTY_FORM); }}
                   disabled={creating}
-                  className="rounded-md border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                  className="rounded-md border border-red-300 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -367,8 +378,14 @@ const CouponsManager = () => {
                   className="inline-flex items-center gap-1.5 rounded-md px-5 py-2 text-xs font-semibold text-white shadow-sm transition-all disabled:opacity-50"
                   style={{ background: `linear-gradient(135deg, ${ACCENT}, #9A82C9)` }}
                 >
-                  {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                  {creating ? "Creating…" : "Create coupon"}
+                  {creating ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Creating…
+                    </>
+                  ) : (
+                    "Create coupon"
+                  )}
                 </button>
               </div>
             </form>
