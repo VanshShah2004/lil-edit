@@ -71,7 +71,7 @@ function sortOrders(orders: OrderSummary[], key: SortKey): OrderSummary[] {
 
 function StatusBadge({ status }: { status: OrderStatus }) {
   return (
-    <span className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full border capitalize ${STATUS_STYLES[status]}`}>
+    <span className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-md border capitalize ${STATUS_STYLES[status]}`}>
       <span className="w-1.5 h-1.5 rounded-full bg-current" />
       {status}
     </span>
@@ -362,7 +362,7 @@ const OrdersPage = () => {
                   <p className="text-sm text-gray-500">{orders.length} order{orders.length !== 1 ? "s" : ""} placed</p>
                   {user && !loading && !error && orders.length > 1 && (
                     <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
-                      <SelectTrigger className="relative -top-[12px] h-8 w-auto gap-1.5 rounded-full border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-brand-teal/20 [&>svg]:h-3.5 [&>svg]:w-3.5">
+                      <SelectTrigger className="relative -top-[12px] h-8 w-auto gap-1.5 rounded-md border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-brand-teal/20 [&>svg]:h-3.5 [&>svg]:w-3.5">
                         <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
                         <SelectValue placeholder="Sort" />
                       </SelectTrigger>

@@ -337,7 +337,7 @@ const OrderDetailPage = () => {
               <Link to="/orders" className="text-sm font-medium text-brand-teal underline underline-offset-2">View all orders</Link>
             </div>
           ) : (
-            <Card className="relative bg-white border border-gray-400 rounded-2xl overflow-hidden shadow-lg ring-1 ring-black/10 divide-y divide-gray-100">
+            <Card className="relative bg-white border border-gray-400 rounded-2xl overflow-hidden shadow-lg ring-1 ring-black/10">
               {/* Status accent strip — absolutely placed so it doesn't add a divider line */}
               <div className={`absolute top-0 inset-x-0 h-1 z-10 ${STATUS_ACCENT[order.status]}`} />
 
@@ -348,7 +348,7 @@ const OrderDetailPage = () => {
                     <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{order.orderNumber}</h1>
                     <p className="text-sm sm:text-base text-gray-500 mt-1">Placed on {formatDate(order.createdAt)}</p>
                   </div>
-                  <span className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full border capitalize ${STATUS_STYLES[order.status]}`}>
+                  <span className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-md border capitalize ${STATUS_STYLES[order.status]}`}>
                     <span className="w-1.5 h-1.5 rounded-full bg-current" />
                     {order.status}
                   </span>
@@ -375,7 +375,7 @@ const OrderDetailPage = () => {
                 </h2>
                 <div className="space-y-4">
                   {order.items.map((item) => (
-                    <div key={item.id} className="space-y-3 pb-4 border-b border-gray-200 last:border-0 last:pb-0">
+                    <div key={item.id} className="space-y-3 pb-4 border-b border-gray-400 last:border-0 last:pb-0">
                       <div
                         role="button"
                         tabIndex={0}
@@ -479,7 +479,7 @@ const OrderDetailPage = () => {
                     <span>Shipping</span>
                     <span>{order.shippingFee > 0 ? inr(order.shippingFee) : "Free"}</span>
                   </div>
-                  <div className="flex justify-between border-t border-gray-100 pt-3 mt-1">
+                  <div className="flex justify-between pt-3 mt-1">
                     <span className="text-base font-semibold text-gray-900">Total</span>
                     <span className="text-lg font-bold text-brand-teal">{inr(order.total)}</span>
                   </div>
