@@ -517,12 +517,16 @@ export default function Cart() {
                               <Plus size={10} className="hidden sm:block" />
                             </button>
                           </div>
+                          {/* Show qty × unit price when there's more than one; a single
+                              unit just reads as the plain price. */}
                           <span className="text-lg sm:text-xl md:text-2xl font-bold shrink-0 text-brand-teal">
-                            ₹{item.price * item.quantity}
+                            {item.quantity > 1 ? `${item.quantity} × ₹${item.price}` : `₹${item.price}`}
                           </span>
                         </div>
                         <div className="flex justify-end -mt-1">
-                          <span className="text-xs line-through text-gray-400">₹{item.originalPrice * item.quantity}</span>
+                          <span className="text-xs line-through text-gray-400">
+                            {item.quantity > 1 ? `${item.quantity} × ₹${item.originalPrice}` : `₹${item.originalPrice}`}
+                          </span>
                         </div>
                       </div>
 
