@@ -41,8 +41,10 @@ import Footer from "@/components/layout/Footer";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import type { CartItem } from "@/lib/cartApi";
 import { computeCartTotals } from "@/lib/pricing";
-import { useRecommendations } from "@/hooks/useRecommendations";
+import { useRecommendations, type RecommendationAnchor } from "@/hooks/useRecommendations";
 import { validateCoupon, fetchActiveCoupons, formatCouponSavings, formatCouponOffer, computeCouponSavings, type ActiveCoupon } from "@/lib/checkoutApi";
+import { fetchWishlist } from "@/lib/wishlistApi";
+import { fetchOrders } from "@/lib/ordersApi";
 
 const abbreviateSize = (size: string) =>
   size.replace(/months?/gi, "M").replace(/years?/gi, "Y").trim();
@@ -100,6 +102,7 @@ export default function Cart() {
   const [showCoupons, setShowCoupons] = useState(false);
   const [couponsLoaded, setCouponsLoaded] = useState(false);
   const couponContainerRef = useRef<HTMLDivElement>(null);
+  const [fallbackAnchor, setFallbackAnchor] = useState<RecommendationAnchor | null>(null);
 
   // Shared pricing math (Checkout + backend use the same rule); deliveryFee keeps its
   // local name for the JSX below.
@@ -140,6 +143,39 @@ export default function Cart() {
     };
   }, []);
 
+  // When the cart is empty, derive a rec anchor from wishlist then order history.
+  useEffect(() => {
+    if (cartLoading || cartItems.length > 0 || !user) {
+      setFallbackAnchor(null);
+      return;
+    }
+    let active = true;
+    void (async () => {
+      try {
+        const wishlist = await fetchWishlist();
+        if (active && wishlist.length > 0) {
+          const item = wishlist[0];
+          setFallbackAnchor({ slug: item.slug, categorySlug: item.categorySlug, price: item.price });
+          return;
+        }
+      } catch {
+        console.error("[Cart] fallback anchor: wishlist fetch failed");
+      }
+      try {
+        const orders = await fetchOrders();
+        const firstItem = orders[0]?.items?.[0];
+        if (active && firstItem) {
+          setFallbackAnchor({ slug: firstItem.productSlug, categorySlug: firstItem.categorySlug, price: firstItem.unitPrice });
+          return;
+        }
+      } catch {
+        console.error("[Cart] fallback anchor: orders fetch failed");
+      }
+      if (active) setFallbackAnchor(null);
+    })();
+    return () => { active = false; };
+  }, [cartLoading, cartItems.length, user]);
+
   const applyCoupon = async (codeToApply?: string) => {
     const code = (codeToApply ?? couponInput).trim().toUpperCase();
     if (!code) return;
@@ -172,10 +208,11 @@ export default function Cart() {
   deliveryDate.setDate(deliveryDate.getDate() + 3);
   const deliveryStr = `${deliveryDate.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}, 6:00 PM`;
 
-  // "You May Also Like" — anchored to the first item in the bag.
-  const recAnchor = cartItems[0]
+  // "You May Also Like" — anchored to the first cart item; falls back to wishlist
+  // or order history when the cart is empty so the section always has something to show.
+  const recAnchor: RecommendationAnchor | null = cartItems[0]
     ? { slug: cartItems[0].slug, categorySlug: cartItems[0].categorySlug, price: cartItems[0].price }
-    : null;
+    : fallbackAnchor;
   const { recommendations, loading: recsLoading } = useRecommendations(recAnchor);
 
   const handleQuantityChange = (itemId: string, currentQty: number, delta: number) => {

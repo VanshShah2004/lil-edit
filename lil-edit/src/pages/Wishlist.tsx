@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ChevronRight,
@@ -25,7 +25,9 @@ import Footer from "@/components/layout/Footer";
 
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import type { WishlistItem } from "@/lib/wishlistApi";
-import { useRecommendations } from "@/hooks/useRecommendations";
+import { useRecommendations, type RecommendationAnchor } from "@/hooks/useRecommendations";
+import { useCart } from "@/contexts/CartContext";
+import { fetchOrders } from "@/lib/ordersApi";
 
 const BADGE_PRIORITY = ["newarrival", "trending", "bestseller", "featured"];
 const sortBadges = (badges: string[]) => {
@@ -84,6 +86,9 @@ const WishlistPage = () => {
     moveToCart,
     moveAllToCart,
   } = useWishlist();
+
+  const { cartItems, loading: cartLoading } = useCart();
+  const [fallbackAnchor, setFallbackAnchor] = useState<RecommendationAnchor | null>(null);
 
   const handleMoveToCart = async (id: string) => {
     setMovingId(id);
@@ -164,10 +169,42 @@ const WishlistPage = () => {
   const totalValue = filteredItems.reduce((sum, item) => sum + item.price, 0);
   const inStockCount = wishlistItems.filter((i) => i.inStock).length;
 
-  // "You May Also Like" — anchored to the first saved item.
-  const recAnchor = wishlistItems[0]
+  // When the wishlist is empty, derive a rec anchor from cart then order history.
+  const firstCartSlug = cartItems[0]?.slug ?? "";
+  const firstCartCategorySlug = cartItems[0]?.categorySlug ?? "";
+  const firstCartPrice = cartItems[0]?.price;
+  useEffect(() => {
+    if (wishlistLoading || wishlistItems.length > 0 || !user) {
+      setFallbackAnchor(null);
+      return;
+    }
+    if (cartLoading) return;
+    if (firstCartSlug) {
+      setFallbackAnchor({ slug: firstCartSlug, categorySlug: firstCartCategorySlug, price: firstCartPrice });
+      return;
+    }
+    let active = true;
+    void (async () => {
+      try {
+        const orders = await fetchOrders();
+        const firstItem = orders[0]?.items?.[0];
+        if (active && firstItem) {
+          setFallbackAnchor({ slug: firstItem.productSlug, categorySlug: firstItem.categorySlug, price: firstItem.unitPrice });
+          return;
+        }
+      } catch {
+        console.error("[Wishlist] fallback anchor: orders fetch failed");
+      }
+      if (active) setFallbackAnchor(null);
+    })();
+    return () => { active = false; };
+  }, [wishlistLoading, wishlistItems.length, cartLoading, firstCartSlug, firstCartCategorySlug, firstCartPrice, user]);
+
+  // "You May Also Like" — anchored to the first saved item; falls back to cart or
+  // order history when the wishlist is empty so the section always has something to show.
+  const recAnchor: RecommendationAnchor | null = wishlistItems[0]
     ? { slug: wishlistItems[0].slug, categorySlug: wishlistItems[0].categorySlug, price: wishlistItems[0].price }
-    : null;
+    : fallbackAnchor;
   const { recommendations, loading: recsLoading } = useRecommendations(recAnchor);
 
   if (authLoading) {
