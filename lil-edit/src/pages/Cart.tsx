@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -13,6 +13,8 @@ import {
   Award,
   Truck,
   Wallet,
+  Tag,
+  Loader2,
 } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import { FaTrashAlt } from "react-icons/fa";
@@ -40,6 +42,7 @@ import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/Qui
 import type { CartItem } from "@/lib/cartApi";
 import { computeCartTotals } from "@/lib/pricing";
 import { useRecommendations } from "@/hooks/useRecommendations";
+import { validateCoupon, fetchActiveCoupons, formatCouponSavings, formatCouponOffer, type ActiveCoupon } from "@/lib/checkoutApi";
 
 const abbreviateSize = (size: string) =>
   size.replace(/months?/gi, "M").replace(/years?/gi, "Y").trim();
@@ -88,10 +91,79 @@ export default function Cart() {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const navigate = useNavigate();
 
+  const [couponInput, setCouponInput] = useState("");
+  const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [couponMsg, setCouponMsg] = useState<string>("");
+  const [couponChecking, setCouponChecking] = useState(false);
+  const [activeCoupons, setActiveCoupons] = useState<ActiveCoupon[]>([]);
+  const [showCoupons, setShowCoupons] = useState(false);
+  const [couponsLoaded, setCouponsLoaded] = useState(false);
+  const couponContainerRef = useRef<HTMLDivElement>(null);
+
   // Shared pricing math (Checkout + backend use the same rule); deliveryFee keeps its
   // local name for the JSX below.
   const { subtotal, originalTotal, totalSavings, shippingFee: deliveryFee, discount, total, freeShippingRemaining } =
-    computeCartTotals(cartItems);
+    computeCartTotals(cartItems, coupon?.discount ?? 0);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    setCouponsLoaded(false);
+    void (async () => {
+      try {
+        const list = await fetchActiveCoupons(subtotal);
+        if (active) {
+          setActiveCoupons(list);
+          console.log(`[Cart] Loaded ${list.length} coupons (${list.filter(c => c.applicable).length} applicable)`);
+        }
+      } catch (err) {
+        console.error("[Cart] Failed to load coupons", err);
+      } finally {
+        if (active) setCouponsLoaded(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [user, subtotal]);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (couponContainerRef.current && !couponContainerRef.current.contains(e.target as Node)) {
+        setShowCoupons(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
+
+  const applyCoupon = async (codeToApply?: string) => {
+    const code = (codeToApply ?? couponInput).trim().toUpperCase();
+    if (!code) return;
+    setCouponChecking(true);
+    setCouponMsg("");
+    try {
+      const result = await validateCoupon(code, subtotal);
+      if (result.valid) {
+        setCoupon({ code, discount: result.discount });
+        setCouponMsg(result.reason);
+        toast.success(`Coupon "${code}" applied successfully!`);
+      } else {
+        setCoupon(null);
+        setCouponMsg(result.reason);
+        toast.error(result.reason);
+      }
+    } catch (err: any) {
+      setCoupon(null);
+      setCouponMsg(err.message ?? "Could not apply coupon.");
+      toast.error(err.message ?? "Could not apply coupon.");
+    } finally {
+      setCouponChecking(false);
+      setShowCoupons(false);
+    }
+  };
 
   const deliveryDate = new Date();
   deliveryDate.setDate(deliveryDate.getDate() + 3);
@@ -504,14 +576,127 @@ export default function Cart() {
                 </span>
               </div>
 
-              <div className="flex flex-row gap-2">
-                <Input
-                  placeholder="Enter coupon code"
-                  className="flex-1 h-11 rounded-lg text-sm"
-                />
-                <Button className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-lg px-5 h-11 text-sm font-semibold shrink-0 transition-colors">
-                  Apply
-                </Button>
+              <div className="relative">
+                <div className="flex flex-row gap-2">
+                  <div className="relative flex-1" ref={couponContainerRef}>
+                    <Input
+                      placeholder="Enter coupon code"
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value)}
+                      onFocus={() => setShowCoupons(true)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void applyCoupon();
+                        }
+                      }}
+                      className="w-full h-11 rounded-lg text-sm bg-white"
+                    />
+                    {showCoupons && (
+                      <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-72 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
+                        <div className="p-2.5 border-b border-gray-100 text-xs font-semibold text-gray-500 flex items-center gap-1.5">
+                          <Tag className="w-3.5 h-3.5 text-brand-teal" />
+                          Available Coupons
+                        </div>
+                        {!couponsLoaded ? (
+                          <div className="p-4 flex items-center justify-center gap-2 text-xs text-gray-400">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Loading coupons…
+                          </div>
+                        ) : activeCoupons.length === 0 ? (
+                          <div className="p-4 text-center text-xs text-gray-400">
+                            No coupons available right now
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-gray-500">
+                            {activeCoupons.map((c) => {
+                              const discountText = formatCouponSavings(subtotal, c);
+                              const couponOfferText = formatCouponOffer(c);
+                              const ruleBadge = c.first_order_only
+                                ? "First Order Only"
+                                : c.once_per_user
+                                ? "Once Per User"
+                                : "";
+
+                              if (c.applicable) {
+                                return (
+                                  <button
+                                    key={c.code}
+                                    type="button"
+                                    onMouseDown={() => {
+                                      setCouponInput(c.code);
+                                      void applyCoupon(c.code);
+                                    }}
+                                    className="w-full text-left px-3 py-2.5 hover:bg-teal-50/60 transition-colors flex flex-col gap-1"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-bold text-xs bg-brand-teal/10 text-brand-teal border border-brand-teal px-2 py-0.5 rounded font-mono uppercase tracking-wider">
+                                        {c.code}
+                                      </span>
+                                      <span className="text-base font-bold text-brand-teal">{discountText}</span>
+                                    </div>
+                                    <div className="flex flex-wrap items-center justify-between text-xs text-gray-500 gap-1.5 mt-0.5">
+                                      <span>{couponOfferText}</span>
+                                      {ruleBadge && (
+                                        <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-medium">
+                                          {ruleBadge}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </button>
+                                );
+                              }
+
+                              const reasonText = c.reason || couponOfferText;
+                              const isShortfallHint = reasonText.includes("to apply this coupon");
+
+                              // Non-applicable: dark grey, not clickable
+                              return (
+                                <div
+                                  key={c.code}
+                                  className="w-full text-left px-3 py-2.5 flex flex-col gap-1 bg-gray-50/80 cursor-default select-none"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-bold text-xs bg-gray-300 text-gray-700 px-2 py-0.5 rounded font-mono uppercase tracking-wider">
+                                      {c.code}
+                                    </span>
+                                    <span className="text-base font-bold text-gray-600">{discountText}</span>
+                                  </div>
+                                  <div className="flex flex-wrap items-center justify-between text-xs gap-1.5 mt-0.5">
+                                    <span className={`italic ${isShortfallHint ? "text-green-700 font-medium" : "text-gray-600"}`}>
+                                      {reasonText}
+                                    </span>
+                                    {ruleBadge && (
+                                      <span className="bg-gray-300 text-gray-700 px-1.5 py-0.5 rounded font-medium">
+                                        {ruleBadge}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    onClick={() => void applyCoupon()}
+                    disabled={couponChecking || !couponInput.trim()}
+                    className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-lg px-5 h-11 text-sm font-semibold shrink-0 transition-colors"
+                  >
+                    {couponChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Apply"}
+                  </Button>
+                </div>
+                {couponMsg && (
+                  <p className={`mt-1.5 text-xs flex items-center gap-1 ${
+                    coupon || couponMsg.includes("to apply this coupon")
+                      ? "text-green-700 font-medium"
+                      : "text-rose-600 font-medium"
+                  }`}>
+                    <Tag className="w-3.5 h-3.5 shrink-0" /> {couponMsg}
+                  </p>
+                )}
               </div>
 
               <Button

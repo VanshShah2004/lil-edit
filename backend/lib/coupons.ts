@@ -116,8 +116,10 @@ export async function validateCoupon(
     return invalid("This coupon has expired.", coupon);
   if (coupon.max_uses !== null && coupon.uses_count >= coupon.max_uses)
     return invalid("This coupon has reached its usage limit.", coupon);
-  if (coupon.min_order_amount !== null && subtotal < Number(coupon.min_order_amount))
-    return invalid(`This coupon needs a minimum order of ${inr(Number(coupon.min_order_amount))}.`, coupon);
+  if (coupon.min_order_amount !== null && subtotal < Number(coupon.min_order_amount)) {
+    const shortfall = Math.max(1, Math.round(Number(coupon.min_order_amount) - subtotal));
+    return invalid(`Add ${inr(shortfall)} to apply this coupon.`, coupon);
+  }
 
   // Per-user rules (checked against the user's order history).
   if (coupon.first_order_only) {

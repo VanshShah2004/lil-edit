@@ -790,6 +790,100 @@ router.post("/verify", requireAuth, mutationLimiter, async (req: Request, res: R
   }
 });
 
+// ─── GET /api/checkout/active-coupons — list active coupons for dropdowns ──────────
+// Accepts ?subtotal= so each coupon can be checked for applicability against the
+// current user + cart value. Returns applicable: boolean + reason per coupon.
+router.get("/active-coupons", requireAuth, async (req: Request, res: Response) => {
+  const log = createLog().start("CHECKOUT ACTIVE COUPONS");
+  const userId = (req as AuthenticatedRequest).userId;
+  const subtotal = Math.max(0, Number(req.query.subtotal) || 0);
+  try {
+    const { data, error } = await db()
+      .from("coupons")
+      .select("*")
+      .eq("is_active", true);
+
+    if (error) {
+      if (error.code === "42P01" || error.code === "42703" || /does not exist|schema cache/i.test(error.message ?? "")) {
+        log.warn(`coupons query failed (${error.code}): ${error.message}`).end("CHECKOUT ACTIVE COUPONS");
+        res.json({ coupons: [] });
+        return;
+      }
+      log.error(`failed to fetch active coupons: ${error.message}`, error).end("CHECKOUT ACTIVE COUPONS");
+      res.json({ coupons: [] });
+      return;
+    }
+
+    // Filter out expired coupons
+    const liveCoupons = (data ?? []).filter((c: any) => {
+      if (!c.expires_at) return true;
+      return new Date(c.expires_at).getTime() > Date.now();
+    });
+
+    // Validate each coupon against the current user + subtotal
+    const results: Array<{
+      code: string; discount_type: string; discount_value: number;
+      min_order_amount: number | null; max_discount_amount: number | null;
+      first_order_only: boolean; once_per_user: boolean;
+      applicable: boolean; reason: string;
+    }> = [];
+
+    await Promise.all(
+      liveCoupons.map(async (c: any) => {
+        const firstOrderOnly = !!c.first_order_only;
+        const oncePerUser = !!c.once_per_user;
+
+        // Validate whenever we have a subtotal, or when per-user rules may exclude this
+        // coupon (first-order / once-per-user). Without this, subtotal=0 skips checks and
+        // first-order coupons would appear as applicable to returning customers.
+        const needsValidation = subtotal > 0 || firstOrderOnly || oncePerUser;
+
+        let applicable = true;
+        let reason = "";
+
+        if (needsValidation) {
+          const v = await validateCoupon(db(), c.code, subtotal, userId, log);
+          applicable = v.valid;
+          reason = v.reason;
+
+          // First-order-only coupons: show only when the user can apply them right now
+          // (eligible first order + min order met + not expired, etc.). Never gray them out.
+          if (firstOrderOnly && !applicable) return;
+
+          // Other per-user permanent rejections: hide instead of showing grayed-out.
+          if (!applicable) {
+            const isPerUserRejection =
+              reason.includes("first order") ||
+              reason.includes("already used");
+            if (isPerUserRejection) return;
+          }
+        }
+
+        results.push({
+          code: c.code,
+          discount_type: c.discount_type,
+          discount_value: c.discount_value,
+          min_order_amount: c.min_order_amount ?? null,
+          max_discount_amount: c.max_discount_amount ?? null,
+          first_order_only: c.first_order_only ?? false,
+          once_per_user: c.once_per_user ?? false,
+          applicable,
+          reason,
+        });
+      })
+    );
+
+    // Sort: applicable coupons first
+    results.sort((a, b) => (a.applicable === b.applicable ? 0 : a.applicable ? -1 : 1));
+
+    log.success(`served ${results.length} coupons (${results.filter(c => c.applicable).length} applicable)`).end("CHECKOUT ACTIVE COUPONS");
+    res.json({ coupons: results });
+  } catch (err) {
+    log.error("active coupons handler failed", err).end("CHECKOUT ACTIVE COUPONS");
+    res.json({ coupons: [] });
+  }
+});
+
 // ─── POST /api/checkout/coupon — live "Apply" feedback ───────────────────────────
 router.get("/coupon", requireAuth, async (req: Request, res: Response) => {
   const log = createLog().start("CHECKOUT COUPON");

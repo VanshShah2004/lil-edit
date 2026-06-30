@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ChevronRight, Lock, MapPin, Tag, Loader2, Check, ShieldCheck, Plus, Package } from "lucide-react";
@@ -18,6 +18,10 @@ import {
   verifyCheckout,
   validateCoupon,
   loadRazorpayScript,
+  fetchActiveCoupons,
+  formatCouponSavings,
+  formatCouponOffer,
+  type ActiveCoupon,
   type CheckoutItemInput,
   type InitiatePayload,
   type RazorpaySuccess,
@@ -63,6 +67,54 @@ export default function Checkout() {
   const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
   const [couponMsg, setCouponMsg] = useState<string>("");
   const [couponChecking, setCouponChecking] = useState(false);
+
+  const [activeCoupons, setActiveCoupons] = useState<ActiveCoupon[]>([]);
+  const [showCoupons, setShowCoupons] = useState(false);
+  const [couponsLoaded, setCouponsLoaded] = useState(false);
+  const couponContainerRef = useRef<HTMLDivElement>(null);
+
+  // Subtotal for coupon applicability checks — computed early so the coupon fetch
+  // can depend on it. The full `totals` object is built further down.
+  const couponSubtotal = useMemo(
+    () => (mode === "direct" && directItem
+      ? (directItem.price ?? 0) * directItem.quantity
+      : cartItems.reduce((sum, it) => sum + it.price * it.quantity, 0)),
+    [mode, directItem, cartItems],
+  );
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    setCouponsLoaded(false);
+    void (async () => {
+      try {
+        const list = await fetchActiveCoupons(couponSubtotal);
+        if (active) {
+          setActiveCoupons(list);
+          console.log(`[Checkout] Loaded ${list.length} coupons (${list.filter(c => c.applicable).length} applicable)`);
+        }
+      } catch (err) {
+        console.error("[Checkout] Failed to load coupons", err);
+      } finally {
+        if (active) setCouponsLoaded(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [user, couponSubtotal]);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (couponContainerRef.current && !couponContainerRef.current.contains(e.target as Node)) {
+        setShowCoupons(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
 
   const [paying, setPaying] = useState(false);
 
@@ -142,8 +194,8 @@ export default function Checkout() {
   const discount = coupon?.discount ?? 0;
   const totals = computeCartTotals(lineInputs, discount);
 
-  const applyCoupon = async () => {
-    const code = couponInput.trim().toUpperCase();
+  const applyCoupon = async (codeToApply?: string) => {
+    const code = (codeToApply ?? couponInput).trim().toUpperCase();
     if (!code) return;
     setCouponChecking(true);
     setCouponMsg("");
@@ -165,6 +217,7 @@ export default function Checkout() {
       setCouponMsg(e instanceof Error ? e.message : "Could not apply coupon");
     } finally {
       setCouponChecking(false);
+      setShowCoupons(false);
     }
   };
 
@@ -406,14 +459,109 @@ export default function Checkout() {
               {/* Coupon */}
               <div>
                 <div className="flex flex-row gap-2">
-                  <Input
-                    placeholder="Coupon code"
-                    value={couponInput}
-                    onChange={(e) => setCouponInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void applyCoupon(); } }}
-                    className="flex-1 h-11 rounded-full text-sm bg-white"
-                    disabled={paying}
-                  />
+                  <div className="relative flex-1" ref={couponContainerRef}>
+                    <Input
+                      placeholder="Coupon code"
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value)}
+                      onFocus={() => setShowCoupons(true)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void applyCoupon();
+                        }
+                      }}
+                      className="w-full h-11 rounded-full text-sm bg-white"
+                      disabled={paying}
+                    />
+                    {showCoupons && (
+                      <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-200">
+                        <div className="p-2.5 border-b border-gray-100 text-xs font-semibold text-gray-500 flex items-center gap-1.5">
+                          <Tag className="w-3.5 h-3.5 text-brand-teal" />
+                          Available Coupons
+                        </div>
+                        {!couponsLoaded ? (
+                          <div className="p-4 flex items-center justify-center gap-2 text-xs text-gray-400">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Loading coupons…
+                          </div>
+                        ) : activeCoupons.length === 0 ? (
+                          <div className="p-4 text-center text-xs text-gray-400">
+                            No coupons available right now
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-gray-500">
+                            {activeCoupons.map((c) => {
+                              const discountText = formatCouponSavings(couponSubtotal, c);
+                              const couponOfferText = formatCouponOffer(c);
+                              const ruleBadge = c.first_order_only
+                                ? "First Order Only"
+                                : c.once_per_user
+                                ? "Once Per User"
+                                : "";
+
+                              if (c.applicable) {
+                                return (
+                                  <button
+                                    key={c.code}
+                                    type="button"
+                                    onMouseDown={() => {
+                                      setCouponInput(c.code);
+                                      void applyCoupon(c.code);
+                                    }}
+                                    className="w-full text-left px-3 py-2.5 hover:bg-teal-50/60 transition-colors flex flex-col gap-1 text-gray-900"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-bold text-xs bg-brand-teal/10 text-brand-teal border border-brand-teal px-2 py-0.5 rounded font-mono uppercase tracking-wider">
+                                        {c.code}
+                                      </span>
+                                      <span className="text-base font-bold text-brand-teal">{discountText}</span>
+                                    </div>
+                                    <div className="flex flex-wrap items-center justify-between text-xs text-gray-500 gap-1.5 mt-0.5">
+                                      <span>{couponOfferText}</span>
+                                      {ruleBadge && (
+                                        <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-medium">
+                                          {ruleBadge}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </button>
+                                );
+                              }
+
+                              const reasonText = c.reason || couponOfferText;
+                              const isShortfallHint = reasonText.includes("to apply this coupon");
+
+                              // Non-applicable: dark grey, not clickable
+                              return (
+                                <div
+                                  key={c.code}
+                                  className="w-full text-left px-3 py-2.5 flex flex-col gap-1 bg-gray-50/80 cursor-default select-none"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-bold text-xs bg-gray-300 text-gray-700 px-2 py-0.5 rounded font-mono uppercase tracking-wider">
+                                      {c.code}
+                                    </span>
+                                    <span className="text-base font-bold text-gray-600">{discountText}</span>
+                                  </div>
+                                  <div className="flex flex-wrap items-center justify-between text-xs gap-1.5 mt-0.5">
+                                    <span className={`italic ${isShortfallHint ? "text-green-700 font-medium" : "text-gray-600"}`}>
+                                      {reasonText}
+                                    </span>
+                                    {ruleBadge && (
+                                      <span className="bg-gray-300 text-gray-700 px-1.5 py-0.5 rounded font-medium">
+                                        {ruleBadge}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <Button
                     onClick={() => void applyCoupon()}
                     disabled={couponChecking || paying || !couponInput.trim()}
@@ -423,8 +571,12 @@ export default function Checkout() {
                   </Button>
                 </div>
                 {couponMsg && (
-                  <p className={`mt-1.5 text-xs flex items-center gap-1 ${coupon ? "text-green-700" : "text-rose-600"}`}>
-                    <Tag className="w-3 h-3" /> {couponMsg}
+                  <p className={`mt-1.5 text-xs flex items-center gap-1 ${
+                    coupon || couponMsg.includes("to apply this coupon")
+                      ? "text-green-700 font-medium"
+                      : "text-rose-600 font-medium"
+                  }`}>
+                    <Tag className="w-3.5 h-3.5 shrink-0" /> {couponMsg}
                   </p>
                 )}
               </div>

@@ -149,6 +149,58 @@ export async function validateCoupon(code: string, subtotal: number): Promise<Co
   return (await res.json()) as CouponResult;
 }
 
+export interface ActiveCoupon {
+  code: string;
+  discount_type: "percentage" | "fixed";
+  discount_value: number;
+  min_order_amount: number | null;
+  max_discount_amount: number | null;
+  first_order_only: boolean;
+  once_per_user: boolean;
+  applicable: boolean;
+  reason: string;
+}
+
+/** Rupee savings for this cart subtotal — mirrors backend computeCouponDiscount. */
+export function computeCouponSavings(
+  coupon: Pick<ActiveCoupon, "discount_type" | "discount_value" | "max_discount_amount">,
+  subtotal: number,
+): number {
+  let raw =
+    coupon.discount_type === "percentage"
+      ? (subtotal * coupon.discount_value) / 100
+      : coupon.discount_value;
+  if (coupon.max_discount_amount != null) raw = Math.min(raw, coupon.max_discount_amount);
+  return Math.max(0, Math.round(Math.min(raw, subtotal)));
+}
+
+export function formatCouponSavings(subtotal: number, coupon: ActiveCoupon): string {
+  const amount = computeCouponSavings(coupon, subtotal);
+  return amount > 0 ? `Save ₹${amount.toLocaleString("en-IN")}` : "—";
+}
+
+/** e.g. "12% OFF upto ₹500" or "12% OFF" or "₹200 OFF" */
+export function formatCouponOffer(coupon: ActiveCoupon): string {
+  if (coupon.discount_type === "percentage") {
+    const base = `${coupon.discount_value}% OFF`;
+    if (coupon.max_discount_amount != null) {
+      return `${base} upto ₹${Math.round(coupon.max_discount_amount).toLocaleString("en-IN")}`;
+    }
+    return base;
+  }
+  return `₹${Math.round(coupon.discount_value).toLocaleString("en-IN")} OFF`;
+}
+
+export async function fetchActiveCoupons(subtotal = 0): Promise<ActiveCoupon[]> {
+  const res = await authFetch(`/api/checkout/active-coupons?subtotal=${Math.round(subtotal)}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error ?? `Failed to fetch active coupons (${res.status})`);
+  }
+  const data = await res.json();
+  return (data.coupons ?? []) as ActiveCoupon[];
+}
+
 // Inject checkout.js once; resolves true when window.Razorpay is available.
 let razorpayScriptPromise: Promise<boolean> | null = null;
 export function loadRazorpayScript(): Promise<boolean> {
