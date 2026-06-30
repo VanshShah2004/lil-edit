@@ -82,6 +82,16 @@ export async function toggleCoupon(id: string, is_active: boolean): Promise<Coup
   return data.coupon;
 }
 
+export async function updateCoupon(id: string, payload: Partial<CreateCouponPayload>): Promise<Coupon> {
+  const res = await authFetch(`/api/admin/coupons/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw await errorFrom(res, "Could not update coupon");
+  const data = (await res.json()) as { coupon: Coupon };
+  return data.coupon;
+}
+
 export async function deleteCoupon(id: string): Promise<void> {
   const res = await authFetch(`/api/admin/coupons/${id}`, { method: "DELETE" });
   if (!res.ok) throw await errorFrom(res, "Could not delete coupon");

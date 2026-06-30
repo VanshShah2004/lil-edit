@@ -143,16 +143,78 @@ router.post("/", adminMutationLimiter, async (req: Request, res: Response) => {
   res.status(201).json({ coupon: data });
 });
 
-// ─── PATCH /:id — toggle active / update fields ───────────────────────────────
+// ─── PATCH /:id — toggle active / full edit ───────────────────────────────────
 router.patch("/:id", adminMutationLimiter, async (req: Request, res: Response) => {
   const log = createLog().start("COUPON UPDATE");
   const db = serviceClientOr503(res, log);
   if (!db) return;
   const { id } = req.params as { id: string };
-  const body = req.body as { is_active?: unknown };
+  const body = req.body as {
+    is_active?: unknown;
+    code?: unknown;
+    discount_type?: unknown;
+    discount_value?: unknown;
+    min_order_amount?: unknown;
+    max_uses?: unknown;
+    expires_at?: unknown;
+    first_order_only?: unknown;
+    once_per_user?: unknown;
+    max_discount_amount?: unknown;
+  };
 
   const updates: Record<string, unknown> = {};
+
   if (body.is_active !== undefined) updates.is_active = Boolean(body.is_active);
+
+  if (body.code !== undefined) {
+    const code = String(body.code).trim().toUpperCase();
+    if (!CODE_RE.test(code)) {
+      res.status(400).json({ error: "Code must be 1–32 uppercase letters, numbers, hyphens, or underscores." });
+      return;
+    }
+    updates.code = code;
+  }
+
+  if (body.discount_type !== undefined) {
+    if (!["percentage", "fixed"].includes(String(body.discount_type))) {
+      res.status(400).json({ error: "discount_type must be 'percentage' or 'fixed'." });
+      return;
+    }
+    updates.discount_type = body.discount_type;
+  }
+
+  if (body.discount_value !== undefined) {
+    const v = Number(body.discount_value);
+    if (isNaN(v) || v <= 0) { res.status(400).json({ error: "discount_value must be a positive number." }); return; }
+    const dtype = String(body.discount_type ?? updates.discount_type ?? "percentage");
+    if (dtype === "percentage" && v > 100) { res.status(400).json({ error: "Percentage discount cannot exceed 100." }); return; }
+    updates.discount_value = v;
+  }
+
+  if (body.min_order_amount !== undefined) {
+    updates.min_order_amount = body.min_order_amount != null && body.min_order_amount !== "" ? Number(body.min_order_amount) : null;
+  }
+
+  if (body.max_uses !== undefined) {
+    updates.max_uses = body.max_uses != null && body.max_uses !== "" ? Number(body.max_uses) : null;
+  }
+
+  if (body.expires_at !== undefined) {
+    const rawExpires = body.expires_at ? String(body.expires_at).trim() : "";
+    updates.expires_at = rawExpires
+      ? (/^\d{4}-\d{2}-\d{2}$/.test(rawExpires) ? `${rawExpires}T23:59:59+05:30` : rawExpires)
+      : null;
+  }
+
+  if (body.first_order_only !== undefined) updates.first_order_only = Boolean(body.first_order_only);
+  if (body.once_per_user !== undefined) updates.once_per_user = Boolean(body.once_per_user);
+
+  if (body.max_discount_amount !== undefined) {
+    const dtype = String(body.discount_type ?? "percentage");
+    const mda = body.max_discount_amount != null && body.max_discount_amount !== "" ? Number(body.max_discount_amount) : null;
+    if (mda !== null && (isNaN(mda) || mda <= 0)) { res.status(400).json({ error: "Max discount must be a positive number." }); return; }
+    updates.max_discount_amount = dtype === "percentage" ? mda : null;
+  }
 
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "No updatable fields provided." });
@@ -167,6 +229,10 @@ router.patch("/:id", adminMutationLimiter, async (req: Request, res: Response) =
     .single();
 
   if (error) {
+    if (error.code === "23505") {
+      res.status(409).json({ error: `Coupon code already exists.` });
+      return;
+    }
     sendDbError(res, log, "COUPON UPDATE", error);
     return;
   }

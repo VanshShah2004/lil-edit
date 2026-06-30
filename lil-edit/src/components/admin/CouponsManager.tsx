@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import {
   AlertCircle,
   Loader2,
+  Pencil,
   Plus,
   RefreshCw,
   Tag,
@@ -26,6 +27,7 @@ import StockToggleSlider from "@/components/StockToggleSlider";
 import {
   fetchCoupons,
   createCoupon,
+  updateCoupon,
   toggleCoupon,
   deleteCoupon,
   type Coupon,
@@ -73,6 +75,9 @@ const CouponsManager = () => {
   const [creating, setCreating] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
+  const [editTarget, setEditTarget] = useState<Coupon | null>(null);
+  const [updating, setUpdating] = useState(false);
+
   const [deleteTarget, setDeleteTarget] = useState<Coupon | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -117,6 +122,53 @@ const CouponsManager = () => {
       toast.error(err instanceof Error ? err.message : "Could not create coupon.");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const startEdit = (coupon: Coupon) => {
+    setShowForm(false);
+    setEditTarget(coupon);
+    setForm({
+      code: coupon.code,
+      discount_type: coupon.discount_type,
+      discount_value: coupon.discount_value,
+      min_order_amount: coupon.min_order_amount,
+      max_uses: coupon.max_uses,
+      expires_at: coupon.expires_at ? coupon.expires_at.split("T")[0] : null,
+      first_order_only: coupon.first_order_only,
+      once_per_user: coupon.once_per_user,
+      max_discount_amount: coupon.max_discount_amount,
+    });
+  };
+
+  const cancelEdit = () => { setEditTarget(null); setForm(EMPTY_FORM); };
+
+  const handleUpdate = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    const code = form.code.trim().toUpperCase();
+    if (!code) return;
+    if (!form.discount_value || form.discount_value <= 0) {
+      toast.error("Discount value must be greater than 0.");
+      return;
+    }
+    setUpdating(true);
+    try {
+      await updateCoupon(editTarget.id, {
+        ...form,
+        code,
+        min_order_amount: form.min_order_amount || null,
+        max_uses: form.max_uses || null,
+        expires_at: form.expires_at || null,
+      });
+      toast.success(`Coupon "${code}" updated.`);
+      setEditTarget(null);
+      setForm(EMPTY_FORM);
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update coupon.");
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -166,26 +218,30 @@ const CouponsManager = () => {
           <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
             All coupons{!loading && !loadError ? ` (${coupons.length})` : ""}
           </p>
-          <button
-            type="button"
-            onClick={() => setShowForm((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all shrink-0"
-            style={{ background: `linear-gradient(135deg, ${ACCENT}, #9A82C9)` }}
-          >
-            <Plus className="w-3.5 h-3.5" />
-            New coupon
-          </button>
+          {!editTarget && (
+            <button
+              type="button"
+              onClick={() => setShowForm((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all shrink-0"
+              style={{ background: `linear-gradient(135deg, ${ACCENT}, #9A82C9)` }}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              New coupon
+            </button>
+          )}
         </div>
 
-        {/* Create form */}
-        {showForm && (
+        {/* Create / Edit form */}
+        {(showForm || editTarget !== null) && (
           <div className="p-5 border-b border-gray-200">
-            <form onSubmit={handleCreate} className="space-y-4">
+            <form onSubmit={editTarget ? handleUpdate : handleCreate} className="space-y-4">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-semibold text-gray-800">Create coupon</p>
+                <p className="text-sm font-semibold text-gray-800">
+                  {editTarget ? `Edit coupon` : "Create coupon"}
+                </p>
                 <button
                   type="button"
-                  onClick={() => { setShowForm(false); setForm(EMPTY_FORM); }}
+                  onClick={() => { if (editTarget) cancelEdit(); else { setShowForm(false); setForm(EMPTY_FORM); } }}
                   className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
                   title="Close"
                 >
@@ -366,25 +422,25 @@ const CouponsManager = () => {
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => { setShowForm(false); setForm(EMPTY_FORM); }}
-                  disabled={creating}
+                  onClick={() => { if (editTarget) cancelEdit(); else { setShowForm(false); setForm(EMPTY_FORM); } }}
+                  disabled={creating || updating}
                   className="rounded-md border border-red-300 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={creating}
+                  disabled={creating || updating}
                   className="inline-flex items-center gap-1.5 rounded-md px-5 py-2 text-xs font-semibold text-white shadow-sm transition-all disabled:opacity-50"
                   style={{ background: `linear-gradient(135deg, ${ACCENT}, #9A82C9)` }}
                 >
-                  {creating ? (
+                  {(creating || updating) ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Creating…
+                      {editTarget ? "Saving…" : "Creating…"}
                     </>
                   ) : (
-                    "Create coupon"
+                    editTarget ? "Save changes" : "Create coupon"
                   )}
                 </button>
               </div>
@@ -492,15 +548,26 @@ const CouponsManager = () => {
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
+                        onClick={() => startEdit(coupon)}
+                        title="Edit coupon"
+                        className="inline-flex items-center rounded-md border border-gray-300 p-1.5 text-gray-500 hover:bg-gray-50 transition-colors"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => void handleToggle(coupon)}
                         title={coupon.is_active ? "Deactivate" : "Activate"}
-                        className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                        className={`inline-flex items-center rounded-md border p-1.5 transition-colors ${
+                          coupon.is_active
+                            ? "border-gray-300 hover:bg-gray-50"
+                            : "border-red-300 hover:bg-red-50"
+                        }`}
                       >
                         {coupon.is_active
                           ? <ToggleRight className="w-4 h-4 text-green-600" />
-                          : <ToggleLeft className="w-4 h-4 text-gray-400" />
+                          : <ToggleLeft className="w-4 h-4 text-red-600" />
                         }
-                        {coupon.is_active ? "On" : "Off"}
                       </button>
                       <button
                         type="button"
@@ -508,7 +575,7 @@ const CouponsManager = () => {
                         title="Delete coupon"
                         className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-colors"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
                       </button>
                     </div>
                   </li>
