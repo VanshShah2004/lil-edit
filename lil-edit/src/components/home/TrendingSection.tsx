@@ -87,7 +87,7 @@ const TrendingSection = ({ previewItems }: { previewItems?: ResolvedItem[] }) =>
                   )}
                   <button
                     onClick={p ? (e) => { e.stopPropagation(); toggleWishlist(p); } : undefined}
-                    className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-primary transition-all"
+                    className={`absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center transition-all ${wishlisted ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
                     aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}
                   >
                     <Heart className="w-3.5 h-3.5" fill={wishlisted ? "currentColor" : "none"} />
