@@ -607,6 +607,7 @@ const WishlistPage = () => {
         open={quickViewOpen}
         product={selectedProduct}
         onClose={() => setQuickViewOpen(false)}
+        hideBuyNow
       />
     </div>
   );

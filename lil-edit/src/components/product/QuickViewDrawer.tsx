@@ -246,7 +246,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
   );
 
   const thumbs = () => (
-    <div className="flex gap-2 overflow-x-auto no-scrollbar flex-shrink-0 py-1">
+    <div className="flex gap-2 overflow-x-auto no-scrollbar flex-shrink-0 py-1 px-1">
       {allImages.map((img, i) => (
         <button
           key={i}
@@ -277,29 +277,12 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
         )}
       </div>
 
-      {/* Stock + Color + Size */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5">
-          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${inStock ? "bg-green-500" : "bg-red-400"}`} />
-          <span className={`text-base md:text-lg font-semibold ${inStock ? "text-green-700" : "text-red-500"}`}>
-            {inStock ? (product.source === "cart" ? product.availability || "In Stock" : "In Stock") : "Out of Stock"}
-          </span>
-        </div>
-        {product.color.hex && (
-          <>
-            <span className="text-gray-300">·</span>
-            <span className="flex items-center gap-1.5 text-base md:text-lg font-medium text-gray-700">
-              <span className="w-5 h-5 md:w-6 md:h-6 rounded-full border border-gray-300 shadow-sm flex-shrink-0" style={{ backgroundColor: product.color.hex }} />
-              {product.color.name || "Color"}
-            </span>
-          </>
-        )}
-        {product.size && (
-          <>
-            <span className="text-gray-300">·</span>
-            <span className="text-base md:text-lg font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded-full">Size: {product.size}</span>
-          </>
-        )}
+      {/* Stock */}
+      <div className="flex items-center gap-1.5">
+        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${inStock ? "bg-green-500" : "bg-red-400"}`} />
+        <span className={`text-base md:text-lg font-semibold ${inStock ? "text-green-700" : "text-red-500"}`}>
+          {inStock ? (product.source === "cart" ? product.availability || "In Stock" : "In Stock") : "Out of Stock"}
+        </span>
       </div>
 
       {/* Badges */}
@@ -313,10 +296,36 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
         </div>
       )}
 
+      {/* Color + Size */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {product.color.hex && (
+          <span className="flex items-center gap-1.5 text-base md:text-lg font-medium text-gray-700">
+            <span className="w-5 h-5 md:w-6 md:h-6 rounded-full border border-gray-300 shadow-sm flex-shrink-0" style={{ backgroundColor: product.color.hex }} />
+            {product.color.name || "Color"}
+          </span>
+        )}
+        {product.color.hex && product.size && <span className="text-gray-900 font-bold">·</span>}
+        {product.size && (
+          <span className="text-base md:text-lg font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded-full">Size&nbsp;:&nbsp; {product.size}</span>
+        )}
+      </div>
+
+      {/* Qty stepper — cart only */}
+      {product.source === "cart" && (
+        <div className="flex items-center gap-2.5">
+          <span className="text-base md:text-lg text-gray-600 font-medium">Qty&nbsp;:</span>
+          <div className="flex items-center border border-gray-400 rounded-full overflow-hidden bg-white w-fit">
+            <button onClick={() => handleQtyChange(-1)} className="px-3 py-1.5 md:py-2 hover:bg-gray-100 transition" aria-label="Decrease quantity"><Minus size={13} /></button>
+            <span className="px-3 text-base md:text-lg font-semibold min-w-[2ch] text-center">{liveQty}</span>
+            <button onClick={() => handleQtyChange(1)} className="px-3 py-1.5 md:py-2 hover:bg-gray-100 transition" aria-label="Increase quantity"><Plus size={13} /></button>
+          </div>
+        </div>
+      )}
+
       {/* Category / SKU */}
-      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm md:text-base text-gray-400">
-        <span>Category: <span className="text-gray-600 font-medium">{formattedCategory}</span></span>
-        <span>SKU: <span className="text-gray-600 font-medium font-mono">{product.sku}</span></span>
+      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-base md:text-lg text-gray-700">
+        <span>Category&nbsp;: <span className="text-gray-600 font-medium">{formattedCategory}</span></span>
+        <span>SKU&nbsp;: <span className="text-gray-600 font-medium font-mono">{product.sku}</span></span>
       </div>
 
       {/* Product details — enriched from the live product (snapshots don't carry it). */}
@@ -330,37 +339,21 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
           </ul>
         </div>
       )}
-
-      {/* Qty stepper — cart only */}
-      {product.source === "cart" && (
-        <div className="flex items-center gap-2.5">
-          <span className="text-base md:text-lg text-gray-600 font-medium">Qty:</span>
-          <div className="flex items-center border border-gray-300 rounded-full overflow-hidden bg-white w-fit">
-            <button onClick={() => handleQtyChange(-1)} className="px-3 py-1.5 md:py-2 hover:bg-gray-100 transition" aria-label="Decrease quantity"><Minus size={13} /></button>
-            <span className="px-3 text-base md:text-lg font-semibold min-w-[2ch] text-center">{liveQty}</span>
-            <button onClick={() => handleQtyChange(1)} className="px-3 py-1.5 md:py-2 hover:bg-gray-100 transition" aria-label="Increase quantity"><Plus size={13} /></button>
-          </div>
-        </div>
-      )}
     </div>
   );
 
   const ctaMobile = () => (
     <div className={`flex flex-row gap-2 ${hideBuyNow ? "justify-center" : ""}`}>
       <Button
-        variant={hideBuyNow ? "default" : "outline"}
+        variant="default"
         onClick={handleViewFull}
         disabled={productUnavailable}
-        className={`h-11 rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 ${
-          hideBuyNow
-            ? "flex-1 px-8 max-w-[38rem] bg-brand-teal hover:bg-[#0C5D53] text-white"
-            : "flex-1 border-gray-300 text-gray-700 hover:bg-transparent hover:border-brand-teal hover:text-brand-teal disabled:hover:border-gray-300 disabled:hover:text-gray-700"
-        }`}
+        className="flex-1 h-11 rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 bg-primary hover:bg-primary/90 text-primary-foreground"
       >
-        <ExternalLink size={15} /> {productUnavailable ? "Product Unavailable" : "View Full Product"}
+        <ExternalLink size={15} /> {productUnavailable ? "Product Unavailable" : "View Product"}
       </Button>
       {product.source === "wishlist" && (
-        <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-semibold text-base gap-1.5 disabled:opacity-60">
+        <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base gap-1.5 disabled:opacity-60">
           <ShoppingBag size={15} /> Move to Cart
         </Button>
       )}
@@ -368,11 +361,6 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
         <Button onClick={handleBuyNow} disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base disabled:opacity-60">
           Buy Now
         </Button>
-      )}
-      {product.source === "cart" && (
-        <button onClick={handleWishlistToggle} className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full border transition-colors ${wishlisted ? "border-primary/30 bg-primary/10 text-primary" : "border-gray-300 text-gray-500 hover:border-primary/50 hover:text-primary hover:bg-primary/5"}`} aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}>
-          <Heart size={15} fill={wishlisted ? "currentColor" : "none"} />
-        </button>
       )}
     </div>
   );
@@ -380,7 +368,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
   const ctaDesktop = () => (
     <div className={`flex gap-2 ${hideBuyNow ? "justify-center" : ""}`}>
       {product.source === "wishlist" && (
-        <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-semibold text-base gap-1.5 disabled:opacity-60">
+        <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base gap-1.5 disabled:opacity-60">
           <ShoppingBag size={15} /> Move to Cart
         </Button>
       )}
@@ -390,22 +378,13 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
         </Button>
       )}
       <Button
-        variant={hideBuyNow ? "default" : "outline"}
+        variant="default"
         onClick={handleViewFull}
         disabled={productUnavailable}
-        className={`h-11 rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 ${
-          hideBuyNow
-            ? "flex-1 px-8 max-w-[38rem] bg-brand-teal hover:bg-[#0C5D53] text-white"
-            : "flex-1 border-gray-300 text-gray-700 hover:bg-transparent hover:border-brand-teal hover:text-brand-teal disabled:hover:border-gray-300 disabled:hover:text-gray-700"
-        }`}
+        className="flex-1 h-11 rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 bg-primary hover:bg-primary/90 text-primary-foreground"
       >
-        <ExternalLink size={15} /> {productUnavailable ? "Product Unavailable" : "View Full Product"}
+        <ExternalLink size={15} /> {productUnavailable ? "Product Unavailable" : "View Product"}
       </Button>
-      {product.source === "cart" && (
-        <button onClick={handleWishlistToggle} className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full border transition-colors ${wishlisted ? "border-primary/30 bg-primary/10 text-primary" : "border-gray-300 text-gray-500 hover:border-primary/50 hover:text-primary hover:bg-primary/5"}`} aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}>
-          <Heart size={15} fill={wishlisted ? "currentColor" : "none"} />
-        </button>
-      )}
     </div>
   );
 
@@ -458,24 +437,33 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
             </div>
 
             {/* Header */}
-            <div className={`flex items-center justify-between px-4 sm:px-5 md:px-6 flex-shrink-0 ${isDesktop ? "pt-1 pb-3 border-b border-gray-100" : "pt-1 pb-0"}`}>
-              <span className="flex items-center gap-1.5 text-sm font-bold text-gray-900 opacity-65">
-                Quick View <Eye size={15} />
+            <div className={`flex items-center justify-between px-4 sm:px-5 md:px-6 flex-shrink-0 mb-[10px] ${isDesktop ? "pt-1 pb-3 border-b border-gray-100" : "pt-1 pb-0"}`}>
+              <span className="flex items-center gap-1.5 text-base font-bold text-gray-900 opacity-65">
+                Quick View <Eye size={19} />
               </span>
               <div className="flex items-center gap-1">
+                {product.source === "cart" && (
+                  <button
+                    onClick={handleWishlistToggle}
+                    className={`w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 shadow-sm hover:bg-gray-100 transition-colors outline-none ${wishlisted ? "text-primary" : "text-gray-500 hover:text-primary"}`}
+                    aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}
+                  >
+                    <Heart size={19} fill={wishlisted ? "currentColor" : "none"} />
+                  </button>
+                )}
                 <button
-                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500 hover:text-brand-teal outline-none"
+                  className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 shadow-sm hover:bg-gray-100 transition-colors text-gray-500 hover:text-brand-teal outline-none"
                   aria-label="Share product"
                 >
-                  <Share2 size={16} />
+                  <Share2 size={19} />
                 </button>
                 <button
                   ref={closeRef}
                   onClick={onClose}
-                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-800 outline-none"
+                  className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 shadow-sm hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-800 outline-none"
                   aria-label="Close quick view"
                 >
-                  <X size={17} />
+                  <X size={20} />
                 </button>
               </div>
             </div>
@@ -497,7 +485,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
                       <div>
                         <h2 className="text-3xl md:text-4xl font-bold text-gray-900 leading-snug">{product.title}</h2>
                         {product.brand && (
-                          <p className="text-base md:text-lg text-brand-teal font-medium mt-0.5">{product.brand}</p>
+                          <p className="text-lg md:text-xl text-brand-teal font-medium mt-0.5 uppercase">{product.brand}</p>
                         )}
                       </div>
                       {details()}
@@ -518,7 +506,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
                   <div className="px-4 sm:px-5 pt-0 pb-4">
                     <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-snug">{product.title}</h2>
                     {product.brand && (
-                      <p className="text-xs sm:text-sm text-brand-teal font-medium mt-0.5">{product.brand}</p>
+                      <p className="text-sm sm:text-base text-brand-teal font-medium mt-0.5 uppercase">{product.brand}</p>
                     )}
                   </div>
                   <div className="px-3 sm:px-4">{carousel("h-[26rem] sm:h-[30rem]")}</div>

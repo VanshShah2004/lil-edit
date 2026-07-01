@@ -492,7 +492,7 @@ const ProductPreviewView = ({
               key={currentSku}
               initial={{ opacity: 0, x: 5 }}
               animate={{ opacity: 1, x: 0 }}
-              className="text-[10px] font-mono font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded border border-slate-100"
+              className="text-[10px] font-mono font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded border border-gray-400"
             >
               {currentSku}
             </motion.div>
@@ -587,7 +587,7 @@ const ProductPreviewView = ({
           <div className="mb-5">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-medium">Color: <span className="text-[#0B5B55] font-semibold">{activeColor?.name}</span></p>
-              <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${stockStatus.class}`}>
+              <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md ${stockStatus.class}`}>
                 {stockStatus.label}
               </span>
             </div>

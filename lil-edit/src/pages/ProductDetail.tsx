@@ -526,7 +526,7 @@ export default function ProductDetail() {
       {user ? <UserNavbar /> : <Navbar />}
 
       {/* Breadcrumb */}
-      <div className="page-container pt-1 pb-6 sm:pb-8 text-sm text-gray-500">
+      <div className="page-container pt-3 pb-2 mt-1.5 mb-6 text-base text-gray-500">
         <Link to="/" className="hover:text-slate-900 transition-colors">Home</Link>
         <ChevronRight className="inline w-4 h-4 mx-1" />
         <Link to="/collections" className="hover:text-slate-900 transition-colors">Collections</Link>
@@ -658,7 +658,7 @@ export default function ProductDetail() {
                   Most Relevant Reviews
                 </h3>
                 <Select value={reviewSort} onValueChange={(v) => setReviewSort(v as ReviewSort)}>
-                  <SelectTrigger className="h-8 w-auto gap-1.5 rounded-full border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-0 [&>svg]:h-3.5 [&>svg]:w-3.5">
+                  <SelectTrigger className="h-8 w-auto gap-1.5 rounded-md border border-gray-400 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm hover:border-brand-teal/40 focus:ring-0 [&>svg]:h-3.5 [&>svg]:w-3.5">
                     <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
                     <SelectValue placeholder="Sort" />
                   </SelectTrigger>
