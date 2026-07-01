@@ -51,11 +51,11 @@ const Footer = () => (
       </div>
 
       <div className="mt-10 sm:mt-12 pt-6 sm:pt-8 border-t border-border flex flex-col-reverse sm:flex-row items-center justify-center sm:justify-between gap-3 sm:gap-4 text-center">
-        <p className="text-xs text-muted-foreground font-body">
-          © 2026 The Lil Edit. All rights reserved.
+        <p className="text-base text-muted-foreground font-display font-semibold">
+          &copy; 2026 The Lil Edit. All rights reserved.
         </p>
-        <p className="text-xs text-muted-foreground font-body flex items-center gap-1">
-          Made with <Heart className="h-3 w-3 text-primary fill-primary" /> for little ones
+        <p className="text-base text-muted-foreground font-display flex items-center gap-1">
+          Made with <Heart className="h-4 w-4 text-primary fill-primary" /> for little ones
         </p>
       </div>
     </div>
