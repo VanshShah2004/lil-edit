@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   X,
@@ -10,7 +10,7 @@ import {
   Eye,
   Share2,
 } from "lucide-react";
-import { motion, AnimatePresence, useDragControls, useMotionValue, animate } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, animate } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
@@ -79,13 +79,43 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
   const { moveToCart, isWishlisted, addToWishlist, removeFromWishlist, wishlistItems } =
     useWishlist();
   const closeRef = useRef<HTMLButtonElement>(null);
-  const dragControls = useDragControls();
   const swipeStartX = useRef(0);
   const swipeActive = useRef(false);
   const dragX = useMotionValue(0);
   const isDesktop = useIsDesktop();
   const [activeImg, setActiveImg] = useState(0);
   const [slideDir, setSlideDir] = useState<1 | -1>(1);
+
+  // Resizable sheet height — the drag handle lets the user pull the drawer
+  // taller/shorter instead of only dragging it closed.
+  const defaultHeightVh = isDesktop ? 88 : 65;
+  const minHeightVh = 30;
+  const maxHeightVh = isDesktop ? 94 : 92;
+  const [sheetHeightVh, setSheetHeightVh] = useState(defaultHeightVh);
+  const resizeStartY = useRef(0);
+  const resizeStartHeightVh = useRef(defaultHeightVh);
+  const resizing = useRef(false);
+
+  // Reset to the default height each time the drawer is (re)opened.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (open) setSheetHeightVh(defaultHeightVh); }, [open, defaultHeightVh]);
+
+  const handleResizeStart = (e: ReactPointerEvent) => {
+    resizing.current = true;
+    resizeStartY.current = e.clientY;
+    resizeStartHeightVh.current = sheetHeightVh;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const handleResizeMove = (e: ReactPointerEvent) => {
+    if (!resizing.current) return;
+    const deltaVh = ((resizeStartY.current - e.clientY) / window.innerHeight) * 100;
+    setSheetHeightVh(Math.min(maxHeightVh, Math.max(minHeightVh, resizeStartHeightVh.current + deltaVh)));
+  };
+  const handleResizeEnd = () => {
+    if (!resizing.current) return;
+    resizing.current = false;
+    if (sheetHeightVh <= minHeightVh + 5) onClose();
+  };
 
   // Reset gallery to the first image whenever a different product is shown.
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -411,27 +441,20 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
             aria-modal="true"
             aria-label="Quick product view"
             tabIndex={-1}
-            drag="y"
-            dragControls={dragControls}
-            dragListener={false}
-            dragConstraints={{ top: 0 }}
-            dragElastic={{ bottom: 0.3 }}
-            onDragEnd={(_, info) => {
-              if (info.offset.y > 80 || info.velocity.y > 400) onClose();
-            }}
             initial={{ y: "100%" }}
-            animate={{ y: 0 }}
+            animate={{ y: 0, height: `${sheetHeightVh}vh` }}
             exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 32, stiffness: 380, mass: 0.8 }}
-            className={`fixed inset-x-0 bottom-0 z-[300] flex flex-col bg-white rounded-t-3xl shadow-2xl outline-none overflow-hidden ${
-              isDesktop ? "max-h-[88vh]" : "max-h-[65vh]"
-            }`}
+            transition={resizing.current ? { duration: 0 } : { type: "spring", damping: 32, stiffness: 380, mass: 0.8 }}
+            className="fixed inset-x-0 bottom-0 z-[300] flex flex-col bg-white rounded-t-3xl shadow-2xl outline-none overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Drag handle */}
+            {/* Drag handle — pull up/down to resize the sheet's height */}
             <div
-              onPointerDown={(e) => dragControls.start(e)}
-              className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
+              onPointerDown={handleResizeStart}
+              onPointerMove={handleResizeMove}
+              onPointerUp={handleResizeEnd}
+              onPointerCancel={handleResizeEnd}
+              className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-ns-resize active:cursor-ns-resize touch-none select-none"
             >
               <div className="w-12 h-1.5 rounded-full bg-gray-200" />
             </div>
