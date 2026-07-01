@@ -3,22 +3,22 @@ import { Heart } from "lucide-react";
 
 const Footer = () => (
   <footer className="bg-card border-t border-gray-400">
-    <div className="container mx-auto px-4 lg:px-8 py-12 md:py-16">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 md:py-16">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8 sm:gap-8 md:gap-10 text-center sm:text-left">
         {/* Brand */}
-        <div className="md:col-span-1">
+        <div className="col-span-2 sm:col-span-2 lg:col-span-1">
           <h3 className="font-display text-2xl text-foreground mb-2">The Lil Edit</h3>
-          <p className="text-muted-foreground text-sm font-body italic">Simply cute. Always adorable.</p>
+          <p className="text-muted-foreground text-sm font-body italic">Simply cute, Always adorable.</p>
         </div>
 
         {/* Shop */}
         <div>
           <h4 className="font-display text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Shop</h4>
           <ul className="space-y-3 text-sm font-body text-muted-foreground">
-            <li><Link to="/shop" className="hover:text-primary transition-colors">New Arrivals</Link></li>
-            <li><Link to="/shop" className="hover:text-primary transition-colors">Bestsellers</Link></li>
-            <li><Link to="/shop" className="hover:text-primary transition-colors">Sale</Link></li>
-            <li><Link to="/shop" className="hover:text-primary transition-colors">Gift Sets</Link></li>
+            <li><Link to="/collections" className="hover:text-primary transition-colors">New Arrivals</Link></li>
+            <li><Link to="/collections" className="hover:text-primary transition-colors">Bestsellers</Link></li>
+            <li><Link to="/collections" className="hover:text-primary transition-colors">Sale</Link></li>
+            <li><Link to="/collections" className="hover:text-primary transition-colors">Gift Sets</Link></li>
           </ul>
         </div>
 
@@ -26,31 +26,31 @@ const Footer = () => (
         <div>
           <h4 className="font-display text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Help</h4>
           <ul className="space-y-3 text-sm font-body text-muted-foreground">
-            <li><Link to="/faq" className="hover:text-primary transition-colors">FAQ</Link></li>
-            <li><Link to="/shipping" className="hover:text-primary transition-colors">Shipping</Link></li>
-            <li><Link to="/returns" className="hover:text-primary transition-colors">Returns</Link></li>
-            <li><Link to="/contact" className="hover:text-primary transition-colors">Contact Us</Link></li>
+            <li><Link to="/about" className="hover:text-primary transition-colors">FAQ</Link></li>
+            <li><Link to="/about" className="hover:text-primary transition-colors">Shipping</Link></li>
+            <li><Link to="/about" className="hover:text-primary transition-colors">Returns</Link></li>
+            <li><Link to="/about" className="hover:text-primary transition-colors">Contact Us</Link></li>
           </ul>
         </div>
 
         {/* Newsletter */}
-        <div>
+        <div className="col-span-2 sm:col-span-2 lg:col-span-1">
           <h4 className="font-display text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Stay in the loop</h4>
           <p className="text-sm font-body text-muted-foreground mb-4">Get the cutest updates straight to your inbox.</p>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 max-w-sm mx-auto sm:mx-0">
             <input
               type="email"
               placeholder="your@email.com"
-              className="flex-1 px-4 py-2 rounded-lg border border-border bg-background text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="flex-1 min-w-0 px-4 py-2 rounded-lg border border-gray-400 bg-background text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
-            <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors sm:w-auto w-full">
+            <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-body hover:bg-primary/90 transition-colors w-full sm:w-auto shrink-0">
               Join
             </button>
           </div>
         </div>
       </div>
 
-      <div className="mt-12 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="mt-10 sm:mt-12 pt-6 sm:pt-8 border-t border-border flex flex-col-reverse sm:flex-row items-center justify-center sm:justify-between gap-3 sm:gap-4 text-center">
         <p className="text-xs text-muted-foreground font-body">
           © 2026 The Lil Edit. All rights reserved.
         </p>

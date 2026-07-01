@@ -41,7 +41,6 @@ const Navbar = () => {
         {/* Desktop Nav */}
         <ul className="hidden md:flex items-center gap-8 font-body text-sm tracking-wide">
           <li><Link to="/" className="text-foreground/80 hover:text-primary transition-colors">Home</Link></li>
-          <li><Link to="/shop" className="text-foreground/80 hover:text-primary transition-colors">Shop</Link></li>
           <li><Link to="/collections" className="text-foreground/80 hover:text-primary transition-colors">Collections</Link></li>
           <li><Link to="/about" className="text-foreground/80 hover:text-primary transition-colors">About</Link></li>
         </ul>
@@ -104,7 +103,6 @@ const Navbar = () => {
         <div className="md:hidden border-t border-border bg-background animate-fade-in">
           <div className="container mx-auto px-4 py-6 flex flex-col gap-4">
             <Link to="/" className="text-foreground/80 py-2 font-body" onClick={() => setMobileOpen(false)}>Home</Link>
-            <Link to="/shop" className="text-foreground/80 py-2 font-body" onClick={() => setMobileOpen(false)}>Shop</Link>
             <Link to="/collections" className="text-foreground/80 py-2 font-body" onClick={() => setMobileOpen(false)}>Collections</Link>
             <Link to="/about" className="text-foreground/80 py-2 font-body" onClick={() => setMobileOpen(false)}>About</Link>
             <div className="flex gap-3 pt-4 border-t border-border"

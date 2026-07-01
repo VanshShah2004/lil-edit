@@ -82,7 +82,7 @@ const Login = () => {
               <label className="block font-body text-sm text-foreground mb-1.5">Email</label>
               <input
                 type="email"
-                placeholder="hello@example.com"
+                placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
