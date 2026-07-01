@@ -17,6 +17,7 @@ import couponsRouter from "./routes/coupons.js";
 import curationRouter from "./routes/curation.js";
 import checkoutRouter, { webhookHandler } from "./routes/checkout.js";
 import shareRouter from "./routes/share.js";
+import newsletterRouter from "./routes/newsletter.js";
 import maintenanceRouter from "./routes/maintenance.js";
 import { maintenanceGate } from "./middleware/maintenanceGate.js";
 import { startMaintenanceWatcher } from "./lib/maintenance.js";
@@ -116,6 +117,7 @@ app.use("/api/curation",     curationRouter);
 // webhook above and the /coupon GET aren't throttled). Placement runs through the
 // service-role client + the place_order RPC.
 app.use("/api/checkout",     checkoutRouter);
+app.use("/api/newsletter",   mutationLimiter, newsletterRouter);
 
 // Link-preview Open Graph tags for shared PDP URLs (host-agnostic — see routes/share.ts).
 app.use("/share", shareRouter);
