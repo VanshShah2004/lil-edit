@@ -7,7 +7,7 @@ import UserNavbar from "@/components/home/UserNavbar";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchAdminOrders, type AdminOrderSummary, type OrderSortKey } from "@/lib/adminOrdersApi";
+import { fetchAdminOrders, triggerAutoProcess, type AdminOrderSummary, type OrderSortKey } from "@/lib/adminOrdersApi";
 import OrderFilters, { type StatusFilter, type PaymentFilter } from "@/components/admin/orders/OrderFilters";
 import OrdersTable from "@/components/admin/orders/OrdersTable";
 import AdminSubNav from "@/components/admin/AdminSubNav";
@@ -48,6 +48,10 @@ const AdminOrdersPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Bumped after the auto-process sweep transitions any orders, to re-trigger the
+  // list fetch below so newly-processing orders show up without a manual refresh.
+  const [autoProcessTick, setAutoProcessTick] = useState(0);
+
   const [showDateModal, setShowDateModal] = useState(false);
   const [downloadType, setDownloadType] = useState<"excel" | "pdf" | null>(null);
   const [dateRange, setDateRange] = useState<"all" | "custom">("all");
@@ -60,6 +64,20 @@ const AdminOrdersPage = () => {
     const t = setTimeout(() => setSearch(searchInput.trim()), 300);
     return () => clearTimeout(t);
   }, [searchInput]);
+
+  // On mount, sweep any `confirmed` orders older than 10 minutes into `processing`
+  // (mirrors the DB's scheduled auto-transition) so the table below reflects it
+  // immediately even if pg_cron / the external scheduler hasn't run recently.
+  useEffect(() => {
+    let cancelled = false;
+    triggerAutoProcess().then(({ transitioned }) => {
+      if (!cancelled && transitioned > 0) {
+        console.log(`[AdminOrders] auto-process transitioned ${transitioned} order(s) → refreshing list`);
+        setAutoProcessTick((t) => t + 1);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,7 +102,7 @@ const AdminOrdersPage = () => {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [search, status, payment, sort, page]);
+  }, [search, status, payment, sort, page, autoProcessTick]);
 
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;

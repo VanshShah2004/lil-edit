@@ -576,7 +576,7 @@ export default function Checkout() {
                 <>
                   {addresses.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {[...addresses].sort((a, b) => (a.id === selectedAddressId ? -1 : b.id === selectedAddressId ? 1 : 0)).map((addr) => {
+                      {[...addresses].sort((a, b) => Number(b.is_default) - Number(a.is_default)).map((addr) => {
                         const selected = addr.id === selectedAddressId;
                         return (
                           <button

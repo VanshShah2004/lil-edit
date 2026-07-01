@@ -926,4 +926,43 @@ router.patch("/:id/payment-status", adminMutationLimiter, async (req: Request, r
   }
 });
 
+// ─── POST /api/admin/orders/auto-process — auto-transition confirmed → processing ──
+// Triggered by pg_cron on Supabase Pro+, or manually called every 5 minutes from
+// a backend scheduler. Idempotent: only affects orders that are "confirmed" and
+// were placed 10+ minutes ago.
+router.post("/auto-process", adminMutationLimiter, async (req: Request, res: Response) => {
+  const log = createLog().start("AUTO PROCESS");
+
+  try {
+    log.step("calling auto_confirm_to_processing() RPC");
+    const t0 = performance.now();
+    const { data, error } = await db().rpc("auto_confirm_to_processing");
+
+    if (error) {
+      log.error(`RPC failed  ${error.message}`, error).end("AUTO PROCESS");
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    const result = Array.isArray(data) ? data[0] : data;
+    const transitionedCount = result?.transitioned_count ?? 0;
+    const errorMessage = result?.error_message ?? null;
+
+    if (errorMessage) {
+      log.warn(`completed with errors  transitioned=${transitionedCount}  errors=${errorMessage}`);
+      res.json({
+        success: true,
+        transitioned: transitionedCount,
+        warnings: errorMessage,
+      });
+    } else {
+      log.success(`transitioned ${transitionedCount} order(s)  elapsed=${fms(performance.now() - t0)}`).end("AUTO PROCESS");
+      res.json({ success: true, transitioned: transitionedCount });
+    }
+  } catch (err) {
+    log.error("unhandled error", err).end("AUTO PROCESS");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 export default router;

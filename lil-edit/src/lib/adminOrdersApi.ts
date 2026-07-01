@@ -327,6 +327,27 @@ export async function resendReceipt(
   return data as { emailed: boolean; reason?: NotifyFailureReason };
 }
 
+// Best-effort: transitions any `confirmed` orders older than 10 minutes to
+// `processing` (mirrors the DB's auto_confirm_to_processing() RPC). Called when the
+// admin orders list loads so the table reflects the 10-minute auto-transition even
+// on setups without pg_cron running in the background. Failures are swallowed —
+// this is a freshness nudge, not a required step for the page to work.
+export async function triggerAutoProcess(): Promise<{ transitioned: number }> {
+  try {
+    const res = await authFetch("/api/admin/orders/auto-process", { method: "POST" });
+    if (!res.ok) {
+      console.error("[adminOrdersApi] triggerAutoProcess failed:", res.status);
+      return { transitioned: 0 };
+    }
+    const data = await res.json();
+    console.log(`[adminOrdersApi] triggerAutoProcess → transitioned=${data.transitioned ?? 0}`);
+    return { transitioned: data.transitioned ?? 0 };
+  } catch (err) {
+    console.error("[adminOrdersApi] triggerAutoProcess error:", err);
+    return { transitioned: 0 };
+  }
+}
+
 export async function updatePaymentStatus(
   orderId: string,
   paymentStatus: PaymentStatus,

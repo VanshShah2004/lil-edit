@@ -27,7 +27,7 @@ import { getUserReviews, type Review } from "@/lib/reviewsApi";
 // Status → badge colours. Keys match the DB status CHECK constraint.
 const STATUS_STYLES: Record<OrderStatus, string> = {
   pending:    "bg-indigo-50 text-indigo-700 border-indigo-200",
-  confirmed:  "bg-indigo-50 text-indigo-700 border-indigo-200",
+  confirmed:  "bg-amber-50 text-amber-700 border-amber-200",
   processing: "bg-emerald-50 text-emerald-700 border-emerald-200",
   shipped:    "bg-emerald-50 text-emerald-700 border-emerald-200",
   delivered:  "bg-indigo-50 text-indigo-700 border-indigo-200",
@@ -37,7 +37,7 @@ const STATUS_STYLES: Record<OrderStatus, string> = {
 // Solid accent colours for the card's top strip — keyed to the same statuses.
 const STATUS_ACCENT: Record<OrderStatus, string> = {
   pending:    "bg-indigo-400",
-  confirmed:  "bg-indigo-400",
+  confirmed:  "bg-amber-400",
   processing: "bg-emerald-400",
   shipped:    "bg-emerald-400",
   delivered:  "bg-indigo-400",
