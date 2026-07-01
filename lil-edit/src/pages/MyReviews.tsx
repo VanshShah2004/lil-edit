@@ -72,14 +72,13 @@ const MyReviewsPage = () => {
 
   useEffect(() => { loadReviews(); }, [loadReviews]);
 
-  // (slug + sku) → ordered title/image, with a slug-only fallback for legacy
-  // reviews (sku='') written before the per-variant migration.
+  // sku → ordered title/image (sku is globally unique/self-identifying), with a
+  // slug-only fallback for legacy reviews (sku='') written before the per-variant migration.
   const productInfoByVariant = useMemo(() => {
     const map = new Map<string, { title: string; image: string }>();
     for (const order of orders) {
       for (const item of order.items) {
-        const variantKey = `${item.productSlug}|${item.sku}`;
-        if (!map.has(variantKey)) map.set(variantKey, { title: item.title, image: item.image });
+        if (!map.has(item.sku)) map.set(item.sku, { title: item.title, image: item.image });
         if (!map.has(item.productSlug)) map.set(item.productSlug, { title: item.title, image: item.image });
       }
     }
@@ -88,12 +87,12 @@ const MyReviewsPage = () => {
 
   // Every unreviewed variant (most-recent first) — uncapped, unlike the Orders sidebar.
   const pendingItems = useMemo(() => {
-    const reviewedKeys = new Set(reviews.map((r) => `${r.productSlug}|${r.sku}`));
+    const reviewedKeys = new Set(reviews.map((r) => r.sku));
     const seen = new Set<string>();
     const pending: { item: SidebarProduct; orderId: string }[] = [];
     for (const order of sortByNewest(orders)) {
       for (const item of order.items) {
-        const key = `${item.productSlug}|${item.sku}`;
+        const key = item.sku;
         if (reviewedKeys.has(key) || seen.has(key)) continue;
         seen.add(key);
         pending.push({

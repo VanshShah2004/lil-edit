@@ -376,7 +376,7 @@ export function ReviewHistorySection({
         <div className="space-y-3">
           <h3 className="text-sm font-bold uppercase tracking-wide text-gray-900">Pending Reviews</h3>
         {pendingItems.map(({ item }) => {
-          const variantKey = `${item.slug}|${item.sku}`;
+          const variantKey = item.sku;
           const isOpen = openKey === variantKey;
           return (
             <PendingReviewRow
@@ -400,7 +400,7 @@ export function ReviewHistorySection({
         <div className="space-y-3">
           <h3 className="text-sm font-bold uppercase tracking-wide text-gray-900">Recently Reviewed Products</h3>
         {reviews.map((review) => {
-          const variantKey = `${review.productSlug}|${review.sku}`;
+          const variantKey = review.sku;
           // Falls back to a slug-only match for legacy reviews (sku='') predating
           // the per-variant migration, which won't hit a real order-item variant key.
           const info = productInfoByVariant?.get(variantKey) ?? productInfoByVariant?.get(review.productSlug);
