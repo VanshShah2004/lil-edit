@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ChevronRight, Package, ArrowRight, RotateCcw, ArrowUpDown, Loader2 } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, Package, ArrowRight, RotateCcw, ArrowUpDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card } from "@/components/ui/card";
@@ -114,6 +114,8 @@ const OrdersPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>("newest");
+  const [visibleCount, setVisibleCount] = useState(5);
+  const viewMoreRef = useRef<HTMLDivElement>(null);
   const [recommendations, setRecommendations] = useState<SidebarProduct[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<QuickViewProduct | null>(null);
@@ -123,6 +125,10 @@ const OrdersPage = () => {
 
   const userId = user?.id ?? null;
   const sortedOrders = useMemo(() => sortOrders(orders, sortBy), [orders, sortBy]);
+  const visibleOrders = useMemo(() => sortedOrders.slice(0, visibleCount), [sortedOrders, visibleCount]);
+
+  // Reset pagination whenever the underlying order set or sort order changes.
+  useEffect(() => { setVisibleCount(5); }, [orders, sortBy]);
 
   // Deduplicated items from order history — most-recent variant per product slug.
   const buyAgainItems = useMemo<SidebarProduct[]>(() => {
@@ -444,7 +450,7 @@ const OrdersPage = () => {
                   <Link to="/dashboard" className="text-sm font-medium text-brand-teal underline underline-offset-2">Start shopping</Link>
                 </div>
               ) : (
-                sortedOrders.map((order) => (
+                visibleOrders.map((order) => (
                   <Link key={order.id} to={`/orders/${order.id}`} className="block group w-full">
                     <Card className="relative bg-white border border-gray-400 rounded-2xl overflow-hidden shadow-lg ring-1 ring-black/10 sm:min-h-[210px] hover:shadow-2xl hover:-translate-y-0.5 hover:border-brand-teal/60 transition-all duration-300">
                       {/* Status accent strip */}
@@ -532,11 +538,41 @@ const OrdersPage = () => {
                 ))
               )}
               </div>
+
+              {!loading && !error && sortedOrders.length > 5 && (
+                <div ref={viewMoreRef} className="flex justify-center gap-3 mt-6 scroll-mt-24">
+                  {visibleCount < sortedOrders.length && (
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCount((c) => c + 5)}
+                      className="flex items-center gap-1.5 text-base font-semibold text-white bg-brand-teal border-[1.5px] border-brand-teal rounded-lg px-6 py-3 hover:bg-brand-teal/90 transition-colors"
+                    >
+                      View more <ChevronDown className="w-4 h-4" />
+                    </button>
+                  )}
+                  {visibleCount > 5 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVisibleCount(5);
+                        requestAnimationFrame(() => {
+                          requestAnimationFrame(() => {
+                            viewMoreRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          });
+                        });
+                      }}
+                      className="flex items-center gap-1.5 text-base font-semibold text-brand-teal bg-white border-[1.5px] border-brand-teal rounded-lg px-6 py-3 hover:bg-brand-teal/5 transition-colors"
+                    >
+                      View less <ChevronUp className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* ── Right sidebar: review history ──────────────────────────── */}
             {showSidebar && (
-              <aside className="w-full sm:w-[35%] sm:shrink-0 mt-8 sm:mt-0 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
+              <aside className="w-full sm:w-[35%] sm:shrink-0 mt-14 pt-14 border-t border-gray-400 sm:mt-0 sm:pt-0 sm:border-t-0 sm:sticky sm:top-[calc(var(--navbar-height)+24px)]">
                 <div>
                 <ReviewHistorySection
                   reviews={reviewHistory.slice(0, 5)}
