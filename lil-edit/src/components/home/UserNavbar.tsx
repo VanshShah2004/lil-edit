@@ -376,9 +376,12 @@ const UserNavbar = () => {
           {isAdmin && (
             <SideSection label="Backstage">
               <SideLink to="/admin/settings" icon={ShieldCheck} label="Admin Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+              <SideLink to="/admin/general-settings" icon={Settings} label="General Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               <SideLink to="/admin/manage-products" icon={Settings} label="Manage Products" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               <SideLink to="/admin/orders" icon={ClipboardList} label="All Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               <SideLink to="/admin/spotlight" icon={Sparkles} label="The Spotlight" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+              <SideLink to="/admin/activity" icon={Activity} label="User Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+              <SideLink to="/admin/audit-log" icon={ScrollText} label="Admin Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
             </SideSection>
           )}
 
