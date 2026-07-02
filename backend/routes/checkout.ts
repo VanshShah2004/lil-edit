@@ -484,6 +484,35 @@ async function recoverSnapshot(razorpayOrderId: string, capturedPaise: number, l
   };
 }
 
+// Durable record of a captured payment that could NOT be placed (oversold after
+// payment, or unrecoverable snapshot) — a refund is owed, and it must never live only
+// in server logs. Best-effort: a missing table (pre-migration 20260709) or insert
+// failure is logged but never changes the response. The unique index on payment_id
+// makes the /verify + webhook double-hit write exactly one row.
+async function recordFailedPlacement(
+  args: { razorpayOrderId: string; paymentId: string; userId: string | null; amountPaise: number; reason: string; source: "verify" | "webhook" },
+  log: OpLogger,
+): Promise<void> {
+  try {
+    const { error } = await db().from("failed_placements").insert({
+      razorpay_order_id: args.razorpayOrderId,
+      payment_id: args.paymentId,
+      user_id: args.userId,
+      amount_paise: args.amountPaise,
+      reason: args.reason,
+      source: args.source,
+    });
+    if (error) {
+      if (error.code === "23505") { log.step(`failed placement already recorded  payment=${args.paymentId}`); return; }
+      log.warn(`could not record failed placement (table missing?): ${error.message}`);
+    } else {
+      log.step(`failed placement RECORDED  payment=${args.paymentId}  reason=${args.reason}  amount=${args.amountPaise}p — refund owed`);
+    }
+  } catch (e) {
+    log.warn(`failed placement record threw (non-fatal): ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
 // Idempotency: has this Razorpay payment already produced an order? Lets /verify and
 // the webhook short-circuit a retry WITHOUT re-pricing (the snapshot is deleted on the
 // first successful placement, and a first-order discount can't be re-derived once the
@@ -774,6 +803,7 @@ router.post("/verify", requireAuth, mutationLimiter, async (req: Request, res: R
     // 3) Recover the priced snapshot (Redis, else re-price from notes with an assert).
     const snap = await recoverSnapshot(razorpay_order_id, capturedPaise, log);
     if (!snap) {
+      await recordFailedPlacement({ razorpayOrderId: razorpay_order_id, paymentId: razorpay_payment_id, userId, amountPaise: capturedPaise, reason: "snapshot_unrecoverable", source: "verify" }, log);
       res.status(409).json({ error: "Your cart changed after payment — it will be refunded. Please contact support." });
       log.error("could not recover a safe snapshot — not placing").end("CHECKOUT VERIFY");
       return;
@@ -790,6 +820,7 @@ router.post("/verify", requireAuth, mutationLimiter, async (req: Request, res: R
 
     if (result.result.startsWith("oversold")) {
       const sku = result.result.split(":")[1] ?? "";
+      await recordFailedPlacement({ razorpayOrderId: razorpay_order_id, paymentId: razorpay_payment_id, userId, amountPaise: capturedPaise, reason: result.result, source: "verify" }, log);
       log.error(`PAID BUT OVERSOLD  sku=${sku}  payment=${razorpay_payment_id} — flag for refund`).end("CHECKOUT VERIFY");
       res.status(409).json({ error: "An item sold out during payment — it will be refunded.", sku });
       return;
@@ -1019,7 +1050,8 @@ export const webhookHandler: RequestHandler = async (req: Request, res: Response
     const snap = await recoverSnapshot(razorpayOrderId, capturedPaise, log);
     if (!snap) {
       // Can't safely place (drifted/unrecoverable). 200 so Razorpay stops; the paid
-      // payment is surfaced for manual handling via logs.
+      // payment is durably recorded in failed_placements for the refund.
+      await recordFailedPlacement({ razorpayOrderId, paymentId, userId: null, amountPaise: capturedPaise, reason: "snapshot_unrecoverable", source: "webhook" }, log);
       log.error("webhook could not recover a safe snapshot — manual review").end("CHECKOUT WEBHOOK");
       res.status(200).json({ ok: true });
       return;
@@ -1027,6 +1059,7 @@ export const webhookHandler: RequestHandler = async (req: Request, res: Response
 
     const result = await callPlaceOrder(snap, paymentId, log);
     if (result.result.startsWith("oversold")) {
+      await recordFailedPlacement({ razorpayOrderId, paymentId, userId: snap.userId, amountPaise: capturedPaise, reason: result.result, source: "webhook" }, log);
       log.error(`webhook PAID BUT OVERSOLD  payment=${paymentId} — flag for refund`).end("CHECKOUT WEBHOOK");
       res.status(200).json({ ok: true });
       return;
