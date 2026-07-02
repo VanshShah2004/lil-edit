@@ -5,6 +5,7 @@ import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAut
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { adminMutationLimiter } from "../middleware/rateLimiters.js";
 import { createLog, type OpLogger } from "../lib/logger.js";
+import { logAdminAction } from "../lib/adminAudit.js";
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -140,6 +141,14 @@ router.post("/", adminMutationLimiter, async (req: Request, res: Response) => {
     return;
   }
   log.success(`created  id=${data.id}  code=${code}`).end("COUPON CREATE");
+  void logAdminAction({
+    adminId: actorId,
+    action: "coupon_created",
+    targetType: "coupon",
+    targetId: code,
+    summary: `Created coupon ${code} (${discount_type === "percentage" ? `${discount_value}%` : `₹${discount_value}`} off)`,
+    metadata: { couponId: data.id, code, discount_type, discount_value },
+  });
   res.status(201).json({ coupon: data });
 });
 
@@ -149,6 +158,7 @@ router.patch("/:id", adminMutationLimiter, async (req: Request, res: Response) =
   const db = serviceClientOr503(res, log);
   if (!db) return;
   const { id } = req.params as { id: string };
+  const actorId = (req as AuthenticatedRequest).userId;
   const body = req.body as {
     is_active?: unknown;
     code?: unknown;
@@ -237,6 +247,14 @@ router.patch("/:id", adminMutationLimiter, async (req: Request, res: Response) =
     return;
   }
   log.success(`updated  id=${id}`).end("COUPON UPDATE");
+  void logAdminAction({
+    adminId: actorId,
+    action: "coupon_updated",
+    targetType: "coupon",
+    targetId: data.code ?? id,
+    summary: `Updated coupon ${data.code ?? id} (${Object.keys(updates).join(", ")})`,
+    metadata: { couponId: id, code: data.code ?? null, fields: Object.keys(updates) },
+  });
   res.json({ coupon: data });
 });
 
@@ -246,6 +264,11 @@ router.delete("/:id", adminMutationLimiter, async (req: Request, res: Response) 
   const db = serviceClientOr503(res, log);
   if (!db) return;
   const { id } = req.params as { id: string };
+  const actorId = (req as AuthenticatedRequest).userId;
+
+  // Read the code before deleting so the audit entry names the coupon, not a uuid.
+  const { data: existing } = await db.from("coupons").select("code").eq("id", id).maybeSingle();
+  const deletedCode = (existing as { code?: string } | null)?.code ?? null;
 
   const { error } = await db.from("coupons").delete().eq("id", id);
   if (error) {
@@ -253,6 +276,14 @@ router.delete("/:id", adminMutationLimiter, async (req: Request, res: Response) 
     return;
   }
   log.success(`deleted  id=${id}`).end("COUPON DELETE");
+  void logAdminAction({
+    adminId: actorId,
+    action: "coupon_deleted",
+    targetType: "coupon",
+    targetId: deletedCode ?? id,
+    summary: `Deleted coupon ${deletedCode ?? id}`,
+    metadata: { couponId: id, code: deletedCode },
+  });
   res.status(204).send();
 });
 

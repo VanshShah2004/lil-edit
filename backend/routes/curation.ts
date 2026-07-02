@@ -4,6 +4,7 @@ import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAut
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { adminMutationLimiter } from "../middleware/rateLimiters.js";
 import { createLog, type OpLogger } from "../lib/logger.js";
+import { logAdminAction } from "../lib/adminAudit.js";
 import { redisGet, redisSet, redisDel, redisKey, CURATION_TTL_S } from "../lib/redis.js";
 
 const router = Router();
@@ -607,6 +608,14 @@ router.put("/sections/:key/items", adminMutationLimiter, async (req: Request, re
     }
     await invalidateSection(key, log);
     log.success(`replaced items  key=${key}  count=${items.length}  newVersion=${newUpdatedAt}`).end("CURATION SET ITEMS");
+    void logAdminAction({
+      adminId,
+      action: "curation_updated",
+      targetType: "curation_section",
+      targetId: key,
+      summary: `Updated Spotlight section "${key}" (${items.length} item${items.length === 1 ? "" : "s"})`,
+      metadata: { key, itemCount: items.length },
+    });
     res.json({ success: true, updatedAt: (newUpdatedAt as string | null) ?? null });
   } catch (err) {
     log.error("failed", err).end("CURATION SET ITEMS");
@@ -683,6 +692,7 @@ router.post("/sections/:key/preview", async (req: Request, res: Response) => {
 router.patch("/sections/:key", adminMutationLimiter, async (req: Request, res: Response) => {
   const log = createLog().start("CURATION PATCH SECTION");
   const key = req.params.key as string;
+  const adminId = (req as AuthenticatedRequest).userId;
   if (!isKnownKey(key)) {
     log.warn(`unknown key=${key}`).end("CURATION PATCH SECTION");
     res.status(400).json({ error: `Unknown section key: ${key}` });
@@ -718,6 +728,14 @@ router.patch("/sections/:key", adminMutationLimiter, async (req: Request, res: R
     }
     await invalidateSection(key, log);
     log.success(`updated  key=${key}`).end("CURATION PATCH SECTION");
+    void logAdminAction({
+      adminId,
+      action: "curation_section_updated",
+      targetType: "curation_section",
+      targetId: key,
+      summary: `Edited Spotlight section "${key}" (${Object.keys(patch).join(", ")})`,
+      metadata: { key, fields: Object.keys(patch) },
+    });
     res.json({ success: true, updatedAt: (data as { updated_at?: string } | null)?.updated_at ?? null });
   } catch (err) {
     log.error("failed", err).end("CURATION PATCH SECTION");

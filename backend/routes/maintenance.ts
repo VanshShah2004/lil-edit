@@ -5,6 +5,7 @@ import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAut
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { adminMutationLimiter } from "../middleware/rateLimiters.js";
 import { createLog, type OpLogger } from "../lib/logger.js";
+import { logAdminAction } from "../lib/adminAudit.js";
 import {
   getMaintenanceSnapshot,
   refreshMaintenanceState,
@@ -116,6 +117,16 @@ router.post("/", requireAuth, requireAdmin, adminMutationLimiter, async (req: Re
     // Apply on THIS instance immediately rather than waiting for the next poll.
     const snap = await bustMaintenance();
     log.success(`ok  active=${snap.active}`).end("MAINTENANCE SET");
+    void logAdminAction({
+      adminId: actorId,
+      action: active ? "maintenance_enabled" : "maintenance_disabled",
+      targetType: "site",
+      targetId: "maintenance",
+      summary: active
+        ? "Turned maintenance mode ON (storefront locked)"
+        : "Turned maintenance mode OFF (storefront live)",
+      metadata: { active, ...(message !== null ? { message } : {}) },
+    });
     res.json({
       active: snap.active,
       message: snap.message,

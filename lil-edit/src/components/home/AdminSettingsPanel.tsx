@@ -5,6 +5,7 @@ import {
   ClipboardList,
   LayoutGrid,
   Plus,
+  ScrollText,
   Settings,
   Shirt,
   ShieldCheck,
@@ -42,7 +43,10 @@ const sections: AdminMenuSection[] = [
   },
   {
     title: "Platform",
-    items: [{ to: "/admin/general-settings", label: "General Settings", icon: Settings }],
+    items: [
+      { to: "/admin/general-settings", label: "General Settings", icon: Settings },
+      { to: "/admin/audit-log", label: "Admin Activity", icon: ScrollText },
+    ],
   },
   {
     title: "Future Expansion",

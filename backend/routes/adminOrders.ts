@@ -5,6 +5,7 @@ import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAut
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { adminMutationLimiter } from "../middleware/rateLimiters.js";
 import { createLog, fms, type OpLogger } from "../lib/logger.js";
+import { logAdminAction } from "../lib/adminAudit.js";
 // redisDel/redisKey bust the OWNER's cached order list + detail on a status change.
 import { redisDel, redisKey } from "../lib/redis.js";
 // Customer-facing emails (no-op if Gmail SMTP isn't configured): the per-status change
@@ -610,6 +611,14 @@ router.patch("/:id/status", adminMutationLimiter, async (req: Request, res: Resp
     }
 
     log.success(`updated  order=${orderId}  ${result.from_status}→${status}  by=${adminName}  owner=${ownerId}  emailed=${emailed}`).end("ADMIN ORDER STATUS");
+    void logAdminAction({
+      adminId,
+      action: "order_status_changed",
+      targetType: "order",
+      targetId: orderId,
+      summary: `Changed order status ${result.from_status} → ${status}`,
+      metadata: { orderId, fromStatus: result.from_status, toStatus: status, override, note, emailed },
+    });
     res.json({ success: true, emailed, ...(emailReason ? { reason: emailReason } : {}) });
   } catch (err) {
     log.error("unhandled error", err).end("ADMIN ORDER STATUS");
@@ -919,6 +928,14 @@ router.patch("/:id/payment-status", adminMutationLimiter, async (req: Request, r
     );
 
     log.success(`updated  order=${orderId}  ${result.from_status}→${status}  by=${adminName}  owner=${ownerId}`).end("ADMIN PAYMENT STATUS");
+    void logAdminAction({
+      adminId,
+      action: "payment_status_changed",
+      targetType: "order",
+      targetId: orderId,
+      summary: `Changed payment status ${result.from_status} → ${status}`,
+      metadata: { orderId, fromStatus: result.from_status, toStatus: status, override, note },
+    });
     res.json({ success: true });
   } catch (err) {
     log.error("unhandled error", err).end("ADMIN PAYMENT STATUS");

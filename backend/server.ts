@@ -14,6 +14,7 @@ import ordersRouter from "./routes/orders.js";
 import adminOrdersRouter from "./routes/adminOrders.js";
 import adminAccessRouter from "./routes/adminAccess.js";
 import adminActivityRouter from "./routes/adminActivity.js";
+import adminAuditLogRouter from "./routes/adminAuditLog.js";
 import couponsRouter from "./routes/coupons.js";
 import curationRouter from "./routes/curation.js";
 import checkoutRouter, { webhookHandler } from "./routes/checkout.js";
@@ -114,6 +115,9 @@ app.use("/api/admin/coupons",  couponsRouter);
 // Admin activity feed (read-only). GETs ride the global limiter; every endpoint is
 // gated by requireAuth + requireAdmin inside the router.
 app.use("/api/admin/activity", adminActivityRouter);
+// Admin audit log (read-only): the trail of actions taken BY admins. Written from
+// the mutation routes via logAdminAction; gated by requireAuth + requireAdmin.
+app.use("/api/admin/audit-log", adminAuditLogRouter);
 // Public GET /sections rides the global limiter; admin writes get the tight
 // write-limiter applied to the PUT/PATCH handlers inside the router (see curation.ts).
 app.use("/api/curation",     curationRouter);

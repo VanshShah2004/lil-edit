@@ -33,9 +33,10 @@ import {
 import { createLog, type OpLogger } from "../lib/logger.js";
 import { invalidateAllCurationSections } from "./curation.js";
 import { supabaseAdmin } from "../lib/supabase.js";
-import { requireAuth } from "../middleware/requireAuth.js";
+import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { logActivity, optionalUserId } from "../lib/activityLog.js";
+import { logAdminAction } from "../lib/adminAudit.js";
 
 // ─── In-process L1 cache (PDP detail only) ───────────────────────────────────
 const DETAIL_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -422,6 +423,7 @@ router.post("/preview", requireAuth, requireAdmin, async (req: Request, res: Res
   const sku  = String(data.sku  ?? "UNKNOWN");
   const name = String(data.name ?? "Untitled");
   const slug = String(data.slug ?? "");
+  const adminId = (req as AuthenticatedRequest).userId;
 
   const opName = normalized === "DRAFT" ? "DRAFT SAVE" : "PRODUCT LAUNCH";
   const log    = createLog().start(opName);
@@ -444,6 +446,14 @@ router.post("/preview", requireAuth, requireAdmin, async (req: Request, res: Res
         void invalidateCatalogCaches(log, sku);
         database = { ok: true, draftProductId };
         log.success(`draft saved  draftId=${draftProductId}`);
+        void logAdminAction({
+          adminId,
+          action: "product_draft_saved",
+          targetType: "product",
+          targetId: sku,
+          summary: `Saved draft for "${name}" (${sku})`,
+          metadata: { slug, draftProductId },
+        });
       } else {
         const { publishedProductId } = await launchProductToDatabase(data, log);
         // PDP caches are keyed by sku — bust the base_sku plus every variant (colour) sku.
@@ -458,6 +468,14 @@ router.post("/preview", requireAuth, requireAdmin, async (req: Request, res: Res
         log.step("Curation sections - invalidated (product launched)");
         database = { ok: true, publishedProductId };
         log.success(`product launched  publishedId=${publishedProductId}`);
+        void logAdminAction({
+          adminId,
+          action: "product_launched",
+          targetType: "product",
+          targetId: sku,
+          summary: `Launched product "${name}" (${sku})`,
+          metadata: { slug, publishedProductId },
+        });
       }
     } catch (err) {
       log.error("persistence failed", err).end(opName);
@@ -638,6 +656,7 @@ router.delete("/:id", requireAuth, requireAdmin, async (req: Request, res: Respo
   const id      = req.params.id as string;
   const status  = req.query.status   as string;
   const baseSku = req.query.base_sku as string | undefined;
+  const adminId = (req as AuthenticatedRequest).userId;
 
   if (status !== "DRAFT" && status !== "PUBLISHED") {
     res.status(400).json({ error: "Invalid or missing status query parameter. Must be DRAFT or PUBLISHED." });
@@ -662,6 +681,14 @@ router.delete("/:id", requireAuth, requireAdmin, async (req: Request, res: Respo
       log.step("Curation sections - invalidated (published product deleted)");
     }
     log.success(`deleted  id=${id}  status=${status}`).end("PRODUCT DELETE");
+    void logAdminAction({
+      adminId,
+      action: "product_deleted",
+      targetType: "product",
+      targetId: baseSku ?? id,
+      summary: `Deleted ${status.toLowerCase()} product ${baseSku ?? id}`,
+      metadata: { productId: id, status, baseSku: baseSku ?? null },
+    });
     res.json({ success: true, message: `Successfully deleted ${status} product ${id}.` });
   } catch (err) {
     log.error("delete failed", err).end("PRODUCT DELETE");

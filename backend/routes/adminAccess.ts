@@ -5,6 +5,7 @@ import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAut
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { adminMutationLimiter } from "../middleware/rateLimiters.js";
 import { createLog, type OpLogger } from "../lib/logger.js";
+import { logAdminAction } from "../lib/adminAudit.js";
 
 const router = Router();
 
@@ -242,6 +243,20 @@ async function mutateAccess(req: Request, res: Response, makeAdmin: boolean): Pr
     }
 
     log.success(`ok  status=${result.status}  email=${normalizedEmail}  accountExists=${result.profileExists}`).end(label);
+    // Only audit a real state change — the idempotent no-ops (already_admin /
+    // already_not_admin) and blocked cases aren't actions worth a trail entry.
+    if (result.status === "granted" || result.status === "revoked") {
+      void logAdminAction({
+        adminId: actorId,
+        action: makeAdmin ? "admin_access_granted" : "admin_access_revoked",
+        targetType: "admin_account",
+        targetId: normalizedEmail,
+        summary: makeAdmin
+          ? `Granted admin access to ${normalizedEmail}`
+          : `Revoked admin access from ${normalizedEmail}`,
+        metadata: { email: normalizedEmail, accountExists: result.profileExists },
+      });
+    }
     res.json({
       status: result.status,
       email: normalizedEmail,

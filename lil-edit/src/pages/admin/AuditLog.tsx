@@ -2,17 +2,23 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Activity as ActivityIcon,
   AlertCircle,
-  Heart,
+  ClipboardList,
+  CreditCard,
+  FileText,
+  LayoutGrid,
   Loader2,
   Package,
   Pause,
   Play,
+  Power,
+  PowerOff,
   RefreshCw,
-  Search,
-  ShoppingCart,
-  Star,
+  ShieldAlert,
+  ShieldCheck,
+  ShieldOff,
+  Ticket,
+  Trash2,
 } from "lucide-react";
 
 import UserNavbar from "@/components/home/UserNavbar";
@@ -28,46 +34,35 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  fetchActivity,
-  type ActivityItem,
-  type ActivityType,
-  type ActivityUser,
-} from "@/lib/adminActivityApi";
+  fetchAuditLog,
+  type AdminActionType,
+  type AuditActionItem,
+  type AuditAdmin,
+  type AuditCategory,
+} from "@/lib/adminAuditApi";
 
 const ACCENT = "#0F766E";
 const POLL_MS = 20_000; // refresh the newest page every 20s while "live"
 
-type FilterKey = ActivityType | "all";
+type FilterKey = AuditCategory | "all";
 
-const TYPE_FILTERS: { key: FilterKey; label: string }[] = [
+const CATEGORY_FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "cart_add", label: "Cart" },
-  { key: "wishlist_add", label: "Wishlist" },
-  { key: "order_placed", label: "Orders" },
-  { key: "review_submitted", label: "Reviews" },
-  { key: "search", label: "Searches" },
+  { key: "products", label: "Products" },
+  { key: "merchandising", label: "Merchandising" },
+  { key: "orders", label: "Orders" },
+  { key: "platform", label: "Platform" },
 ];
 
 // ── metadata readers (metadata is Record<string, unknown> — read defensively) ──
 const asStr = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 const asNum = (v: unknown): number => (typeof v === "number" ? v : Number(v) || 0);
 
-function prettifyProduct(item: ActivityItem): string {
-  if (!item.productSlug) return "a product";
-  return item.productSlug
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function userName(user: ActivityUser | null): string {
-  if (!user) return "A guest";
-  if (user.name) return user.name;
-  if (user.email) return user.email.split("@")[0];
-  return "A customer";
-}
-
-function inr(n: number): string {
-  return `₹${n.toLocaleString("en-IN")}`;
+function adminName(admin: AuditAdmin | null): string {
+  if (!admin) return "A removed admin";
+  if (admin.name) return admin.name;
+  if (admin.email) return admin.email.split("@")[0];
+  return "An admin";
 }
 
 function timeAgo(iso: string): string {
@@ -97,79 +92,100 @@ function fullDateTime(iso: string): string {
 }
 
 interface Visual {
-  Icon: typeof ShoppingCart;
+  Icon: typeof Package;
   color: string;
   bg: string;
 }
 
-function visualFor(type: ActivityType): Visual {
-  switch (type) {
-    case "cart_add":
-      return { Icon: ShoppingCart, color: "#0F766E", bg: "rgba(15,118,110,0.10)" };
-    case "wishlist_add":
-      return { Icon: Heart, color: "#DB2777", bg: "rgba(219,39,119,0.10)" };
-    case "order_placed":
-      return { Icon: Package, color: "#2563EB", bg: "rgba(37,99,235,0.10)" };
-    case "review_submitted":
-      return { Icon: Star, color: "#D97706", bg: "rgba(217,119,6,0.12)" };
-    case "search":
-      return { Icon: Search, color: "#6B7280", bg: "rgba(107,114,128,0.12)" };
+const RED = { color: "#DC2626", bg: "rgba(220,38,38,0.10)" };
+const GREEN = { color: "#16A34A", bg: "rgba(22,163,74,0.10)" };
+const TEAL = { color: "#0F766E", bg: "rgba(15,118,110,0.10)" };
+
+function visualFor(action: AdminActionType): Visual {
+  switch (action) {
+    case "product_launched":
+      return { Icon: Package, ...TEAL };
+    case "product_draft_saved":
+      return { Icon: FileText, color: "#6B7280", bg: "rgba(107,114,128,0.12)" };
+    case "product_deleted":
+      return { Icon: Trash2, ...RED };
+    case "coupon_created":
+      return { Icon: Ticket, ...GREEN };
+    case "coupon_updated":
+      return { Icon: Ticket, color: "#D97706", bg: "rgba(217,119,6,0.12)" };
+    case "coupon_deleted":
+      return { Icon: Ticket, ...RED };
+    case "order_status_changed":
+      return { Icon: ClipboardList, color: "#2563EB", bg: "rgba(37,99,235,0.10)" };
+    case "payment_status_changed":
+      return { Icon: CreditCard, color: "#4F46E5", bg: "rgba(79,70,229,0.10)" };
+    case "curation_updated":
+    case "curation_section_updated":
+      return { Icon: LayoutGrid, ...TEAL };
+    case "admin_access_granted":
+      return { Icon: ShieldCheck, ...GREEN };
+    case "admin_access_revoked":
+      return { Icon: ShieldOff, ...RED };
+    case "maintenance_enabled":
+      return { Icon: PowerOff, ...RED };
+    case "maintenance_disabled":
+      return { Icon: Power, ...GREEN };
     default:
-      return { Icon: ActivityIcon, color: "#6B7280", bg: "rgba(107,114,128,0.12)" };
+      return { Icon: ShieldAlert, color: "#6B7280", bg: "rgba(107,114,128,0.12)" };
   }
 }
 
-// The human sentence + optional trailing chips for one activity row.
-function describe(item: ActivityItem): { line: React.ReactNode; chips: string[]; to?: string } {
-  const who = <span className="font-semibold text-gray-900">{userName(item.user)}</span>;
-  const product = <span className="font-semibold text-gray-900">{prettifyProduct(item)}</span>;
+// Prettify a raw db field name for a chip, e.g. "is_active" → "is active".
+const prettyField = (f: string): string => f.replace(/_/g, " ");
 
-  switch (item.type) {
-    case "cart_add": {
-      const qty = asNum(item.metadata.quantity);
-      const size = asStr(item.metadata.size);
-      const chips = [
-        ...(qty > 1 ? [`Qty ${qty}`] : []),
-        ...(size ? [`Size ${size}`] : []),
-      ];
-      return { line: <>{who} added {product} to their cart</>, chips };
+// Structured extras rendered as small chips beneath the summary. Everything here is
+// read defensively from metadata (shape depends on the action).
+function chipsFor(item: AuditActionItem): string[] {
+  const m = item.metadata ?? {};
+  switch (item.action) {
+    case "order_status_changed":
+    case "payment_status_changed": {
+      const from = asStr(m.fromStatus);
+      const to = asStr(m.toStatus);
+      const chips: string[] = [];
+      if (from && to) chips.push(`${from} → ${to}`);
+      if (m.override === true) chips.push("Correction");
+      if (item.action === "order_status_changed" && m.emailed === true) chips.push("Customer emailed");
+      return chips;
     }
-    case "wishlist_add":
-      return { line: <>{who} wishlisted {product}</>, chips: [] };
-    case "order_placed": {
-      const num = asStr(item.metadata.order_number);
-      const total = asNum(item.metadata.total);
-      const count = asNum(item.metadata.item_count);
-      const orderId = asStr(item.metadata.order_id);
-      const chips = [
-        ...(total ? [inr(total)] : []),
-        ...(count ? [`${count} item${count === 1 ? "" : "s"}`] : []),
-      ];
-      return {
-        line: <>{who} placed order <span className="font-semibold text-gray-900">{num ? `#${num}` : ""}</span></>,
-        chips,
-        to: orderId ? `/admin/orders/${orderId}` : undefined,
-      };
+    case "curation_updated": {
+      const n = asNum(m.itemCount);
+      return [`${n} item${n === 1 ? "" : "s"}`];
     }
-    case "review_submitted": {
-      const rating = asNum(item.metadata.rating);
-      const chips = rating ? [`${rating}★`] : [];
-      return { line: <>{who} reviewed {product}</>, chips };
+    case "coupon_updated":
+    case "curation_section_updated": {
+      const fields = Array.isArray(m.fields) ? (m.fields as unknown[]).map(asStr).filter(Boolean) : [];
+      return fields.slice(0, 4).map(prettyField);
     }
-    case "search": {
-      const q = asStr(item.metadata.query);
-      const results = asNum(item.metadata.result_count);
-      const chips = [`${results} result${results === 1 ? "" : "s"}`];
-      return { line: <>{who} searched for “{<span className="font-semibold text-gray-900">{q}</span>}”</>, chips };
+    case "coupon_created": {
+      const dt = asStr(m.discount_type);
+      const dv = asNum(m.discount_value);
+      if (!dt) return [];
+      return [dt === "percentage" ? `${dv}% off` : `₹${dv} off`];
     }
     default:
-      return { line: <>{who} did something</>, chips: [] };
+      return [];
   }
 }
 
-const ActivityRow = ({ item }: { item: ActivityItem }) => {
-  const { Icon, color, bg } = visualFor(item.type);
-  const { line, chips, to } = describe(item);
+// Order actions deep-link to the admin order detail (targetId is the order id).
+function linkFor(item: AuditActionItem): string | undefined {
+  if ((item.action === "order_status_changed" || item.action === "payment_status_changed") && item.targetId) {
+    return `/admin/orders/${item.targetId}`;
+  }
+  return undefined;
+}
+
+const ActionRow = ({ item }: { item: AuditActionItem }) => {
+  const { Icon, color, bg } = visualFor(item.action);
+  const chips = chipsFor(item);
+  const to = linkFor(item);
+  const who = adminName(item.admin);
 
   const body = (
     <div className="flex items-start gap-3.5 px-5 py-3.5">
@@ -180,10 +196,12 @@ const ActivityRow = ({ item }: { item: ActivityItem }) => {
         <Icon className="w-4 h-4" style={{ color }} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-gray-700 leading-snug">{line}</p>
-        {item.user?.email && (
-          <p className="text-[13px] text-gray-400 mt-0.5 truncate">{item.user.email}</p>
-        )}
+        {/* The durable, server-written description is the primary line. */}
+        <p className="text-sm text-gray-800 leading-snug font-medium">{item.summary}</p>
+        <p className="text-[13px] text-gray-400 mt-0.5 truncate">
+          by <span className="font-semibold text-gray-500">{who}</span>
+          {item.admin?.email ? ` · ${item.admin.email}` : ""}
+        </p>
         {chips.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1.5">
             {chips.map((c) => (
@@ -214,8 +232,8 @@ const ActivityRow = ({ item }: { item: ActivityItem }) => {
   return <li className="hover:bg-gray-50 transition-colors">{body}</li>;
 };
 
-const Activity = () => {
-  const [items, setItems] = useState<ActivityItem[]>([]);
+const AuditLog = () => {
+  const [items, setItems] = useState<AuditActionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -228,27 +246,27 @@ const Activity = () => {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = "User Activity | Lil Edit";
+    document.title = "Admin Activity | Lil Edit";
   }, []);
 
-  const typeParam = filter === "all" ? undefined : filter;
+  const categoryParam = filter === "all" ? undefined : filter;
 
-  // Initial load / full reset (also runs when the type filter changes).
+  // Initial load / full reset (also runs when the category filter changes).
   const load = useCallback(async () => {
     setLoadError(null);
     setLoading(true);
     try {
-      const data = await fetchActivity({ type: typeParam, limit: 50 });
-      setItems(data.activity);
+      const data = await fetchAuditLog({ category: categoryParam, limit: 50 });
+      setItems(data.actions);
       setNextCursor(data.nextCursor);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Could not load activity.";
+      const msg = err instanceof Error ? err.message : "Could not load admin activity.";
       setLoadError(msg);
-      console.error("[Activity] load failed:", err);
+      console.error("[AuditLog] load failed:", err);
     } finally {
       setLoading(false);
     }
-  }, [typeParam]);
+  }, [categoryParam]);
 
   useEffect(() => {
     void load();
@@ -259,20 +277,20 @@ const Activity = () => {
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const data = await fetchActivity({ type: typeParam, limit: 50 });
+      const data = await fetchAuditLog({ category: categoryParam, limit: 50 });
       setItems((prev) => {
         const seen = new Set(prev.map((i) => i.id));
-        const fresh = data.activity.filter((i) => !seen.has(i.id));
+        const fresh = data.actions.filter((i) => !seen.has(i.id));
         if (fresh.length === 0) return prev;
-        console.log(`[Activity] +${fresh.length} new`);
+        console.log(`[AuditLog] +${fresh.length} new`);
         return [...fresh, ...prev];
       });
     } catch (err) {
-      console.error("[Activity] refresh failed:", err);
+      console.error("[AuditLog] refresh failed:", err);
     } finally {
       setRefreshing(false);
     }
-  }, [typeParam]);
+  }, [categoryParam]);
 
   // Live polling — restart whenever the toggle or filter changes.
   useEffect(() => {
@@ -285,18 +303,18 @@ const Activity = () => {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const data = await fetchActivity({ type: typeParam, limit: 50, before: nextCursor });
+      const data = await fetchAuditLog({ category: categoryParam, limit: 50, before: nextCursor });
       setItems((prev) => {
         const seen = new Set(prev.map((i) => i.id));
-        return [...prev, ...data.activity.filter((i) => !seen.has(i.id))];
+        return [...prev, ...data.actions.filter((i) => !seen.has(i.id))];
       });
       setNextCursor(data.nextCursor);
     } catch (err) {
-      console.error("[Activity] loadMore failed:", err);
+      console.error("[AuditLog] loadMore failed:", err);
     } finally {
       setLoadingMore(false);
     }
-  }, [nextCursor, loadingMore, typeParam]);
+  }, [nextCursor, loadingMore, categoryParam]);
 
   // Toggle live updates. Resuming is one-click; pausing opens a typed-confirmation
   // dialog (the admin must type PAUSE) so it can't be turned off by accident.
@@ -326,7 +344,7 @@ const Activity = () => {
   // transition is reserved for a tap/click or the settle right after release.
   const [isDragging, setIsDragging] = useState(false);
   const [indicator, setIndicator] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
-  const activeIndex = Math.max(0, TYPE_FILTERS.findIndex((f) => f.key === filter));
+  const activeIndex = Math.max(0, CATEGORY_FILTERS.findIndex((f) => f.key === filter));
   // Content-box bounds (first segment's left → last segment's right) + the shared
   // segment width, captured once per drag so they stay stable while dragging even
   // as `filter` (and thus which button is "active") changes mid-gesture.
@@ -354,11 +372,11 @@ const Activity = () => {
   const captureDragMetrics = () => {
     const track = filterTrackRef.current;
     const first = filterBtnRefs.current[0];
-    const last = filterBtnRefs.current[TYPE_FILTERS.length - 1];
+    const last = filterBtnRefs.current[CATEGORY_FILTERS.length - 1];
     if (!track || !first || !last) return;
     const contentLeft = first.offsetLeft - track.clientLeft;
     const contentWidth = last.offsetLeft - track.clientLeft + last.offsetWidth - contentLeft;
-    dragMetricsRef.current = { contentLeft, contentWidth, segmentWidth: contentWidth / TYPE_FILTERS.length };
+    dragMetricsRef.current = { contentLeft, contentWidth, segmentWidth: contentWidth / CATEGORY_FILTERS.length };
   };
 
   // Move the indicator to directly track the pointer (clamped to the track), and
@@ -380,10 +398,10 @@ const Activity = () => {
 
     const centerX = left + metrics.segmentWidth / 2;
     const idx = Math.min(
-      TYPE_FILTERS.length - 1,
+      CATEGORY_FILTERS.length - 1,
       Math.max(0, Math.floor((centerX - metrics.contentLeft) / metrics.segmentWidth)),
     );
-    const key = TYPE_FILTERS[idx]?.key;
+    const key = CATEGORY_FILTERS[idx]?.key;
     if (key && key !== filter) {
       setFilter(key);
       didDragRef.current = true;
@@ -402,9 +420,9 @@ const Activity = () => {
                 Admin
               </p>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">User Activity</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">Admin Activity</h1>
             <p className="text-sm text-gray-500">
-              A live feed of what shoppers are doing — carts, wishlists, orders, reviews and searches.
+              An audit trail of everything admins do — product, coupon, order, Spotlight, access and site changes.
             </p>
           </div>
           <hr className="-mx-6 lg:-mx-12 border-t border-foreground/50" />
@@ -452,9 +470,9 @@ const Activity = () => {
                 }`}
                 style={{ left: indicator.left, width: indicator.width }}
               />
-              {TYPE_FILTERS.map((f, i) => {
+              {CATEGORY_FILTERS.map((f, i) => {
                 const active = filter === f.key;
-                const showDivider = i !== TYPE_FILTERS.length - 1 && !active && filter !== TYPE_FILTERS[i + 1]?.key;
+                const showDivider = i !== CATEGORY_FILTERS.length - 1 && !active && filter !== CATEGORY_FILTERS[i + 1]?.key;
                 return (
                   <button
                     key={f.key}
@@ -508,7 +526,7 @@ const Activity = () => {
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-red-800">Couldn't load activity</p>
+                    <p className="text-sm font-semibold text-red-800">Couldn't load admin activity</p>
                     <p className="text-xs text-red-700 mt-1 break-words">{loadError}</p>
                     <button
                       type="button"
@@ -526,17 +544,17 @@ const Activity = () => {
               </div>
             ) : items.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center px-6">
-                <ActivityIcon className="w-8 h-8 text-gray-300 mb-3" />
-                <p className="text-sm font-semibold text-gray-700">No activity yet</p>
+                <ShieldCheck className="w-8 h-8 text-gray-300 mb-3" />
+                <p className="text-sm font-semibold text-gray-700">No admin activity yet</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Customer actions will show up here as they happen.
+                  Admin actions — product, coupon, order, Spotlight, access and site changes — will show up here.
                 </p>
               </div>
             ) : (
               <>
                 <ul className="divide-y divide-gray-400">
                   {items.map((item) => (
-                    <ActivityRow key={item.id} item={item} />
+                    <ActionRow key={item.id} item={item} />
                   ))}
                 </ul>
                 {nextCursor && (
@@ -607,4 +625,4 @@ const Activity = () => {
   );
 };
 
-export default Activity;
+export default AuditLog;
