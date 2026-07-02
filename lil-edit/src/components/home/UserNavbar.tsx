@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
+  Activity,
   Heart,
   Home,
   LogOut,
@@ -270,6 +271,13 @@ const UserNavbar = () => {
                         className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
                       >
                         <ShieldCheck className="w-4 h-4" /> Admin Settings
+                      </Link>
+                      <Link
+                        to="/admin/activity"
+                        onClick={closeProfileMenu}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
+                      >
+                        <Activity className="w-4 h-4" /> User Activity
                       </Link>
                     </>
                   )}

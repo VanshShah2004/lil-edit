@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ChevronRight, ChevronDown, Lock, MapPin, Tag, Loader2, Check, ShieldCheck, Plus, Package, Sparkles, Award, Banknote } from "lucide-react";
+import { ChevronRight, Lock, MapPin, Tag, Loader2, Check, ShieldCheck, Plus, Package, Sparkles, Award, Banknote } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1095,7 +1095,7 @@ export default function Checkout() {
 
               {selectedAddress && (
                 <p className="order-8 text-xs text-gray-700 text-center">
-                  Delivering to {titleCase(selectedAddress.type === "other" ? selectedAddress.label : selectedAddress.type)} <span className="relative top-[2px] text-lg leading-none">·</span> {selectedAddress.city}
+                  Delivering to {titleCase(selectedAddress.type === "other" ? (selectedAddress.label ?? "Other") : selectedAddress.type)} <span className="relative top-[2px] text-lg leading-none">·</span> {selectedAddress.city}
                 </p>
               )}
             </Card>

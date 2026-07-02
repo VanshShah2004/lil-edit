@@ -35,6 +35,7 @@ import { invalidateAllCurationSections } from "./curation.js";
 import { supabaseAdmin } from "../lib/supabase.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
+import { logActivity, optionalUserId } from "../lib/activityLog.js";
 
 // ─── In-process L1 cache (PDP detail only) ───────────────────────────────────
 const DETAIL_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -599,10 +600,21 @@ router.get("/search", async (req: Request, res: Response) => {
 
   const cacheKey = redisKey("search", q.toLowerCase());
 
+  // Record the search in the admin activity feed. Fire-and-forget (the token decode
+  // + insert must not add latency to the response) and best-effort (never throws).
+  // Runs on both the cache-hit and DB paths so every real search is captured.
+  const logSearch = (resultCount: number) => {
+    void (async () => {
+      const userId = await optionalUserId(req);
+      await logActivity({ type: "search", userId, metadata: { query: q, result_count: resultCount } });
+    })();
+  };
+
   try {
     const cached = await redisGet<{ query: string; count: number; products: SearchProductRow[] }>(cacheKey, log);
     if (cached) {
       log.success("L2 Redis - HIT  served from cache").end("SEARCH RESULTS");
+      logSearch(cached.count);
       res.json(cached);
       return;
     }
@@ -612,6 +624,7 @@ router.get("/search", async (req: Request, res: Response) => {
     void redisSet(cacheKey, payload, SUGGESTION_TTL_S, log);
 
     log.success(`${products.length} results returned for "${q}"`).end("SEARCH RESULTS");
+    logSearch(products.length);
     res.json(payload);
   } catch (err) {
     log.error("failed — returning empty results", err);
