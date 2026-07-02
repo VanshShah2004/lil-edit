@@ -5,6 +5,7 @@ import {
   AlertCircle,
   ClipboardList,
   CreditCard,
+  Eye,
   FileText,
   LayoutGrid,
   Loader2,
@@ -33,6 +34,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
+import { composeProductBadges } from "@/lib/productBadges";
+import { getBackendBaseUrl } from "@/lib/backend";
+import { supabase } from "@/lib/supabase";
 import {
   fetchAuditLog,
   type AdminActionType,
@@ -181,11 +186,119 @@ function linkFor(item: AuditActionItem): string | undefined {
   return undefined;
 }
 
-const ActionRow = ({ item }: { item: AuditActionItem }) => {
+// Product actions whose row opens a read-only quick view of the product. Both carry
+// targetId = base_sku and are fetched from /catalog-detail (which returns published +
+// draft for a sku), so a launched row shows the live product and a draft row shows the
+// draft version.
+const PRODUCT_ACTIONS = new Set<AdminActionType>(["product_launched", "product_draft_saved"]);
+
+// The raw (snake_case) product shape /catalog-detail returns for published/draft — a
+// subset of MANAGE_PRODUCT_SELECT / MANAGE_DRAFT_SELECT (see backend/lib/persistCatalog).
+interface RawVariant {
+  id: string;
+  color_name: string;
+  color_hex: string | null;
+  variant_sku: string;
+  stock: number | null;
+  is_unlimited?: boolean;
+  sort_order?: number | null;
+}
+interface RawImage {
+  image_url: string;
+  is_primary?: boolean;
+  sort_order?: number | null;
+  variant_id?: string | null;
+}
+interface RawCatalogProduct {
+  slug?: string;
+  title?: string;
+  brand?: string;
+  category_slug?: string;
+  price?: number;
+  original_price?: number | null;
+  tags?: string[] | null;
+  badges?: string[] | null;
+  description_points?: string[] | null;
+  is_featured?: boolean;
+  is_new_arrival?: boolean;
+  is_trending?: boolean;
+  is_bestseller?: boolean;
+  product_images?: RawImage[];
+  draft_product_images?: RawImage[];
+  product_variants?: RawVariant[];
+  draft_product_variants?: RawVariant[];
+}
+
+// Map a raw published/draft product into the shape QuickViewDrawer wants. The audit
+// target is a base_sku (no colour chosen), so we represent it with the FIRST variant —
+// its images lead the gallery and its colour fills the swatch (same fallback the User
+// Activity quick view uses for product-level wishlist rows). Rendered as source "order"
+// with Buy Now hidden = a pure preview. Drafts get productId=null so the live-PDP CTA
+// stays disabled ("Product Unavailable") — a draft has no public product page.
+function buildQuickView(raw: RawCatalogProduct, isDraft: boolean, baseSku: string): QuickViewProduct {
+  const images = [...(raw.product_images ?? raw.draft_product_images ?? [])].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+  );
+  const variants = [...(raw.product_variants ?? raw.draft_product_variants ?? [])].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+  );
+
+  const firstVariant = variants[0];
+  const variantImages = firstVariant
+    ? images.filter((im) => im.variant_id === firstVariant.id).map((im) => im.image_url)
+    : [];
+  const globalImages = images.filter((im) => im.variant_id == null).map((im) => im.image_url);
+  const allImages = Array.from(
+    new Set([...variantImages, ...globalImages, ...images.map((im) => im.image_url)].filter(Boolean)),
+  );
+
+  const outOfStock = firstVariant ? !firstVariant.is_unlimited && (firstVariant.stock ?? 0) <= 0 : false;
+  const displaySku = firstVariant?.variant_sku ?? baseSku;
+
+  return {
+    source: "order",
+    id: baseSku,
+    productId: isDraft ? null : displaySku, // draft → no live PDP; launched → resolvable sku
+    sku: displaySku,
+    slug: raw.slug ?? "",
+    categorySlug: raw.category_slug ?? "",
+    title: raw.title ?? "Untitled",
+    price: Number(raw.price) || 0,
+    originalPrice: Number(raw.original_price) || Number(raw.price) || 0,
+    image: allImages[0] ?? "",
+    images: allImages,
+    color: firstVariant
+      ? { name: firstVariant.color_name ?? "", hex: firstVariant.color_hex ?? "" }
+      : { name: "", hex: "" },
+    badges: composeProductBadges({
+      badges: raw.badges ?? [],
+      featured: raw.is_featured,
+      newArrival: raw.is_new_arrival,
+      trending: raw.is_trending,
+      bestseller: raw.is_bestseller,
+    }),
+    tags: (raw.tags ?? []) as string[],
+    brand: raw.brand ?? "",
+    availability: outOfStock ? "Out of Stock" : "In Stock",
+    descriptionPoints: (raw.description_points ?? []) as string[],
+  };
+}
+
+const ActionRow = ({
+  item,
+  onOpen,
+  loading,
+}: {
+  item: AuditActionItem;
+  onOpen: (item: AuditActionItem) => void;
+  loading: boolean;
+}) => {
   const { Icon, color, bg } = visualFor(item.action);
   const chips = chipsFor(item);
   const to = linkFor(item);
   const who = adminName(item.admin);
+  // Launched / draft-saved rows open a read-only product quick view.
+  const clickable = PRODUCT_ACTIONS.has(item.action) && !!item.targetId;
 
   const body = (
     <div className="flex items-start gap-3.5 px-5 py-3.5">
@@ -215,21 +328,44 @@ const ActionRow = ({ item }: { item: AuditActionItem }) => {
           </div>
         )}
       </div>
-      <div className="flex flex-col items-end shrink-0 mt-0.5 text-right">
-        <span className="text-[11px] text-gray-500 whitespace-nowrap">{timeAgo(item.createdAt)}</span>
-        <span className="text-[12px] text-gray-400 whitespace-nowrap">{fullDateTime(item.createdAt)}</span>
+      <div className="flex items-center gap-2 shrink-0 mt-0.5">
+        <div className="flex flex-col items-end text-right">
+          <span className="text-[11px] text-gray-500 whitespace-nowrap">{timeAgo(item.createdAt)}</span>
+          <span className="text-[12px] text-gray-400 whitespace-nowrap">{fullDateTime(item.createdAt)}</span>
+        </div>
+        {clickable &&
+          (loading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" />
+          ) : (
+            <Eye className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
+          ))}
       </div>
     </div>
   );
 
   if (to) {
     return (
-      <li className="hover:bg-gray-50 transition-colors">
+      <li className="hover:bg-[#B19CD9]/20 transition-colors">
         <Link to={to}>{body}</Link>
       </li>
     );
   }
-  return <li className="hover:bg-gray-50 transition-colors">{body}</li>;
+  if (clickable) {
+    return (
+      <li className="group hover:bg-[#B19CD9]/20 transition-colors">
+        <button
+          type="button"
+          onClick={() => onOpen(item)}
+          disabled={loading}
+          aria-label="Quick view product"
+          className="w-full text-left disabled:cursor-wait"
+        >
+          {body}
+        </button>
+      </li>
+    );
+  }
+  return <li className="hover:bg-[#B19CD9]/20 transition-colors">{body}</li>;
 };
 
 const AuditLog = () => {
@@ -244,6 +380,11 @@ const AuditLog = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  // Quick-view drawer — clicking a launched/draft product row fetches that product and
+  // opens a read-only preview. `openingId` marks the row currently loading.
+  const [quickView, setQuickView] = useState<QuickViewProduct | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const [openingId, setOpeningId] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Admin Activity | Lil Edit";
@@ -315,6 +456,43 @@ const AuditLog = () => {
       setLoadingMore(false);
     }
   }, [nextCursor, loadingMore, categoryParam]);
+
+  // Fetch a launched/draft product and open the quick-view drawer. Uses /catalog-detail
+  // (admin-only — returns both the published and draft version for a base_sku), picking
+  // the draft for a draft-saved row and the published product for a launched row.
+  const openQuickView = useCallback(async (item: AuditActionItem) => {
+    const baseSku = item.targetId ?? "";
+    if (!baseSku) {
+      toast.error("This action has no product to preview.");
+      return;
+    }
+    const isDraft = item.action === "product_draft_saved";
+    setOpeningId(item.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const url = `${getBackendBaseUrl()}/api/products/catalog-detail?sku=${encodeURIComponent(baseSku)}`;
+      console.log(`[AuditLog] quick-view fetch  ${url}  draft=${isDraft}`);
+      const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (!res.ok) {
+        throw new Error(res.status === 404 ? "This product no longer exists." : `Product lookup failed (${res.status})`);
+      }
+      const data = await res.json();
+      const raw = (isDraft ? data?.draft : data?.published) as RawCatalogProduct | null | undefined;
+      if (!raw) {
+        throw new Error(isDraft ? "This draft no longer exists." : "This product is no longer published.");
+      }
+      setQuickView(buildQuickView(raw, isDraft, baseSku));
+      setQuickViewOpen(true);
+      console.log(`[AuditLog] quick-view open  sku=${baseSku}  draft=${isDraft}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not open product preview.";
+      console.error("[AuditLog] quick-view failed:", err);
+      toast.error(msg);
+    } finally {
+      setOpeningId(null);
+    }
+  }, []);
 
   // Toggle live updates. Resuming is one-click; pausing opens a typed-confirmation
   // dialog (the admin must type PAUSE) so it can't be turned off by accident.
@@ -472,6 +650,9 @@ const AuditLog = () => {
               />
               {CATEGORY_FILTERS.map((f, i) => {
                 const active = filter === f.key;
+                // The 2px right border is ALWAYS reserved on every segment (transparent
+                // when hidden); showDivider only flips its colour. So selecting a segment
+                // changes no box widths — no layout jiggle, and the indicator stays put.
                 const showDivider = i !== CATEGORY_FILTERS.length - 1 && !active && filter !== CATEGORY_FILTERS[i + 1]?.key;
                 return (
                   <button
@@ -484,9 +665,9 @@ const AuditLog = () => {
                       if (didDragRef.current) { didDragRef.current = false; return; }
                       setFilter(f.key);
                     }}
-                    className={`relative z-10 flex-1 whitespace-nowrap rounded px-2 py-2 text-xs sm:text-sm font-semibold transition-colors ${
+                    className={`relative z-10 flex-1 whitespace-nowrap rounded border-r-2 px-2 py-2 text-xs sm:text-sm font-semibold transition-colors ${
                       active ? "text-white" : "text-gray-600 hover:text-gray-900"
-                    } ${showDivider ? "border-r-2 border-gray-300" : ""}`}
+                    } ${showDivider ? "border-gray-300" : "border-transparent"}`}
                   >
                     {f.label}
                   </button>
@@ -554,7 +735,12 @@ const AuditLog = () => {
               <>
                 <ul className="divide-y divide-gray-400">
                   {items.map((item) => (
-                    <ActionRow key={item.id} item={item} />
+                    <ActionRow
+                      key={item.id}
+                      item={item}
+                      onOpen={openQuickView}
+                      loading={openingId === item.id}
+                    />
                   ))}
                 </ul>
                 {nextCursor && (
@@ -621,6 +807,15 @@ const AuditLog = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Read-only preview for a clicked launched/draft product row. Buy Now hidden;
+          drafts have no live PDP so their "View Product" CTA is disabled. */}
+      <QuickViewDrawer
+        open={quickViewOpen}
+        product={quickView}
+        onClose={() => setQuickViewOpen(false)}
+        hideBuyNow
+      />
     </div>
   );
 };
