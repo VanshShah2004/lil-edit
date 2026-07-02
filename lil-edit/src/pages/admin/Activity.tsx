@@ -562,7 +562,7 @@ const Activity = () => {
       </div>
 
       <main className="flex-1 px-6 lg:px-12 pt-4 pb-24 bg-gray-100">
-        <div className="max-w-[112rem] mx-auto">
+        <div className="max-w-4xl mx-auto">
           {/* Controls */}
           <div className="mb-4 space-y-[20px]">
             {/* Actions */}
@@ -621,9 +621,8 @@ const Activity = () => {
                   smooth ease-out snap for taps and the release settle. */}
               <span
                 aria-hidden
-                className={`pointer-events-none absolute top-1 bottom-1 rounded bg-[#0F766E] ${
-                  isDragging ? "" : "transition-[left,width] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]"
-                }`}
+                className={`pointer-events-none absolute top-1 bottom-1 rounded bg-[#0F766E] ${isDragging ? "" : "transition-[left,width] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                  }`}
                 style={{ left: indicator.left, width: indicator.width }}
               />
               {TYPE_FILTERS.map((f, i) => {
@@ -643,9 +642,8 @@ const Activity = () => {
                       if (didDragRef.current) { didDragRef.current = false; return; }
                       setFilter(f.key);
                     }}
-                    className={`relative z-10 flex-1 whitespace-nowrap rounded border-r-2 px-2 py-2 text-xs sm:text-sm font-semibold transition-colors ${
-                      active ? "text-white" : "text-gray-600 hover:text-gray-900"
-                    } ${showDivider ? "border-gray-300" : "border-transparent"}`}
+                    className={`relative z-10 flex-1 whitespace-nowrap rounded border-r-2 px-2 py-2 text-xs sm:text-sm font-semibold transition-colors ${active ? "text-white" : "text-gray-600 hover:text-gray-900"
+                      } ${showDivider ? "border-gray-300" : "border-transparent"}`}
                   >
                     {f.label}
                   </button>
