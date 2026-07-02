@@ -94,10 +94,10 @@ export interface AdminOrdersResponse {
 
 export type OrderSortKey = "newest" | "oldest" | "highest" | "lowest";
 
-// The five statuses an admin can SET (per the spec's Status Management section).
-// `confirmed` is a valid DB status but isn't offered here.
+// The statuses an admin can SET (per the spec's Status Management section).
+// `confirmed` is a valid DB status but isn't offered here — it's the order's
+// starting status, not a destination.
 export const SETTABLE_ORDER_STATUSES: OrderStatus[] = [
-  "pending",
   "processing",
   "shipped",
   "delivered",
@@ -110,7 +110,6 @@ export const SETTABLE_ORDER_STATUSES: OrderStatus[] = [
 // An order may jump FORWARD to any later stage, or be cancelled, but never move
 // backward; delivered & cancelled are terminal (no outgoing transitions).
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  pending:    ["processing", "shipped", "delivered", "cancelled"],
   confirmed:  ["processing", "shipped", "delivered", "cancelled"],
   processing: ["shipped", "delivered", "cancelled"],
   shipped:    ["delivered", "cancelled"],

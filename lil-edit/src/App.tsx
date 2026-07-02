@@ -50,6 +50,7 @@ const Wishlist       = lazyWithLog("Wishlist",        () => import("./pages/Wish
 const Collections    = lazyWithLog("Collections",     () => import("./pages/Collections"));
 const SearchResults  = lazyWithLog("SearchResults",   () => import("./pages/SearchResults"));
 const Orders         = lazyWithLog("Orders",          () => import("./pages/Orders"));
+const AllOrders      = lazyWithLog("AllOrders",       () => import("./pages/AllOrders"));
 const OrderDetail    = lazyWithLog("OrderDetail",     () => import("./pages/OrderDetail"));
 const MyReviews      = lazyWithLog("MyReviews",        () => import("./pages/MyReviews"));
 const Checkout       = lazyWithLog("Checkout",        () => import("./pages/Checkout"));
@@ -101,6 +102,7 @@ const App = () => (
             <Route path="/about" element={<About />} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+            <Route path="/orders/all" element={<ProtectedRoute><AllOrders /></ProtectedRoute>} />
             <Route path="/orders/:orderId" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
             <Route path="/reviews" element={<ProtectedRoute><MyReviews /></ProtectedRoute>} />
             <Route path="/admin/add-product" element={<AdminRoute><AddProduct /></AdminRoute>} />

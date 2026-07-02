@@ -4,17 +4,17 @@ import type { OrderStatus, OrderStatusEvent } from "@/lib/ordersApi";
 // The customer-facing journey is a fixed four-milestone tracker. Reached steps are
 // stamped from the order's real history; the rest show as upcoming.
 const STEPS: { label: string; reachedAt: OrderStatus }[] = [
-  { label: "Placed",     reachedAt: "pending" },
+  { label: "Placed",     reachedAt: "confirmed" },
   { label: "Processing", reachedAt: "processing" },
   { label: "Shipped",    reachedAt: "shipped" },
   { label: "Delivered",  reachedAt: "delivered" },
 ];
 
 // How far along the canonical Placed → Processing → Shipped → Delivered path each
-// status sits. pending/confirmed are "placed but not yet processing". cancelled is
+// status sits. confirmed is "placed but not yet processing". cancelled is
 // off-path and handled separately.
 const STEP_INDEX: Record<OrderStatus, number> = {
-  pending: 0, confirmed: 0, processing: 1, shipped: 2, delivered: 3, cancelled: -1,
+  confirmed: 0, processing: 1, shipped: 2, delivered: 3, cancelled: -1,
 };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

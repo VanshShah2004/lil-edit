@@ -20,7 +20,7 @@ const router = Router();
 const db = () => supabaseAdmin ?? supabaseAnon;
 
 // Mirror the DB CHECK constraint on orders.status.
-const VALID_STATUSES = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"] as const;
+const VALID_STATUSES = ["confirmed", "processing", "shipped", "delivered", "cancelled"] as const;
 type OrderStatus = (typeof VALID_STATUSES)[number];
 
 // Mirror the DB CHECK constraint on orders.payment_status.

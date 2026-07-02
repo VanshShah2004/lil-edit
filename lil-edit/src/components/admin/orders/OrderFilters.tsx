@@ -13,7 +13,7 @@ export type PaymentFilter = PaymentStatus | "all";
 
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "All Orders" },
-  { value: "pending", label: "Pending" },
+  { value: "confirmed", label: "Confirmed" },
   { value: "processing", label: "Processing" },
   { value: "shipped", label: "Shipped" },
   { value: "delivered", label: "Delivered" },

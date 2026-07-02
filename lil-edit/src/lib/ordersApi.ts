@@ -2,7 +2,6 @@ import { supabase } from "@/lib/supabase";
 import { getBackendBaseUrl } from "@/lib/backend";
 
 export type OrderStatus =
-  | "pending"
   | "confirmed"
   | "processing"
   | "shipped"

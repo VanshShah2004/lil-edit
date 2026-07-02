@@ -59,7 +59,6 @@ function notifyIssueClause(reason?: string): string {
 }
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
-  pending: "Pending",
   confirmed: "Confirmed",
   processing: "Processing",
   shipped: "Shipped",
@@ -115,7 +114,7 @@ const AdminOrderDetailPage = () => {
   const [order, setOrder] = useState<AdminOrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<OrderStatus>("pending");
+  const [selectedStatus, setSelectedStatus] = useState<OrderStatus>("confirmed");
   const [note, setNote] = useState("");
   const [notifyByEmail, setNotifyByEmail] = useState(false);
   const [saving, setSaving] = useState(false);

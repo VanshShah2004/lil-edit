@@ -4,7 +4,6 @@ import type { OrderStatus, OrderStatusEvent } from "@/lib/adminOrdersApi";
 // Headline per resulting status. The opening entry (fromStatus === null) shows as
 // "Order Placed".
 const STATUS_LABEL: Record<OrderStatus, string> = {
-  pending: "Pending",
   confirmed: "Confirmed",
   processing: "Processing",
   shipped: "Shipped",
@@ -15,9 +14,9 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
 // Canonical forward path (cancelled is off-path). Used to fill in stages that an
 // admin skipped when jumping the order forward — e.g. Pending → Delivered "passed"
 // through Processing and Shipped. These are DISPLAY-ONLY markers, not audit rows.
-const PATH: OrderStatus[] = ["pending", "processing", "shipped", "delivered"];
+const PATH: OrderStatus[] = ["confirmed", "processing", "shipped", "delivered"];
 const PATH_INDEX: Record<OrderStatus, number> = {
-  pending: 0, confirmed: 0, processing: 1, shipped: 2, delivered: 3, cancelled: -1,
+  confirmed: 0, processing: 1, shipped: 2, delivered: 3, cancelled: -1,
 };
 
 // Stages strictly between a forward jump's from→to (e.g. pending→delivered ⇒
