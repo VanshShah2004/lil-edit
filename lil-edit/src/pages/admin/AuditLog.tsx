@@ -280,7 +280,6 @@ function buildQuickView(raw: RawCatalogProduct, isDraft: boolean, baseSku: strin
     tags: (raw.tags ?? []) as string[],
     brand: raw.brand ?? "",
     availability: outOfStock ? "Out of Stock" : "In Stock",
-    descriptionPoints: (raw.description_points ?? []) as string[],
   };
 }
 

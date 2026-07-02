@@ -397,7 +397,6 @@ const Activity = () => {
         availability: outOfStock ? "Out of Stock" : "In Stock",
         size: size || undefined,
         quantity: qty || undefined,
-        descriptionPoints: (product.descriptionPoints ?? []) as string[],
       });
       setQuickViewOpen(true);
       console.log(`[Activity] quick-view open  sku=${item.sku}  images=${images.length}`);
