@@ -43,6 +43,8 @@ interface CheckoutNavState {
   mode?: "cart" | "direct";
   item?: DirectNavItem;
   coupon?: { code: string; discount: number; reason?: string };
+  /** Cart mode only — the cart_items ids the user checked on the Cart page. */
+  itemIds?: string[];
 }
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
@@ -81,6 +83,11 @@ export default function Checkout() {
     mode === "cart" && navState?.coupon?.code
       ? navState.coupon
       : null;
+  // A hard refresh loses nav state — falls back to the whole cart, same as directItem above.
+  const selectedItemIds = mode === "cart" && navState?.itemIds?.length ? navState.itemIds : null;
+  const cartItemsForCheckout = selectedItemIds
+    ? cartItems.filter((it) => selectedItemIds.includes(it.id))
+    : cartItems;
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
@@ -120,8 +127,8 @@ export default function Checkout() {
   const couponSubtotal = useMemo(
     () => (mode === "direct" && directItem
       ? (directItem.price ?? 0) * directItem.quantity
-      : cartItems.reduce((sum, it) => sum + it.price * it.quantity, 0)),
-    [mode, directItem, cartItems],
+      : cartItemsForCheckout.reduce((sum, it) => sum + it.price * it.quantity, 0)),
+    [mode, directItem, cartItemsForCheckout],
   );
 
   useEffect(() => {
@@ -341,7 +348,7 @@ export default function Checkout() {
         },
       ];
     }
-    return cartItems.map((it) => ({
+    return cartItemsForCheckout.map((it) => ({
       key: it.id,
       title: it.title,
       image: it.image,
@@ -351,7 +358,7 @@ export default function Checkout() {
       size: it.size,
       colorName: it.color?.name ?? "",
     }));
-  }, [mode, directItem, cartItems]);
+  }, [mode, directItem, cartItemsForCheckout]);
 
   // The applied discount is the exact amount the backend returned for this coupon (every
   // coupon's discount is computed server-side). This summary is read-only, so the subtotal
@@ -437,6 +444,7 @@ export default function Checkout() {
         mode,
         addressId: selectedAddressId,
         ...(coupon ? { couponCode: coupon.code } : {}),
+        ...(mode === "cart" && selectedItemIds ? { itemIds: selectedItemIds } : {}),
         ...(mode === "direct" && directItem
           ? {
               item: {

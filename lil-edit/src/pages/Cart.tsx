@@ -15,6 +15,7 @@ import {
   Wallet,
   Tag,
   Loader2,
+  Check,
 } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import { FaTrashAlt } from "react-icons/fa";
@@ -93,6 +94,31 @@ export default function Cart() {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const navigate = useNavigate();
 
+  // Which cart lines are checked for checkout — new items default to selected UNLESS
+  // they're out of stock (nothing to check out); items removed from the cart are
+  // dropped from the selection.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const cartIds = new Set(cartItems.map((i) => i.id));
+      const next = new Set([...prev].filter((id) => cartIds.has(id)));
+      for (const item of cartItems) {
+        if (!prev.has(item.id) && item.availability !== "Out of Stock") next.add(item.id);
+      }
+      if (next.size === prev.size && [...next].every((id) => prev.has(id))) return prev;
+      return next;
+    });
+  }, [cartItems]);
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const selectedItems = cartItems.filter((item) => selectedIds.has(item.id));
+
   const [couponInput, setCouponInput] = useState("");
   const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
   const [couponMsg, setCouponMsg] = useState<string>("");
@@ -107,7 +133,7 @@ export default function Cart() {
   // Shared pricing math (Checkout + backend use the same rule); deliveryFee keeps its
   // local name for the JSX below.
   const { subtotal, originalTotal, totalSavings, shippingFee: deliveryFee, discount, total, freeShippingRemaining } =
-    computeCartTotals(cartItems, coupon?.discount ?? 0);
+    computeCartTotals(selectedItems, coupon?.discount ?? 0);
 
   useEffect(() => {
     if (!user) return;
@@ -302,8 +328,8 @@ export default function Cart() {
               <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-6">
                 <StatCard
                   icon={<ShoppingCart className="w-5 h-5 text-white" fill="currentColor" />}
-                  value={cartItems.reduce((sum, item) => sum + item.quantity, 0)}
-                  label="Items in bag"
+                  value={selectedItems.reduce((sum, item) => sum + item.quantity, 0)}
+                  label="Items selected"
                   accent="bg-brand-teal"
                 />
                 <StatCard
@@ -388,11 +414,19 @@ export default function Cart() {
                           />
                         </div>
                         <button
-                          className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white shadow-sm hover:bg-gray-50 transition"
-                          aria-label="Quick view"
-                          onClick={(e) => e.stopPropagation()}
+                          className={`absolute top-2 left-2 w-6 h-6 flex items-center justify-center rounded-[3px] border-2 shadow-sm transition-colors ${
+                            selectedIds.has(item.id)
+                              ? "bg-brand-teal border-brand-teal text-white"
+                              : "bg-white/90 border-gray-300 text-transparent hover:border-brand-teal"
+                          }`}
+                          aria-label={selectedIds.has(item.id) ? "Deselect item for checkout" : "Select item for checkout"}
+                          aria-pressed={selectedIds.has(item.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSelected(item.id);
+                          }}
                         >
-                          <ShoppingCart size={14} className="text-primary" fill="currentColor" />
+                          <Check size={14} strokeWidth={3} />
                         </button>
                       </div>
                     </div>
@@ -786,9 +820,11 @@ export default function Cart() {
               <Button
                 onClick={() => {
                   if (!user) { toast.error("Please log in to checkout"); return; }
+                  if (selectedItems.length === 0) { toast.error("Select at least one item to check out"); return; }
                   navigate("/checkout", {
                     state: {
                       mode: "cart",
+                      itemIds: selectedItems.map((item) => item.id),
                       ...(coupon
                         ? { coupon: { code: coupon.code, discount: coupon.discount, reason: couponMsg || undefined } }
                         : {}),
@@ -796,7 +832,7 @@ export default function Cart() {
                   });
                 }}
                 className="w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-colors flex items-center justify-center gap-2"
-                disabled={cartItems.length === 0}
+                disabled={cartItems.length === 0 || selectedItems.length === 0}
               >
                 <Lock size={14} />
                 Secure Checkout

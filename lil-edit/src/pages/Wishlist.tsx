@@ -9,6 +9,7 @@ import {
   Award,
   Share2,
   PackageCheck,
+  Check,
 } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import { FaTrashAlt } from "react-icons/fa";
@@ -84,11 +85,37 @@ const WishlistPage = () => {
     addToWishlist,
     removeFromWishlist,
     moveToCart,
-    moveAllToCart,
+    moveSelectedToCart,
   } = useWishlist();
 
   const { cartItems, loading: cartLoading } = useCart();
   const [fallbackAnchor, setFallbackAnchor] = useState<RecommendationAnchor | null>(null);
+
+  // Which wishlist lines are checked for "Move Selected to Cart" — new items default to
+  // selected UNLESS they're out of stock (nothing to move); items removed from the
+  // wishlist are dropped from the selection.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const wishlistIds = new Set(wishlistItems.map((i) => i.id));
+      const next = new Set([...prev].filter((id) => wishlistIds.has(id)));
+      for (const item of wishlistItems) {
+        if (!prev.has(item.id) && item.inStock) next.add(item.id);
+      }
+      if (next.size === prev.size && [...next].every((id) => prev.has(id))) return prev;
+      return next;
+    });
+  }, [wishlistItems]);
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const selectedItems = wishlistItems.filter((item) => selectedIds.has(item.id));
+  const selectedInStockCount = selectedItems.filter((item) => item.inStock).length;
 
   const handleMoveToCart = async (id: string) => {
     setMovingId(id);
@@ -122,10 +149,10 @@ const WishlistPage = () => {
     });
   };
 
-  const handleMoveAllToCart = async () => {
+  const handleMoveSelectedToCart = async () => {
     setMovingAll(true);
     try {
-      await moveAllToCart();
+      await moveSelectedToCart(selectedItems.map((item) => item.id));
     } finally {
       setMovingAll(false);
     }
@@ -166,7 +193,6 @@ const WishlistPage = () => {
     return true;
   });
 
-  const totalValue = filteredItems.reduce((sum, item) => sum + item.price, 0);
   const inStockCount = wishlistItems.filter((i) => i.inStock).length;
 
   // When the wishlist is empty, derive a rec anchor from cart then order history.
@@ -353,11 +379,19 @@ const WishlistPage = () => {
                             </div>
                           </div>
                           <button
-                            onClick={(e) => { e.stopPropagation(); removeFromWishlist(item.id); }}
-                            className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white shadow-sm hover:bg-gray-50 transition"
-                            title="Remove from wishlist"
+                            className={`absolute top-2 left-2 w-6 h-6 flex items-center justify-center rounded-[3px] border-2 shadow-sm transition-colors ${
+                              selectedIds.has(item.id)
+                                ? "bg-brand-teal border-brand-teal text-white"
+                                : "bg-white/90 border-gray-300 text-transparent hover:border-brand-teal"
+                            }`}
+                            aria-label={selectedIds.has(item.id) ? "Deselect item" : "Select item"}
+                            aria-pressed={selectedIds.has(item.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSelected(item.id);
+                            }}
                           >
-                            <Heart size={14} className="text-primary" fill="hsl(268 45% 65%)" />
+                            <Check size={14} strokeWidth={3} />
                           </button>
                         </div>
                       </div>
@@ -465,29 +499,29 @@ const WishlistPage = () => {
               <h3 className="text-xl sm:text-2xl font-semibold text-gray-900">Wishlist Summary</h3>
               <div className="space-y-3 sm:space-y-4 text-sm sm:text-base">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Items Saved</span>
-                  <span className="font-medium">{wishlistItems.length}</span>
+                  <span className="text-gray-600">Items Selected</span>
+                  <span className="font-medium">{selectedItems.length} / {wishlistItems.length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">In Stock</span>
                   <span className="font-medium">{inStockCount}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Total Value</span>
-                  <span className="font-medium">₹{totalValue}</span>
+                  <span className="text-gray-600">Selected Value</span>
+                  <span className="font-medium">₹{selectedItems.reduce((sum, item) => sum + item.price, 0)}</span>
                 </div>
               </div>
               <div className="border-t border-gray-400 pt-3 sm:pt-4 flex justify-between items-center">
                 <span className="text-base sm:text-lg font-semibold">Payable</span>
-                <span className="text-xl sm:text-2xl font-bold text-brand-teal">₹{totalValue}</span>
+                <span className="text-xl sm:text-2xl font-bold text-brand-teal">₹{selectedItems.reduce((sum, item) => sum + item.price, 0)}</span>
               </div>
               <Button
-                onClick={() => void handleMoveAllToCart()}
-                disabled={movingAll || inStockCount === 0}
+                onClick={() => void handleMoveSelectedToCart()}
+                disabled={movingAll || selectedInStockCount === 0}
                 className="w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-colors gap-2 disabled:opacity-50"
               >
                 <ShoppingBag className="w-4 h-4" />
-                {movingAll ? "Moving…" : "Move All to Cart"}
+                {movingAll ? "Moving…" : "Move Selected to Cart"}
               </Button>
               <Link to="/dashboard" className="block mt-4 sm:mt-6">
                 <Button

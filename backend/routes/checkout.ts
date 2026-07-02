@@ -128,7 +128,7 @@ interface CheckoutSnapshot {
   couponCode: string | null;
 }
 
-type Source = { mode: "cart" } | { mode: "direct"; item: RawLine };
+type Source = { mode: "cart"; itemIds?: string[] | undefined } | { mode: "direct"; item: RawLine };
 
 // Small typed error so the pricing helpers can signal an HTTP status to the route.
 class PriceError extends Error {
@@ -162,10 +162,16 @@ async function priceOrder(
   let rawLines: RawLine[];
   if (source.mode === "cart") {
     const t0Cart = performance.now();
-    const { data: cartRows, error } = await db()
+    // itemIds lets the customer check out only a subset of their cart (Cart page
+    // per-item selection). Omitted/empty ⇒ the whole cart, preserving old behavior.
+    let cartQuery = db()
       .from("cart_items")
       .select("sku, size, quantity, product_slug")
       .eq("user_id", userId);
+    if (source.itemIds && source.itemIds.length > 0) {
+      cartQuery = cartQuery.in("id", source.itemIds);
+    }
+    const { data: cartRows, error } = await cartQuery;
     if (error) { log.error(`cart read failed  ${error.message}`, error); throw new PriceError(500, "Could not read cart"); }
     log.step(`DB cart_items read: ${fms(performance.now() - t0Cart)}  rows=${cartRows?.length ?? 0}`);
     rawLines = (cartRows ?? []).map((r) => ({
@@ -426,7 +432,10 @@ async function recoverSnapshot(razorpayOrderId: string, capturedPaise: number, l
     if (!directItem) { log.error("notes fallback — direct item unrecoverable"); return null; }
     source = { mode: "direct", item: directItem };
   } else {
-    source = { mode: "cart" };
+    const itemIdsRaw = typeof notes.itemIds === "string" ? notes.itemIds : "";
+    let itemIds: string[] | undefined;
+    try { itemIds = itemIdsRaw ? (JSON.parse(itemIdsRaw) as string[]) : undefined; } catch { itemIds = undefined; }
+    source = { mode: "cart", itemIds };
   }
 
   const priced = await priceOrder(userId, source, log);
@@ -513,11 +522,12 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
     return;
   }
 
-  const body = req.body as { mode?: unknown; item?: unknown; addressId?: unknown; couponCode?: unknown };
+  const body = req.body as { mode?: unknown; item?: unknown; addressId?: unknown; couponCode?: unknown; itemIds?: unknown };
   const mode = body.mode === "direct" ? "direct" : "cart";
   const addressId = typeof body.addressId === "string" ? body.addressId : "";
   const couponCode = typeof body.couponCode === "string" ? body.couponCode.trim().toUpperCase() : "";
-  log.step(`user=${userId}  mode=${mode}  addressId=${addressId || "none"}  coupon=${couponCode || "none"}`);
+  const itemIds = Array.isArray(body.itemIds) ? body.itemIds.filter((id): id is string => typeof id === "string") : undefined;
+  log.step(`user=${userId}  mode=${mode}  addressId=${addressId || "none"}  coupon=${couponCode || "none"}  itemIds=${itemIds ? itemIds.length : "all"}`);
 
   if (!addressId) {
     log.warn("missing addressId").end("CHECKOUT INITIATE");
@@ -553,7 +563,7 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
       };
       source = { mode: "direct", item: directItem };
     } else {
-      source = { mode: "cart" };
+      source = { mode: "cart", itemIds };
     }
 
     const priced = await priceOrder(userId, source, log);
@@ -631,6 +641,7 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
     // even if Redis evicted the snapshot (direct item stashed as JSON).
     const notes: Record<string, string> = { userId, addressId, mode };
     if (directItem) notes.item = JSON.stringify(directItem);
+    if (itemIds && itemIds.length > 0) notes.itemIds = JSON.stringify(itemIds);
     if (appliedCode) notes.coupon = appliedCode;
     const amountPaise = Math.round(total * 100);
     log.step(`creating Razorpay order  amount=${amountPaise}p  notes=[${Object.keys(notes).join(",")}]`);

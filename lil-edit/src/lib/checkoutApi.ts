@@ -80,6 +80,8 @@ export interface InitiatePayload {
   item?: CheckoutItemInput;
   addressId: string;
   couponCode?: string;
+  /** Cart mode only — checkout just these cart_items ids instead of the whole cart. */
+  itemIds?: string[];
 }
 
 export interface CouponResult {

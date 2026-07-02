@@ -29,6 +29,7 @@ interface WishlistContextType {
   removeFromWishlist: (wishlistItemId: string) => Promise<void>;
   moveToCart: (wishlistItemId: string) => Promise<void>;
   moveAllToCart: () => Promise<void>;
+  moveSelectedToCart: (wishlistItemIds: string[]) => Promise<void>;
   clearWishlist: () => Promise<void>;
   refetchWishlist: () => void;
 }
@@ -194,6 +195,37 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     }
   }, [refetchCart, refetchWishlist]);
 
+  // Move just the checked wishlist lines to cart (the "Move Selected to Cart" button —
+  // the selective counterpart to moveAllToCart). Sequential like CartContext.reorder, so
+  // one failed/out-of-stock line can't abort the rest. Refetches once at the end.
+  const moveSelectedToCart = useCallback(
+    async (wishlistItemIds: string[]) => {
+      const ids = wishlistItemIds.filter((id) =>
+        wishlistItems.find((item) => item.id === id)?.inStock,
+      );
+      if (ids.length === 0) {
+        toast.error("Select at least one in-stock item to move");
+        return;
+      }
+      let moved = 0;
+      let failed = 0;
+      for (const id of ids) {
+        try {
+          await apiMoveToCart(id);
+          moved += 1;
+        } catch (err) {
+          console.error("[WishlistContext] moveSelectedToCart: could not move", id, err);
+          failed += 1;
+        }
+      }
+      refetchCart();
+      refetchWishlist(); // sync real state after the batch move
+      if (failed > 0) toast.error(`${moved} moved, ${failed} failed. Please try again.`);
+      else toast.success(`${moved} item${moved !== 1 ? "s" : ""} moved to cart!`);
+    },
+    [wishlistItems, refetchCart, refetchWishlist],
+  );
+
   const clearWishlistFn = useCallback(async () => {
     let snapshot: WishlistItem[] = [];
     setWishlistItems((prev) => {
@@ -219,6 +251,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         removeFromWishlist,
         moveToCart,
         moveAllToCart,
+        moveSelectedToCart,
         clearWishlist: clearWishlistFn,
         refetchWishlist,
       }}
