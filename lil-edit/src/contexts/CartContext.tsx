@@ -93,6 +93,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return () => ctrl.abort();
   }, [userId, fetchTick]);
 
+  // Reverse a just-added line. Re-fetch first so we act on the authoritative
+  // row — Undo can be clicked before the add's debounced refetch lands, or for
+  // a brand-new line that isn't in local state yet — then subtract exactly what
+  // this add contributed, removing the row entirely if that zeroes it out.
+  const undoAddToCart = useCallback(
+    async (sku: string, size: string, addedQty: number) => {
+      try {
+        const items = await fetchCart();
+        const line = items.find((i) => i.sku === sku && i.size === size);
+        if (!line) {
+          refetchCart();
+          return;
+        }
+        const nextQty = line.quantity - addedQty;
+        if (nextQty > 0) {
+          await apiUpdateQty(line.id, nextQty);
+        } else {
+          await apiRemove(line.id);
+        }
+        console.log(`[CartContext] undo add  sku=${sku}  size=${size}  -${addedQty}`);
+        refetchCart();
+        toast.success("Removed from cart!");
+      } catch (err) {
+        console.error("[CartContext] undoAddToCart failed", err);
+        toast.error("Could not undo");
+        refetchCart();
+      }
+    },
+    [refetchCart]
+  );
+
   const addToCart = useCallback(
     async (payload: AddToCartPayload) => {
       if (!user) {
@@ -101,13 +132,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       try {
         await apiAdd(payload);
-        toast.success("Added to cart!");
+        toast.success("Added to cart!", {
+          duration: 6000,
+          action: {
+            label: "Undo",
+            onClick: () =>
+              void undoAddToCart(payload.sku, payload.size, payload.quantity ?? 1),
+          },
+        });
         refetchCart();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Could not add to cart");
       }
     },
-    [user, refetchCart]
+    [user, refetchCart, undoAddToCart]
   );
 
   // Re-add a whole order's worth of lines to the cart (the Reorder button on the

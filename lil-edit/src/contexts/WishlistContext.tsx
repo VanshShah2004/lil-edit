@@ -95,6 +95,35 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     return () => ctrl.abort();
   }, [userId, fetchTick]);
 
+  // Reverse a just-added wishlist item. Re-fetch so we hold the real row id (the
+  // add is optimistic and the row briefly carries a temp id), and drop it from
+  // the displayed list right away — keyed on slug+sku so the heart empties
+  // whether state still holds the temp row or the refetched one.
+  const undoAddToWishlist = useCallback(
+    async (productSlug: string, sku: string) => {
+      try {
+        const items = await fetchWishlist();
+        const item = items.find((i) => i.productSlug === productSlug && i.sku === sku);
+        setWishlistItems((prev) =>
+          prev.filter((i) => !(i.productSlug === productSlug && i.sku === sku)),
+        );
+        if (!item) {
+          refetchWishlist();
+          return;
+        }
+        await apiRemove(item.id);
+        console.log(`[WishlistContext] undo add  slug=${productSlug}  sku=${sku}`);
+        refetchWishlist();
+        toast.success("Removed from wishlist!");
+      } catch (err) {
+        console.error("[WishlistContext] undoAddToWishlist failed", err);
+        toast.error("Could not undo");
+        refetchWishlist();
+      }
+    },
+    [refetchWishlist],
+  );
+
   const addToWishlist = useCallback(
     async (productSlug: string, sku: string) => {
       if (!user) {
@@ -129,14 +158,20 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       });
       try {
         await apiAdd(productSlug, sku);
-        toast.success("Added to wishlist!");
+        toast.success("Added to wishlist!", {
+          duration: 6000,
+          action: {
+            label: "Undo",
+            onClick: () => void undoAddToWishlist(productSlug, sku),
+          },
+        });
         refetchWishlist();
       } catch (err) {
         setWishlistItems((prev) => prev.filter((i) => i.id !== tempId));
         toast.error(err instanceof Error ? err.message : "Could not add to wishlist");
       }
     },
-    [user, refetchWishlist]
+    [user, refetchWishlist, undoAddToWishlist]
   );
 
   const removeFromWishlist = useCallback(async (wishlistItemId: string) => {
