@@ -269,6 +269,7 @@ const Activity = () => {
   // currently loading so it can show a spinner.
   const [quickView, setQuickView] = useState<QuickViewProduct | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const [quickViewLoading, setQuickViewLoading] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -350,6 +351,26 @@ const Activity = () => {
       toast.error("This activity has no product to preview.");
       return;
     }
+    // Open instantly with a skeleton so the drawer slides up with no wait; the fetch
+    // below swaps in the real product (or retracts the drawer if it fails).
+    setQuickView({
+      source: "order",
+      id: item.id,
+      productId: item.sku,
+      sku: item.sku,
+      slug: item.productSlug,
+      categorySlug: "",
+      title: "",
+      price: 0,
+      originalPrice: 0,
+      image: "",
+      images: [],
+      color: { name: "", hex: "" },
+      badges: [],
+      tags: [],
+    });
+    setQuickViewLoading(true);
+    setQuickViewOpen(true);
     setOpeningId(item.id);
     try {
       const url = `${getBackendBaseUrl()}/api/products/detail?slug=${encodeURIComponent(item.productSlug)}&sku=${encodeURIComponent(item.sku)}`;
@@ -398,13 +419,14 @@ const Activity = () => {
         size: size || undefined,
         quantity: qty || undefined,
       });
-      setQuickViewOpen(true);
       console.log(`[Activity] quick-view open  sku=${item.sku}  images=${images.length}`);
     } catch (err) {
+      setQuickViewOpen(false); // couldn't load — retract the optimistic drawer
       const msg = err instanceof Error ? err.message : "Could not open product preview.";
       console.error("[Activity] quick-view failed:", err);
       toast.error(msg);
     } finally {
+      setQuickViewLoading(false);
       setOpeningId(null);
     }
   }, []);
@@ -523,9 +545,33 @@ const Activity = () => {
       </div>
 
       <main className="flex-1 px-6 lg:px-12 pt-4 pb-24 bg-gray-100">
-        <div className="max-w-3xl mx-auto pt-4">
+        <div className="max-w-3xl mx-auto">
           {/* Controls */}
           <div className="mb-4 space-y-[20px]">
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1" />
+              <button
+                type="button"
+                onClick={handleToggleLive}
+                title={live ? "Pause live updates" : "Resume live updates"}
+                className="inline-flex items-center gap-1.5 rounded-md border border-gray-400 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-gray-500 transition-colors"
+              >
+                {live ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                {live ? "Live" : "Paused"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void refresh()}
+                disabled={refreshing}
+                title="Refresh now"
+                className="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-[#B19CD9] px-3 py-1.5 text-xs font-semibold text-black hover:bg-[#9A82C9] transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+            </div>
+
             {/* Draggable segmented filter — tap a segment or drag across them */}
             <div
               ref={filterTrackRef}
@@ -588,30 +634,6 @@ const Activity = () => {
                   </button>
                 );
               })}
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-2">
-              <div className="flex-1" />
-              <button
-                type="button"
-                onClick={handleToggleLive}
-                title={live ? "Pause live updates" : "Resume live updates"}
-                className="inline-flex items-center gap-1.5 rounded-md border border-gray-400 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-gray-500 transition-colors"
-              >
-                {live ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                {live ? "Live" : "Paused"}
-              </button>
-              <button
-                type="button"
-                onClick={() => void refresh()}
-                disabled={refreshing}
-                title="Refresh now"
-                className="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-[#B19CD9] px-3 py-1.5 text-xs font-semibold text-black hover:bg-[#9A82C9] transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-                Refresh
-              </button>
             </div>
           </div>
 
@@ -728,6 +750,7 @@ const Activity = () => {
       <QuickViewDrawer
         open={quickViewOpen}
         product={quickView}
+        loading={quickViewLoading}
         onClose={() => setQuickViewOpen(false)}
         hideBuyNow
       />

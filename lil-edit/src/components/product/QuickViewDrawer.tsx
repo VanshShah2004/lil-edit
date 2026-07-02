@@ -71,9 +71,13 @@ export type QuickViewDrawerProps = {
   // Admin/preview contexts (e.g. the Curation Studio) hide the "Buy Now" CTA, which
   // has no meaning there. Defaults to false so all shopper-facing usages are unchanged.
   hideBuyNow?: boolean;
+  // When true, the drawer renders a skeleton in place of the content — lets a caller
+  // open the drawer INSTANTLY and fill it in once its product fetch resolves. Defaults
+  // to false, so callers that pass a fully-formed product see no change.
+  loading?: boolean;
 };
 
-export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = false }: QuickViewDrawerProps) {
+export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = false, loading = false }: QuickViewDrawerProps) {
   const navigate = useNavigate();
   const { cartItems, updateQuantity } = useCart();
   const { moveToCart, isWishlisted, addToWishlist, removeFromWishlist, wishlistItems } =
@@ -422,6 +426,26 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
     </div>
   );
 
+  // Loading skeleton — shown while the opener is still fetching the product, so the
+  // drawer can slide up INSTANTLY on click and fill in when the data arrives.
+  const skeleton = () => (
+    <div className="flex-1 overflow-hidden p-4 sm:p-6">
+      <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+        <div className="w-full md:w-[42%] h-64 md:h-[26rem] rounded-2xl bg-gray-200 animate-pulse shrink-0" />
+        <div className="flex-1 space-y-4 py-1">
+          <div className="h-8 w-3/4 rounded-lg bg-gray-200 animate-pulse" />
+          <div className="h-4 w-1/3 rounded bg-gray-200 animate-pulse" />
+          <div className="h-9 w-1/2 rounded-lg bg-gray-200 animate-pulse" />
+          <div className="space-y-2 pt-3">
+            <div className="h-4 w-full rounded bg-gray-100 animate-pulse" />
+            <div className="h-4 w-5/6 rounded bg-gray-100 animate-pulse" />
+            <div className="h-4 w-2/3 rounded bg-gray-100 animate-pulse" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -495,7 +519,27 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
               </div>
             </div>
 
-            {isDesktop ? (
+            <AnimatePresence mode="wait" initial={false}>
+              {loading ? (
+                <motion.div
+                  key="qv-skeleton"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex flex-1 flex-col min-h-0"
+                >
+                  {skeleton()}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="qv-content"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.28, ease: "easeOut" }}
+                  className="flex flex-1 flex-col min-h-0"
+                >
+                  {isDesktop ? (
               /* ══ DESKTOP: single shared scroll, two columns side-by-side ══ */
               <>
                 <div className="flex-1 overflow-y-auto overscroll-contain">
@@ -546,7 +590,10 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
                   {ctaMobile()}
                 </div>
               </>
-            )}
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </>
       )}
