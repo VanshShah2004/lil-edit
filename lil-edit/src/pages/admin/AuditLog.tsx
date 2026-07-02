@@ -5,7 +5,6 @@ import {
   AlertCircle,
   ClipboardList,
   CreditCard,
-  Eye,
   FileText,
   LayoutGrid,
   Loader2,
@@ -178,6 +177,29 @@ function chipsFor(item: AuditActionItem): string[] {
   }
 }
 
+const PRODUCT_SUMMARY_ACTIONS = new Set<AdminActionType>([
+  "product_launched",
+  "product_draft_saved",
+  "product_deleted",
+]);
+
+// Product summaries end with the SKU inline (e.g. `Launched product "Name" (SKU-123)`
+// or `Deleted draft product SKU-123`). Split it off so it can render on its own line
+// instead of wrapping awkwardly next to the product name.
+function splitSummary(item: AuditActionItem): { text: string; sku: string | null } {
+  const sku = item.targetId;
+  if (!PRODUCT_SUMMARY_ACTIONS.has(item.action) || !sku) return { text: item.summary, sku: null };
+  const trimmed = item.summary.trim();
+  const withParens = ` (${sku})`;
+  if (trimmed.endsWith(withParens)) {
+    return { text: trimmed.slice(0, -withParens.length), sku };
+  }
+  if (trimmed.endsWith(sku)) {
+    return { text: trimmed.slice(0, trimmed.length - sku.length).trimEnd(), sku };
+  }
+  return { text: item.summary, sku: null };
+}
+
 // Order actions deep-link to the admin order detail (targetId is the order id).
 function linkFor(item: AuditActionItem): string | undefined {
   if ((item.action === "order_status_changed" || item.action === "payment_status_changed") && item.targetId) {
@@ -296,20 +318,39 @@ const ActionRow = ({
   const chips = chipsFor(item);
   const to = linkFor(item);
   const who = adminName(item.admin);
+  const { text: summaryText, sku } = splitSummary(item);
   // Launched / draft-saved rows open a read-only product quick view.
   const clickable = PRODUCT_ACTIONS.has(item.action) && !!item.targetId;
 
   const body = (
-    <div className="flex items-start gap-3.5 px-5 py-3.5">
-      <span
-        className="flex items-center justify-center w-9 h-9 rounded-full shrink-0"
-        style={{ backgroundColor: bg }}
-      >
-        <Icon className="w-4 h-4" style={{ color }} />
-      </span>
-      <div className="min-w-0 flex-1">
-        {/* The durable, server-written description is the primary line. */}
-        <p className="text-sm text-gray-800 leading-snug font-medium">{item.summary}</p>
+    <div className="px-5 py-3.5">
+      {/* Top row: icon + summary vs. timestamp — only THIS row shares width with the
+          timestamp column. The lines below span the full row width (indented to align
+          under the summary) instead of also being squeezed by the timestamp column,
+          which was leaving unused space next to them while they truncated/wrapped. */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3.5 min-w-0 flex-1">
+          <span
+            className="flex items-center justify-center w-9 h-9 rounded-full shrink-0"
+            style={{ backgroundColor: bg }}
+          >
+            <Icon className="w-4 h-4" style={{ color }} />
+          </span>
+          <p className="min-w-0 flex-1 text-sm text-gray-800 leading-snug font-medium">{summaryText}</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-col items-end text-right">
+            <span className="text-[11px] text-gray-500 whitespace-nowrap">{timeAgo(item.createdAt)}</span>
+            <span className="text-[12px] text-gray-400 whitespace-nowrap">{fullDateTime(item.createdAt)}</span>
+          </div>
+          {clickable && loading && <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" />}
+        </div>
+      </div>
+
+      <div className="pl-[46px]">
+        {sku && (
+          <p className="text-[13px] text-gray-500 mt-0.5">{sku}</p>
+        )}
         <p className="text-[13px] text-gray-400 mt-0.5 truncate">
           by <span className="font-semibold text-gray-500">{who}</span>
           {item.admin?.email ? ` · ${item.admin.email}` : ""}
@@ -326,18 +367,6 @@ const ActionRow = ({
             ))}
           </div>
         )}
-      </div>
-      <div className="flex items-center gap-2 shrink-0 mt-0.5">
-        <div className="flex flex-col items-end text-right">
-          <span className="text-[11px] text-gray-500 whitespace-nowrap">{timeAgo(item.createdAt)}</span>
-          <span className="text-[12px] text-gray-400 whitespace-nowrap">{fullDateTime(item.createdAt)}</span>
-        </div>
-        {clickable &&
-          (loading ? (
-            <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" />
-          ) : (
-            <Eye className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
-          ))}
       </div>
     </div>
   );
@@ -629,7 +658,7 @@ const AuditLog = () => {
       </div>
 
       <main className="flex-1 px-6 lg:px-12 pt-4 pb-24 bg-gray-100">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-[112rem] mx-auto">
           {/* Controls */}
           <div className="mb-4 space-y-[20px]">
             {/* Actions */}

@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import {
   Activity as ActivityIcon,
   AlertCircle,
-  Eye,
   Heart,
   Loader2,
   Package,
@@ -55,6 +54,12 @@ const TYPE_FILTERS: { key: FilterKey; label: string }[] = [
 // ── metadata readers (metadata is Record<string, unknown> — read defensively) ──
 const asStr = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 const asNum = (v: unknown): number => (typeof v === "number" ? v : Number(v) || 0);
+
+// Age-based sizes are stored as "6-12 Months" / "1-2 Years" — abbreviate to "6-12M" /
+// "1-2Y" so the Size tag stays compact.
+function abbreviateSize(size: string): string {
+  return size.replace(/\s*Months?$/i, "M").replace(/\s*Years?$/i, "Y");
+}
 
 function prettifyProduct(item: ActivityItem): string {
   if (!item.productSlug) return "a product";
@@ -124,19 +129,14 @@ function visualFor(type: ActivityType): Visual {
 }
 
 // The human sentence + optional trailing chips for one activity row.
-function describe(item: ActivityItem): { line: React.ReactNode; chips: string[]; to?: string } {
+function describe(item: ActivityItem): { line: React.ReactNode; chips: string[]; to?: string; tag?: string } {
   const who = <span className="font-semibold text-gray-900">{userName(item.user)}</span>;
   const product = <span className="font-semibold text-gray-900">{prettifyProduct(item)}</span>;
 
   switch (item.type) {
     case "cart_add": {
-      const qty = asNum(item.metadata.quantity);
       const size = asStr(item.metadata.size);
-      const chips = [
-        ...(qty > 1 ? [`Qty ${qty}`] : []),
-        ...(size ? [`Size ${size}`] : []),
-      ];
-      return { line: <>{who} added {product} to their cart</>, chips };
+      return { line: <>{who} added {product} to their cart</>, chips: [], tag: size ? `Size ${abbreviateSize(size)}` : undefined };
     }
     case "wishlist_add":
       return { line: <>{who} wishlisted {product}</>, chips: [] };
@@ -157,8 +157,7 @@ function describe(item: ActivityItem): { line: React.ReactNode; chips: string[];
     }
     case "review_submitted": {
       const rating = asNum(item.metadata.rating);
-      const chips = rating ? [`${rating}★`] : [];
-      return { line: <>{who} reviewed {product}</>, chips };
+      return { line: <>{who} reviewed {product}</>, chips: [], tag: rating ? `${rating}★` : undefined };
     }
     case "search": {
       const q = asStr(item.metadata.query);
@@ -181,48 +180,66 @@ const ActivityRow = ({
   loading: boolean;
 }) => {
   const { Icon, color, bg } = visualFor(item.type);
-  const { line, chips, to } = describe(item);
+  const { line, chips, to, tag } = describe(item);
   // Cart & wishlist rows open a read-only quick view of the exact variant the
   // shopper acted on. (Order rows already navigate via `to`; searches/reviews are inert.)
   const clickable = item.type === "cart_add" || item.type === "wishlist_add";
 
   const body = (
-    <div className="flex items-start gap-3.5 px-5 py-3.5">
-      <span
-        className="flex items-center justify-center w-9 h-9 rounded-full shrink-0"
-        style={{ backgroundColor: bg }}
-      >
-        <Icon className="w-4 h-4" style={{ color }} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-gray-700 leading-snug">{line}</p>
+    <div className="px-5 py-3.5">
+      {/* Top row: icon + line vs. timestamp — only THIS row shares width with the
+          timestamp column. The lines below span the full row width (indented to align
+          under the line) instead of also being squeezed by the timestamp column, which
+          was leaving unused space next to them while they truncated/wrapped. */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3.5 min-w-0 flex-1">
+          <span
+            className="flex items-center justify-center w-9 h-9 rounded-full shrink-0"
+            style={{ backgroundColor: bg }}
+          >
+            <Icon className="w-4 h-4" style={{ color }} />
+          </span>
+          <p className="min-w-0 flex-1 text-sm text-gray-700 leading-snug">{line}</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-col items-end text-right">
+            <span className="text-[11px] text-gray-500 whitespace-nowrap">{timeAgo(item.createdAt)}</span>
+            <span className="text-[12px] text-gray-400 whitespace-nowrap">{fullDateTime(item.createdAt)}</span>
+          </div>
+          {clickable && loading && <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" />}
+        </div>
+      </div>
+
+      <div className="pl-[46px]">
         {item.user?.email && (
           <p className="text-[13px] text-gray-400 mt-0.5 truncate">{item.user.email}</p>
+        )}
+        {(item.sku || tag) && (
+          <p className="flex items-baseline justify-between gap-2 text-[13px] text-gray-500 mt-0.5">
+            <span>{item.sku}</span>
+            {tag && (
+              <span className="shrink-0 px-1.5 py-0.5 rounded bg-gray-200 text-[11px] text-black font-semibold">
+                {tag}
+              </span>
+            )}
+          </p>
         )}
         {chips.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1.5">
             {chips.map((c) => (
               <span
                 key={c}
-                className="px-1.5 py-0.5 rounded-md bg-gray-100 text-[11px] font-semibold text-gray-600"
+                className={
+                  item.type === "search"
+                    ? "px-1.5 py-0.5 rounded bg-gray-200 text-[11px] text-black font-semibold"
+                    : "px-1.5 py-0.5 rounded-md bg-gray-100 text-[11px] font-semibold text-gray-600"
+                }
               >
                 {c}
               </span>
             ))}
           </div>
         )}
-      </div>
-      <div className="flex items-center gap-2 shrink-0 mt-0.5">
-        <div className="flex flex-col items-end text-right">
-          <span className="text-[11px] text-gray-500 whitespace-nowrap">{timeAgo(item.createdAt)}</span>
-          <span className="text-[12px] text-gray-400 whitespace-nowrap">{fullDateTime(item.createdAt)}</span>
-        </div>
-        {clickable &&
-          (loading ? (
-            <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" />
-          ) : (
-            <Eye className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
-          ))}
       </div>
     </div>
   );
@@ -545,7 +562,7 @@ const Activity = () => {
       </div>
 
       <main className="flex-1 px-6 lg:px-12 pt-4 pb-24 bg-gray-100">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-[112rem] mx-auto">
           {/* Controls */}
           <div className="mb-4 space-y-[20px]">
             {/* Actions */}
