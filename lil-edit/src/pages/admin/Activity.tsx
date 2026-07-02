@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -312,6 +312,84 @@ const Activity = () => {
 
   const pauseConfirmed = pauseConfirm.trim().toUpperCase() === "PAUSE";
 
+  // ── Draggable segmented filter ──────────────────────────────────────────────
+  const filterTrackRef = useRef<HTMLDivElement | null>(null);
+  const filterBtnRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const draggingRef = useRef(false);
+  // Set true when a drag/press actually changed the selection, so the click that
+  // follows a pointer interaction doesn't re-fire selection on the wrong segment.
+  const didDragRef = useRef(false);
+  // Mirrors draggingRef as state so the indicator can react to it (CSS transitions
+  // can't read a ref). While actively dragging, the pointer handlers below own the
+  // indicator's position directly (continuous, follows the raw pointer x — so
+  // between two segments it visually straddles both); the eased snap-to-segment
+  // transition is reserved for a tap/click or the settle right after release.
+  const [isDragging, setIsDragging] = useState(false);
+  const [indicator, setIndicator] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
+  const activeIndex = Math.max(0, TYPE_FILTERS.findIndex((f) => f.key === filter));
+  // Content-box bounds (first segment's left → last segment's right) + the shared
+  // segment width, captured once per drag so they stay stable while dragging even
+  // as `filter` (and thus which button is "active") changes mid-gesture.
+  const dragMetricsRef = useRef<{ contentLeft: number; contentWidth: number; segmentWidth: number } | null>(null);
+
+  // Slide the active-segment indicator over the selected option and re-measure on
+  // resize. Skipped while dragging — the pointer handlers own the indicator then.
+  useLayoutEffect(() => {
+    if (isDragging) return;
+    const measure = () => {
+      const track = filterTrackRef.current;
+      const btn = filterBtnRefs.current[activeIndex];
+      // Subtract the track's left border so the absolutely-positioned indicator
+      // (measured from the padding box) aligns with the button (offsetLeft counts
+      // the border).
+      if (track && btn) setIndicator({ left: btn.offsetLeft - track.clientLeft, width: btn.offsetWidth });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [activeIndex, isDragging]);
+
+  // Measure the track's content box (segments are flex-1, so all are equal width)
+  // once at the start of a drag/press.
+  const captureDragMetrics = () => {
+    const track = filterTrackRef.current;
+    const first = filterBtnRefs.current[0];
+    const last = filterBtnRefs.current[TYPE_FILTERS.length - 1];
+    if (!track || !first || !last) return;
+    const contentLeft = first.offsetLeft - track.clientLeft;
+    const contentWidth = last.offsetLeft - track.clientLeft + last.offsetWidth - contentLeft;
+    dragMetricsRef.current = { contentLeft, contentWidth, segmentWidth: contentWidth / TYPE_FILTERS.length };
+  };
+
+  // Move the indicator to directly track the pointer (clamped to the track), and
+  // update the selected filter to whichever segment the indicator's CENTER now sits
+  // over. This is what produces the straddling look: the indicator's left/width are
+  // driven by raw pointer position, not snapped to a segment's box, so mid-drag it
+  // can sit half over one segment and half over the next.
+  const followPointer = (clientX: number) => {
+    const track = filterTrackRef.current;
+    const metrics = dragMetricsRef.current;
+    if (!track || !metrics) return;
+    const trackRect = track.getBoundingClientRect();
+    const rawLeft = clientX - trackRect.left - metrics.segmentWidth / 2;
+    const left = Math.min(
+      Math.max(rawLeft, metrics.contentLeft),
+      metrics.contentLeft + metrics.contentWidth - metrics.segmentWidth,
+    );
+    setIndicator({ left, width: metrics.segmentWidth });
+
+    const centerX = left + metrics.segmentWidth / 2;
+    const idx = Math.min(
+      TYPE_FILTERS.length - 1,
+      Math.max(0, Math.floor((centerX - metrics.contentLeft) / metrics.segmentWidth)),
+    );
+    const key = TYPE_FILTERS[idx]?.key;
+    if (key && key !== filter) {
+      setFilter(key);
+      didDragRef.current = true;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white text-[#1a1a1a] flex flex-col font-sans">
       <UserNavbar />
@@ -336,47 +414,91 @@ const Activity = () => {
       <main className="flex-1 px-6 lg:px-12 pt-4 pb-24 bg-gray-100">
         <div className="max-w-3xl mx-auto pt-4">
           {/* Controls */}
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            <div className="flex flex-wrap gap-1.5">
-              {TYPE_FILTERS.map((f) => {
+          <div className="mb-4 space-y-2">
+            {/* Draggable segmented filter — tap a segment or drag across them */}
+            <div
+              ref={filterTrackRef}
+              onPointerDown={(e) => {
+                draggingRef.current = true;
+                didDragRef.current = false;
+                setIsDragging(true);
+                captureDragMetrics();
+                e.currentTarget.setPointerCapture(e.pointerId);
+                followPointer(e.clientX);
+              }}
+              onPointerMove={(e) => {
+                if (draggingRef.current) followPointer(e.clientX);
+              }}
+              onPointerUp={(e) => {
+                draggingRef.current = false;
+                setIsDragging(false);
+                dragMetricsRef.current = null;
+                try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* noop */ }
+              }}
+              onPointerCancel={() => {
+                draggingRef.current = false;
+                setIsDragging(false);
+                dragMetricsRef.current = null;
+              }}
+              className="relative flex w-full cursor-grab touch-none select-none rounded bg-gray-100 p-1 shadow-inner active:cursor-grabbing"
+            >
+              {/* Sliding active-segment indicator. No transition while actively
+                  dragging (tracks the pointer 1:1, no rubber-banding); a quick,
+                  smooth ease-out snap for taps and the release settle. */}
+              <span
+                aria-hidden
+                className={`pointer-events-none absolute top-1 bottom-1 rounded bg-[#0F766E] ${
+                  isDragging ? "" : "transition-[left,width] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                }`}
+                style={{ left: indicator.left, width: indicator.width }}
+              />
+              {TYPE_FILTERS.map((f, i) => {
                 const active = filter === f.key;
+                const showDivider = i !== TYPE_FILTERS.length - 1 && !active && filter !== TYPE_FILTERS[i + 1]?.key;
                 return (
                   <button
                     key={f.key}
                     type="button"
-                    onClick={() => setFilter(f.key)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border ${
-                      active
-                        ? "text-white border-transparent"
-                        : "bg-white text-gray-600 border-gray-300 hover:border-gray-400"
-                    }`}
-                    style={active ? { backgroundColor: ACCENT } : undefined}
+                    ref={(el) => { filterBtnRefs.current[i] = el; }}
+                    onClick={() => {
+                      // Skip the click that trails a pointer selection (avoids
+                      // re-selecting the segment the drag started on).
+                      if (didDragRef.current) { didDragRef.current = false; return; }
+                      setFilter(f.key);
+                    }}
+                    className={`relative z-10 flex-1 whitespace-nowrap rounded px-2 py-2 text-xs sm:text-sm font-semibold transition-colors ${
+                      active ? "text-white" : "text-gray-600 hover:text-gray-900"
+                    } ${showDivider ? "border-r-2 border-gray-300" : ""}`}
                   >
                     {f.label}
                   </button>
                 );
               })}
             </div>
-            <div className="flex-1" />
-            <button
-              type="button"
-              onClick={handleToggleLive}
-              title={live ? "Pause live updates" : "Resume live updates"}
-              className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-gray-400 transition-colors"
-            >
-              {live ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-              {live ? "Live" : "Paused"}
-            </button>
-            <button
-              type="button"
-              onClick={() => void refresh()}
-              disabled={refreshing}
-              title="Refresh now"
-              className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-gray-400 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-              Refresh
-            </button>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1" />
+              <button
+                type="button"
+                onClick={handleToggleLive}
+                title={live ? "Pause live updates" : "Resume live updates"}
+                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-gray-400 transition-colors"
+              >
+                {live ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                {live ? "Live" : "Paused"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void refresh()}
+                disabled={refreshing}
+                title="Refresh now"
+                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-gray-400 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+            </div>
           </div>
 
           {/* Feed card */}
