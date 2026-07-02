@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   Activity as ActivityIcon,
   AlertCircle,
+  Eye,
   Heart,
   Loader2,
   Package,
@@ -27,6 +28,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
+import { composeProductBadges } from "@/lib/productBadges";
+import { getBackendBaseUrl } from "@/lib/backend";
 import {
   fetchActivity,
   type ActivityItem,
@@ -167,9 +171,20 @@ function describe(item: ActivityItem): { line: React.ReactNode; chips: string[];
   }
 }
 
-const ActivityRow = ({ item }: { item: ActivityItem }) => {
+const ActivityRow = ({
+  item,
+  onOpen,
+  loading,
+}: {
+  item: ActivityItem;
+  onOpen: (item: ActivityItem) => void;
+  loading: boolean;
+}) => {
   const { Icon, color, bg } = visualFor(item.type);
   const { line, chips, to } = describe(item);
+  // Cart & wishlist rows open a read-only quick view of the exact variant the
+  // shopper acted on. (Order rows already navigate via `to`; searches/reviews are inert.)
+  const clickable = item.type === "cart_add" || item.type === "wishlist_add";
 
   const body = (
     <div className="flex items-start gap-3.5 px-5 py-3.5">
@@ -197,21 +212,44 @@ const ActivityRow = ({ item }: { item: ActivityItem }) => {
           </div>
         )}
       </div>
-      <div className="flex flex-col items-end shrink-0 mt-0.5 text-right">
-        <span className="text-[11px] text-gray-500 whitespace-nowrap">{timeAgo(item.createdAt)}</span>
-        <span className="text-[12px] text-gray-400 whitespace-nowrap">{fullDateTime(item.createdAt)}</span>
+      <div className="flex items-center gap-2 shrink-0 mt-0.5">
+        <div className="flex flex-col items-end text-right">
+          <span className="text-[11px] text-gray-500 whitespace-nowrap">{timeAgo(item.createdAt)}</span>
+          <span className="text-[12px] text-gray-400 whitespace-nowrap">{fullDateTime(item.createdAt)}</span>
+        </div>
+        {clickable &&
+          (loading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" />
+          ) : (
+            <Eye className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
+          ))}
       </div>
     </div>
   );
 
   if (to) {
     return (
-      <li className="hover:bg-gray-50 transition-colors">
+      <li className="hover:bg-[#B19CD9]/20 transition-colors">
         <Link to={to}>{body}</Link>
       </li>
     );
   }
-  return <li className="hover:bg-gray-50 transition-colors">{body}</li>;
+  if (clickable) {
+    return (
+      <li className="group hover:bg-[#B19CD9]/20 transition-colors">
+        <button
+          type="button"
+          onClick={() => onOpen(item)}
+          disabled={loading}
+          aria-label="Quick view product"
+          className="w-full text-left disabled:cursor-wait"
+        >
+          {body}
+        </button>
+      </li>
+    );
+  }
+  return <li className="hover:bg-[#B19CD9]/20 transition-colors">{body}</li>;
 };
 
 const Activity = () => {
@@ -226,6 +264,12 @@ const Activity = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  // Quick-view drawer — clicking a cart/wishlist row fetches the live product and
+  // opens a read-only preview of the exact variant. `openingId` marks the row that's
+  // currently loading so it can show a spinner.
+  const [quickView, setQuickView] = useState<QuickViewProduct | null>(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const [openingId, setOpeningId] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "User Activity | Lil Edit";
@@ -297,6 +341,74 @@ const Activity = () => {
       setLoadingMore(false);
     }
   }, [nextCursor, loadingMore, typeParam]);
+
+  // Fetch the live product for a cart/wishlist row and open the quick-view drawer on
+  // the exact variant (matched by sku). Rendered as source "order" with Buy Now hidden,
+  // so it's a pure preview — nothing here touches the admin's own cart or wishlist.
+  const openQuickView = useCallback(async (item: ActivityItem) => {
+    if (!item.productSlug || !item.sku) {
+      toast.error("This activity has no product to preview.");
+      return;
+    }
+    setOpeningId(item.id);
+    try {
+      const url = `${getBackendBaseUrl()}/api/products/detail?slug=${encodeURIComponent(item.productSlug)}&sku=${encodeURIComponent(item.sku)}`;
+      console.log(`[Activity] quick-view fetch  ${url}`);
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(res.status === 404 ? "This product is no longer available." : `Product lookup failed (${res.status})`);
+      }
+      const data = await res.json();
+      const product = data?.product;
+      if (!product) throw new Error("Product not found.");
+
+      // The variant the shopper acted on leads the gallery, then the product's global
+      // gallery. Deduped so repeats collapse (same as OrderDetail's quick-view enrich).
+      // Wishlist rows are often saved at the product level (base_sku) with no colour
+      // picked, so there's no exact variant match — fall back to the first/default
+      // variant so the preview still shows a colour + matching images.
+      const matchColor =
+        (product.colors ?? []).find((c: { sku: string }) => c.sku === item.sku) ??
+        (product.colors ?? [])[0];
+      const variantImages = ((matchColor?.images ?? []) as { url: string }[]).map((im) => im.url);
+      const globalImages = ((product.images ?? []) as { url: string }[]).map((im) => im.url);
+      const images = Array.from(new Set([...variantImages, ...globalImages].filter(Boolean)));
+
+      const outOfStock = matchColor ? !matchColor.isUnlimited && (matchColor.stock ?? 0) <= 0 : false;
+      const size = asStr(item.metadata.size);    // cart rows carry the chosen size…
+      const qty = asNum(item.metadata.quantity);  // …and quantity
+
+      setQuickView({
+        source: "order",       // read-only preview — no cart/wishlist mutations
+        id: item.id,
+        productId: item.sku,   // non-null → keeps the "View Product" CTA enabled
+        sku: item.sku,
+        slug: item.productSlug,
+        categorySlug: product.categorySlug ?? "",
+        title: product.title ?? prettifyProduct(item),
+        price: Number(product.price) || 0,
+        originalPrice: Number(product.originalPrice) || Number(product.price) || 0,
+        image: images[0] ?? "",
+        images,
+        color: matchColor ? { name: matchColor.name ?? "", hex: matchColor.hex ?? "" } : { name: "", hex: "" },
+        badges: composeProductBadges(product),
+        tags: (product.tags ?? []) as string[],
+        brand: product.brand ?? "",
+        availability: outOfStock ? "Out of Stock" : "In Stock",
+        size: size || undefined,
+        quantity: qty || undefined,
+        descriptionPoints: (product.descriptionPoints ?? []) as string[],
+      });
+      setQuickViewOpen(true);
+      console.log(`[Activity] quick-view open  sku=${item.sku}  images=${images.length}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not open product preview.";
+      console.error("[Activity] quick-view failed:", err);
+      toast.error(msg);
+    } finally {
+      setOpeningId(null);
+    }
+  }, []);
 
   // Toggle live updates. Resuming is one-click; pausing opens a typed-confirmation
   // dialog (the admin must type PAUSE) so it can't be turned off by accident.
@@ -454,6 +566,9 @@ const Activity = () => {
               />
               {TYPE_FILTERS.map((f, i) => {
                 const active = filter === f.key;
+                // The 2px right border is ALWAYS reserved on every segment (transparent
+                // when hidden); showDivider only flips its colour. So selecting a segment
+                // changes no box widths — no layout jiggle, and the indicator stays put.
                 const showDivider = i !== TYPE_FILTERS.length - 1 && !active && filter !== TYPE_FILTERS[i + 1]?.key;
                 return (
                   <button
@@ -466,9 +581,9 @@ const Activity = () => {
                       if (didDragRef.current) { didDragRef.current = false; return; }
                       setFilter(f.key);
                     }}
-                    className={`relative z-10 flex-1 whitespace-nowrap rounded px-2 py-2 text-xs sm:text-sm font-semibold transition-colors ${
+                    className={`relative z-10 flex-1 whitespace-nowrap rounded border-r-2 px-2 py-2 text-xs sm:text-sm font-semibold transition-colors ${
                       active ? "text-white" : "text-gray-600 hover:text-gray-900"
-                    } ${showDivider ? "border-r-2 border-gray-300" : ""}`}
+                    } ${showDivider ? "border-gray-300" : "border-transparent"}`}
                   >
                     {f.label}
                   </button>
@@ -536,7 +651,12 @@ const Activity = () => {
               <>
                 <ul className="divide-y divide-gray-400">
                   {items.map((item) => (
-                    <ActivityRow key={item.id} item={item} />
+                    <ActivityRow
+                      key={item.id}
+                      item={item}
+                      onOpen={openQuickView}
+                      loading={openingId === item.id}
+                    />
                   ))}
                 </ul>
                 {nextCursor && (
@@ -603,6 +723,15 @@ const Activity = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Read-only product preview for a clicked cart/wishlist row. Buy Now hidden —
+          this is an admin looking at a shopper's action, not their own cart. */}
+      <QuickViewDrawer
+        open={quickViewOpen}
+        product={quickView}
+        onClose={() => setQuickViewOpen(false)}
+        hideBuyNow
+      />
     </div>
   );
 };

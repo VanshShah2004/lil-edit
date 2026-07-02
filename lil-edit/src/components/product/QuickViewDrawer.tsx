@@ -180,6 +180,10 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
       ? (product.inStock ?? true)
       : !product.availability?.toLowerCase().includes("out");
 
+  // In preview contexts (hideBuyNow) with no "Move to Cart", "View Product" is the
+  // lone CTA — render it compact/centered instead of stretched full-width.
+  const soleViewButton = hideBuyNow && product.source !== "wishlist";
+
   const handleViewFull = () => { if (productUnavailable) return; onClose(); navigate(pdpUrl); };
   // Direct "Buy Now": straight to checkout with just this item (cart untouched). The
   // backend re-prices from {slug, sku, size, quantity}; the rest is display-only.
@@ -378,7 +382,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
         variant="default"
         onClick={handleViewFull}
         disabled={productUnavailable}
-        className="flex-1 h-11 rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 bg-primary hover:bg-primary/90 text-primary-foreground"
+        className={`h-11 rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 bg-primary hover:bg-primary/90 text-primary-foreground ${soleViewButton ? "px-10" : "flex-1"}`}
       >
         <ExternalLink size={15} /> {productUnavailable ? "Product Unavailable" : "View Product"}
       </Button>
@@ -411,7 +415,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
         variant="default"
         onClick={handleViewFull}
         disabled={productUnavailable}
-        className="flex-1 h-11 rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 bg-primary hover:bg-primary/90 text-primary-foreground"
+        className={`h-11 rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 bg-primary hover:bg-primary/90 text-primary-foreground ${soleViewButton ? "min-w-[20rem]" : "flex-1"}`}
       >
         <ExternalLink size={15} /> {productUnavailable ? "Product Unavailable" : "View Product"}
       </Button>
