@@ -237,8 +237,9 @@ async function priceOrder(
 
     // Cart mode: a line the current stock can't fully cover (qty > available) must NOT
     // dead-end the whole checkout — the customer is usually buying other, in-stock items
-    // in the same bag. Drop just this line and keep pricing the rest (the authoritative
-    // lock+decrement in place_order at /verify is still the real oversell guard). A direct
+    // in the same bag. Drop just this line and keep pricing the rest. This pre-payment
+    // exclusion (plus the findOversold pre-check below) IS the oversell guard: once the
+    // customer has paid, place_order always honors the order (stock clamps at 0). A direct
     // buy keeps the line so the route's findOversold returns a clear "out of stock" for
     // the single item the customer explicitly chose (nothing else to fall back on).
     const isOversold = !isUnlimited && stock !== null && stock < qty;
@@ -484,35 +485,6 @@ async function recoverSnapshot(razorpayOrderId: string, capturedPaise: number, l
   };
 }
 
-// Durable record of a captured payment that could NOT be placed (oversold after
-// payment, or unrecoverable snapshot) — a refund is owed, and it must never live only
-// in server logs. Best-effort: a missing table (pre-migration 20260709) or insert
-// failure is logged but never changes the response. The unique index on payment_id
-// makes the /verify + webhook double-hit write exactly one row.
-async function recordFailedPlacement(
-  args: { razorpayOrderId: string; paymentId: string; userId: string | null; amountPaise: number; reason: string; source: "verify" | "webhook" },
-  log: OpLogger,
-): Promise<void> {
-  try {
-    const { error } = await db().from("failed_placements").insert({
-      razorpay_order_id: args.razorpayOrderId,
-      payment_id: args.paymentId,
-      user_id: args.userId,
-      amount_paise: args.amountPaise,
-      reason: args.reason,
-      source: args.source,
-    });
-    if (error) {
-      if (error.code === "23505") { log.step(`failed placement already recorded  payment=${args.paymentId}`); return; }
-      log.warn(`could not record failed placement (table missing?): ${error.message}`);
-    } else {
-      log.step(`failed placement RECORDED  payment=${args.paymentId}  reason=${args.reason}  amount=${args.amountPaise}p — refund owed`);
-    }
-  } catch (e) {
-    log.warn(`failed placement record threw (non-fatal): ${e instanceof Error ? e.message : String(e)}`);
-  }
-}
-
 // Idempotency: has this Razorpay payment already produced an order? Lets /verify and
 // the webhook short-circuit a retry WITHOUT re-pricing (the snapshot is deleted on the
 // first successful placement, and a first-order discount can't be re-derived once the
@@ -644,8 +616,8 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
     // (and before we reserve the coupon below). In cart mode this is effectively a no-op:
     // priceOrder already dropped oversold lines and kept the rest, so priced.items is all
     // fulfillable. It still fires for a DIRECT buy, where the one oversold item the customer
-    // chose has no in-stock siblings to fall back on. The authoritative lock+decrement is
-    // still in the RPC at /verify.
+    // chose has no in-stock siblings to fall back on. This is the LAST stock gate: after
+    // payment, place_order always honors the paid order (stock clamps at 0, never rejects).
     const oversold = findOversold(priced.items);
     if (oversold) {
       log.warn(`pre-check oversold  sku=${oversold.sku}  stock=${oversold.stock}  qty=${oversold.quantity}`).end("CHECKOUT INITIATE");
@@ -803,8 +775,7 @@ router.post("/verify", requireAuth, mutationLimiter, async (req: Request, res: R
     // 3) Recover the priced snapshot (Redis, else re-price from notes with an assert).
     const snap = await recoverSnapshot(razorpay_order_id, capturedPaise, log);
     if (!snap) {
-      await recordFailedPlacement({ razorpayOrderId: razorpay_order_id, paymentId: razorpay_payment_id, userId, amountPaise: capturedPaise, reason: "snapshot_unrecoverable", source: "verify" }, log);
-      res.status(409).json({ error: "Your cart changed after payment — it will be refunded. Please contact support." });
+      res.status(409).json({ error: "Your payment was received but your order could not be placed. Please contact support with your payment details." });
       log.error("could not recover a safe snapshot — not placing").end("CHECKOUT VERIFY");
       return;
     }
@@ -818,11 +789,13 @@ router.post("/verify", requireAuth, mutationLimiter, async (req: Request, res: R
     // 4) Place the order atomically (idempotent on razorpay_payment_id).
     const result = await callPlaceOrder(snap, razorpay_payment_id, log);
 
-    if (result.result.startsWith("oversold")) {
-      const sku = result.result.split(":")[1] ?? "";
-      await recordFailedPlacement({ razorpayOrderId: razorpay_order_id, paymentId: razorpay_payment_id, userId, amountPaise: capturedPaise, reason: result.result, source: "verify" }, log);
-      log.error(`PAID BUT OVERSOLD  sku=${sku}  payment=${razorpay_payment_id} — flag for refund`).end("CHECKOUT VERIFY");
-      res.status(409).json({ error: "An item sold out during payment — it will be refunded.", sku });
+    // Since migration 20260709, place_order ALWAYS honors a captured payment (stock
+    // clamps at 0; it never returns 'oversold'). Any other result here means the
+    // migration hasn't been applied or something unexpected — fail loud, don't hand
+    // the frontend a null order id.
+    if (result.result !== "created" && result.result !== "exists") {
+      log.error(`unexpected place_order result "${result.result}"  payment=${razorpay_payment_id} — is migration 20260709 applied?`).end("CHECKOUT VERIFY");
+      res.status(500).json({ error: "We couldn't confirm your payment right now. Please contact support.", ref: String(log.sr) });
       return;
     }
 
@@ -1050,18 +1023,18 @@ export const webhookHandler: RequestHandler = async (req: Request, res: Response
     const snap = await recoverSnapshot(razorpayOrderId, capturedPaise, log);
     if (!snap) {
       // Can't safely place (drifted/unrecoverable). 200 so Razorpay stops; the paid
-      // payment is durably recorded in failed_placements for the refund.
-      await recordFailedPlacement({ razorpayOrderId, paymentId, userId: null, amountPaise: capturedPaise, reason: "snapshot_unrecoverable", source: "webhook" }, log);
+      // payment is surfaced for manual handling via logs.
       log.error("webhook could not recover a safe snapshot — manual review").end("CHECKOUT WEBHOOK");
       res.status(200).json({ ok: true });
       return;
     }
 
     const result = await callPlaceOrder(snap, paymentId, log);
-    if (result.result.startsWith("oversold")) {
-      await recordFailedPlacement({ razorpayOrderId, paymentId, userId: snap.userId, amountPaise: capturedPaise, reason: result.result, source: "webhook" }, log);
-      log.error(`webhook PAID BUT OVERSOLD  payment=${paymentId} — flag for refund`).end("CHECKOUT WEBHOOK");
-      res.status(200).json({ ok: true });
+    // Post-20260709 place_order always honors a captured payment ('created'/'exists').
+    // Anything else means the migration isn't applied — 500 so Razorpay retries.
+    if (result.result !== "created" && result.result !== "exists") {
+      log.error(`webhook unexpected place_order result "${result.result}"  payment=${paymentId} — is migration 20260709 applied?`).end("CHECKOUT WEBHOOK");
+      res.status(500).json({ error: "processing failed" });
       return;
     }
 
