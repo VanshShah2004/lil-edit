@@ -459,6 +459,16 @@ export default function Checkout() {
       const init = await initiateCheckout(payload);
       console.log(`[Checkout] initiated  rzpOrder=${init.razorpayOrderId}  amount=${init.amount}p  total=₹${init.pricing.total}  → opening Razorpay modal`);
 
+      // The backend drops any cart line it can no longer fully stock and prices only the
+      // rest (so one out-of-stock item never blocks the whole order). Tell the customer why
+      // the amount they're about to pay is lower than the summary — the Razorpay modal below
+      // shows the authoritative, reduced amount.
+      if (mode === "cart" && init.pricing.items.length < summaryLines.length) {
+        const dropped = summaryLines.length - init.pricing.items.length;
+        console.warn(`[Checkout] ${dropped} line(s) excluded as out of stock — charging for ${init.pricing.items.length} of ${summaryLines.length}`);
+        toast.warning(`${dropped} item${dropped > 1 ? "s are" : " is"} out of stock and won't be charged. Paying for the rest.`);
+      }
+
       const rzp = new window.Razorpay({
         key: init.keyId,
         amount: init.amount,

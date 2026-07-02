@@ -158,7 +158,7 @@ async function priceOrder(
   userId: string,
   source: Source,
   log: OpLogger,
-): Promise<{ items: PricedLine[]; subtotal: number; shippingFee: number; itemCount: number; unavailable: UnavailableLine[] }> {
+): Promise<{ items: PricedLine[]; subtotal: number; shippingFee: number; itemCount: number; unavailable: UnavailableLine[]; oversoldExcluded: number }> {
   let rawLines: RawLine[];
   if (source.mode === "cart") {
     const t0Cart = performance.now();
@@ -186,7 +186,7 @@ async function priceOrder(
   }
   log.step(`pricing source=${source.mode}  rawLines=${rawLines.length}`);
 
-  if (rawLines.length === 0) return { items: [], subtotal: 0, shippingFee: 0, itemCount: 0, unavailable: [] };
+  if (rawLines.length === 0) return { items: [], subtotal: 0, shippingFee: 0, itemCount: 0, unavailable: [], oversoldExcluded: 0 };
 
   const slugs = [...new Set(rawLines.map((l) => l.product_slug))];
   const t0Prod = performance.now();
@@ -213,6 +213,7 @@ async function priceOrder(
 
   const items: PricedLine[] = [];
   const unavailable: UnavailableLine[] = [];
+  let oversoldExcluded = 0;
   for (const line of rawLines) {
     const product = skuToProduct.get(line.sku);
     if (!product) {
@@ -233,6 +234,19 @@ async function priceOrder(
     const unitPrice = Number(product.price) || 0;
     const originalPrice = Number(product.original_price ?? product.price) || unitPrice;
     const qty = Math.max(1, Math.floor(Number(line.quantity) || 1));
+
+    // Cart mode: a line the current stock can't fully cover (qty > available) must NOT
+    // dead-end the whole checkout — the customer is usually buying other, in-stock items
+    // in the same bag. Drop just this line and keep pricing the rest (the authoritative
+    // lock+decrement in place_order at /verify is still the real oversell guard). A direct
+    // buy keeps the line so the route's findOversold returns a clear "out of stock" for
+    // the single item the customer explicitly chose (nothing else to fall back on).
+    const isOversold = !isUnlimited && stock !== null && stock < qty;
+    if (isOversold && source.mode === "cart") {
+      oversoldExcluded += 1;
+      log.warn(`excluding oversold cart line — stock ${stock} < qty ${qty}  sku=${line.sku}  "${(product.title as string ?? "").slice(0, 30)}"`);
+      continue;
+    }
 
     items.push({
       product_id: product.id,
@@ -257,8 +271,8 @@ async function priceOrder(
   const subtotal = items.reduce((s, it) => s + it.line_total, 0);
   const itemCount = items.reduce((s, it) => s + it.quantity, 0);
   const shippingFee = computeShipping(subtotal);
-  log.step(`priced: ${items.length} line(s)  units=${itemCount}  subtotal=₹${subtotal}  shipping=₹${shippingFee}  unavailable=${unavailable.length}`);
-  return { items, subtotal, shippingFee, itemCount, unavailable };
+  log.step(`priced: ${items.length} line(s)  units=${itemCount}  subtotal=₹${subtotal}  shipping=₹${shippingFee}  unavailable=${unavailable.length}  oversoldExcluded=${oversoldExcluded}`);
+  return { items, subtotal, shippingFee, itemCount, unavailable, oversoldExcluded };
 }
 
 // First line whose stock can't cover its quantity (null = unlimited → always fine).
@@ -584,14 +598,25 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
     }
 
     if (priced.items.length === 0) {
-      log.warn("nothing to checkout (empty)").end("CHECKOUT INITIATE");
-      res.status(400).json({ error: mode === "cart" ? "Your cart is empty." : "Item unavailable." });
+      // Distinguish "nothing selected / empty cart" from "everything selected went out of
+      // stock" so the customer gets an accurate message (the latter is not an empty cart).
+      const emptyMsg =
+        mode === "cart"
+          ? priced.oversoldExcluded > 0
+            ? "The selected items are out of stock right now."
+            : "Your cart is empty."
+          : "Item unavailable.";
+      log.warn(`nothing to checkout (empty)  oversoldExcluded=${priced.oversoldExcluded}`).end("CHECKOUT INITIATE");
+      res.status(400).json({ error: emptyMsg });
       return;
     }
 
-    // Early (non-locking) stock pre-check — catch the common OOS case before the
-    // customer pays (and before we reserve the coupon below). The authoritative
-    // lock+decrement is still in the RPC at /verify.
+    // Early (non-locking) stock pre-check — catch the OOS case before the customer pays
+    // (and before we reserve the coupon below). In cart mode this is effectively a no-op:
+    // priceOrder already dropped oversold lines and kept the rest, so priced.items is all
+    // fulfillable. It still fires for a DIRECT buy, where the one oversold item the customer
+    // chose has no in-stock siblings to fall back on. The authoritative lock+decrement is
+    // still in the RPC at /verify.
     const oversold = findOversold(priced.items);
     if (oversold) {
       log.warn(`pre-check oversold  sku=${oversold.sku}  stock=${oversold.stock}  qty=${oversold.quantity}`).end("CHECKOUT INITIATE");
