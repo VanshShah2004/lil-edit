@@ -605,15 +605,15 @@ const AdminOrderDetailPage = () => {
     <div className="min-h-screen bg-white text-[#1a1a1a] flex flex-col font-sans">
       {user ? <UserNavbar /> : <Navbar />}
 
-      <div className="relative pt-[130px] md:pt-[110px] bg-white pb-2">
-        <div className="px-3 sm:px-6 lg:px-12">
+      <div className="relative pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)] bg-white pb-2">
+        <div className="page-container px-4 sm:px-6 pt-3 pb-2 mt-1.5">
           <div className="max-w-[2200px] mx-auto">
             <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
               <Link to="/" className="hover:underline">Home</Link>
               <ChevronRight className="w-4 h-4" />
-              <Link to="/admin/orders" className="hover:underline">Orders</Link>
+              <Link to="/admin/orders" className="hover:underline">Order</Link>
               <ChevronRight className="w-4 h-4" />
-              <span className="text-gray-800 font-medium font-mono">{order?.orderNumber ?? "Order"}</span>
+              <span className="text-gray-800 font-medium">{order?.orderNumber ?? "Order"}</span>
             </div>
             <div className="flex flex-wrap items-center gap-3 pb-6">
               <Link to="/admin/orders" className="inline-flex items-center gap-1.5 text-base font-medium text-gray-600 hover:text-gray-900">
@@ -628,14 +628,14 @@ const AdminOrderDetailPage = () => {
                   onClick={handleResendReceipt}
                   disabled={resendingReceipt}
                   title="Email the order-confirmation receipt to the customer"
-                  className="inline-flex items-center gap-2 text-base font-semibold text-gray-700 bg-white border border-foreground/50 rounded-md px-4 py-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-foreground/50 bg-[#B19CD9] px-4 text-base font-semibold leading-none text-black transition-colors hover:bg-[#9d86c9] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Mail className="w-4 h-4" /> {resendingReceipt ? "Sending…" : "Send receipt"}
                 </button>
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
-                  className="inline-flex items-center gap-2 text-base font-semibold text-white bg-gray-900 rounded-md px-4 py-2 hover:bg-gray-800 transition-colors"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-gray-900 bg-gray-900 px-4 text-base font-semibold leading-none text-white transition-colors hover:bg-gray-800"
                 >
                   <Download className="w-4 h-4" /> Download PDF
                 </button>

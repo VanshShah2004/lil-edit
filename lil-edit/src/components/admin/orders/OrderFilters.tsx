@@ -45,7 +45,7 @@ interface OrderFiltersProps {
 }
 
 const baseTriggerClass =
-  "h-10 w-full sm:w-auto gap-1.5 rounded-md px-3 text-xs font-medium focus:ring-0 transition-all";
+  "h-10 w-full min-w-0 justify-center sm:justify-between sm:w-auto gap-0.5 sm:gap-1.5 rounded-md px-1 sm:px-3 text-[11px] sm:text-xs font-medium focus:ring-0 transition-all [&>span]:whitespace-nowrap [&>svg]:h-3 [&>svg]:w-3 sm:[&>svg]:h-4 sm:[&>svg]:w-4";
 
 const baseTriggerStyle = { borderWidth: "1.25px", borderColor: "#9ca3af", focusBorderColor: "#111827" };
 
@@ -97,7 +97,7 @@ export function OrderFilters({
         />
       </div>
 
-      <div className="grid grid-cols-3 sm:flex gap-2 sm:gap-3">
+      <div className="grid grid-cols-3 items-center gap-1 sm:flex sm:gap-3">
         <Select value={status} onValueChange={(v) => onStatusChange(v as StatusFilter)}>
           <SelectTrigger className={getStatusTriggerClass(statusIsActive)} style={getStatusTriggerStyle(statusIsActive)} aria-label="Filter by status">
             <SelectValue />
