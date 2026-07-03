@@ -49,24 +49,28 @@ export interface Crumb {
   to?: string;
 }
 
-// Shared breadcrumb. Rendered at the very top of every analytics page so the
-// header height is identical page-to-page (the space is always reserved). The
-// last crumb is the current page (not a link).
+// Shared breadcrumb — styled to match the storefront Cart page's breadcrumb
+// (text-base, gray-500 links with hover underline, w-4 chevrons, current page in
+// bold gray-800). Rendered at the top of every analytics page so the header
+// height is identical page-to-page. The last crumb is the current page (not a link).
 export function Breadcrumb({ trail }: { trail: Crumb[] }) {
   return (
-    <nav aria-label="Breadcrumb" className="mb-3 flex h-5 items-center gap-1.5 text-xs">
-      {trail.map((crumb, i) => (
-        <Fragment key={`${crumb.label}-${i}`}>
-          {i > 0 && <ChevronRight className="h-3 w-3 shrink-0 text-gray-300" />}
-          {crumb.to && i < trail.length - 1 ? (
-            <Link to={crumb.to} className="text-gray-400 transition-colors hover:text-gray-700">
-              {crumb.label}
-            </Link>
-          ) : (
-            <span className={i === trail.length - 1 ? "font-semibold text-gray-600" : "text-gray-400"}>{crumb.label}</span>
-          )}
-        </Fragment>
-      ))}
+    <nav aria-label="Breadcrumb" className="mb-3 flex flex-wrap items-center gap-1 text-base text-gray-500">
+      {trail.map((crumb, i) => {
+        const isLast = i === trail.length - 1;
+        return (
+          <Fragment key={`${crumb.label}-${i}`}>
+            {i > 0 && <ChevronRight className="h-4 w-4 shrink-0" />}
+            {crumb.to && !isLast ? (
+              <Link to={crumb.to} className="hover:underline">
+                {crumb.label}
+              </Link>
+            ) : (
+              <span className={isLast ? "font-medium text-gray-800" : ""}>{crumb.label}</span>
+            )}
+          </Fragment>
+        );
+      })}
     </nav>
   );
 }
@@ -98,6 +102,15 @@ export function AnalyticsLayout({
       <UserNavbar />
 
       <div className="mx-auto max-w-screen-2xl px-4 pb-16 pt-[120px] md:px-8 md:pt-[132px]">
+        {/* Breadcrumb — always present so header height is uniform across pages. */}
+        <Breadcrumb
+          trail={[
+            { label: "Home", to: "/" },
+            { label: "Analytics", to: `/admin/analytics${search}` },
+            { label: title },
+          ]}
+        />
+
         {/* Section heading */}
         <div className="mb-5 flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: "rgba(15,118,110,0.1)" }}>

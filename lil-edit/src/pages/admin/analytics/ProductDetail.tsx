@@ -10,7 +10,7 @@ import { DataTable, type Column } from "@/components/analytics/DataTable";
 import { InsightGrid } from "@/components/analytics/InsightCard";
 import { productInsights } from "@/components/analytics/insights";
 import { ErrorState, KpiGridSkeleton, isMigrationError } from "@/components/analytics/states";
-import { KpiGrid } from "@/components/analytics/AnalyticsLayout";
+import { Breadcrumb, KpiGrid } from "@/components/analytics/AnalyticsLayout";
 import { inr, num, pct, prettySlug } from "@/components/analytics/format";
 import { useAnalyticsParams, useProductAnalytics, type ProductDetailPayload } from "@/lib/analyticsApi";
 import { cn } from "@/lib/utils";
@@ -80,13 +80,20 @@ export default function ProductAnalyticsDetail() {
     <div className="min-h-screen bg-[#F7F7F5]">
       <UserNavbar />
       <div className="mx-auto max-w-screen-2xl px-4 pb-16 pt-[120px] md:px-8 md:pt-[132px]">
-        {/* Back + breadcrumb */}
-        <div className="mb-4 flex items-center gap-2 text-sm">
-          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-gray-500 hover:text-gray-800">
-            <ArrowLeft className="h-4 w-4" /> Back
+        {/* Breadcrumb (matches every analytics page) + Back — this page is reached
+            from several tables, so Back returns to the real origin. */}
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <Breadcrumb
+            trail={[
+              { label: "Home", to: "/" },
+              { label: "Analytics", to: `/admin/analytics${location.search}` },
+              { label: "Products", to: `/admin/analytics/products${location.search}` },
+              { label: d?.product.title || prettySlug(slug) },
+            ]}
+          />
+          <button onClick={() => navigate(-1)} className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-800">
+            <ArrowLeft className="h-3.5 w-3.5" /> Back
           </button>
-          <span className="text-gray-300">/</span>
-          <Link to={{ pathname: "/admin/analytics/products", search: location.search }} className="text-gray-500 hover:text-gray-800">Products</Link>
         </div>
 
         {query.isError ? (

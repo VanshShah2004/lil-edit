@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { PRESETS, type AnalyticsParams, type Bucket, useAnalyticsParams } from "@/lib/analyticsApi";
 import { shortDate } from "./format";
+import { SegmentedSlider } from "./SegmentedSlider";
 
 interface FilterBarProps {
   params: AnalyticsParams;
@@ -73,7 +74,7 @@ export function FilterBar({
             {rangeLabel}
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-64 p-2">
+        <PopoverContent align="start" collisionPadding={12} className="w-64 max-w-[calc(100vw-1.5rem)] p-2">
           <div className="space-y-0.5">
             {PRESETS.map((p) => (
               <button
@@ -95,22 +96,31 @@ export function FilterBar({
           </div>
           <div className="mt-2 border-t border-gray-100 pt-2">
             <p className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Custom range</p>
-            <div className="flex items-center gap-1.5 px-1">
-              <input
-                type="date"
-                value={customFrom}
-                max={customTo}
-                onChange={(e) => setCustomFrom(e.target.value)}
-                className="w-full rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 outline-none focus:border-gray-300"
-              />
-              <span className="text-gray-300">→</span>
-              <input
-                type="date"
-                value={customTo}
-                min={customFrom}
-                onChange={(e) => setCustomTo(e.target.value)}
-                className="w-full rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 outline-none focus:border-gray-300"
-              />
+            {/* Stacked, not side-by-side: a native date input has a browser-enforced
+                minimum width that w-full can't shrink below, so two of them in one
+                row overflow the popover on both desktop and mobile. Stacking removes
+                that collision outright. */}
+            <div className="flex flex-col gap-2 px-1">
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-medium text-gray-400">From</span>
+                <input
+                  type="date"
+                  value={customFrom}
+                  max={customTo}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className="w-full min-w-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 outline-none focus:border-gray-300"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-medium text-gray-400">To</span>
+                <input
+                  type="date"
+                  value={customTo}
+                  min={customFrom}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="w-full min-w-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 outline-none focus:border-gray-300"
+                />
+              </label>
             </div>
             <button
               type="button"
@@ -128,23 +138,9 @@ export function FilterBar({
         vs previous period
       </span>
 
-      {/* Bucket */}
+      {/* Bucket — drag across the segments or tap one */}
       {showBucket && (
-        <div className="ml-auto flex items-center rounded-lg border border-gray-200 bg-white p-0.5">
-          {BUCKETS.map((b) => (
-            <button
-              key={b.key}
-              type="button"
-              onClick={() => setBucket(b.key)}
-              className={cn(
-                "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
-                params.bucket === b.key ? "bg-gray-900 text-white" : "text-gray-500 hover:text-gray-800"
-              )}
-            >
-              {b.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedSlider className="ml-auto" options={BUCKETS} value={params.bucket} onChange={setBucket} accent="#111827" />
       )}
 
       {/* Contextual dimension filters */}
