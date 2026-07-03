@@ -364,7 +364,7 @@ const UserNavbar = () => {
           </div>
         </div>
 
-        <nav className="flex flex-col flex-1 py-2 overflow-y-hidden md:overflow-y-auto">
+        <nav className="flex flex-col flex-1 py-2 overflow-y-auto">
           <SideSection label="Front Row">
             <SideLink to="/dashboard" icon={Home} label="Home" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
             <SideLink to="/collections" icon={Shirt} label="Collections" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
@@ -378,14 +378,10 @@ const UserNavbar = () => {
             <SideLink to="/reviews" icon={MessageSquare} label="My Reviews" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
           </SideSection>
 
-          {/* Backstage keeps only the pages AdminSubNav doesn't cover (User Activity,
-              Admin Activity). Everything else (Admin Settings, General Settings,
-              Manage Products, Manage Orders, The Spotlight, Analytics) is one click
-              away via AdminSubNav's own dropdown once inside any admin page — listing
-              them here too was pure duplication. Admin Settings itself stays reachable
-              from the profile dropdown, so this never strands navigation. */}
           {isAdmin && (
             <SideSection label="Backstage">
+              <SideLink to="/admin/analytics" icon={BarChart3} label="Analytics" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+              <SideLink to="/admin/settings" icon={ShieldCheck} label="Admin Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               <SideLink to="/admin/activity" icon={Activity} label="User Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               <SideLink to="/admin/audit-log" icon={ScrollText} label="Admin Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
             </SideSection>

@@ -33,6 +33,12 @@ interface AdminSettingsGroup {
 
 const groups: AdminSettingsGroup[] = [
   {
+    title: "Platform",
+    tiles: [
+      { to: "/admin/general-settings", label: "General Settings", description: "Manage admin access and coupons", icon: Settings },
+    ],
+  },
+  {
     title: "Product Management",
     tiles: [
       { to: "/admin/add-product", label: "Add Product", description: "Create a new listing", icon: Plus },
@@ -49,12 +55,6 @@ const groups: AdminSettingsGroup[] = [
     title: "Content Management",
     tiles: [
       { to: "/admin/spotlight", label: "The Spotlight", description: "Curate storefront sections and tiles", icon: LayoutGrid },
-    ],
-  },
-  {
-    title: "Platform",
-    tiles: [
-      { to: "/admin/general-settings", label: "General Settings", description: "Manage admin access and coupons", icon: Settings },
     ],
   },
   {
@@ -76,7 +76,7 @@ const AdminSettings = () => {
     <div className="min-h-screen bg-white text-[#1a1a1a] flex flex-col font-sans">
       <UserNavbar />
 
-      <div className="relative pt-[160px] md:pt-[128px] bg-white pb-8">
+      <div className="relative pt-[160px] md:pt-[128px] bg-white">
         <AdminSubNav />
         <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">
           <div className="space-y-1 mb-8">
