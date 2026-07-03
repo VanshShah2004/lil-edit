@@ -317,7 +317,11 @@ const ActionRow = ({
   const { Icon, color, bg } = visualFor(item.action);
   const chips = chipsFor(item);
   const to = linkFor(item);
-  const who = adminName(item.admin);
+  // System-written rows (e.g. the scheduled confirmed→processing auto-transition) carry
+  // admin_id=NULL + metadata.system=true. Attribute them to "System" rather than letting
+  // the null admin fall through to adminName()'s "A removed admin".
+  const system = item.metadata?.system === true;
+  const who = system ? "System" : adminName(item.admin);
   const { text: summaryText, sku } = splitSummary(item);
   // Launched / draft-saved rows open a read-only product quick view.
   const clickable = PRODUCT_ACTIONS.has(item.action) && !!item.targetId;
@@ -353,7 +357,7 @@ const ActionRow = ({
         )}
         <p className="text-[13px] text-gray-400 mt-0.5 truncate">
           by <span className="font-semibold text-gray-500">{who}</span>
-          {item.admin?.email ? ` · ${item.admin.email}` : ""}
+          {system ? " · automatic" : item.admin?.email ? ` · ${item.admin.email}` : ""}
         </p>
         {chips.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1.5">
