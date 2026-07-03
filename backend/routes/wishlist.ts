@@ -6,6 +6,7 @@ import { createLog, fms } from "../lib/logger.js";
 import { redisGet, redisSet, redisDel, redisKey, WISHLIST_TTL_S } from "../lib/redis.js";
 import { fetchProductsBySkus } from "../lib/productsBySku.js";
 import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
+import { logActivity, logActivityBatch } from "../lib/activityLog.js";
 
 const router = Router();
 const db = () => supabaseAdmin ?? supabaseAnon;
@@ -291,6 +292,16 @@ router.post("/move-to-cart/:id", requireAuth, async (req: Request, res: Response
   log.step(`user=${userId}  wishlist_id=${id}`);
 
   try {
+    // Snapshot the row's product identity BEFORE the RPC deletes it — the analytics
+    // log below needs slug/sku, and the RPC only returns an action string. Best-effort:
+    // a vanished row just means the RPC will answer 'not_found'.
+    const { data: moving } = await db()
+      .from("wishlist_items")
+      .select("product_slug, sku")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .maybeSingle();
+
     // Atomic RPC: verifies ownership, deletes from wishlist, upserts into cart —
     // all in one transaction.
     const t0Move = performance.now();
@@ -306,6 +317,20 @@ router.post("/move-to-cart/:id", requireAuth, async (req: Request, res: Response
       log.warn(`wishlist item not found or unauthorized  id=${id}`).end("WISHLIST MOVE TO CART");
       res.status(404).json({ error: "Wishlist item not found" });
       return;
+    }
+
+    // Analytics: the RPC's cart INSERT is caught by the cart_add trigger, but its
+    // increment path (item already in cart) is invisible to it — log that here.
+    // The wishlist delete is deliberately NOT a wishlist_remove: a move is a
+    // conversion, not an abandonment. Fire-and-forget.
+    if (action === "incremented" && moving) {
+      void logActivity({
+        type: "cart_add",
+        userId,
+        productSlug: moving.product_slug as string,
+        sku: moving.sku as string,
+        metadata: { size: "", quantity: 1, via: "wishlist_move" },
+      });
     }
 
     // Invalidate both caches — wishlist shrank, cart grew
@@ -392,6 +417,18 @@ router.post("/move-all-to-cart", requireAuth, async (req: Request, res: Response
         continue;
       }
 
+      // Analytics: same contract as the single move — inserts are trigger-logged,
+      // increments are logged here; the wishlist delete is a conversion, not a remove.
+      if (action === "incremented") {
+        void logActivity({
+          type: "cart_add",
+          userId,
+          productSlug: row.product_slug as string,
+          sku: row.sku as string,
+          metadata: { size: "", quantity: 1, via: "wishlist_move" },
+        });
+      }
+
       moved++;
     }
 
@@ -414,11 +451,13 @@ router.delete("/clear", requireAuth, async (req: Request, res: Response) => {
 
   try {
     const t0Write = performance.now();
-    const { error } = await db()
+    // RETURNING the rows so analytics can log one wishlist_remove per cleared item.
+    const { data: removed, error } = await db()
       .from("wishlist_items")
       .delete()
-      .eq("user_id", userId);
-    log.step(`DB delete all: ${fms(performance.now() - t0Write)}`);
+      .eq("user_id", userId)
+      .select("product_slug, sku");
+    log.step(`DB delete all: ${fms(performance.now() - t0Write)}  rows=${removed?.length ?? 0}`);
 
     if (error) {
       log.error(`clear failed  code=${error.code}  msg=${error.message}`, error).end("WISHLIST CLEAR");
@@ -427,6 +466,21 @@ router.delete("/clear", requireAuth, async (req: Request, res: Response) => {
     }
 
     await redisDel(log, wishlistKey(userId));
+
+    // Analytics: a clear IS a deliberate mass-remove (unlike the cart's clear,
+    // which only happens post-checkout inside place_order). Fire-and-forget.
+    if (removed && removed.length > 0) {
+      void logActivityBatch(
+        removed.map((r) => ({
+          userId,
+          type: "wishlist_remove" as const,
+          productSlug: r.product_slug as string,
+          sku: r.sku as string,
+          metadata: { via: "clear" },
+        }))
+      );
+    }
+
     log.success(`wishlist cleared  total=${fms(log.elapsed())}`).end("WISHLIST CLEAR");
     res.json({ ok: true });
   } catch (err) {
@@ -449,7 +503,7 @@ router.delete("/:id", requireAuth, async (req: Request, res: Response) => {
       .delete()
       .eq("id", id)
       .eq("user_id", userId)
-      .select("id")
+      .select("id, product_slug, sku")
       .maybeSingle();
     log.step(`DB delete item: ${fms(performance.now() - t0Write)}`);
 
@@ -465,6 +519,17 @@ router.delete("/:id", requireAuth, async (req: Request, res: Response) => {
     }
 
     await redisDel(log, wishlistKey(userId));
+
+    // Analytics: an explicit un-heart. Moves to cart never reach this handler,
+    // so removes here are genuine changes of mind. Fire-and-forget.
+    void logActivity({
+      type: "wishlist_remove",
+      userId,
+      productSlug: data.product_slug as string,
+      sku: data.sku as string,
+      metadata: { via: "remove" },
+    });
+
     log.success(`removed  id=${id}  total=${fms(log.elapsed())}`).end("WISHLIST REMOVE");
     res.json({ ok: true });
   } catch (err) {

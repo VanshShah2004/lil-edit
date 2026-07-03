@@ -19,6 +19,7 @@ import { getBackendBaseUrl } from "@/lib/backend";
 import { buildPdpPath } from "@/lib/pdpUrl";
 import { getOptimizedUrlForVariant } from "@/lib/productImage";
 import { PdpClientPerf } from "@/lib/pdpClientPerf";
+import { trackProductView } from "@/lib/track";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { BRAND } from "@/components/PageTitle";
 
@@ -243,6 +244,17 @@ export default function ProductDetail() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product]);
+
+  // ── Analytics: one view beacon per (product, variant) visit ────────────────
+  // Fires once the product actually renders (a 404 slug never logs a view), and
+  // again on a colour switch (the URL sku changes — per-variant views are real).
+  // `hasProduct` (boolean) instead of `product` (object) keeps background SWR
+  // refreshes from re-firing; track.ts also dedupes double-mounts.
+  const hasProduct = !!product;
+  useEffect(() => {
+    if (!productSlug || !skuId || !hasProduct) return;
+    trackProductView(productSlug, skuId, categoryParam);
+  }, [productSlug, skuId, hasProduct, categoryParam]);
 
   // ⚡ CRITICAL PATH: Fetch product details ONLY (non-blocking)
   // Uses stale-while-revalidate pattern:

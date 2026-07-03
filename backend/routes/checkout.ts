@@ -17,6 +17,7 @@ import { verifyReviewsForOrder } from "../lib/reviewsVerification.js";
 import { sendReceiptIfMissing } from "../lib/orderReceipt.js";
 import { validateCoupon, type CouponRow } from "../lib/coupons.js";
 import { fetchProductsBySkus } from "../lib/productsBySku.js";
+import { logActivity } from "../lib/activityLog.js";
 import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
 
 // ─── Razorpay-prepaid checkout: cart → order placement ──────────────────────────
@@ -746,6 +747,25 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
       couponCode: appliedCode,
     };
     await redisSet(checkoutKey(rzpOrder.id), snapshot, CHECKOUT_TTL_S, log);
+
+    // Analytics funnel: the customer reached checkout with a priced order. Items are
+    // included (capped) so per-product funnels can attribute the Checkout stage.
+    // Fire-and-forget — never delays or fails the initiate response.
+    void logActivity({
+      type: "checkout_started",
+      userId,
+      metadata: {
+        razorpay_order_id: rzpOrder.id,
+        mode,
+        subtotal: priced.subtotal,
+        discount,
+        shipping_fee: priced.shippingFee,
+        total,
+        item_count: priced.itemCount,
+        coupon_code: appliedCode,
+        items: priced.items.slice(0, 30).map((it) => ({ slug: it.product_slug, sku: it.sku, qty: it.quantity })),
+      },
+    });
 
     log.success(`initiated  rzpOrder=${rzpOrder.id}  total=₹${total}  ${fms(log.elapsed())}`).end("CHECKOUT INITIATE");
     res.json({

@@ -621,10 +621,25 @@ router.get("/search", async (req: Request, res: Response) => {
   // Record the search in the admin activity feed. Fire-and-forget (the token decode
   // + insert must not add latency to the response) and best-effort (never throws).
   // Runs on both the cache-hit and DB paths so every real search is captured.
-  const logSearch = (resultCount: number) => {
+  //
+  // Analytics enrichment: the anonymous visitor id (same one the view beacon uses)
+  // lets search→click CTR join guests too, and the top result slugs let per-product
+  // analytics count "search appearances" without logging one row per result.
+  const rawVid = req.header("x-visitor-id") ?? "";
+  const visitorId = /^[A-Za-z0-9_-]{8,72}$/.test(rawVid) ? rawVid : null;
+  const logSearch = (results: SearchProductRow[]) => {
     void (async () => {
       const userId = await optionalUserId(req);
-      await logActivity({ type: "search", userId, metadata: { query: q, result_count: resultCount } });
+      await logActivity({
+        type: "search",
+        userId,
+        metadata: {
+          query: q,
+          result_count: results.length,
+          visitor_id: visitorId,
+          result_slugs: results.slice(0, 24).map((p) => p.slug),
+        },
+      });
     })();
   };
 
@@ -632,7 +647,7 @@ router.get("/search", async (req: Request, res: Response) => {
     const cached = await redisGet<{ query: string; count: number; products: SearchProductRow[] }>(cacheKey, log);
     if (cached) {
       log.success("L2 Redis - HIT  served from cache").end("SEARCH RESULTS");
-      logSearch(cached.count);
+      logSearch(cached.products);
       res.json(cached);
       return;
     }
@@ -642,7 +657,7 @@ router.get("/search", async (req: Request, res: Response) => {
     void redisSet(cacheKey, payload, SUGGESTION_TTL_S, log);
 
     log.success(`${products.length} results returned for "${q}"`).end("SEARCH RESULTS");
-    logSearch(products.length);
+    logSearch(products);
     res.json(payload);
   } catch (err) {
     log.error("failed — returning empty results", err);

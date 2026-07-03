@@ -11,8 +11,11 @@ const router = Router();
 // Every endpoint requires a valid token AND an admin role (server-side).
 router.use(requireAuth, requireAdmin);
 
-// The event kinds the feed understands. Used to validate the ?type= filter so a
-// junk value can't turn into an unfiltered scan of a different shape.
+// The event kinds the feed understands. Used to validate the ?type= filter AND
+// as the default whitelist for unfiltered reads: activity_log also carries
+// analytics-only kinds (cart_remove / wishlist_remove / checkout_started — see
+// 20260711_analytics_foundation.sql) that this feed deliberately does not show;
+// they surface in the admin Analytics platform instead.
 const KNOWN_TYPES = ["cart_add", "wishlist_add", "order_placed", "review_submitted", "search"] as const;
 
 // Reading the feed needs the service role: activity_log is RLS-locked (no anon/
@@ -110,7 +113,10 @@ router.get("/", async (req: Request, res: Response) => {
       .from("activity_log")
       .select("id, user_id, type, product_slug, sku, metadata, created_at");
 
+    // One kind when filtered; otherwise the curated feed kinds only, so the
+    // analytics-only event types never appear here.
     if (type) filter = filter.eq("type", type);
+    else filter = filter.in("type", [...KNOWN_TYPES]);
     if (before) filter = filter.lt("created_at", before);
 
     // created_at is the primary sort; id breaks ties so pagination is stable when

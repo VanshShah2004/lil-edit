@@ -5,6 +5,7 @@ import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAut
 import { createLog, fms } from "../lib/logger.js";
 import { redisGet, redisSet, redisDel, redisKey, CART_TTL_S } from "../lib/redis.js";
 import { fetchProductsBySkus } from "../lib/productsBySku.js";
+import { logActivity } from "../lib/activityLog.js";
 import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
 
 const router = Router();
@@ -313,6 +314,21 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       }
 
       await redisDel(log, cartKey(userId));
+
+      // Analytics: the INSERT trigger only sees brand-new rows, so a re-add that
+      // lands as a quantity increment is logged here (delta actually applied, so a
+      // 99-cap clamp doesn't overcount). Fire-and-forget.
+      const applied = newQty - (existing.quantity as number);
+      if (applied > 0) {
+        void logActivity({
+          type: "cart_add",
+          userId,
+          productSlug: serverSlug,
+          sku,
+          metadata: { size: sizeVal, quantity: applied, via: "increment" },
+        });
+      }
+
       log.success(`incremented  id=${existing.id}  qty=${existing.quantity}→${newQty}  total=${fms(log.elapsed())}`).end("CART ADD");
       res.json({ ok: true, action: "incremented", cartItemId: existing.id, quantity: newQty });
     } else {
@@ -580,6 +596,28 @@ router.patch("/:id", requireAuth, async (req: Request, res: Response) => {
   log.step(`user=${userId}  id=${id}  qty=${qty}`);
 
   try {
+    // Read the current row first: analytics needs the old quantity to classify the
+    // change (stepper up = cart_add, stepper down = cart_remove, each with the delta).
+    const t0Fetch = performance.now();
+    const { data: current, error: fetchErr } = await db()
+      .from("cart_items")
+      .select("id, quantity, product_slug, sku, size")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    log.step(`DB fetch item: ${fms(performance.now() - t0Fetch)}`);
+
+    if (fetchErr) {
+      log.error("fetch failed", fetchErr).end("CART UPDATE QTY");
+      res.status(500).json({ error: fetchErr.message });
+      return;
+    }
+    if (!current) {
+      log.warn(`item not found  id=${id}`).end("CART UPDATE QTY");
+      res.status(404).json({ error: "Cart item not found" });
+      return;
+    }
+
     const t0Write = performance.now();
     const { data, error } = await db()
       .from("cart_items")
@@ -602,6 +640,19 @@ router.patch("/:id", requireAuth, async (req: Request, res: Response) => {
     }
 
     await redisDel(log, cartKey(userId));
+
+    // Analytics: log the applied delta as an add or remove. Fire-and-forget.
+    const delta = qty - (current.quantity as number);
+    if (delta !== 0) {
+      void logActivity({
+        type: delta > 0 ? "cart_add" : "cart_remove",
+        userId,
+        productSlug: current.product_slug as string,
+        sku: current.sku as string,
+        metadata: { size: current.size as string, quantity: Math.abs(delta), via: "quantity_update" },
+      });
+    }
+
     log.success(`updated  id=${id}  qty=${qty}  total=${fms(log.elapsed())}`).end("CART UPDATE QTY");
     res.json({ ok: true, id: data.id, quantity: data.quantity });
   } catch (err) {
@@ -654,7 +705,7 @@ router.delete("/:id", requireAuth, async (req: Request, res: Response) => {
       .delete()
       .eq("id", id)
       .eq("user_id", userId)
-      .select("id")
+      .select("id, product_slug, sku, size, quantity")
       .maybeSingle();
     log.step(`DB delete item: ${fms(performance.now() - t0Write)}`);
 
@@ -670,6 +721,18 @@ router.delete("/:id", requireAuth, async (req: Request, res: Response) => {
     }
 
     await redisDel(log, cartKey(userId));
+
+    // Analytics: an explicit line removal (the only remove path a customer sees).
+    // Post-checkout clearing happens inside place_order and is deliberately NOT a
+    // remove — a purchase is not an abandonment. Fire-and-forget.
+    void logActivity({
+      type: "cart_remove",
+      userId,
+      productSlug: data.product_slug as string,
+      sku: data.sku as string,
+      metadata: { size: data.size as string, quantity: data.quantity as number, via: "remove" },
+    });
+
     log.success(`removed  id=${id}  total=${fms(log.elapsed())}`).end("CART REMOVE");
     res.json({ ok: true });
   } catch (err) {

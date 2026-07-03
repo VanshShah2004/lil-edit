@@ -1,4 +1,5 @@
 import { getBackendBaseUrl } from "@/lib/backend";
+import { getVisitorId } from "@/lib/track";
 
 export type SuggestionType = "product" | "category" | "occasion" | "tag" | "badge" | "fabric" | "fit" | "color" | "trend" | "keyword";
 
@@ -57,7 +58,9 @@ export async function searchProducts(q: string, signal?: AbortSignal): Promise<S
   const url = `${getBackendBaseUrl()}/api/products/search?q=${encodeURIComponent(q)}`;
   console.log("[searchService] GET", url);
 
-  const res = await fetch(url, { signal });
+  // The visitor id lets analytics join a search to its result clicks (search CTR)
+  // even for guests — same id the view/heartbeat beacons carry.
+  const res = await fetch(url, { signal, headers: { "X-Visitor-Id": getVisitorId() } });
   console.log("[searchService] GET", url, "→", res.status);
 
   if (!res.ok) {
