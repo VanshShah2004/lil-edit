@@ -100,11 +100,23 @@ export function AnalyticsLayout({
     <div className="min-h-screen bg-[#F7F7F5]">
       <UserNavbar />
 
-      <div className="mx-auto max-w-screen-2xl px-4 pb-16 pt-[120px] md:px-8 md:pt-[132px]">
+      {/* Desktop top padding is Cart's own live formula, not a static guess: Cart's
+          breadcrumb sits at navbar-bottom + main's pt-[navbar-height+15px] +
+          mt-1.5(6px) + pt-3(12px) = navbar-height+33px. Using the SAME
+          --navbar-height variable (set from the real measured header in
+          UserNavbar.tsx) guarantees this breadcrumb lands at the exact same pixel
+          row as Cart's, even if the navbar's height ever changes. Mobile keeps its
+          own separately-tuned pt-[120px] — untouched, per confirmed-correct. */}
+      {/* Slightly wider content well: a higher max-width cap gives desktop more
+          room on wide monitors, and trimmed side padding (px-3/md:px-6, down
+          from px-4/md:px-8) frees up extra width on every screen size, including
+          mobile — where the max-width cap never engages. */}
+      <div className="mx-auto max-w-[1680px] px-3 pb-16 pt-[120px] md:px-6 md:pt-[calc(var(--navbar-height)+33px)]">
         {/* Breadcrumb — always present so header height is uniform across pages.
-            mt-[18px]/mb-5 match the Cart page's breadcrumb rhythm exactly
-            (its mt-1.5+pt-3 = 18px above, mb-3+pb-2 = 20px below). */}
-        <div className="mt-[18px] mb-5">
+            mt-[18px] (mobile only) matches Cart's breadcrumb rhythm; zeroed at md:
+            since the container's own padding above now already carries the full
+            Cart-equivalent offset — stacking more on top would double-count it. */}
+        <div className="mt-[18px] mb-5 md:mt-0">
           <Breadcrumb
             trail={[
               { label: "Home", to: "/" },
@@ -136,7 +148,11 @@ export function AnalyticsLayout({
               back to a flex column, where items already stretch to the sidebar's
               full width by default. */}
           <nav className="lg:w-52 lg:shrink-0">
-            <ul className="grid grid-cols-3 gap-1.5 lg:flex lg:flex-col lg:gap-0.5 lg:sticky lg:top-[140px]">
+            {/* lg:gap-1.5 (not the original gap-0.5): each pill later gained a
+                border it didn't have before, and at 2px that border visually
+                crowded the next pill's border right up against it — bumping the
+                gap restores the breathing room the borderless version had. */}
+            <ul className="grid grid-cols-3 gap-1.5 lg:flex lg:flex-col lg:gap-1.5 lg:sticky lg:top-[140px]">
               {NAV.map((item) => {
                 const Icon = item.icon;
                 return (

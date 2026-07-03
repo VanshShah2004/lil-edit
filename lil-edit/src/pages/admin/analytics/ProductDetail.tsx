@@ -79,12 +79,18 @@ export default function ProductAnalyticsDetail() {
   return (
     <div className="min-h-screen bg-[#F7F7F5]">
       <UserNavbar />
-      <div className="mx-auto max-w-screen-2xl px-4 pb-16 pt-[120px] md:px-8 md:pt-[132px]">
+      {/* Desktop top padding is Cart's own live formula (see AnalyticsLayout for
+          the derivation) — navbar-height+33px — not a static guess, so this
+          breadcrumb lands at the exact same row as Cart's. Mobile's pt-[120px]
+          is untouched (confirmed correct). */}
+      {/* Slightly wider content well — matches AnalyticsLayout's cap/padding so
+          this page's width lines up with the rest of the platform. */}
+      <div className="mx-auto max-w-[1680px] px-3 pb-16 pt-[120px] md:px-6 md:pt-[calc(var(--navbar-height)+33px)]">
         {/* Breadcrumb (matches every analytics page) + Back — this page is reached
-            from several tables, so Back returns to the real origin. mt-[18px]/
-            mb-5 match the Cart page's breadcrumb rhythm (applied to the row, not
-            the Breadcrumb component itself, so Back stays evenly aligned beside it). */}
-        <div className="mt-[18px] mb-5 flex items-center justify-between gap-2">
+            from several tables, so Back returns to the real origin. mt-[18px]
+            (mobile only) matches Cart's rhythm; zeroed at md: since the container's
+            own padding above now already carries the full Cart-equivalent offset. */}
+        <div className="mt-[18px] mb-5 flex items-center justify-between gap-2 md:mt-0">
           <Breadcrumb
             trail={[
               { label: "Home", to: "/" },
