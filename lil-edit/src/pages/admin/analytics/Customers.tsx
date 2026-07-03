@@ -71,7 +71,7 @@ export default function CustomersAnalytics() {
 
           <Section title="Buyer gender mix" hint="From profile gender; buyers who haven’t set one show as Unknown.">
             <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
-              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+              <div className="overflow-hidden rounded-xl border border-gray-400 bg-white">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-gray-100 bg-gray-50/60 text-[11px] uppercase tracking-wide text-gray-500">
                     <th className="px-3 py-2 text-left font-semibold">Gender</th>

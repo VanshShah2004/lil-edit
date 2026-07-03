@@ -8,7 +8,7 @@ export function Skeleton({ className, style }: { className?: string; style?: Rea
 
 export function KpiCardSkeleton() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
+    <div className="rounded-xl border border-gray-400 bg-white p-4">
       <Skeleton className="h-3 w-24" />
       <Skeleton className="mt-3 h-7 w-28" />
       <Skeleton className="mt-3 h-3 w-16" />
@@ -28,7 +28,7 @@ export function KpiGridSkeleton({ count = 8 }: { count?: number }) {
 
 export function ChartSkeleton({ height = 280 }: { height?: number }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <div className="rounded-xl border border-gray-400 bg-white p-5">
       <Skeleton className="h-4 w-40" />
       <Skeleton className="mt-4 w-full" style={{ height }} />
     </div>
@@ -37,7 +37,7 @@ export function ChartSkeleton({ height = 280 }: { height?: number }) {
 
 export function TableSkeleton({ rows = 6 }: { rows?: number }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <div className="rounded-xl border border-gray-400 bg-white p-5">
       <Skeleton className="h-4 w-40" />
       <div className="mt-4 space-y-2.5">
         {Array.from({ length: rows }).map((_, i) => (
@@ -51,7 +51,7 @@ export function TableSkeleton({ rows = 6 }: { rows?: number }) {
 // ─── Empty / error / not-yet-tracking states ──────────────────────────────────
 export function EmptyState({ title, hint, icon: Icon = Inbox }: { title: string; hint?: string; icon?: typeof Inbox }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white px-6 py-12 text-center">
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-400 bg-white px-6 py-12 text-center">
       <Icon className="h-8 w-8 text-gray-300" />
       <p className="mt-3 text-sm font-semibold text-gray-700">{title}</p>
       {hint && <p className="mt-1 max-w-sm text-xs text-gray-400">{hint}</p>}
@@ -90,7 +90,7 @@ export function ErrorState({
         <button
           type="button"
           onClick={onRetry}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-gray-300"
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-gray-400 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-gray-500"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           Try again

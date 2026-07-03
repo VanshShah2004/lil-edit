@@ -14,9 +14,6 @@ import {
   X,
   Shirt,
   Info,
-  Settings,
-  Sparkles,
-  ClipboardList,
   ChevronRight,
   MessageSquare,
   ScrollText,
@@ -381,14 +378,14 @@ const UserNavbar = () => {
             <SideLink to="/reviews" icon={MessageSquare} label="My Reviews" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
           </SideSection>
 
+          {/* Backstage keeps only the pages AdminSubNav doesn't cover (User Activity,
+              Admin Activity). Everything else (Admin Settings, General Settings,
+              Manage Products, Manage Orders, The Spotlight, Analytics) is one click
+              away via AdminSubNav's own dropdown once inside any admin page — listing
+              them here too was pure duplication. Admin Settings itself stays reachable
+              from the profile dropdown, so this never strands navigation. */}
           {isAdmin && (
             <SideSection label="Backstage">
-              <SideLink to="/admin/analytics" icon={BarChart3} label="Analytics" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-              <SideLink to="/admin/settings" icon={ShieldCheck} label="Admin Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-              <SideLink to="/admin/general-settings" icon={Settings} label="General Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-              <SideLink to="/admin/manage-products" icon={Settings} label="Manage Products" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-              <SideLink to="/admin/orders" icon={ClipboardList} label="All Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-              <SideLink to="/admin/spotlight" icon={Sparkles} label="The Spotlight" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               <SideLink to="/admin/activity" icon={Activity} label="User Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               <SideLink to="/admin/audit-log" icon={ScrollText} label="Admin Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
             </SideSection>

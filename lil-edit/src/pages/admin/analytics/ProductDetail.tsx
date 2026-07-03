@@ -81,8 +81,10 @@ export default function ProductAnalyticsDetail() {
       <UserNavbar />
       <div className="mx-auto max-w-screen-2xl px-4 pb-16 pt-[120px] md:px-8 md:pt-[132px]">
         {/* Breadcrumb (matches every analytics page) + Back — this page is reached
-            from several tables, so Back returns to the real origin. */}
-        <div className="mb-4 flex items-center justify-between gap-2">
+            from several tables, so Back returns to the real origin. mt-[18px]/
+            mb-5 match the Cart page's breadcrumb rhythm (applied to the row, not
+            the Breadcrumb component itself, so Back stays evenly aligned beside it). */}
+        <div className="mt-[18px] mb-5 flex items-center justify-between gap-2">
           <Breadcrumb
             trail={[
               { label: "Home", to: "/" },
@@ -103,7 +105,7 @@ export default function ProductAnalyticsDetail() {
         ) : (
           <>
             {/* Header */}
-            <div className="mb-5 flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-5 flex flex-col gap-4 rounded-xl border border-gray-400 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <h1 className="truncate text-xl font-bold text-gray-900">{d.product.title || prettySlug(slug)}</h1>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-400">
@@ -264,7 +266,7 @@ function FunnelTab({ d }: { d: ProductDetailPayload }) {
   ];
   const top = Math.max(...stages.map((s) => s.value), 1);
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <div className="rounded-xl border border-gray-400 bg-white p-5">
       <p className="mb-4 text-sm text-gray-500">Each stage shows its count, conversion from the previous stage, and drop-off. Stages after Views are account-based (only logged-in shoppers can wishlist, cart or buy).</p>
       <div className="space-y-2.5">
         {stages.map((s, i) => {
@@ -299,7 +301,7 @@ function FunnelTab({ d }: { d: ProductDetailPayload }) {
 function GenderTab({ d }: { d: ProductDetailPayload }) {
   const LABEL: Record<string, string> = { male: "Male", female: "Female", other: "Other", guest: "Guest" };
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div className="overflow-hidden rounded-xl border border-gray-400 bg-white">
       <table className="w-full text-sm">
         <thead><tr className="border-b border-gray-100 bg-gray-50/60 text-[11px] uppercase tracking-wide text-gray-500">
           <th className="px-3 py-2 text-left font-semibold">Segment</th>
@@ -412,7 +414,7 @@ function RankingsTab({ d }: { d: ProductDetailPayload }) {
     { metric: "Rating", rank: d.rankings?.rating_rank },
   ];
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div className="overflow-hidden rounded-xl border border-gray-400 bg-white">
       <table className="w-full text-sm">
         <thead><tr className="border-b border-gray-100 bg-gray-50/60 text-[11px] uppercase tracking-wide text-gray-500">
           <th className="px-3 py-2 text-left font-semibold">Metric</th>

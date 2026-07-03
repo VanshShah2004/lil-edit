@@ -48,8 +48,8 @@ export function KpiCard({
       onClick={onClick}
       title={hint}
       className={cn(
-        "group relative flex flex-col rounded-xl border border-gray-200 bg-white p-4 text-left transition-shadow",
-        clickable && "cursor-pointer hover:border-gray-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)]"
+        "group relative flex flex-col rounded-xl border border-gray-400 bg-white p-4 text-left transition-shadow",
+        clickable && "cursor-pointer hover:border-gray-500 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)]"
       )}
     >
       <span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">

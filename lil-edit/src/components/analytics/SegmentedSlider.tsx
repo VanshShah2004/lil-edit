@@ -17,6 +17,9 @@ interface SegmentedSliderProps<T extends string> {
   onChange: (value: T) => void;
   accent?: string;
   className?: string;
+  // Accessible name for the group (e.g. "Group by") — this control has no
+  // visible label of its own, so screen readers need it announced explicitly.
+  ariaLabel: string;
 }
 
 export function SegmentedSlider<T extends string>({
@@ -25,6 +28,7 @@ export function SegmentedSlider<T extends string>({
   onChange,
   accent = "#0F766E",
   className,
+  ariaLabel,
 }: SegmentedSliderProps<T>) {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const btnRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -93,6 +97,8 @@ export function SegmentedSlider<T extends string>({
   return (
     <div
       ref={trackRef}
+      role="radiogroup"
+      aria-label={ariaLabel}
       onPointerDown={(e) => {
         draggingRef.current = true;
         didDragRef.current = false;
@@ -120,7 +126,7 @@ export function SegmentedSlider<T extends string>({
         dragMetricsRef.current = null;
       }}
       className={cn(
-        "relative flex cursor-grab touch-none select-none rounded-md border border-gray-200 bg-white p-1 active:cursor-grabbing",
+        "relative flex h-9 cursor-grab touch-none select-none rounded-md border border-gray-400 bg-white p-1 active:cursor-grabbing",
         className
       )}
     >
@@ -140,6 +146,8 @@ export function SegmentedSlider<T extends string>({
           <button
             key={o.key}
             type="button"
+            role="radio"
+            aria-checked={active}
             ref={(el) => {
               btnRefs.current[i] = el;
             }}
@@ -152,7 +160,7 @@ export function SegmentedSlider<T extends string>({
               onChange(o.key);
             }}
             className={cn(
-              "relative z-10 flex-1 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-semibold transition-colors",
+              "relative z-10 flex flex-1 items-center justify-center whitespace-nowrap rounded-sm px-3 text-sm font-semibold transition-colors",
               active ? "text-white" : "text-gray-500 hover:text-gray-800"
             )}
           >

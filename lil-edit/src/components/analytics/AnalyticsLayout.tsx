@@ -1,7 +1,6 @@
 import { Fragment, type ReactNode, useEffect } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import {
-  Activity,
   BarChart3,
   Boxes,
   ChevronRight,
@@ -55,7 +54,7 @@ export interface Crumb {
 // height is identical page-to-page. The last crumb is the current page (not a link).
 export function Breadcrumb({ trail }: { trail: Crumb[] }) {
   return (
-    <nav aria-label="Breadcrumb" className="mb-3 flex flex-wrap items-center gap-1 text-base text-gray-500">
+    <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-base text-gray-500">
       {trail.map((crumb, i) => {
         const isLast = i === trail.length - 1;
         return (
@@ -102,41 +101,55 @@ export function AnalyticsLayout({
       <UserNavbar />
 
       <div className="mx-auto max-w-screen-2xl px-4 pb-16 pt-[120px] md:px-8 md:pt-[132px]">
-        {/* Breadcrumb — always present so header height is uniform across pages. */}
-        <Breadcrumb
-          trail={[
-            { label: "Home", to: "/" },
-            { label: "Analytics", to: `/admin/analytics${search}` },
-            { label: title },
-          ]}
-        />
+        {/* Breadcrumb — always present so header height is uniform across pages.
+            mt-[18px]/mb-5 match the Cart page's breadcrumb rhythm exactly
+            (its mt-1.5+pt-3 = 18px above, mb-3+pb-2 = 20px below). */}
+        <div className="mt-[18px] mb-5">
+          <Breadcrumb
+            trail={[
+              { label: "Home", to: "/" },
+              { label: "Analytics", to: `/admin/analytics${search}` },
+              { label: title },
+            ]}
+          />
+        </div>
 
-        {/* Section heading */}
-        <div className="mb-5 flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: "rgba(15,118,110,0.1)" }}>
-            <Activity className="h-5 w-5" style={{ color: ACCENT }} />
-          </span>
-          <div>
-            <h1 className="font-display text-xl font-bold tracking-tight text-gray-900">Analytics</h1>
-            <p className="text-xs text-gray-400">Business intelligence for The Lil Edit</p>
+        {/* Section heading — matches every other admin sub-page's header exactly
+            (User Activity, Admin Activity, Order Management, …): a small "Admin"
+            eyebrow label, a text-3xl bold title, and a gray-500 subtitle. */}
+        <div className="space-y-1 mb-8">
+          <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
+            <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>
+              Admin
+            </p>
           </div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">Analytics</h1>
+          <p className="text-sm text-gray-500">Business intelligence for The Lil Edit</p>
         </div>
 
         <div className="flex flex-col gap-6 lg:flex-row">
-          {/* Sidebar nav (desktop) / horizontal scroll (mobile) */}
+          {/* Sidebar nav (desktop) / equal-size button grid (mobile — no horizontal
+              swipe-to-scroll; every section is reachable without a gesture). A CSS
+              grid (not flex-wrap) is what actually guarantees every button is the
+              same size regardless of label length ("Overview" vs "Cart") — a
+              flex-wrap row only sizes each pill to its own content. Desktop swaps
+              back to a flex column, where items already stretch to the sidebar's
+              full width by default. */}
           <nav className="lg:w-52 lg:shrink-0">
-            <ul className="flex gap-1 overflow-x-auto pb-2 lg:sticky lg:top-[140px] lg:flex-col lg:gap-0.5 lg:overflow-visible lg:pb-0">
+            <ul className="grid grid-cols-3 gap-1.5 lg:flex lg:flex-col lg:gap-0.5 lg:sticky lg:top-[140px]">
               {NAV.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <li key={item.to} className="shrink-0">
+                  <li key={item.to}>
                     <NavLink
                       to={{ pathname: item.to, search }}
                       end={item.end}
                       className={({ isActive }) =>
                         cn(
-                          "flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                          isActive ? "text-white" : "text-gray-600 hover:bg-white hover:text-gray-900"
+                          "flex items-center justify-center gap-2.5 whitespace-nowrap rounded-lg border px-3 py-2 text-sm font-medium transition-colors lg:justify-start",
+                          isActive
+                            ? "border-transparent text-white"
+                            : "border-gray-400 text-gray-600 hover:border-gray-500 hover:bg-white hover:text-gray-900"
                         )
                       }
                       style={({ isActive }) => (isActive ? { backgroundColor: ACCENT } : undefined)}

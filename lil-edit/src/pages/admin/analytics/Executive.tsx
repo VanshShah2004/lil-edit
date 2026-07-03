@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { AnalyticsLayout, KpiGrid, Section } from "@/components/analytics/AnalyticsLayout";
 import { FilterBar } from "@/components/analytics/FilterBar";
 import { KpiCard } from "@/components/analytics/KpiCard";
@@ -34,20 +35,24 @@ export default function ExecutiveDashboard() {
   }, [d]);
 
   const filterBar = (
-    <FilterBar
-      params={params}
-      controls={controls}
-      showCategory
-      showPayment
-      categoryOptions={categoryOptions}
-      onRefresh={() => query.refetch()}
-      refreshing={query.isFetching}
-      cached={query.data?.meta.cached}
-    />
+    <FilterBar params={params} controls={controls} showCategory showPayment categoryOptions={categoryOptions} />
+  );
+
+  // Refresh sits next to the "Executive overview" title itself (the AnalyticsLayout
+  // title row's `actions` slot), not inside the filter bar below it.
+  const actions = (
+    <button
+      type="button"
+      onClick={() => query.refetch()}
+      title={query.data?.meta.cached ? "Showing cached data — click to refresh" : "Refresh"}
+      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-400 bg-white text-gray-500 hover:border-gray-500 hover:text-gray-800"
+    >
+      <RefreshCw className={cn("h-4 w-4", query.isFetching && "animate-spin")} />
+    </button>
   );
 
   return (
-    <AnalyticsLayout title="Executive overview" description="The health of the business at a glance." filterBar={filterBar}>
+    <AnalyticsLayout title="Executive overview" description="The health of the business at a glance." filterBar={filterBar} actions={actions}>
       {query.isError ? (
         <ErrorState
           message={query.error.message}
@@ -171,7 +176,7 @@ function GrowthCard({ label, current, previous }: { label: string; current?: num
   const change = prev === 0 ? null : ((cur - prev) / Math.abs(prev)) * 100;
   const up = (change ?? 0) >= 0;
   return (
-    <div className="flex flex-col rounded-xl border border-gray-200 bg-white p-4">
+    <div className="flex flex-col rounded-xl border border-gray-400 bg-white p-4">
       <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{label}</span>
       <div className="mt-2 flex items-center gap-1">
         {change == null ? (

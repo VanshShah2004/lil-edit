@@ -124,7 +124,7 @@ export function DataTable<T>({
   const cellPad = dense ? "px-3 py-1.5" : "px-3 py-2.5";
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white">
+    <div className="rounded-xl border border-gray-400 bg-white">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 p-3">
         <div className="relative flex-1 min-w-[180px]">
@@ -136,7 +136,7 @@ export function DataTable<T>({
               setPage(0);
             }}
             placeholder={searchPlaceholder}
-            className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-3 text-xs text-gray-800 outline-none placeholder:text-gray-400 focus:border-gray-300 focus:bg-white"
+            className="w-full rounded-lg border border-gray-400 bg-gray-50 py-1.5 pl-8 pr-3 text-xs text-gray-800 outline-none placeholder:text-gray-400 focus:border-gray-500 focus:bg-white"
           />
         </div>
         <span className="text-[11px] tabular-nums text-gray-400">{sorted.length} rows</span>
@@ -144,7 +144,7 @@ export function DataTable<T>({
           type="button"
           onClick={exportCsv}
           disabled={sorted.length === 0}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:border-gray-300 disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-400 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:border-gray-500 disabled:opacity-40"
         >
           <Download className="h-3.5 w-3.5" />
           CSV
@@ -237,7 +237,7 @@ export function DataTable<T>({
                   type="button"
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={safePage === 0}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:border-gray-300 disabled:opacity-40"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-400 text-gray-600 hover:border-gray-500 disabled:opacity-40"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -245,7 +245,7 @@ export function DataTable<T>({
                   type="button"
                   onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
                   disabled={safePage >= pageCount - 1}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:border-gray-300 disabled:opacity-40"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-400 text-gray-600 hover:border-gray-500 disabled:opacity-40"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>

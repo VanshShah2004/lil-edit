@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { CalendarDays, Check, RefreshCw, SlidersHorizontal, X } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, RefreshCw, SlidersHorizontal, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { PRESETS, type AnalyticsParams, type Bucket, useAnalyticsParams } from "@/lib/analyticsApi";
 import { shortDate } from "./format";
 import { SegmentedSlider } from "./SegmentedSlider";
+import { SelectField } from "./SelectField";
 
 interface FilterBarProps {
   params: AnalyticsParams;
@@ -25,6 +26,51 @@ const BUCKETS: { key: Bucket; label: string }[] = [
   { key: "week", label: "Week" },
   { key: "month", label: "Month" },
 ];
+
+// Mobile bucket control — a menu styled exactly like the Date range / Filters
+// triggers elsewhere in this bar (same button chrome, same checkmark-list
+// pattern), rather than a bare native <select> that looks inconsistent next to
+// the rest of this platform's custom popovers.
+function BucketMenu({ value, onChange, className }: { value: Bucket; onChange: (b: Bucket) => void; className?: string }) {
+  const [open, setOpen] = useState(false);
+  const active = BUCKETS.find((b) => b.key === value) ?? BUCKETS[0];
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Group by: ${active.label}`}
+          className={cn(
+            "inline-flex h-9 items-center gap-2 rounded-lg border border-gray-400 bg-white px-3 text-sm font-semibold text-gray-800 hover:border-gray-500",
+            className
+          )}
+        >
+          {active.label}
+          <ChevronDown className="h-4 w-4 text-gray-400" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-36 p-1">
+        {BUCKETS.map((b) => (
+          <button
+            key={b.key}
+            type="button"
+            onClick={() => {
+              onChange(b.key);
+              setOpen(false);
+            }}
+            className={cn(
+              "flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50",
+              value === b.key ? "font-semibold text-gray-900" : "text-gray-600"
+            )}
+          >
+            {b.label}
+            {value === b.key && <Check className="h-4 w-4" style={{ color: "#0F766E" }} />}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function FilterBar({
   params,
@@ -68,7 +114,7 @@ export function FilterBar({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-800 hover:border-gray-300"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-gray-400 bg-white px-3 text-sm font-semibold text-gray-800 hover:border-gray-500"
           >
             <CalendarDays className="h-4 w-4 text-gray-400" />
             {rangeLabel}
@@ -108,7 +154,7 @@ export function FilterBar({
                   value={customFrom}
                   max={customTo}
                   onChange={(e) => setCustomFrom(e.target.value)}
-                  className="w-full min-w-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 outline-none focus:border-gray-300"
+                  className="w-full min-w-0 rounded-md border border-gray-400 px-2 py-1 text-xs text-gray-700 outline-none focus:border-gray-500"
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -118,7 +164,7 @@ export function FilterBar({
                   value={customTo}
                   min={customFrom}
                   onChange={(e) => setCustomTo(e.target.value)}
-                  className="w-full min-w-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 outline-none focus:border-gray-300"
+                  className="w-full min-w-0 rounded-md border border-gray-400 px-2 py-1 text-xs text-gray-700 outline-none focus:border-gray-500"
                 />
               </label>
             </div>
@@ -138,101 +184,115 @@ export function FilterBar({
         vs previous period
       </span>
 
-      {/* Bucket — drag across the segments or tap one */}
-      {showBucket && (
-        <SegmentedSlider className="ml-auto" options={BUCKETS} value={params.bucket} onChange={setBucket} accent="#111827" />
-      )}
+      {/* Right-hand action cluster: bucket + filters + refresh. Grouped in ONE
+          wrapper with a single `ml-auto` so they always sit flush against the
+          row's right edge, and `shrink-0` keeps them an atomic block — if the
+          row ever runs out of width, this whole cluster wraps to its own line
+          together rather than the refresh button splitting away from the rest. */}
+      <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+        {/* Bucket. Mobile: a menu (a 3-way drag slider is fiddly at touch width).
+            Desktop: the draggable segmented slider. Exactly one is ever visible —
+            the other is `display:none` at that breakpoint, not unmounted. */}
+        {showBucket && (
+          <>
+            <BucketMenu className="sm:hidden" value={params.bucket} onChange={setBucket} />
+            <SegmentedSlider
+              className="hidden sm:flex"
+              options={BUCKETS}
+              value={params.bucket}
+              onChange={setBucket}
+              accent="#111827"
+              ariaLabel="Group by"
+            />
+          </>
+        )}
 
-      {/* Contextual dimension filters */}
-      {(showCategory || showPayment) && (
-        <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold hover:border-gray-300",
-                activeFilterCount > 0 ? "border-gray-300 bg-gray-50 text-gray-900" : "border-gray-200 bg-white text-gray-700",
-                !showBucket && "ml-auto"
-              )}
-            >
-              <SlidersHorizontal className="h-4 w-4 text-gray-400" />
-              Filters
-              {activeFilterCount > 0 && (
-                <span className="rounded-full bg-gray-900 px-1.5 text-[11px] font-bold text-white">{activeFilterCount}</span>
-              )}
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-64 p-3">
-            {showPayment && (
-              <div className="mb-3">
-                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Payment method</p>
-                <div className="flex gap-1.5">
-                  {[
-                    { v: "", label: "All" },
-                    { v: "online", label: "Online" },
-                    { v: "cod", label: "COD" },
-                  ].map((o) => (
-                    <button
-                      key={o.v}
-                      type="button"
-                      onClick={() => setFilter("payment_method", o.v || null)}
-                      className={cn(
-                        "flex-1 rounded-md border px-2 py-1 text-xs font-semibold",
-                        (params.paymentMethod ?? "") === o.v
-                          ? "border-gray-900 bg-gray-900 text-white"
-                          : "border-gray-200 text-gray-600 hover:border-gray-300"
-                      )}
-                    >
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {showCategory && categoryOptions.length > 0 && (
-              <div>
-                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Category</p>
-                <select
-                  value={params.category ?? ""}
-                  onChange={(e) => setFilter("category", e.target.value || null)}
-                  className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-xs text-gray-700 outline-none focus:border-gray-300"
-                >
-                  <option value="">All categories</option>
-                  {categoryOptions.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {activeFilterCount > 0 && (
+        {/* Contextual dimension filters */}
+        {(showCategory || showPayment) && (
+          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <PopoverTrigger asChild>
               <button
                 type="button"
-                onClick={() => {
-                  clearFilters();
-                  setFiltersOpen(false);
-                }}
-                className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-800"
+                className={cn(
+                  "inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-semibold hover:border-gray-500",
+                  activeFilterCount > 0 ? "border-gray-500 bg-gray-50 text-gray-900" : "border-gray-400 bg-white text-gray-700"
+                )}
               >
-                <X className="h-3 w-3" />
-                Clear filters
+                <SlidersHorizontal className="h-4 w-4 text-gray-400" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="rounded-full bg-gray-900 px-1.5 text-[11px] font-bold text-white">{activeFilterCount}</span>
+                )}
               </button>
-            )}
-          </PopoverContent>
-        </Popover>
-      )}
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64 p-3">
+              {showPayment && (
+                <div className="mb-3">
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Payment method</p>
+                  <div className="flex gap-1.5">
+                    {[
+                      { v: "", label: "All" },
+                      { v: "online", label: "Online" },
+                      { v: "cod", label: "COD" },
+                    ].map((o) => (
+                      <button
+                        key={o.v}
+                        type="button"
+                        onClick={() => setFilter("payment_method", o.v || null)}
+                        className={cn(
+                          "flex-1 rounded-md border px-2 py-1 text-xs font-semibold",
+                          (params.paymentMethod ?? "") === o.v
+                            ? "border-gray-900 bg-gray-900 text-white"
+                            : "border-gray-400 text-gray-600 hover:border-gray-500"
+                        )}
+                      >
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {showCategory && categoryOptions.length > 0 && (
+                <div>
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Category</p>
+                  <SelectField
+                    fullWidth
+                    size="sm"
+                    ariaLabel="Category"
+                    value={params.category ?? ""}
+                    onChange={(v) => setFilter("category", v || null)}
+                    options={[{ value: "", label: "All categories" }, ...categoryOptions.map((c) => ({ value: c, label: c }))]}
+                  />
+                </div>
+              )}
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearFilters();
+                    setFiltersOpen(false);
+                  }}
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-800"
+                >
+                  <X className="h-3 w-3" />
+                  Clear filters
+                </button>
+              )}
+            </PopoverContent>
+          </Popover>
+        )}
 
-      {onRefresh && (
-        <button
-          type="button"
-          onClick={onRefresh}
-          title={cached ? "Showing cached data — click to refresh" : "Refresh"}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-800"
-        >
-          <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-        </button>
-      )}
+        {onRefresh && (
+          <button
+            type="button"
+            onClick={onRefresh}
+            title={cached ? "Showing cached data — click to refresh" : "Refresh"}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-400 bg-white text-gray-500 hover:border-gray-500 hover:text-gray-800"
+          >
+            <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

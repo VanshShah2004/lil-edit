@@ -13,7 +13,7 @@ export interface Insight {
 }
 
 const TONE: Record<InsightTone, { border: string; bg: string; icon: string; Icon: typeof Lightbulb }> = {
-  info: { border: "border-gray-200", bg: "bg-gray-50/70", icon: "#6B7280", Icon: Lightbulb },
+  info: { border: "border-gray-400", bg: "bg-gray-50/70", icon: "#6B7280", Icon: Lightbulb },
   good: { border: "border-emerald-200", bg: "bg-emerald-50/60", icon: "#047857", Icon: TrendingUp },
   warning: { border: "border-amber-200", bg: "bg-amber-50/60", icon: "#B45309", Icon: TriangleAlert },
   critical: { border: "border-red-200", bg: "bg-red-50/60", icon: "#DC2626", Icon: TrendingDown },
@@ -49,7 +49,7 @@ export function InsightCard({ insight }: { insight: Insight }) {
 export function InsightGrid({ insights, empty }: { insights: Insight[]; empty?: ReactNode }) {
   if (insights.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center">
+      <div className="rounded-xl border border-dashed border-gray-400 bg-white p-6 text-center">
         <Lightbulb className="mx-auto h-6 w-6 text-gray-300" />
         <p className="mt-2 text-xs text-gray-400">{empty ?? "No notable signals in this range yet."}</p>
       </div>

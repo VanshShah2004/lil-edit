@@ -74,7 +74,7 @@ export default function LiveDashboard() {
           </Section>
 
           <Section title="Activity feed" hint="Newest first — refreshes every 10 seconds.">
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+            <div className="overflow-hidden rounded-xl border border-gray-400 bg-white">
               {d.feed.length === 0 ? (
                 <p className="px-5 py-12 text-center text-sm text-gray-400">Quiet right now — no activity in the last few minutes.</p>
               ) : (
@@ -103,7 +103,7 @@ export default function LiveDashboard() {
 
 function LiveStat({ label, value, Icon, color }: { label: string; value: string; Icon: typeof Radio; color: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-4">
+    <div className="flex items-center gap-3 rounded-xl border border-gray-400 bg-white p-4">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: `${color}1a` }}>
         <Icon className="h-5 w-5" style={{ color }} />
       </span>
