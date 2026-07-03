@@ -653,7 +653,7 @@ const ProductPreviewView = ({
                 <Minus size={16} />
               </button>
               <span className="px-4 font-semibold tabular-nums">{quantity}</span>
-              <button onClick={() => setQuantity((prev) => prev + 1)} className="h-10 w-10 flex items-center justify-center text-[#08423E]">
+              <button onClick={() => setQuantity((prev) => Math.min(99, prev + 1))} className="h-10 w-10 flex items-center justify-center text-[#08423E]">
                 <Plus size={16} />
               </button>
             </div>

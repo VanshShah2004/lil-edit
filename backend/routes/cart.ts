@@ -4,11 +4,18 @@ import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth.js";
 import { createLog, fms } from "../lib/logger.js";
 import { redisGet, redisSet, redisDel, redisKey, CART_TTL_S } from "../lib/redis.js";
+import { fetchProductsBySkus } from "../lib/productsBySku.js";
 import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
 
 const router = Router();
 const db = () => supabaseAdmin ?? supabaseAnon;
 const cartKey = (userId: string) => redisKey("cart", userId);
+
+// Hard ceiling for a single cart line. Enforced on every write path here (add,
+// increment, qty update, size/color merges), mirrored client-side in the steppers,
+// and backstopped in the DB (cart_items_quantity_max + move_wishlist_to_cart's
+// LEAST clamp — migration 20260710_cart_qty_cap.sql).
+const MAX_QTY = 99;
 
 // ─── GET /api/cart ─────────────────────────────────────────────────────────────
 router.get("/", requireAuth, async (req: Request, res: Response) => {
@@ -49,18 +56,25 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
     }
 
     // ── DB: products (with variants + images) ─────────────────────────────────
-    const slugs = [...new Set(cartRows.map((r) => r.product_slug as string))];
+    // Resolved by SKU, not by the stored product_slug: slugs are non-unique and go
+    // stale when a product is renamed (title edit → new slug on republish), which
+    // used to make live lines unresolvable — and the self-heal below then DELETED
+    // them from the cart. The SKU never changes, so it is the resolver; the stored
+    // slug is display-only and healed further down when it drifts.
+    const skus = [...new Set(cartRows.map((r) => r.sku as string))];
     const t0Products = performance.now();
-    const { data: products, error: prodErr } = await db()
-      .from("products")
-      .select(`
+    const { data: products, error: prodErr } = await fetchProductsBySkus(
+      db(),
+      skus,
+      `
         title, slug, category_slug, base_sku, price, original_price, tags, badges, sizes, is_unlimited,
         is_featured, is_new_arrival, is_trending, is_bestseller,
         product_images(id, image_url, is_primary, sort_order, variant_id),
         product_variants(id, variant_sku, color_name, color_hex, stock, is_unlimited, sort_order)
-      `)
-      .in("slug", slugs);
-    log.step(`DB products: ${fms(performance.now() - t0Products)}  slugs=${slugs.length}  rows=${products?.length ?? 0}`);
+      `,
+      log,
+    );
+    log.step(`DB products: ${fms(performance.now() - t0Products)}  skus=${skus.length}  rows=${products?.length ?? 0}`);
 
     if (prodErr) {
       log.error("product fetch failed", prodErr).end("CART GET");
@@ -156,16 +170,37 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
       .filter(Boolean);
     log.step(`item mapping: ${fms(performance.now() - t0Map)}  items=${items.length}`);
 
-    // ── Self-heal: prune rows whose product no longer exists ──────────────────
-    // A cart row can outlive its product (the product was deleted, or its variant SKU was
-    // removed/renamed). The mapping above just hides such rows (`if (!product) return null`),
-    // which silently leaves an invisible ghost row in cart_items forever — it never shows in
-    // the bag yet still trips up checkout. Delete them here (by id, precise) so the DB matches
-    // what the customer sees. Best-effort: a failed prune just means we retry next read.
+    // ── Self-heal: refresh stale slugs, prune rows whose SKU no longer exists ─
+    // Two distinct cases now that resolution is SKU-based:
+    //   1. SKU resolves but the stored product_slug drifted (product renamed → new
+    //      slug on republish). The line is alive — UPDATE the stored slug so the
+    //      row stays accurate for anything that still reads it (activity feed, logs).
+    //   2. SKU resolves to nothing anywhere in the catalog (product deleted, or the
+    //      variant SKU itself removed). Truly dead — delete, so the DB matches what
+    //      the customer sees. Both are best-effort: a failure just retries next read.
+    const driftedBySlug = new Map<string, string[]>(); // live slug → cart row ids
+    for (const row of cartRows) {
+      const product = skuToProduct.get(row.sku as string);
+      const liveSlug = product?.slug as string | undefined;
+      if (product && liveSlug && liveSlug !== (row.product_slug as string)) {
+        const ids = driftedBySlug.get(liveSlug) ?? [];
+        ids.push(row.id as string);
+        driftedBySlug.set(liveSlug, ids);
+      }
+    }
+    if (driftedBySlug.size > 0) {
+      const driftedCount = [...driftedBySlug.values()].reduce((n, ids) => n + ids.length, 0);
+      log.warn(`healing ${driftedCount} cart row(s) with a stale product_slug (product renamed)`);
+      for (const [liveSlug, ids] of driftedBySlug) {
+        const { error: healErr } = await db().from("cart_items").update({ product_slug: liveSlug }).in("id", ids);
+        if (healErr) log.warn(`slug heal failed (non-fatal): ${healErr.message}`);
+      }
+    }
+
     const deadRows = cartRows.filter((r) => !skuToProduct.has(r.sku as string));
     if (deadRows.length > 0) {
       const deadIds = deadRows.map((r) => r.id as string);
-      log.warn(`pruning ${deadRows.length} dead cart row(s) — product no longer exists: ${deadRows.map((r) => r.sku).join(", ")}`);
+      log.warn(`pruning ${deadRows.length} dead cart row(s) — sku no longer exists in the catalog: ${deadRows.map((r) => r.sku).join(", ")}`);
       const { error: pruneErr } = await db().from("cart_items").delete().in("id", deadIds);
       if (pruneErr) log.warn(`cart prune failed (non-fatal): ${pruneErr.message}`);
     }
@@ -193,42 +228,39 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     quantity?: number;
   };
 
-  if (!product_slug || typeof product_slug !== "string") {
-    log.warn("missing product_slug").end("CART ADD");
-    res.status(400).json({ error: "product_slug is required" });
-    return;
-  }
   if (!sku || typeof sku !== "string") {
     log.warn("missing sku").end("CART ADD");
     res.status(400).json({ error: "sku is required" });
     return;
   }
 
-  const qty = Math.max(1, Math.floor(Number(quantity) || 1));
+  const qty = Math.min(MAX_QTY, Math.max(1, Math.floor(Number(quantity) || 1)));
   const sizeVal = typeof size === "string" ? size.trim() : "";
 
-  log.step(`user=${userId}  slug=${product_slug}  sku=${sku}  size="${sizeVal}"  qty=${qty}  client=${supabaseAdmin ? "admin" : "anon"}`);
+  log.step(`user=${userId}  slug=${product_slug ?? "∅"}  sku=${sku}  size="${sizeVal}"  qty=${qty}  client=${supabaseAdmin ? "admin" : "anon"}`);
 
   try {
-    // Validate by SKU, not slug: slugs are non-unique now, so .eq("slug").maybeSingle()
-    // would throw when two products share a slug. The sku (variant_sku or base_sku) is
-    // globally unique and self-identifying, so existence of the sku is the validation.
+    // Validate by SKU, not slug: the sku (variant_sku or base_sku) is globally unique
+    // and self-identifying. Resolve the owning product's CURRENT slug server-side and
+    // store THAT — the client's product_slug is never trusted (same idiom as wishlist
+    // /add), so a mismatched or stale slug+sku pair can't be persisted.
     const t0Validate = performance.now();
-    const { data: variantRow, error: vErr } = await db()
-      .from("product_variants")
-      .select("variant_sku")
-      .eq("variant_sku", sku)
-      .maybeSingle();
+    let serverSlug: string | null = null;
+    const { data: variantRows, error: vErr } = await db()
+      .from("products")
+      .select("slug, product_variants!inner(variant_sku)")
+      .eq("product_variants.variant_sku", sku)
+      .limit(1);
     if (vErr) {
       log.error(`variant validation failed  code=${vErr.code}  msg=${vErr.message}`, vErr).end("CART ADD");
       res.status(500).json({ error: "Could not validate product" });
       return;
     }
-    let skuExists = !!variantRow;
-    if (!skuExists) {
+    serverSlug = (variantRows?.[0]?.slug as string | undefined) ?? null;
+    if (!serverSlug) {
       const { data: baseRow, error: bErr } = await db()
         .from("products")
-        .select("base_sku")
+        .select("slug")
         .eq("base_sku", sku)
         .maybeSingle();
       if (bErr) {
@@ -236,14 +268,17 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
         res.status(500).json({ error: "Could not validate product" });
         return;
       }
-      skuExists = !!baseRow;
+      serverSlug = (baseRow?.slug as string | undefined) ?? null;
     }
-    log.step(`DB sku validate: ${fms(performance.now() - t0Validate)}  exists=${skuExists}`);
+    log.step(`DB sku validate: ${fms(performance.now() - t0Validate)}  slug=${serverSlug ?? "∅"}`);
 
-    if (!skuExists) {
+    if (!serverSlug) {
       log.warn(`sku not found  sku=${sku}`).end("CART ADD");
       res.status(404).json({ error: "Product not found" });
       return;
+    }
+    if (typeof product_slug === "string" && product_slug && product_slug !== serverSlug) {
+      log.warn(`client slug mismatch  client=${product_slug}  server=${serverSlug} — using server slug`);
     }
 
     const t0Conflict = performance.now();
@@ -263,7 +298,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     }
 
     if (existing) {
-      const newQty = (existing.quantity as number) + qty;
+      const newQty = Math.min(MAX_QTY, (existing.quantity as number) + qty);
       const t0Write = performance.now();
       const { error: updateErr } = await db()
         .from("cart_items")
@@ -284,7 +319,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       const t0Write = performance.now();
       const { data: inserted, error: insertErr } = await db()
         .from("cart_items")
-        .insert({ user_id: userId, product_slug, sku, size: sizeVal, quantity: qty })
+        .insert({ user_id: userId, product_slug: serverSlug, sku, size: sizeVal, quantity: qty })
         .select("id")
         .single();
       log.step(`DB insert: ${fms(performance.now() - t0Write)}`);
@@ -341,14 +376,27 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
-    // Validate the new SKU belongs to the same product
+    // Validate the new SKU belongs to the same product. The owning product is resolved
+    // by the row's CURRENT sku, never by the stored slug: slugs are non-unique (a
+    // .eq("slug").maybeSingle() throws when two products share one) and go stale after
+    // a rename — the sku is the identity.
     const t0Validate = performance.now();
-    const { data: product, error: prodErr } = await db()
-      .from("products")
-      .select("base_sku, product_variants(variant_sku)")
-      .eq("slug", current.product_slug as string)
+    const { data: skuOwner, error: ownerErr } = await db()
+      .from("product_variants")
+      .select("product_id")
+      .eq("variant_sku", current.sku as string)
       .maybeSingle();
-    log.step(`DB product validate: ${fms(performance.now() - t0Validate)}`);
+    if (ownerErr) {
+      log.error("sku owner lookup failed", ownerErr).end("CART UPDATE COLOR");
+      res.status(500).json({ error: "Could not validate SKU" });
+      return;
+    }
+    const productSelect = db().from("products").select("slug, base_sku, product_variants(variant_sku)");
+    const { data: product, error: prodErr } = await (skuOwner
+      ? productSelect.eq("id", skuOwner.product_id as string)
+      : productSelect.eq("base_sku", current.sku as string)
+    ).maybeSingle();
+    log.step(`DB product validate: ${fms(performance.now() - t0Validate)}  via=${skuOwner ? "variant_sku" : "base_sku"}`);
 
     if (prodErr || !product) {
       log.error("product fetch failed", prodErr).end("CART UPDATE COLOR");
@@ -378,11 +426,11 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
     log.step(`DB conflict check: ${fms(performance.now() - t0Conflict)}  conflict=${!!conflict}`);
 
     if (conflict) {
-      const mergedQty = (conflict.quantity as number) + (current.quantity as number);
+      const mergedQty = Math.min(MAX_QTY, (conflict.quantity as number) + (current.quantity as number));
       const t0Merge = performance.now();
       const { error: mergeErr } = await db()
         .from("cart_items")
-        .update({ quantity: mergedQty, updated_at: new Date().toISOString() })
+        .update({ quantity: mergedQty, product_slug: product.slug as string, updated_at: new Date().toISOString() })
         .eq("id", conflict.id);
       if (mergeErr) {
         log.error("merge failed", mergeErr).end("CART UPDATE COLOR");
@@ -397,10 +445,11 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
+    // product_slug is refreshed alongside the sku so a stale stored slug heals here too.
     const t0Write = performance.now();
     const { error: updateErr } = await db()
       .from("cart_items")
-      .update({ sku: newSku, updated_at: new Date().toISOString() })
+      .update({ sku: newSku, product_slug: product.slug as string, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("user_id", userId);
     log.step(`DB update sku: ${fms(performance.now() - t0Write)}`);
@@ -471,7 +520,7 @@ router.patch("/:id/size", requireAuth, async (req: Request, res: Response) => {
 
     if (conflict) {
       // Merge: add quantities into the existing item, delete the current one
-      const mergedQty = (conflict.quantity as number) + (current.quantity as number);
+      const mergedQty = Math.min(MAX_QTY, (conflict.quantity as number) + (current.quantity as number));
       const t0Merge = performance.now();
       const { error: mergeErr } = await db()
         .from("cart_items")
@@ -522,9 +571,9 @@ router.patch("/:id", requireAuth, async (req: Request, res: Response) => {
   const { quantity } = req.body as { quantity?: unknown };
 
   const qty = Number(quantity);
-  if (!Number.isInteger(qty) || qty < 1) {
+  if (!Number.isInteger(qty) || qty < 1 || qty > MAX_QTY) {
     log.warn(`invalid quantity=${quantity}`).end("CART UPDATE QTY");
-    res.status(400).json({ error: "quantity must be an integer >= 1" });
+    res.status(400).json({ error: `quantity must be an integer between 1 and ${MAX_QTY}` });
     return;
   }
 

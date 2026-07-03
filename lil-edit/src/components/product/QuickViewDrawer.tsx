@@ -219,7 +219,10 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
     }
   };
   const handleQtyChange = (delta: number) => {
-    void updateQuantity(product.id, Math.max(1, liveQty + delta));
+    // 1–99, matching the backend clamp; at a bound the click is a no-op.
+    const next = Math.min(99, Math.max(1, liveQty + delta));
+    if (next === liveQty) return;
+    void updateQuantity(product.id, next);
   };
 
   // ── Shared pieces ────────────────────────────────────────────────────────

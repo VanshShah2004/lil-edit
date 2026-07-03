@@ -4,6 +4,7 @@ import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth.js";
 import { createLog, fms } from "../lib/logger.js";
 import { redisGet, redisSet, redisDel, redisKey, WISHLIST_TTL_S } from "../lib/redis.js";
+import { fetchProductsBySkus } from "../lib/productsBySku.js";
 import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
 
 const router = Router();
@@ -85,11 +86,12 @@ function enrichWishlistRow(row: WishlistItemRow, product: ProductRow) {
   };
 }
 
-async function batchFetchProducts(slugs: string[]) {
-  return db()
-    .from("products")
-    .select(PRODUCT_SELECT)
-    .in("slug", slugs);
+// Resolved by SKU, not by the stored product_slug: slugs are non-unique and go stale
+// when a product is renamed (title edit → new slug on republish), which used to make
+// live wishlist rows unresolvable — they silently vanished from the list. The SKU is
+// the identity; the stored slug is display-only.
+async function batchFetchProducts(skus: string[], log: Parameters<typeof fetchProductsBySkus>[3]) {
+  return fetchProductsBySkus(db(), skus, PRODUCT_SELECT, log);
 }
 
 // Atomic move via Postgres RPC (migration 20260703_move_wishlist_to_cart.sql):
@@ -143,10 +145,10 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
     }
 
     // ── DB: products (with variants + images) ─────────────────────────────────
-    const slugs = [...new Set(rows.map((r) => r.product_slug as string))];
+    const skus = [...new Set(rows.map((r) => r.sku as string))];
     const t0Products = performance.now();
-    const { data: products, error: prodErr } = await batchFetchProducts(slugs);
-    log.step(`DB products: ${fms(performance.now() - t0Products)}  slugs=${slugs.length}  rows=${products?.length ?? 0}`);
+    const { data: products, error: prodErr } = await batchFetchProducts(skus, log);
+    log.step(`DB products: ${fms(performance.now() - t0Products)}  skus=${skus.length}  rows=${products?.length ?? 0}`);
 
     if (prodErr) {
       log.error(`product fetch failed  code=${prodErr.code}  msg=${prodErr.message}`, prodErr).end("WISHLIST GET");
@@ -344,10 +346,10 @@ router.post("/move-all-to-cart", requireAuth, async (req: Request, res: Response
     }
 
     // Batch-fetch product data to check stock
-    const slugs = [...new Set(rows.map((r) => r.product_slug as string))];
+    const skus = [...new Set(rows.map((r) => r.sku as string))];
     const t0Products = performance.now();
-    const { data: products, error: prodErr } = await batchFetchProducts(slugs);
-    log.step(`DB products: ${fms(performance.now() - t0Products)}  slugs=${slugs.length}`);
+    const { data: products, error: prodErr } = await batchFetchProducts(skus, log);
+    log.step(`DB products: ${fms(performance.now() - t0Products)}  skus=${skus.length}`);
 
     if (prodErr) {
       log.error(`product fetch failed  code=${prodErr.code}`, prodErr).end("WISHLIST MOVE ALL TO CART");
@@ -363,7 +365,7 @@ router.post("/move-all-to-cart", requireAuth, async (req: Request, res: Response
       for (const v of p.product_variants ?? []) skuToProduct.set(v.variant_sku, p);
     }
 
-    log.step(`total rows=${rows.length}  unique slugs=${slugs.length}`);
+    log.step(`total rows=${rows.length}  unique skus=${skus.length}`);
 
     let moved = 0;
     let skipped = 0;

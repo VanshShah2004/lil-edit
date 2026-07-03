@@ -242,7 +242,9 @@ export default function Cart() {
   const { recommendations, loading: recsLoading } = useRecommendations(recAnchor);
 
   const handleQuantityChange = (itemId: string, currentQty: number, delta: number) => {
-    const next = Math.max(1, currentQty + delta);
+    // 1–99, matching the backend clamp; at a bound the click is a no-op (no wasted PATCH).
+    const next = Math.min(99, Math.max(1, currentQty + delta));
+    if (next === currentQty) return;
     void updateQuantity(itemId, next);
   };
 
@@ -821,6 +823,22 @@ export default function Cart() {
                 onClick={() => {
                   if (!user) { toast.error("Please log in to checkout"); return; }
                   if (selectedItems.length === 0) { toast.error("Select at least one item to check out"); return; }
+                  // A sized product can't be bought without a chosen size (a wishlist→cart
+                  // move lands with none). The backend /initiate refuses these too — this
+                  // just catches it where the size picker is on screen.
+                  const missingSize = selectedItems.find((item) => item.sizes.length > 0 && !item.size);
+                  if (missingSize) { toast.error(`Please select a size for "${missingSize.title}"`); return; }
+                  // Per-SKU order cap: at most 99 of one product (variant), summed across
+                  // its sizes. Mirrors the backend /initiate gate so it's caught before
+                  // leaving the bag.
+                  const skuTotals = new Map<string, { title: string; total: number }>();
+                  for (const item of selectedItems) {
+                    const cur = skuTotals.get(item.sku) ?? { title: item.title, total: 0 };
+                    cur.total += item.quantity;
+                    skuTotals.set(item.sku, cur);
+                  }
+                  const overCap = [...skuTotals.values()].find((s) => s.total > 99);
+                  if (overCap) { toast.error(`You can order at most 99 of "${overCap.title}". Please reduce the quantity.`); return; }
                   navigate("/checkout", {
                     state: {
                       mode: "cart",

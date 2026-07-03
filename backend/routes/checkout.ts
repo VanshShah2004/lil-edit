@@ -16,6 +16,7 @@ import { verifyReviewsForOrder } from "../lib/reviewsVerification.js";
 // lose the receipt. No-op on the happy path (a recorded receipt). Fire-and-forget; never throws.
 import { sendReceiptIfMissing } from "../lib/orderReceipt.js";
 import { validateCoupon, type CouponRow } from "../lib/coupons.js";
+import { fetchProductsBySkus } from "../lib/productsBySku.js";
 import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
 
 // ─── Razorpay-prepaid checkout: cart → order placement ──────────────────────────
@@ -158,7 +159,7 @@ async function priceOrder(
   userId: string,
   source: Source,
   log: OpLogger,
-): Promise<{ items: PricedLine[]; subtotal: number; shippingFee: number; itemCount: number; unavailable: UnavailableLine[]; oversoldExcluded: number }> {
+): Promise<{ items: PricedLine[]; subtotal: number; shippingFee: number; itemCount: number; unavailable: UnavailableLine[]; oversoldExcluded: number; missingSize: string[] }> {
   let rawLines: RawLine[];
   if (source.mode === "cart") {
     const t0Cart = performance.now();
@@ -186,25 +187,29 @@ async function priceOrder(
   }
   log.step(`pricing source=${source.mode}  rawLines=${rawLines.length}`);
 
-  if (rawLines.length === 0) return { items: [], subtotal: 0, shippingFee: 0, itemCount: 0, unavailable: [], oversoldExcluded: 0 };
+  if (rawLines.length === 0) return { items: [], subtotal: 0, shippingFee: 0, itemCount: 0, unavailable: [], oversoldExcluded: 0, missingSize: [] };
 
-  const slugs = [...new Set(rawLines.map((l) => l.product_slug))];
+  // Fetch by SKU, not by the line's stored product_slug: slugs are non-unique and go
+  // stale after a product rename (title edit → new slug on republish), which used to
+  // flag perfectly live lines "unavailable" — and /initiate then pruned them from the
+  // cart. The SKU is the identity and never changes.
+  const lineSkus = [...new Set(rawLines.map((l) => l.sku))];
   const t0Prod = performance.now();
-  const { data: products, error: prodErr } = await db()
-    .from("products")
-    .select(`
-      id, title, slug, category_slug, base_sku, price, original_price, is_unlimited,
+  const { data: products, error: prodErr } = await fetchProductsBySkus(
+    db(),
+    lineSkus,
+    `
+      id, title, slug, category_slug, base_sku, price, original_price, sizes, is_unlimited,
       product_images(id, image_url, is_primary, sort_order, variant_id),
       product_variants(id, variant_sku, color_name, color_hex, stock, is_unlimited, sort_order)
-    `)
-    .in("slug", slugs);
+    `,
+    log,
+  );
   if (prodErr) { log.error(`products read failed  ${prodErr.message}`, prodErr); throw new PriceError(500, "Could not price order"); }
-  log.step(`DB products read: ${fms(performance.now() - t0Prod)}  slugs=${slugs.length}  rows=${products?.length ?? 0}`);
+  log.step(`DB products read: ${fms(performance.now() - t0Prod)}  skus=${lineSkus.length}  rows=${products?.length ?? 0}`);
 
-  // Index by SKU, not slug: slugs are non-unique, so two fetched products can share a
-  // slug — a slug-keyed map would collapse them and mis-price. Every base_sku and every
-  // variant_sku is globally unique, so a per-sku index resolves each line to the exact
-  // product even when slugs collide.
+  // Index by SKU: every base_sku and every variant_sku is globally unique, so a
+  // per-sku index resolves each line to the exact product even when slugs collide.
   const skuToProduct = new Map<string, CheckoutProduct>();
   for (const p of (products ?? []) as unknown as CheckoutProduct[]) {
     if (p.base_sku) skuToProduct.set(p.base_sku as string, p);
@@ -213,6 +218,7 @@ async function priceOrder(
 
   const items: PricedLine[] = [];
   const unavailable: UnavailableLine[] = [];
+  const missingSize: string[] = [];
   let oversoldExcluded = 0;
   for (const line of rawLines) {
     const product = skuToProduct.get(line.sku);
@@ -233,7 +239,20 @@ async function priceOrder(
     const stock: number | null = isUnlimited ? null : (variant?.stock ?? 0);
     const unitPrice = Number(product.price) || 0;
     const originalPrice = Number(product.original_price ?? product.price) || unitPrice;
-    const qty = Math.max(1, Math.floor(Number(line.quantity) || 1));
+    // Same 99/line ceiling as the cart API. Cart rows are already capped at write time;
+    // this also covers the direct-buy quantity, which comes straight from the client.
+    const qty = Math.min(99, Math.max(1, Math.floor(Number(line.quantity) || 1)));
+
+    // A sized product must carry a chosen size — a line saved without one (e.g. moved
+    // from the wishlist, which inserts size='') can't be fulfilled. COLLECTED here, never
+    // thrown: /initiate refuses on it BEFORE payment, while the post-payment recovery
+    // paths must still price the paid snapshot (a captured payment always yields the
+    // order — never enforce fulfillment niceties after money moved).
+    const requiresSize = Array.isArray(product.sizes) && product.sizes.length > 0;
+    if (requiresSize && !(line.size ?? "").trim()) {
+      missingSize.push((product.title as string) || line.sku);
+      log.warn(`line missing required size  sku=${line.sku}  "${(product.title as string ?? "").slice(0, 30)}"`);
+    }
 
     // Cart mode: a line the current stock can't fully cover (qty > available) must NOT
     // dead-end the whole checkout — the customer is usually buying other, in-stock items
@@ -272,8 +291,8 @@ async function priceOrder(
   const subtotal = items.reduce((s, it) => s + it.line_total, 0);
   const itemCount = items.reduce((s, it) => s + it.quantity, 0);
   const shippingFee = computeShipping(subtotal);
-  log.step(`priced: ${items.length} line(s)  units=${itemCount}  subtotal=₹${subtotal}  shipping=₹${shippingFee}  unavailable=${unavailable.length}  oversoldExcluded=${oversoldExcluded}`);
-  return { items, subtotal, shippingFee, itemCount, unavailable, oversoldExcluded };
+  log.step(`priced: ${items.length} line(s)  units=${itemCount}  subtotal=₹${subtotal}  shipping=₹${shippingFee}  unavailable=${unavailable.length}  oversoldExcluded=${oversoldExcluded}  missingSize=${missingSize.length}`);
+  return { items, subtotal, shippingFee, itemCount, unavailable, oversoldExcluded, missingSize };
 }
 
 // First line whose stock can't cover its quantity (null = unlimited → always fine).
@@ -282,6 +301,24 @@ function findOversold(items: PricedLine[]): PricedLine | null {
     if (!it.is_unlimited && it.stock !== null && it.stock < it.quantity) return it;
   }
   return null;
+}
+
+// Per-order ceiling on units of a single variant (SKU), summed across its size-lines:
+// one SKU can appear on several lines (same color, different sizes), so a per-line cap
+// alone doesn't bound the SKU. "No more than 99 of the same product (variant) in one
+// order." Enforced pre-payment in /initiate only — like the size + oversold gates, a
+// captured payment is always honored.
+const MAX_UNITS_PER_SKU = 99;
+function findSkuOverLimit(items: PricedLine[]): { sku: string; title: string; total: number }[] {
+  const totals = new Map<string, { title: string; total: number }>();
+  for (const it of items) {
+    const cur = totals.get(it.sku) ?? { title: it.title, total: 0 };
+    cur.total += it.quantity;
+    totals.set(it.sku, cur);
+  }
+  return [...totals.entries()]
+    .filter(([, v]) => v.total > MAX_UNITS_PER_SKU)
+    .map(([sku, v]) => ({ sku, title: v.title, total: v.total }));
 }
 
 // p_items for the RPC = the snapshot minus the pre-check-only fields.
@@ -456,6 +493,9 @@ async function recoverSnapshot(razorpayOrderId: string, capturedPaise: number, l
   const priced = await priceOrder(userId, source, log);
   if (priced.items.length === 0) { log.error("notes fallback — nothing to price"); return null; }
   if (priced.unavailable.length > 0) { log.error(`notes fallback — ${priced.unavailable.length} line(s) now unavailable; refusing to place`); return null; }
+  // Missing sizes never block post-payment placement — the money is captured, the order
+  // must exist (/initiate is the gate that refuses these before payment).
+  if (priced.missingSize.length > 0) log.warn(`notes fallback — ${priced.missingSize.length} line(s) missing a size; placing anyway (payment captured)`);
 
   // Re-derive the discount from the coupon recorded in the Razorpay notes (the Redis
   // snapshot is the normal, exact path — this only runs if it was evicted). The coupon is
@@ -574,7 +614,8 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
         product_slug: slug,
         sku,
         size: typeof raw.size === "string" ? raw.size : "",
-        quantity: Math.max(1, Math.floor(Number(raw.quantity) || 1)),
+        // Same 99/line ceiling as the cart, so the Razorpay notes carry the capped value.
+        quantity: Math.min(99, Math.max(1, Math.floor(Number(raw.quantity) || 1))),
       };
       source = { mode: "direct", item: directItem };
     } else {
@@ -609,6 +650,27 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
           : "Item unavailable.";
       log.warn(`nothing to checkout (empty)  oversoldExcluded=${priced.oversoldExcluded}`).end("CHECKOUT INITIATE");
       res.status(400).json({ error: emptyMsg });
+      return;
+    }
+
+    // Size gate — pre-payment only. A sized product whose line has no chosen size (a
+    // wishlist→cart move inserts size='') is refused HERE, where the customer can still
+    // go pick one. The post-payment paths (/verify, webhook, notes fallback) never
+    // enforce this: a captured payment always yields the order.
+    if (priced.missingSize.length > 0) {
+      log.warn(`refusing initiate — ${priced.missingSize.length} line(s) missing a size: ${priced.missingSize.join(", ")}`).end("CHECKOUT INITIATE");
+      res.status(400).json({ error: `Please select a size for ${priced.missingSize.map((t) => `"${t}"`).join(", ")}.` });
+      return;
+    }
+
+    // Per-SKU order cap — pre-payment only. Sums a variant across its size-lines and
+    // refuses if any single product exceeds MAX_UNITS_PER_SKU in this order. Post-payment
+    // paths never enforce it (the money is captured; the order must exist).
+    const overLimit = findSkuOverLimit(priced.items);
+    if (overLimit.length > 0) {
+      const names = overLimit.map((o) => `"${o.title}"`).join(", ");
+      log.warn(`refusing initiate — per-SKU order cap (${MAX_UNITS_PER_SKU}) exceeded: ${overLimit.map((o) => `${o.sku}=${o.total}`).join(", ")}`).end("CHECKOUT INITIATE");
+      res.status(400).json({ error: `You can order at most ${MAX_UNITS_PER_SKU} of the same product — please reduce the quantity of ${names}.` });
       return;
     }
 
