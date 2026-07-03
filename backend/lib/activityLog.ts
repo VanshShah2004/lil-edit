@@ -79,7 +79,7 @@ export async function logActivityBatch(entries: ActivityEntry[]): Promise<void> 
       console.warn(`[activityLog] batch insert failed (${entries.length} rows): ${error.message}`);
       return;
     }
-    console.log(`[activityLog] logged batch of ${entries.length} (${entries[0].type})`);
+    console.log(`[activityLog] logged batch of ${entries.length} (${entries[0]?.type ?? "?"})`);
   } catch (e) {
     console.warn(`[activityLog] batch threw: ${e instanceof Error ? e.message : String(e)}`);
   }

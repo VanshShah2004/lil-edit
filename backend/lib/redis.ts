@@ -148,7 +148,7 @@ export async function redisDel(log: OpLogger, ...keys: string[]): Promise<void> 
 }
 
 export function redisKey(
-  prefix: "pdp" | "rec" | "reviews" | "catalog-list" | "catalog-detail" | "cart" | "wishlist" | "suggestions" | "search" | "order" | "curation" | "checkout",
+  prefix: "pdp" | "rec" | "reviews" | "catalog-list" | "catalog-detail" | "cart" | "wishlist" | "suggestions" | "search" | "order" | "curation" | "checkout" | "analytics",
   slug: string,
 ): string {
   return `${prefix}:${slug}`;

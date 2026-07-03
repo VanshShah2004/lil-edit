@@ -431,7 +431,7 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
       res.status(500).json({ error: "Could not validate SKU" });
       return;
     }
-    const productSelect = db().from("products").select("slug, is_unlimited, product_variants(variant_sku, stock, is_unlimited)");
+    const productSelect = db().from("products").select("slug, base_sku, is_unlimited, product_variants(variant_sku, stock, is_unlimited)");
     const { data: product, error: prodErr } = await (skuOwner
       ? productSelect.eq("id", skuOwner.product_id as string)
       : productSelect.eq("base_sku", current.sku as string)

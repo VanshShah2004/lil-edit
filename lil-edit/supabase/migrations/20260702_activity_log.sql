@@ -151,23 +151,49 @@ BEGIN
 END;
 $$;
 
--- ─── Triggers ────────────────────────────────────────────────────────────────
-DROP TRIGGER IF EXISTS trg_log_cart_activity ON public.cart_items;
-CREATE TRIGGER trg_log_cart_activity
-  AFTER INSERT ON public.cart_items
-  FOR EACH ROW EXECUTE FUNCTION public.log_cart_activity();
+-- ─── Triggers (guarded: attach only to source tables that exist) ─────────────
+-- Each trigger is created only if its source table is present, so this migration
+-- applies on a partially-migrated database instead of aborting on the first
+-- missing table. On a COMPLETE schema every trigger is created exactly as before
+-- (backward-compatible). A missing source table is reported as a NOTICE — that
+-- means the underlying FEATURE itself isn't installed on this database and needs
+-- its own base migration (named in the notice), which is a bigger problem than
+-- activity logging: the app feature is absent too.
+DO $$
+BEGIN
+  IF to_regclass('public.cart_items') IS NOT NULL THEN
+    DROP TRIGGER IF EXISTS trg_log_cart_activity ON public.cart_items;
+    CREATE TRIGGER trg_log_cart_activity
+      AFTER INSERT ON public.cart_items
+      FOR EACH ROW EXECUTE FUNCTION public.log_cart_activity();
+  ELSE
+    RAISE NOTICE 'cart_items missing — cart logging not attached. Run 20260525_cart_items.sql.';
+  END IF;
 
-DROP TRIGGER IF EXISTS trg_log_wishlist_activity ON public.wishlist_items;
-CREATE TRIGGER trg_log_wishlist_activity
-  AFTER INSERT ON public.wishlist_items
-  FOR EACH ROW EXECUTE FUNCTION public.log_wishlist_activity();
+  IF to_regclass('public.wishlist_items') IS NOT NULL THEN
+    DROP TRIGGER IF EXISTS trg_log_wishlist_activity ON public.wishlist_items;
+    CREATE TRIGGER trg_log_wishlist_activity
+      AFTER INSERT ON public.wishlist_items
+      FOR EACH ROW EXECUTE FUNCTION public.log_wishlist_activity();
+  ELSE
+    RAISE NOTICE 'wishlist_items missing — wishlist logging not attached. Run 20260525_wishlist_items.sql.';
+  END IF;
 
-DROP TRIGGER IF EXISTS trg_log_order_activity ON public.orders;
-CREATE TRIGGER trg_log_order_activity
-  AFTER INSERT ON public.orders
-  FOR EACH ROW EXECUTE FUNCTION public.log_order_activity();
+  IF to_regclass('public.orders') IS NOT NULL THEN
+    DROP TRIGGER IF EXISTS trg_log_order_activity ON public.orders;
+    CREATE TRIGGER trg_log_order_activity
+      AFTER INSERT ON public.orders
+      FOR EACH ROW EXECUTE FUNCTION public.log_order_activity();
+  ELSE
+    RAISE NOTICE 'orders missing — order logging not attached. Run 20260604_orders.sql.';
+  END IF;
 
-DROP TRIGGER IF EXISTS trg_log_review_activity ON public.product_reviews;
-CREATE TRIGGER trg_log_review_activity
-  AFTER INSERT ON public.product_reviews
-  FOR EACH ROW EXECUTE FUNCTION public.log_review_activity();
+  IF to_regclass('public.product_reviews') IS NOT NULL THEN
+    DROP TRIGGER IF EXISTS trg_log_review_activity ON public.product_reviews;
+    CREATE TRIGGER trg_log_review_activity
+      AFTER INSERT ON public.product_reviews
+      FOR EACH ROW EXECUTE FUNCTION public.log_review_activity();
+  ELSE
+    RAISE NOTICE 'product_reviews missing — review logging not attached. Run 20260602_product_reviews.sql.';
+  END IF;
+END $$;

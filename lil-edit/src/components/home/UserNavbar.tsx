@@ -20,6 +20,7 @@ import {
   ChevronRight,
   MessageSquare,
   ScrollText,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
@@ -267,6 +268,13 @@ const UserNavbar = () => {
                         Admin
                       </div>
                       <Link
+                        to="/admin/analytics"
+                        onClick={closeProfileMenu}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
+                      >
+                        <BarChart3 className="w-4 h-4" /> Analytics
+                      </Link>
+                      <Link
                         to="/admin/settings"
                         onClick={closeProfileMenu}
                         className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
@@ -375,6 +383,7 @@ const UserNavbar = () => {
 
           {isAdmin && (
             <SideSection label="Backstage">
+              <SideLink to="/admin/analytics" icon={BarChart3} label="Analytics" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               <SideLink to="/admin/settings" icon={ShieldCheck} label="Admin Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               <SideLink to="/admin/general-settings" icon={Settings} label="General Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               <SideLink to="/admin/manage-products" icon={Settings} label="Manage Products" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />

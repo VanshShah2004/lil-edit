@@ -71,6 +71,21 @@ const AdminSettings    = lazyWithLog("AdminSettings",    () => import("./pages/a
 const AdminGeneralSettings = lazyWithLog("AdminGeneralSettings", () => import("./pages/admin/GeneralSettings"));
 const AdminSpotlightPreview = lazyWithLog("AdminSpotlightPreview", () => import("./pages/admin/SpotlightPreview"));
 
+// Analytics platform — its own chunk group (charts + tables), never on the shopper bundle.
+const AnExecutive   = lazyWithLog("AnExecutive",   () => import("./pages/admin/analytics/Executive"));
+const AnRevenue     = lazyWithLog("AnRevenue",     () => import("./pages/admin/analytics/Revenue"));
+const AnOrders      = lazyWithLog("AnOrders",      () => import("./pages/admin/analytics/Orders"));
+const AnProducts    = lazyWithLog("AnProducts",    () => import("./pages/admin/analytics/Products"));
+const AnProductDetail = lazyWithLog("AnProductDetail", () => import("./pages/admin/analytics/ProductDetail"));
+const AnCustomers   = lazyWithLog("AnCustomers",   () => import("./pages/admin/analytics/Customers"));
+const AnWishlist    = lazyWithLog("AnWishlist",    () => import("./pages/admin/analytics/Wishlist"));
+const AnCart        = lazyWithLog("AnCart",        () => import("./pages/admin/analytics/Cart"));
+const AnSearch      = lazyWithLog("AnSearch",      () => import("./pages/admin/analytics/Search"));
+const AnReviews     = lazyWithLog("AnReviews",     () => import("./pages/admin/analytics/Reviews"));
+const AnCoupons     = lazyWithLog("AnCoupons",     () => import("./pages/admin/analytics/Coupons"));
+const AnInventory   = lazyWithLog("AnInventory",   () => import("./pages/admin/analytics/Inventory"));
+const AnLive        = lazyWithLog("AnLive",        () => import("./pages/admin/analytics/Live"));
+
 const queryClient = new QueryClient();
 
 const RouteFallback = () => (
@@ -119,6 +134,20 @@ const App = () => (
             <Route path="/admin/spotlight" element={<AdminRoute><AdminSpotlight /></AdminRoute>} />
             <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
             <Route path="/admin/general-settings" element={<AdminRoute><AdminGeneralSettings /></AdminRoute>} />
+            {/* Analytics platform */}
+            <Route path="/admin/analytics" element={<AdminRoute><AnExecutive /></AdminRoute>} />
+            <Route path="/admin/analytics/revenue" element={<AdminRoute><AnRevenue /></AdminRoute>} />
+            <Route path="/admin/analytics/orders" element={<AdminRoute><AnOrders /></AdminRoute>} />
+            <Route path="/admin/analytics/products" element={<AdminRoute><AnProducts /></AdminRoute>} />
+            <Route path="/admin/analytics/product/:slug" element={<AdminRoute><AnProductDetail /></AdminRoute>} />
+            <Route path="/admin/analytics/customers" element={<AdminRoute><AnCustomers /></AdminRoute>} />
+            <Route path="/admin/analytics/wishlist" element={<AdminRoute><AnWishlist /></AdminRoute>} />
+            <Route path="/admin/analytics/cart" element={<AdminRoute><AnCart /></AdminRoute>} />
+            <Route path="/admin/analytics/search" element={<AdminRoute><AnSearch /></AdminRoute>} />
+            <Route path="/admin/analytics/reviews" element={<AdminRoute><AnReviews /></AdminRoute>} />
+            <Route path="/admin/analytics/coupons" element={<AdminRoute><AnCoupons /></AdminRoute>} />
+            <Route path="/admin/analytics/inventory" element={<AdminRoute><AnInventory /></AdminRoute>} />
+            <Route path="/admin/analytics/live" element={<AdminRoute><AnLive /></AdminRoute>} />
             {/* Loaded inside The Spotlight's preview iframe — not user-navigable UI. */}
             <Route path="/admin/spotlight/preview" element={<AdminRoute><AdminSpotlightPreview /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />

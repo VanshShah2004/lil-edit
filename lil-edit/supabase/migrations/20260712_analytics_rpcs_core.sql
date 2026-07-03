@@ -807,13 +807,13 @@ BEGIN
 
   -- New vs returning (order-level split for the pie).
   WITH act AS (
-    SELECT o.*, MIN(o2.created_at) AS first_order
+    SELECT o.id, f.first_order
     FROM orders o
-    JOIN orders o2 ON o2.user_id = o.user_id AND o2.status <> 'cancelled'
+    JOIN LATERAL (
+      SELECT MIN(o2.created_at) AS first_order
+      FROM orders o2 WHERE o2.user_id = o.user_id AND o2.status <> 'cancelled'
+    ) f ON TRUE
     WHERE o.created_at >= p_from AND o.created_at < p_to AND o.status <> 'cancelled'
-    GROUP BY o.id, o.user_id, o.order_number, o.status, o.payment_method, o.payment_status,
-             o.subtotal, o.discount, o.shipping_fee, o.total, o.item_count, o.shipping_address,
-             o.created_at, o.updated_at
   )
   SELECT jsonb_build_object(
     'new_orders',       COUNT(*) FILTER (WHERE first_order >= p_from),

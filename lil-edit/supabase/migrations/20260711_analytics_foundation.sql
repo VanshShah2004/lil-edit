@@ -103,33 +103,67 @@ CREATE INDEX IF NOT EXISTS idx_live_presence_last_seen
 
 ALTER TABLE public.live_presence ENABLE ROW LEVEL SECURITY;
 
--- ─── Analytics indexes on existing tables ─────────────────────────────────────
+-- ─── Analytics indexes on existing tables (order-independent) ─────────────────
 -- Aggregations are date-range-scoped and often product- or type-scoped; these
 -- keep them index-driven without touching any hot write path.
+--
+-- Each index targets a table owned by ANOTHER feature migration (activity_log,
+-- orders, order_items, product_reviews). To make THIS migration safe to run in
+-- any order — and never abort halfway — every index is guarded by an existence
+-- check: a missing prerequisite table (or the orders.coupon_code column) is
+-- skipped with a NOTICE instead of raising. Re-run this migration after applying
+-- the prerequisite to pick up the deferred index. CREATE INDEX IF NOT EXISTS
+-- makes the re-run a no-op for indexes already present.
+--
+-- ⚠️ The analytics platform NEEDS public.activity_log (cart/wishlist/search
+--    events come from it). If the notice below fires, run
+--    20260702_activity_log.sql, then re-run this file.
+DO $$
+BEGIN
+  IF to_regclass('public.activity_log') IS NOT NULL THEN
+    -- Per-product event counts (wishlist/cart adds & removes for one slug).
+    CREATE INDEX IF NOT EXISTS idx_activity_log_slug_type_created
+      ON public.activity_log (product_slug, type, created_at DESC)
+      WHERE product_slug IS NOT NULL;
+    -- Per-user funnel lookups (a user's events in a window).
+    CREATE INDEX IF NOT EXISTS idx_activity_log_user_created
+      ON public.activity_log (user_id, created_at DESC)
+      WHERE user_id IS NOT NULL;
+  ELSE
+    RAISE NOTICE 'activity_log not found — skipping its analytics indexes. The analytics platform needs it: run 20260702_activity_log.sql, then re-run this migration.';
+  END IF;
 
--- Per-product event counts (wishlist adds/removes, cart adds/removes for one slug).
-CREATE INDEX IF NOT EXISTS idx_activity_log_slug_type_created
-  ON public.activity_log (product_slug, type, created_at DESC)
-  WHERE product_slug IS NOT NULL;
--- Per-user funnel lookups (a user's events in a window).
-CREATE INDEX IF NOT EXISTS idx_activity_log_user_created
-  ON public.activity_log (user_id, created_at DESC)
-  WHERE user_id IS NOT NULL;
+  IF to_regclass('public.orders') IS NOT NULL THEN
+    -- Status-split order counts over a range (orders KPIs, cancellation rate).
+    CREATE INDEX IF NOT EXISTS orders_status_created_idx
+      ON public.orders (status, created_at DESC);
+    -- Coupon analytics: orders grouped per coupon code (column added by
+    -- 20260630_place_order_coupons.sql — guard on it so this doesn't fail either).
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'coupon_code'
+    ) THEN
+      CREATE INDEX IF NOT EXISTS orders_coupon_code_idx
+        ON public.orders (coupon_code) WHERE coupon_code IS NOT NULL;
+    ELSE
+      RAISE NOTICE 'orders.coupon_code not found — skipping coupon index. Run 20260630_place_order_coupons.sql, then re-run.';
+    END IF;
+  ELSE
+    RAISE NOTICE 'orders not found — skipping order analytics indexes.';
+  END IF;
 
--- Status-split order counts over a range (orders KPIs, cancellation rate).
-CREATE INDEX IF NOT EXISTS orders_status_created_idx
-  ON public.orders (status, created_at DESC);
--- Coupon analytics: orders grouped per coupon code.
-CREATE INDEX IF NOT EXISTS orders_coupon_code_idx
-  ON public.orders (coupon_code)
-  WHERE coupon_code IS NOT NULL;
+  IF to_regclass('public.order_items') IS NOT NULL THEN
+    -- Product/variant sales rollups join order_items by slug or sku.
+    CREATE INDEX IF NOT EXISTS order_items_product_slug_idx ON public.order_items (product_slug);
+    CREATE INDEX IF NOT EXISTS order_items_sku_idx          ON public.order_items (sku);
+  ELSE
+    RAISE NOTICE 'order_items not found — skipping its analytics indexes.';
+  END IF;
 
--- Product/variant sales rollups join order_items by slug or sku.
-CREATE INDEX IF NOT EXISTS order_items_product_slug_idx
-  ON public.order_items (product_slug);
-CREATE INDEX IF NOT EXISTS order_items_sku_idx
-  ON public.order_items (sku);
-
--- Reviews trend buckets scan by date across all products.
-CREATE INDEX IF NOT EXISTS idx_product_reviews_created
-  ON public.product_reviews (created_at DESC);
+  IF to_regclass('public.product_reviews') IS NOT NULL THEN
+    -- Reviews trend buckets scan by date across all products.
+    CREATE INDEX IF NOT EXISTS idx_product_reviews_created ON public.product_reviews (created_at DESC);
+  ELSE
+    RAISE NOTICE 'product_reviews not found — skipping its analytics index.';
+  END IF;
+END $$;
