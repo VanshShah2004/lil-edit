@@ -92,36 +92,16 @@ async function batchFetchProducts(slugs: string[]) {
     .in("slug", slugs);
 }
 
-// Shared upsert-into-cart logic (reused by move-to-cart routes)
-async function upsertCartItem(
-  userId: string,
-  productSlug: string,
-  sku: string,
-  qty: number
-) {
-  const { data: existing, error: existErr } = await db()
-    .from("cart_items")
-    .select("id, quantity")
-    .eq("user_id", userId)
-    .eq("sku", sku)
-    .eq("size", "")
-    .maybeSingle();
-
-  if (existErr) return { error: existErr };
-
-  if (existing) {
-    const newQty = (existing.quantity as number) + qty;
-    const { error } = await db()
-      .from("cart_items")
-      .update({ quantity: newQty, updated_at: new Date().toISOString() })
-      .eq("id", existing.id);
-    return { error, action: "incremented" as const };
-  }
-
-  const { error } = await db()
-    .from("cart_items")
-    .insert({ user_id: userId, product_slug: productSlug, sku, size: "", quantity: qty });
-  return { error, action: "added" as const };
+// Atomic move via Postgres RPC (migration 20260703_move_wishlist_to_cart.sql):
+// deletes the wishlist row and upserts into cart in ONE transaction, so a retry
+// or concurrent duplicate call can't double-add ('not_found' instead), and a
+// failed cart write rolls the wishlist delete back with it.
+async function moveWishlistItemToCart(userId: string, wishlistId: string) {
+  const { data, error } = await db().rpc("move_wishlist_to_cart", {
+    p_user_id: userId,
+    p_wishlist_id: wishlistId,
+  });
+  return { error, action: data as "added" | "incremented" | "not_found" | null };
 }
 
 // ─── GET /api/wishlist ─────────────────────────────────────────────────────────
@@ -230,45 +210,51 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
   try {
     // Validate by SKU, not slug: slugs are non-unique now, so .eq("slug").maybeSingle()
     // would throw when two products share a slug. The sku (variant_sku or base_sku) is
-    // globally unique and self-identifying, so existence of the sku is the validation.
+    // globally unique and self-identifying. Resolve the owning product's slug server-side
+    // and store THAT — the client's product_slug is never trusted, so a mismatched
+    // slug+sku pair can't be persisted (it would later leak into cart_items on move).
     const t0Validate = performance.now();
-    const { data: variantRow, error: vErr } = await db()
-      .from("product_variants")
-      .select("variant_sku")
-      .eq("variant_sku", sku)
+    let serverSlug: string | null = null;
+    const { data: baseRow, error: bErr } = await db()
+      .from("products")
+      .select("slug")
+      .eq("base_sku", sku)
       .maybeSingle();
-    if (vErr) {
-      log.error(`variant validation failed  code=${vErr.code}`, vErr).end("WISHLIST ADD");
+    if (bErr) {
+      log.error(`base-sku validation failed  code=${bErr.code}`, bErr).end("WISHLIST ADD");
       res.status(500).json({ error: "Could not validate product" });
       return;
     }
-    let skuExists = !!variantRow;
-    if (!skuExists) {
-      const { data: baseRow, error: bErr } = await db()
+    serverSlug = (baseRow?.slug as string | undefined) ?? null;
+    if (!serverSlug) {
+      const { data: variantRows, error: vErr } = await db()
         .from("products")
-        .select("base_sku")
-        .eq("base_sku", sku)
-        .maybeSingle();
-      if (bErr) {
-        log.error(`base-sku validation failed  code=${bErr.code}`, bErr).end("WISHLIST ADD");
+        .select("slug, product_variants!inner(variant_sku)")
+        .eq("product_variants.variant_sku", sku)
+        .limit(1);
+      if (vErr) {
+        log.error(`variant validation failed  code=${vErr.code}`, vErr).end("WISHLIST ADD");
         res.status(500).json({ error: "Could not validate product" });
         return;
       }
-      skuExists = !!baseRow;
+      serverSlug = (variantRows?.[0]?.slug as string | undefined) ?? null;
     }
-    log.step(`DB sku validate: ${fms(performance.now() - t0Validate)}  exists=${skuExists}`);
+    log.step(`DB sku validate: ${fms(performance.now() - t0Validate)}  slug=${serverSlug}`);
 
-    if (!skuExists) {
+    if (!serverSlug) {
       log.warn(`sku not found  sku=${sku}`).end("WISHLIST ADD");
       res.status(404).json({ error: "Product not found" });
       return;
+    }
+    if (serverSlug !== product_slug) {
+      log.warn(`client slug mismatch  client=${product_slug}  server=${serverSlug} — using server slug`);
     }
 
     // Insert — unique constraint handles duplicates gracefully
     const t0Insert = performance.now();
     const { data: inserted, error: insertErr } = await db()
       .from("wishlist_items")
-      .insert({ user_id: userId, product_slug, sku })
+      .insert({ user_id: userId, product_slug: serverSlug, sku })
       .select("id")
       .maybeSingle();
     log.step(`DB insert: ${fms(performance.now() - t0Insert)}`);
@@ -303,57 +289,20 @@ router.post("/move-to-cart/:id", requireAuth, async (req: Request, res: Response
   log.step(`user=${userId}  wishlist_id=${id}`);
 
   try {
-    // Verify ownership + fetch the row
-    const t0Fetch = performance.now();
-    const { data: row, error: rowErr } = await db()
-      .from("wishlist_items")
-      .select("id, product_slug, sku")
-      .eq("id", id)
-      .eq("user_id", userId)
-      .maybeSingle();
-    log.step(`DB fetch row: ${fms(performance.now() - t0Fetch)}`);
+    // Atomic RPC: verifies ownership, deletes from wishlist, upserts into cart —
+    // all in one transaction.
+    const t0Move = performance.now();
+    const { error: moveErr, action } = await moveWishlistItemToCart(userId, String(id));
+    log.step(`DB move RPC: ${fms(performance.now() - t0Move)}  action=${action}`);
 
-    if (rowErr) {
-      log.error(`row fetch failed  code=${rowErr.code}`, rowErr).end("WISHLIST MOVE TO CART");
-      res.status(500).json({ error: rowErr.message });
+    if (moveErr) {
+      log.error(`move RPC failed  code=${moveErr.code}  msg=${moveErr.message}`, moveErr).end("WISHLIST MOVE TO CART");
+      res.status(500).json({ error: moveErr.message });
       return;
     }
-    if (!row) {
+    if (action === "not_found" || !action) {
       log.warn(`wishlist item not found or unauthorized  id=${id}`).end("WISHLIST MOVE TO CART");
       res.status(404).json({ error: "Wishlist item not found" });
-      return;
-    }
-
-    log.step(`moving slug=${row.product_slug}  sku=${row.sku}`);
-
-    // Upsert into cart
-    const t0Cart = performance.now();
-    const { error: cartErr, action } = await upsertCartItem(
-      userId,
-      row.product_slug as string,
-      row.sku as string,
-      1
-    );
-    log.step(`DB cart upsert: ${fms(performance.now() - t0Cart)}  action=${action}`);
-
-    if (cartErr) {
-      log.error(`cart upsert failed  code=${cartErr.code}  msg=${cartErr.message}`, cartErr).end("WISHLIST MOVE TO CART");
-      res.status(500).json({ error: cartErr.message });
-      return;
-    }
-
-    // Remove from wishlist
-    const t0Del = performance.now();
-    const { error: delErr } = await db()
-      .from("wishlist_items")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", userId);
-    log.step(`DB wishlist delete: ${fms(performance.now() - t0Del)}`);
-
-    if (delErr) {
-      log.error(`wishlist delete failed  code=${delErr.code}`, delErr).end("WISHLIST MOVE TO CART");
-      res.status(500).json({ error: delErr.message });
       return;
     }
 
@@ -418,7 +367,6 @@ router.post("/move-all-to-cart", requireAuth, async (req: Request, res: Response
 
     let moved = 0;
     let skipped = 0;
-    const movedIds: string[] = [];
 
     for (const row of rows) {
       const product = skuToProduct.get(row.sku as string);
@@ -427,38 +375,22 @@ router.post("/move-all-to-cart", requireAuth, async (req: Request, res: Response
       const enriched = enrichWishlistRow(row, product);
       if (!enriched.inStock) { skipped++; continue; }
 
-      const { error: cartErr } = await upsertCartItem(
-        userId,
-        row.product_slug as string,
-        row.sku as string,
-        1
-      );
+      // Atomic per item: cart upsert + wishlist delete in one transaction, so a
+      // failure mid-batch leaves every item cleanly on exactly one side.
+      const { error: moveErr, action } = await moveWishlistItemToCart(userId, row.id as string);
 
-      if (cartErr) {
-        log.error(`cart upsert failed for sku=${row.sku}  code=${cartErr.code}`, cartErr);
+      if (moveErr) {
+        log.error(`move RPC failed for sku=${row.sku}  code=${moveErr.code}`, moveErr);
+        skipped++;
+        continue;
+      }
+      if (action === "not_found" || !action) {
+        // Row vanished under us (concurrent move/remove) — nothing to do.
         skipped++;
         continue;
       }
 
-      movedIds.push(row.id as string);
       moved++;
-    }
-
-    // Delete all successfully moved items from wishlist
-    if (movedIds.length > 0) {
-      const t0Del = performance.now();
-      const { error: delErr } = await db()
-        .from("wishlist_items")
-        .delete()
-        .in("id", movedIds)
-        .eq("user_id", userId);
-      log.step(`DB bulk delete: ${fms(performance.now() - t0Del)}  deleted=${movedIds.length}`);
-
-      if (delErr) {
-        log.error(`bulk wishlist delete failed  code=${delErr.code}`, delErr).end("WISHLIST MOVE ALL TO CART");
-        res.status(500).json({ error: delErr.message });
-        return;
-      }
     }
 
     // Invalidate both caches — wishlist shrank, cart grew
