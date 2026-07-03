@@ -17,6 +17,8 @@ export interface CartItem {
   color: { name: string; hex: string };
   colors: { name: string; hex: string; sku: string }[];
   availability: string;
+  stock: number | null;
+  isUnlimited: boolean;
   tags: string[];
   badges: string[];
 }

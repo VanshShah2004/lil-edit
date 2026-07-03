@@ -242,8 +242,16 @@ export default function Cart() {
   const { recommendations, loading: recsLoading } = useRecommendations(recAnchor);
 
   const handleQuantityChange = (itemId: string, currentQty: number, delta: number) => {
-    // 1–99, matching the backend clamp; at a bound the click is a no-op (no wasted PATCH).
-    const next = Math.min(99, Math.max(1, currentQty + delta));
+    const item = cartItems.find((i) => i.id === itemId);
+    const maxAllowed = item?.isUnlimited ? 99 : Math.min(99, item?.stock ?? 99);
+    
+    if (delta > 0 && currentQty >= maxAllowed) {
+      toast.error("No more qty available");
+      return;
+    }
+
+    // 1–maxAllowed, matching the backend clamp; at a bound the click is a no-op (no wasted PATCH).
+    const next = Math.min(maxAllowed, Math.max(1, currentQty + delta));
     if (next === currentQty) return;
     void updateQuantity(itemId, next);
   };
@@ -547,7 +555,7 @@ export default function Cart() {
                                 e.stopPropagation();
                                 handleQuantityChange(item.id, item.quantity, 1);
                               }}
-                              className="px-2 sm:px-1.5 md:px-2 py-1 hover:bg-gray-100 transition"
+                              className={`px-2 sm:px-1.5 md:px-2 py-1 transition ${item.quantity >= (item.isUnlimited ? 99 : Math.min(99, item.stock ?? 99)) ? "opacity-30" : "hover:bg-gray-100"}`}
                             >
                               <Plus size={11} className="sm:hidden" />
                               <Plus size={10} className="hidden sm:block" />

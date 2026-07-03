@@ -653,7 +653,17 @@ const ProductPreviewView = ({
                 <Minus size={16} />
               </button>
               <span className="px-4 font-semibold tabular-nums">{quantity}</span>
-              <button onClick={() => setQuantity((prev) => Math.min(99, prev + 1))} className="h-10 w-10 flex items-center justify-center text-[#08423E]">
+              <button 
+                onClick={() => {
+                  const maxAllowed = isCurrentUnlimited ? 99 : Math.min(99, currentStock);
+                  if (quantity >= maxAllowed) {
+                    toast.error("No more qty available");
+                  } else {
+                    setQuantity((prev) => Math.min(maxAllowed, prev + 1));
+                  }
+                }}
+                className={`h-10 w-10 flex items-center justify-center text-[#08423E] transition-opacity ${quantity >= (isCurrentUnlimited ? 99 : Math.min(99, currentStock)) ? "opacity-30" : ""}`}
+              >
                 <Plus size={16} />
               </button>
             </div>

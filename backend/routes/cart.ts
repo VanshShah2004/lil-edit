@@ -157,6 +157,8 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
             sku: v.variant_sku as string,
           })),
           availability,
+          stock,
+          isUnlimited,
           sizes: (product.sizes ?? []) as string[],
           tags: (product.tags ?? []) as string[],
           badges: [
@@ -247,9 +249,12 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     // /add), so a mismatched or stale slug+sku pair can't be persisted.
     const t0Validate = performance.now();
     let serverSlug: string | null = null;
+    let isUnlimited = false;
+    let stock: number | null = null;
+
     const { data: variantRows, error: vErr } = await db()
       .from("products")
-      .select("slug, product_variants!inner(variant_sku)")
+      .select("slug, is_unlimited, product_variants!inner(variant_sku, stock, is_unlimited)")
       .eq("product_variants.variant_sku", sku)
       .limit(1);
     if (vErr) {
@@ -258,10 +263,16 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       return;
     }
     serverSlug = (variantRows?.[0]?.slug as string | undefined) ?? null;
+    if (serverSlug && variantRows?.[0]?.product_variants?.[0]) {
+      const v = variantRows[0].product_variants[0];
+      isUnlimited = !!v.is_unlimited || !!variantRows[0].is_unlimited;
+      stock = isUnlimited ? null : (v.stock ?? 0);
+    }
+
     if (!serverSlug) {
       const { data: baseRow, error: bErr } = await db()
         .from("products")
-        .select("slug")
+        .select("slug, is_unlimited")
         .eq("base_sku", sku)
         .maybeSingle();
       if (bErr) {
@@ -270,6 +281,10 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
         return;
       }
       serverSlug = (baseRow?.slug as string | undefined) ?? null;
+      if (serverSlug) {
+        isUnlimited = !!baseRow?.is_unlimited;
+        stock = isUnlimited ? null : 0;
+      }
     }
     log.step(`DB sku validate: ${fms(performance.now() - t0Validate)}  slug=${serverSlug ?? "∅"}`);
 
@@ -280,6 +295,15 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     }
     if (typeof product_slug === "string" && product_slug && product_slug !== serverSlug) {
       log.warn(`client slug mismatch  client=${product_slug}  server=${serverSlug} — using server slug`);
+    }
+
+    const maxAllowed = isUnlimited ? MAX_QTY : Math.min(MAX_QTY, stock ?? 0);
+    const clampedQty = Math.min(maxAllowed, qty);
+
+    if (clampedQty <= 0) {
+      log.warn(`out of stock  sku=${sku}`).end("CART ADD");
+      res.status(409).json({ error: "Product is out of stock" });
+      return;
     }
 
     const t0Conflict = performance.now();
@@ -299,7 +323,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     }
 
     if (existing) {
-      const newQty = Math.min(MAX_QTY, (existing.quantity as number) + qty);
+      const newQty = Math.min(maxAllowed, (existing.quantity as number) + clampedQty);
       const t0Write = performance.now();
       const { error: updateErr } = await db()
         .from("cart_items")
@@ -335,7 +359,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       const t0Write = performance.now();
       const { data: inserted, error: insertErr } = await db()
         .from("cart_items")
-        .insert({ user_id: userId, product_slug: serverSlug, sku, size: sizeVal, quantity: qty })
+        .insert({ user_id: userId, product_slug: serverSlug, sku, size: sizeVal, quantity: clampedQty })
         .select("id")
         .single();
       log.step(`DB insert: ${fms(performance.now() - t0Write)}`);
@@ -348,7 +372,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
 
       await redisDel(log, cartKey(userId));
       log.success(`inserted  id=${inserted.id}  total=${fms(log.elapsed())}`).end("CART ADD");
-      res.status(201).json({ ok: true, action: "added", cartItemId: inserted.id, quantity: qty });
+      res.status(201).json({ ok: true, action: "added", cartItemId: inserted.id, quantity: clampedQty });
     }
   } catch (err) {
     log.error("unhandled error", err).end("CART ADD");
@@ -407,7 +431,7 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
       res.status(500).json({ error: "Could not validate SKU" });
       return;
     }
-    const productSelect = db().from("products").select("slug, base_sku, product_variants(variant_sku)");
+    const productSelect = db().from("products").select("slug, is_unlimited, product_variants(variant_sku, stock, is_unlimited)");
     const { data: product, error: prodErr } = await (skuOwner
       ? productSelect.eq("id", skuOwner.product_id as string)
       : productSelect.eq("base_sku", current.sku as string)
@@ -429,6 +453,11 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
+    const variantData = (product.product_variants as any[] ?? []).find(v => v.variant_sku === newSku);
+    const isUnlimited = variantData ? !!variantData.is_unlimited : !!product.is_unlimited;
+    const stock = isUnlimited ? null : (variantData?.stock ?? 0);
+    const maxAllowed = isUnlimited ? MAX_QTY : Math.min(MAX_QTY, stock ?? 0);
+
     // Check for an existing item with the new SKU + same size
     const t0Conflict = performance.now();
     const { data: conflict } = await db()
@@ -442,7 +471,7 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
     log.step(`DB conflict check: ${fms(performance.now() - t0Conflict)}  conflict=${!!conflict}`);
 
     if (conflict) {
-      const mergedQty = Math.min(MAX_QTY, (conflict.quantity as number) + (current.quantity as number));
+      const mergedQty = Math.min(maxAllowed, (conflict.quantity as number) + (current.quantity as number));
       const t0Merge = performance.now();
       const { error: mergeErr } = await db()
         .from("cart_items")
@@ -462,10 +491,11 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
     }
 
     // product_slug is refreshed alongside the sku so a stale stored slug heals here too.
+    const clampedCurrentQty = Math.min(maxAllowed, current.quantity as number);
     const t0Write = performance.now();
     const { error: updateErr } = await db()
       .from("cart_items")
-      .update({ sku: newSku, product_slug: product.slug as string, updated_at: new Date().toISOString() })
+      .update({ sku: newSku, quantity: clampedCurrentQty, product_slug: product.slug as string, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("user_id", userId);
     log.step(`DB update sku: ${fms(performance.now() - t0Write)}`);
@@ -522,6 +552,28 @@ router.patch("/:id/size", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
+    // To cap merging properly, fetch stock for current sku
+    const t0Validate = performance.now();
+    const { data: skuOwner } = await db()
+      .from("product_variants")
+      .select("product_id")
+      .eq("variant_sku", current.sku as string)
+      .maybeSingle();
+    const productSelect = db().from("products").select("is_unlimited, product_variants(variant_sku, stock, is_unlimited)");
+    const { data: product } = await (skuOwner
+      ? productSelect.eq("id", skuOwner.product_id as string)
+      : productSelect.eq("base_sku", current.sku as string)
+    ).maybeSingle();
+    
+    let maxAllowed = MAX_QTY;
+    if (product) {
+      const variantData = (product.product_variants as any[] ?? []).find(v => v.variant_sku === current.sku);
+      const isUnlimited = variantData ? !!variantData.is_unlimited : !!product.is_unlimited;
+      const stock = isUnlimited ? null : (variantData?.stock ?? 0);
+      maxAllowed = isUnlimited ? MAX_QTY : Math.min(MAX_QTY, stock ?? 0);
+    }
+    log.step(`DB product validate: ${fms(performance.now() - t0Validate)}  maxAllowed=${maxAllowed}`);
+
     // Check if an item with the same sku + newSize already exists
     const t0Conflict = performance.now();
     const { data: conflict } = await db()
@@ -536,7 +588,7 @@ router.patch("/:id/size", requireAuth, async (req: Request, res: Response) => {
 
     if (conflict) {
       // Merge: add quantities into the existing item, delete the current one
-      const mergedQty = Math.min(MAX_QTY, (conflict.quantity as number) + (current.quantity as number));
+      const mergedQty = Math.min(maxAllowed, (conflict.quantity as number) + (current.quantity as number));
       const t0Merge = performance.now();
       const { error: mergeErr } = await db()
         .from("cart_items")
@@ -618,10 +670,33 @@ router.patch("/:id", requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
+    const t0Validate = performance.now();
+    const { data: skuOwner } = await db()
+      .from("product_variants")
+      .select("product_id")
+      .eq("variant_sku", current.sku as string)
+      .maybeSingle();
+    const productSelect = db().from("products").select("is_unlimited, product_variants(variant_sku, stock, is_unlimited)");
+    const { data: product } = await (skuOwner
+      ? productSelect.eq("id", skuOwner.product_id as string)
+      : productSelect.eq("base_sku", current.sku as string)
+    ).maybeSingle();
+    
+    let maxAllowed = MAX_QTY;
+    if (product) {
+      const variantData = (product.product_variants as any[] ?? []).find(v => v.variant_sku === current.sku);
+      const isUnlimited = variantData ? !!variantData.is_unlimited : !!product.is_unlimited;
+      const stock = isUnlimited ? null : (variantData?.stock ?? 0);
+      maxAllowed = isUnlimited ? MAX_QTY : Math.min(MAX_QTY, stock ?? 0);
+    }
+    log.step(`DB product validate: ${fms(performance.now() - t0Validate)}  maxAllowed=${maxAllowed}`);
+
+    const clampedQty = Math.min(maxAllowed, qty);
+
     const t0Write = performance.now();
     const { data, error } = await db()
       .from("cart_items")
-      .update({ quantity: qty, updated_at: new Date().toISOString() })
+      .update({ quantity: clampedQty, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("user_id", userId)
       .select("id, quantity")

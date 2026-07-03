@@ -60,6 +60,8 @@ export type QuickViewProduct = {
   availability?: string;
   brand?: string;
   inStock?: boolean;
+  stock?: number | null;
+  isUnlimited?: boolean;
   // Enriched from the live product (orders/cart snapshots don't carry this).
   descriptionPoints?: string[];
 };
@@ -219,8 +221,15 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
     }
   };
   const handleQtyChange = (delta: number) => {
-    // 1–99, matching the backend clamp; at a bound the click is a no-op.
-    const next = Math.min(99, Math.max(1, liveQty + delta));
+    const maxAllowed = product.isUnlimited ? 99 : Math.min(99, product.stock ?? 99);
+
+    if (delta > 0 && liveQty >= maxAllowed) {
+      toast.error("No more qty available");
+      return;
+    }
+
+    // 1–maxAllowed, matching the backend clamp; at a bound the click is a no-op.
+    const next = Math.min(maxAllowed, Math.max(1, liveQty + delta));
     if (next === liveQty) return;
     void updateQuantity(product.id, next);
   };
@@ -358,7 +367,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
           <div className="flex items-center border border-gray-400 rounded-full overflow-hidden bg-white w-fit">
             <button onClick={() => handleQtyChange(-1)} className="px-3 py-1.5 md:py-2 hover:bg-gray-100 transition" aria-label="Decrease quantity"><Minus size={13} /></button>
             <span className="px-3 text-base md:text-lg font-semibold min-w-[2ch] text-center">{liveQty}</span>
-            <button onClick={() => handleQtyChange(1)} className="px-3 py-1.5 md:py-2 hover:bg-gray-100 transition" aria-label="Increase quantity"><Plus size={13} /></button>
+            <button onClick={() => handleQtyChange(1)} className={`px-3 py-1.5 md:py-2 transition ${liveQty >= (product.isUnlimited ? 99 : Math.min(99, product.stock ?? 99)) ? "opacity-30" : "hover:bg-gray-100"}`} aria-label="Increase quantity"><Plus size={13} /></button>
           </div>
         </div>
       )}
