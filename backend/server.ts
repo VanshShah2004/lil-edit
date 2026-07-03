@@ -22,7 +22,7 @@ import shareRouter from "./routes/share.js";
 import newsletterRouter from "./routes/newsletter.js";
 import maintenanceRouter from "./routes/maintenance.js";
 import trackRouter from "./routes/track.js";
-import adminAnalyticsRouter from "./routes/adminAnalytics.js";
+// import adminAnalyticsRouter from "./routes/adminAnalytics.js";
 import { maintenanceGate } from "./middleware/maintenanceGate.js";
 import { startMaintenanceWatcher } from "./lib/maintenance.js";
 import { startReceiptSweep } from "./lib/orderReceipt.js";
@@ -134,7 +134,7 @@ app.use("/api/newsletter",   mutationLimiter, newsletterRouter);
 app.use("/api/track",        trackRouter);
 // Admin analytics platform (read-only aggregations). Every endpoint is gated by
 // requireAuth + requireAdmin inside the router — analytics is admin-access ONLY.
-app.use("/api/admin/analytics", adminAnalyticsRouter);
+// app.use("/api/admin/analytics", adminAnalyticsRouter);
 
 // Link-preview Open Graph tags for shared PDP URLs (host-agnostic — see routes/share.ts).
 app.use("/share", shareRouter);
