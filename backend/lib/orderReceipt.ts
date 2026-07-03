@@ -171,3 +171,93 @@ export async function sendReceiptIfMissing(orderId: string): Promise<void> {
     log.warn(`threw (non-fatal): ${e instanceof Error ? e.message : String(e)}`).end("RECEIPT BACKSTOP");
   }
 }
+
+// ─── Scheduled receipt sweep ─────────────────────────────────────────────────────
+// The webhook/verify backstop above only fires when Razorpay retries — if the webhook
+// isn't configured (or the retry window is exhausted), a receipt lost at placement stays
+// lost until an admin notices. This sweep closes that: every SWEEP_INTERVAL_MS it looks
+// for recently PAID orders with no kind='receipt' row and runs sendReceiptIfMissing on
+// each, making receipt recovery self-healing with no external trigger.
+//
+// Guard rails (all deliberate):
+//   • Only orders older than SWEEP_MIN_AGE_MS — afterPlacement's detached send has long
+//     finished by then, so the sweep can't race it into a duplicate (this window is wider
+//     than the webhook backstop's, eliminating that residual for the sweep path).
+//   • Only orders from the last SWEEP_LOOKBACK_MS — bounded query, and no surprise
+//     receipt blasts for historical orders the day the migration lands.
+//   • Fail CLOSED on either query error (e.g. order_notifications missing pre-migration):
+//     skip the cycle entirely. sendReceiptIfMissing re-checks per order anyway.
+//   • Capped at SWEEP_MAX_PER_CYCLE sends per cycle; sequential so an SMTP stall can't
+//     fan out. If the mailer is unconfigured the sends no-op and stay unrecorded — the
+//     sweep just logs and retries next cycle, which is exactly the desired behaviour
+//     (the receipts go out on their own once GMAIL_APP_PASSWORD lands).
+
+const SWEEP_INTERVAL_MS = 10 * 60 * 1000; // every 10 min
+const SWEEP_MIN_AGE_MS = 10 * 60 * 1000;  // leave fresh orders to afterPlacement
+const SWEEP_LOOKBACK_MS = 48 * 60 * 60 * 1000; // 48 h
+const SWEEP_MAX_PER_CYCLE = 20;
+
+let sweeper: ReturnType<typeof setInterval> | null = null;
+
+/** One sweep pass. Exported for testing; never throws. */
+export async function sweepMissingReceipts(): Promise<void> {
+  const log = createLog().start("RECEIPT SWEEP");
+  try {
+    const now = Date.now();
+    const { data: orders, error: ordErr } = await db()
+      .from("orders")
+      .select("id, order_number")
+      .eq("payment_status", "paid")
+      .gte("created_at", new Date(now - SWEEP_LOOKBACK_MS).toISOString())
+      .lte("created_at", new Date(now - SWEEP_MIN_AGE_MS).toISOString())
+      .order("created_at", { ascending: true });
+    if (ordErr) {
+      log.warn(`orders query failed — skipping cycle: ${ordErr.message}`).end("RECEIPT SWEEP");
+      return;
+    }
+    const candidates = (orders ?? []) as Array<{ id: string; order_number: string }>;
+    if (candidates.length === 0) {
+      log.step("no paid orders in window — nothing to do").end("RECEIPT SWEEP");
+      return;
+    }
+
+    // One query for all receipt rows in the window, then diff in-app (PostgREST has no
+    // anti-join). Fail closed: a read error here (table missing pre-migration) skips the
+    // cycle rather than treating every order as unreceipted.
+    const { data: recs, error: recErr } = await db()
+      .from("order_notifications")
+      .select("order_id")
+      .eq("kind", "receipt")
+      .in("order_id", candidates.map((o) => o.id));
+    if (recErr) {
+      log.warn(`receipt-rows query failed — skipping cycle (fail closed): ${recErr.message}`).end("RECEIPT SWEEP");
+      return;
+    }
+    const receipted = new Set(((recs ?? []) as Array<{ order_id: string }>).map((r) => r.order_id));
+    const missing = candidates.filter((o) => !receipted.has(o.id)).slice(0, SWEEP_MAX_PER_CYCLE);
+
+    if (missing.length === 0) {
+      log.success(`all ${candidates.length} paid order(s) in window have receipts`).end("RECEIPT SWEEP");
+      return;
+    }
+
+    log.step(`${missing.length} order(s) missing a receipt: ${missing.map((o) => o.order_number).join(", ")}`);
+    for (const o of missing) {
+      // Sequential on purpose; sendReceiptIfMissing re-checks the guard row itself and
+      // never throws.
+      await sendReceiptIfMissing(o.id);
+    }
+    log.success(`swept ${missing.length} order(s)`).end("RECEIPT SWEEP");
+  } catch (e) {
+    log.warn(`threw (non-fatal): ${e instanceof Error ? e.message : String(e)}`).end("RECEIPT SWEEP");
+  }
+}
+
+/** Start the periodic sweep (call once at boot). Runs a first pass shortly after start. */
+export function startReceiptSweep(): void {
+  if (sweeper) return;
+  // First pass after a short delay so boot-time warmups aren't competing with it.
+  setTimeout(() => void sweepMissingReceipts(), 30_000);
+  sweeper = setInterval(() => void sweepMissingReceipts(), SWEEP_INTERVAL_MS);
+  console.log(`[receipt-sweep] scheduled every ${SWEEP_INTERVAL_MS / 60000} min (lookback ${SWEEP_LOOKBACK_MS / 3600000} h)`);
+}

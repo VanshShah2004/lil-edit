@@ -406,9 +406,13 @@ router.post("/move-all-to-cart", requireAuth, async (req: Request, res: Response
       return;
     }
 
-    const productMap = new Map<string, ProductRow>(
-      ((products ?? []) as unknown as ProductRow[]).map((p) => [p.slug as string, p])
-    );
+    // Index by SKU, not slug: slugs are non-unique, so resolve each wishlist row to its
+    // exact product by the (globally unique) base_sku / variant_sku — same as GET.
+    const skuToProduct = new Map<string, ProductRow>();
+    for (const p of (products ?? []) as unknown as ProductRow[]) {
+      if (p.base_sku) skuToProduct.set(p.base_sku as string, p);
+      for (const v of p.product_variants ?? []) skuToProduct.set(v.variant_sku, p);
+    }
 
     log.step(`total rows=${rows.length}  unique slugs=${slugs.length}`);
 
@@ -417,7 +421,7 @@ router.post("/move-all-to-cart", requireAuth, async (req: Request, res: Response
     const movedIds: string[] = [];
 
     for (const row of rows) {
-      const product = productMap.get(row.product_slug as string);
+      const product = skuToProduct.get(row.sku as string);
       if (!product) { skipped++; continue; }
 
       const enriched = enrichWishlistRow(row, product);

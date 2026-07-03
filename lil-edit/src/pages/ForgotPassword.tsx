@@ -43,7 +43,8 @@ const ForgotPassword = () => {
     try {
       await sendPasswordResetOtp(email);
       setStep("otp");
-      setSuccessMsg(`OTP sent to ${email}`);
+      // Deliberately generic — we don't confirm whether this email has an account.
+      setSuccessMsg(`If an account exists for ${email}, we've sent a reset code.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send OTP. Please try again.");
     } finally {
@@ -69,8 +70,8 @@ const ForgotPassword = () => {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters");
       setLoading(false);
       return;
     }
@@ -102,7 +103,7 @@ const ForgotPassword = () => {
     setLoading(true);
     try {
       await sendPasswordResetOtp(email);
-      setSuccessMsg(`OTP resent to ${email}`);
+      setSuccessMsg(`If an account exists for ${email}, we've sent a reset code.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not resend OTP.");
     } finally {

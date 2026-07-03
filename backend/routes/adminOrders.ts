@@ -188,37 +188,8 @@ async function loadProfiles(userIds: string[]): Promise<Map<string, ProfileRow>>
   return map;
 }
 
-// Append a best-effort record that a customer status-notification email was sent. This
-// drives the "already notified for this status" guard in the admin UI. Never throws: a
-// missing table (pre-migration) or an insert error just logs — the email already went
-// out, and a lost audit row must never turn a successful send into a failure.
-async function recordNotification(
-  orderId: string,
-  status: string,
-  recipientEmail: string,
-  adminId: string | null,
-  adminName: string,
-  log: OpLogger,
-  // 'status' = a "your order is now <X>" notification; 'receipt' = the confirmation receipt.
-  kind: "status" | "receipt" = "status",
-): Promise<void> {
-  try {
-    const { error } = await db().from("order_notifications").insert({
-      order_id: orderId,
-      status,
-      kind,
-      recipient_email: recipientEmail,
-      sent_by: adminId,
-      sent_by_name: adminName,
-    });
-    if (error) log.warn(`could not record notification (table missing?): ${error.message}`);
-  } catch (e) {
-    log.warn(`record notification threw: ${e instanceof Error ? e.message : String(e)}`);
-  }
-}
-
-// A notification row to write BEFORE the email goes out. The interactive resend endpoints
-// "claim" the row first so that a record lost AFTER a successful send can never blind the
+// A notification row to write BEFORE the email goes out. Every sender (the status PATCH
+// and the interactive resend endpoints) "claims" the row first so that a record lost AFTER a successful send can never blind the
 // dedup guard (notificationExists) into allowing a duplicate later. Returns the new row id
 // (so a failed send can release it). `degraded` = the audit table is absent (pre-migration) —
 // the guard is moot then anyway, so callers send without tracking. id=null & !degraded = a
@@ -592,18 +563,31 @@ router.patch("/:id/status", adminMutationLimiter, async (req: Request, res: Resp
         const recipientName = [owner?.first_name, owner?.last_name].filter(Boolean).join(" ").trim();
         const orderNumber = (orderMeta.data as { order_number?: string } | null)?.order_number ?? orderId;
         const recipientEmail = await resolveRecipientEmail(ownerId, owner?.email, log);
-        const mail = await sendOrderStatusEmail({
-          recipientEmail,
-          recipientName: recipientName || undefined,
-          orderNumber,
-          toStatus: status,
-          orderUrl: `${publicSiteUrl()}/orders/${orderId}`,
-        });
-        emailed = mail.sent;
-        emailReason = mail.reason;
-        // Record only successful sends so "already notified" reflects real deliveries.
-        if (emailed) await recordNotification(orderId, status, recipientEmail, adminId, adminName, log);
-        else log.warn(`notify requested but email not sent: ${mail.error ?? "unknown"} (reason=${mail.reason ?? "?"})`);
+        // Claim the notification row BEFORE sending (same posture as /notify and
+        // /resend-receipt): if the send succeeded but a post-send record write were lost,
+        // the dedup guard would go blind and a later resend could duplicate. A hard claim
+        // failure (not a missing table) means we can't track the send — skip the email
+        // rather than send one the guard won't see; the status change itself still commits.
+        const claim = await claimNotification(orderId, status, recipientEmail, adminId, adminName, "status", log);
+        if (!claim.id && !claim.degraded) {
+          log.warn("could not record the notification — not sending to avoid an untracked duplicate");
+          emailReason = "send_failed";
+        } else {
+          const mail = await sendOrderStatusEmail({
+            recipientEmail,
+            recipientName: recipientName || undefined,
+            orderNumber,
+            toStatus: status,
+            orderUrl: `${publicSiteUrl()}/orders/${orderId}`,
+          });
+          emailed = mail.sent;
+          emailReason = mail.reason;
+          // Send failed → release the claim so the slot is free for a retry.
+          if (!emailed) {
+            if (claim.id) await releaseNotification(claim.id, log);
+            log.warn(`notify requested but email not sent: ${mail.error ?? "unknown"} (reason=${mail.reason ?? "?"})`);
+          }
+        }
       } catch (mailErr) {
         log.error("status email failed", mailErr);
         emailReason = "send_failed";

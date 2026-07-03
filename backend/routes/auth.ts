@@ -1,6 +1,7 @@
 import express from "express";
 import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
 import { createLog } from "../lib/logger.js";
+import { authLimiter, otpSendLimiter } from "../middleware/rateLimiters.js";
 
 const router = express.Router();
 
@@ -17,8 +18,13 @@ function isMissingRpcError(message: string | undefined, code?: string) {
 /**
  * Signup step 1: server checks email not already registered in profiles,
  * then triggers Supabase email OTP.
+ *
+ * Rate limited two ways: authLimiter caps attempts per IP (bulk abuse from one
+ * source), otpSendLimiter caps sends per email address (bombing one inbox from
+ * many sources). Both sit in front of the handler so a throttled request never
+ * reaches Supabase.
  */
-router.post("/signup/send-otp", async (req, res) => {
+router.post("/signup/send-otp", authLimiter, otpSendLimiter, async (req, res) => {
   const log = createLog().start("AUTH SIGNUP OTP");
   try {
     const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
@@ -91,59 +97,11 @@ router.post("/signup/send-otp", async (req, res) => {
   }
 });
 
-/**
- * Login guard: require a profile row before attempting password auth.
- */
-router.post("/login/check-profile", async (req, res) => {
-  const log = createLog().start("AUTH LOGIN CHECK");
-  try {
-    const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      log.warn("invalid or missing email").end("AUTH LOGIN CHECK");
-      res.status(400).json({ error: "Valid email is required" });
-      return;
-    }
-
-    log.step(`email=${email}`);
-
-    if (supabaseAdmin) {
-      log.step("DB check - profile exists via admin client");
-      const { data, error } = await supabaseAdmin
-        .from("profiles")
-        .select("id")
-        .ilike("email", email)
-        .maybeSingle();
-
-      if (error) {
-        log.error("profile lookup failed", error).end("AUTH LOGIN CHECK");
-        res.status(500).json({ error: "Could not verify registration status" });
-        return;
-      }
-
-      log.success(`profile exists=${Boolean(data)}`).end("AUTH LOGIN CHECK");
-      res.status(200).json({ exists: Boolean(data) });
-      return;
-    }
-
-    log.step("DB check - profile exists via RPC");
-    const { data, error } = await supabaseAnon.rpc("is_profile_registered", { p_email: email });
-
-    if (error) {
-      if (isMissingRpcError(error.message, (error as { code?: string }).code)) {
-        log.warn("is_profile_registered RPC missing — profile check skipped");
-      } else {
-        log.error("RPC error", error).end("AUTH LOGIN CHECK");
-        res.status(500).json({ error: "Could not verify registration status" });
-        return;
-      }
-    }
-
-    log.success(`profile exists=${data === true}`).end("AUTH LOGIN CHECK");
-    res.status(200).json({ exists: data === true });
-  } catch (e) {
-    log.error("unhandled error", e).end("AUTH LOGIN CHECK");
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+// NOTE: There is deliberately no "does this email have an account?" endpoint.
+// Login and password-reset run straight against Supabase and return a generic
+// result, so neither the API nor its error messages reveal whether an address is
+// registered (account enumeration). Signup still reports "already registered"
+// because it genuinely can't create a duplicate — that's the one unavoidable
+// disclosure, and it's rate limited above.
 
 export default router;

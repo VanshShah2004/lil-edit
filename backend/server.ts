@@ -23,6 +23,7 @@ import newsletterRouter from "./routes/newsletter.js";
 import maintenanceRouter from "./routes/maintenance.js";
 import { maintenanceGate } from "./middleware/maintenanceGate.js";
 import { startMaintenanceWatcher } from "./lib/maintenance.js";
+import { startReceiptSweep } from "./lib/orderReceipt.js";
 import { buildProductOgMeta, injectOgIntoHtml } from "./lib/ogTags.js";
 import { fetchProductBySku } from "./lib/persistCatalog.js";
 import { publicSiteUrl } from "./lib/siteUrl.js";
@@ -285,4 +286,8 @@ app.listen(PORT, () => {
 
   // Prime the maintenance flag and keep it fresh (fail-open to live).
   startMaintenanceWatcher();
+
+  // Self-healing receipt recovery: periodically re-send confirmation receipts that were
+  // lost at placement (works even when the Razorpay webhook isn't configured).
+  startReceiptSweep();
 });
