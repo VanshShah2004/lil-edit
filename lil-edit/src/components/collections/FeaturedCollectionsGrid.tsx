@@ -30,13 +30,23 @@ const FALLBACK: FeaturedCard[] = [
   { id: "col-6", name: "Mini Streetwear", description: "Contemporary urban styles for mini fashionistas", image: img6, badge: "New" },
 ];
 
-export default function FeaturedCollectionsGrid({ previewItems }: { previewItems?: ResolvedItem[] }) {
+export default function FeaturedCollectionsGrid({
+  previewItems,
+  previewTitle,
+  previewSubtitle,
+}: {
+  previewItems?: ResolvedItem[];
+  previewTitle?: string | null;
+  previewSubtitle?: string | null;
+}) {
   const preview = previewItems !== undefined;
   const navigate = useNavigate();
-  const { editorials: fetchedEditorials } = useCuratedSection("collections_featured", { skip: preview });
+  const { editorials: fetchedEditorials, title: fetchedTitle, subtitle: fetchedSubtitle } = useCuratedSection("collections_featured", { skip: preview });
   const editorials = preview
     ? previewItems.filter((i): i is ResolvedEditorialItem => i.kind === "editorial")
     : fetchedEditorials;
+  const heading = (preview ? previewTitle : fetchedTitle) ?? "Featured Collections";
+  const subheading = preview ? previewSubtitle : fetchedSubtitle;
 
   const go = (link?: string | null) => {
     if (!link) return;
@@ -59,9 +69,10 @@ export default function FeaturedCollectionsGrid({ previewItems }: { previewItems
 
   return (
     <section className="px-4 sm:px-6 lg:px-8">
-      <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
-        Featured Collections
+      <h2 className={`text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 ${subheading ? "mb-1" : "mb-6 sm:mb-8"}`}>
+        {heading}
       </h2>
+      {subheading && <p className="text-sm sm:text-base text-gray-500 mb-6 sm:mb-8">{subheading}</p>}
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4 auto-rows-[180px] sm:auto-rows-[200px] lg:auto-rows-[220px] grid-flow-row-dense">
         {featured.map((collection, index) => {

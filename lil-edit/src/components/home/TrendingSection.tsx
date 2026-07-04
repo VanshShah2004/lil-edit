@@ -14,14 +14,24 @@ interface Card {
   product?: ResolvedProductItem;
 }
 
-const TrendingSection = ({ previewItems }: { previewItems?: ResolvedItem[] }) => {
+const TrendingSection = ({
+  previewItems,
+  previewTitle,
+  previewSubtitle,
+}: {
+  previewItems?: ResolvedItem[];
+  previewTitle?: string | null;
+  previewSubtitle?: string | null;
+}) => {
   const preview = previewItems !== undefined;
   const navigate = useNavigate();
   const { isWishlisted, addToWishlist, removeFromWishlist, wishlistItems } = useWishlist();
-  const { products: fetchedProducts } = useCuratedSection("home_trending", { skip: preview });
+  const { products: fetchedProducts, title: fetchedTitle, subtitle: fetchedSubtitle } = useCuratedSection("home_trending", { skip: preview });
   const products = preview
     ? previewItems.filter((i): i is ResolvedProductItem => i.kind === "product")
     : fetchedProducts;
+  const heading = (preview ? previewTitle : fetchedTitle) ?? "Trending Now";
+  const eyebrow = (preview ? previewSubtitle : fetchedSubtitle) ?? "Elevated Styles";
 
   const curated: Card[] = products.map((p) => ({
     key: p.id,
@@ -52,11 +62,11 @@ const TrendingSection = ({ previewItems }: { previewItems?: ResolvedItem[] }) =>
       <div className="container">
         <div className="mb-3 md:mb-4">
           <p className="text-base font-black tracking-[0.2em] uppercase text-[#0F766E] mb-0.5 pt-8">
-            Elevated Styles
+            {eyebrow}
           </p>
           <div className="flex items-center justify-between">
             <h2 className="font-display text-2xl md:text-3xl font-black text-foreground flex items-center gap-3">
-              Trending Now
+              {heading}
             </h2>
             <button className="flex items-center justify-center w-10 h-10 rounded-full bg-white text-foreground border border-border shadow-sm hover:bg-[#0F766E] hover:text-white transition-all duration-300 shrink-0">
               <ArrowRight className="w-6 h-6" />

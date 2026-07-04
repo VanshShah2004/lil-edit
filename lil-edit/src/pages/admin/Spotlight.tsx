@@ -391,6 +391,56 @@ function EditorialTileModal({
   );
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// Section heading modal — edit the title / subtitle shown on the storefront.
+// ═════════════════════════════════════════════════════════════════════════════
+function SectionHeadingModal({
+  section,
+  onClose,
+  onSave,
+  saving,
+}: {
+  section: AdminSection;
+  onClose: () => void;
+  onSave: (patch: { title: string; subtitle: string }) => void;
+  saving: boolean;
+}) {
+  const [title, setTitle] = useState(section.title ?? "");
+  const [subtitle, setSubtitle] = useState(section.subtitle ?? "");
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h3 className="text-base font-bold text-gray-900">Edit heading</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <Field label="Heading" value={title} onChange={setTitle} placeholder="e.g. Trending Now" />
+          <Field label="Subheading" value={subtitle} onChange={setSubtitle} placeholder="e.g. What everyone's loving right now" />
+        </div>
+
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100">
+          <button onClick={onClose} className="text-sm font-semibold text-gray-600 px-4 py-2 hover:text-gray-900">Cancel</button>
+          <button
+            disabled={saving}
+            onClick={() => onSave({ title: title.trim(), subtitle: subtitle.trim() })}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-white px-4 py-2 rounded-lg disabled:opacity-50"
+            style={{ backgroundColor: TEAL }}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            {saving ? "Saving…" : "Save heading"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <div>
@@ -571,6 +621,8 @@ const SpotlightPage = () => {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [tileEditing, setTileEditing] = useState<{ item: DraftItem | null } | null>(null);
   const [quickView, setQuickView] = useState<ResolvedProductItem | null>(null);
+  const [headingEditing, setHeadingEditing] = useState(false);
+  const [savingHeading, setSavingHeading] = useState(false);
 
   const selected = useMemo(() => sections.find((s) => s.key === activeKey) ?? null, [sections, activeKey]);
   const activeTab = activeKey ? tabs[activeKey] : undefined;
@@ -670,7 +722,7 @@ const SpotlightPage = () => {
   useEffect(() => {
     if (!previewReady || !selected) return;
     previewFrameRef.current?.contentWindow?.postMessage(
-      { type: "curation-preview-items", key: selected.key, items: previewItems },
+      { type: "curation-preview-items", key: selected.key, items: previewItems, title: selected.title, subtitle: selected.subtitle },
       window.location.origin,
     );
   }, [previewReady, selected, previewItems]);
@@ -852,6 +904,26 @@ const SpotlightPage = () => {
     }
   };
 
+  const saveHeading = async (section: AdminSection, patch: { title: string; subtitle: string }) => {
+    setSavingHeading(true);
+    try {
+      const { updatedAt } = await updateSection(section.key, { title: patch.title, subtitle: patch.subtitle });
+      setSections((prev) => prev.map((s) => (s.key === section.key
+        ? { ...s, title: patch.title || null, subtitle: patch.subtitle || null, updatedAt: updatedAt ?? s.updatedAt }
+        : s)));
+      // Bump any open tab's version too, or its next save would 409 on this edit.
+      if (updatedAt) {
+        setTabs((prev) => (prev[section.key] ? { ...prev, [section.key]: { ...prev[section.key], updatedAt } } : prev));
+      }
+      toast.success("Heading updated");
+      setHeadingEditing(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setSavingHeading(false);
+    }
+  };
+
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -1030,7 +1102,7 @@ const SpotlightPage = () => {
                   <div className="border-[1.5px] border-gray-600 rounded-2xl rounded-tl-none bg-white shadow-md overflow-hidden">
                     {/* Editor header */}
                     <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-gray-100">
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <h2 className="font-display text-2xl font-black text-foreground truncate">{selected.title}</h2>
                         <p className="text-xs text-gray-500">
                           {selected.itemType === "product" && "Holds catalog products. Empty = random products shown automatically."}
@@ -1068,6 +1140,13 @@ const SpotlightPage = () => {
                           <ImagePlus className="w-3.5 h-3.5" /> Add tile
                         </button>
                       )}
+                      <button
+                        onClick={() => setHeadingEditing(true)}
+                        title="Edit heading & subheading"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-200 rounded-md px-3 py-2 bg-white hover:border-gray-900"
+                      >
+                        <Pencil className="w-3.5 h-3.5" /> Edit heading
+                      </button>
                       {draft.length > selected.maxItems && (
                         <span className="text-xs text-amber-600 ml-auto">Over the {selected.maxItems}-item cap — only the first {selected.maxItems} will show on the storefront.</span>
                       )}
@@ -1196,6 +1275,15 @@ const SpotlightPage = () => {
           initial={tileEditing.item}
           onClose={() => setTileEditing(null)}
           onSave={upsertTile}
+        />
+      )}
+
+      {headingEditing && selected && (
+        <SectionHeadingModal
+          section={selected}
+          saving={savingHeading}
+          onClose={() => setHeadingEditing(false)}
+          onSave={(patch) => void saveHeading(selected, patch)}
         />
       )}
     </div>

@@ -45,11 +45,21 @@ const FALLBACK: Tile[] = [
   { key: "9", title: "Shoes", subtitle: "Step Up", image: product_images["product-0001"]["lil-edit-product-0001-1-4.png"], span: SPANS[8] },
 ];
 
-export default function CollageGrid({ previewItems }: { previewItems?: ResolvedItem[] }) {
+export default function CollageGrid({
+  previewItems,
+  previewTitle,
+  previewSubtitle,
+}: {
+  previewItems?: ResolvedItem[];
+  previewTitle?: string | null;
+  previewSubtitle?: string | null;
+}) {
   const preview = previewItems !== undefined;
   const navigate = useNavigate();
-  const { items: fetchedItems } = useCuratedSection("search_discover", { skip: preview });
+  const { items: fetchedItems, title: fetchedTitle, subtitle: fetchedSubtitle } = useCuratedSection("search_discover", { skip: preview });
   const items = preview ? previewItems : fetchedItems;
+  const heading = (preview ? previewTitle : fetchedTitle) ?? "Discover More";
+  const subheading = preview ? previewSubtitle : fetchedSubtitle;
 
   const go = (link?: string | null) => {
     if (!link) return;
@@ -90,10 +100,13 @@ export default function CollageGrid({ previewItems }: { previewItems?: ResolvedI
 
   return (
     <section className="pt-2 pb-3 px-4 sm:px-6 md:px-8 border-t border-border/50 animate-fade-in" style={{ animationDelay: "100ms" }}>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-bold tracking-wider text-teal-700 uppercase">
-          Discover More
-        </h3>
+      <div className="mb-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold tracking-wider text-teal-700 uppercase">
+            {heading}
+          </h3>
+        </div>
+        {subheading && <p className="text-xs text-muted-foreground mt-0.5">{subheading}</p>}
       </div>
 
       {/* Mobile: swipeable carousel with a peek of the next tile (the 3-col masonry

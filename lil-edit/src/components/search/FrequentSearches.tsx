@@ -11,6 +11,8 @@ import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
 interface FrequentSearchesProps {
   onSelect: (term: string) => void;
   previewItems?: ResolvedItem[];
+  previewTitle?: string | null;
+  previewSubtitle?: string | null;
 }
 
 interface Choice {
@@ -35,12 +37,14 @@ const FALLBACK: Choice[] = [
 // so a hung request never leaves an endless skeleton.
 const FALLBACK_DELAY_MS = 2500;
 
-export default function FrequentSearches({ onSelect, previewItems }: FrequentSearchesProps) {
+export default function FrequentSearches({ onSelect, previewItems, previewTitle, previewSubtitle }: FrequentSearchesProps) {
   const preview = previewItems !== undefined;
-  const { products: fetchedProducts, ready } = useCuratedSection("search_popular", { skip: preview });
+  const { products: fetchedProducts, ready, title: fetchedTitle, subtitle: fetchedSubtitle } = useCuratedSection("search_popular", { skip: preview });
   const products = preview
     ? previewItems.filter((i): i is ResolvedProductItem => i.kind === "product")
     : fetchedProducts;
+  const heading = (preview ? previewTitle : fetchedTitle) ?? "Popular Choices";
+  const subheading = preview ? previewSubtitle : fetchedSubtitle;
 
   const curated: Choice[] = products.map((p) => ({
     id: p.id,
@@ -74,7 +78,7 @@ export default function FrequentSearches({ onSelect, previewItems }: FrequentSea
       <section className="pt-6 pb-3 px-4 sm:px-6 md:px-8 animate-fade-in">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-bold tracking-wider text-teal-700 uppercase">
-            Popular Choices
+            {heading}
           </h3>
         </div>
         <div className="grid grid-flow-col grid-rows-3 lg:grid-flow-row lg:grid-cols-3 lg:grid-rows-2 gap-2 sm:gap-3 pb-2 md:pb-0">
@@ -104,10 +108,13 @@ export default function FrequentSearches({ onSelect, previewItems }: FrequentSea
 
   return (
     <section className="pt-6 pb-3 px-4 sm:px-6 md:px-8 animate-fade-in">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-bold tracking-wider text-teal-700 uppercase">
-          Popular Choices
-        </h3>
+      <div className="mb-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold tracking-wider text-teal-700 uppercase">
+            {heading}
+          </h3>
+        </div>
+        {subheading && <p className="text-xs text-muted-foreground mt-0.5">{subheading}</p>}
       </div>
 
       {/* Mobile & Desktop: Grid */}

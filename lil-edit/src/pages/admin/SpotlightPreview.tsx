@@ -38,20 +38,24 @@ const PREVIEW_BACKGROUNDS: Record<SectionKey, string> = {
 };
 
 // One real storefront component per section, fed the draft items as previewItems.
-const PREVIEW_RENDERERS: Record<SectionKey, (items: ResolvedItem[]) => JSX.Element> = {
-  home_trending: (items) => <TrendingSection previewItems={items} />,
-  home_recommended: (items) => <RecommendedForYou previewItems={items} />,
-  search_popular: (items) => <FrequentSearches previewItems={items} onSelect={() => {}} />,
-  search_discover: (items) => <CollageGrid previewItems={items} />,
-  home_shop_the_look: (items) => <ShopTheLook previewItems={items} />,
+// title/subtitle come straight from the admin section record (edited via "Edit
+// heading"), not the draft — sections with no heading UI just ignore them.
+const PREVIEW_RENDERERS: Record<SectionKey, (items: ResolvedItem[], title: string | null, subtitle: string | null) => JSX.Element> = {
+  home_trending: (items, title, subtitle) => <TrendingSection previewItems={items} previewTitle={title} previewSubtitle={subtitle} />,
+  home_recommended: (items, title, subtitle) => <RecommendedForYou previewItems={items} previewTitle={title} previewSubtitle={subtitle} />,
+  search_popular: (items, title, subtitle) => <FrequentSearches previewItems={items} previewTitle={title} previewSubtitle={subtitle} onSelect={() => {}} />,
+  search_discover: (items, title, subtitle) => <CollageGrid previewItems={items} previewTitle={title} previewSubtitle={subtitle} />,
+  home_shop_the_look: (items, title, subtitle) => <ShopTheLook previewItems={items} previewTitle={title} previewSubtitle={subtitle} />,
   home_featured_categories: (items) => <FeaturedCategories previewItems={items} />,
   home_collage: (items) => <HomeCollage previewItems={items} />,
-  collections_featured: (items) => <FeaturedCollectionsGrid previewItems={items} />,
+  collections_featured: (items, title, subtitle) => <FeaturedCollectionsGrid previewItems={items} previewTitle={title} previewSubtitle={subtitle} />,
 };
 
 interface PreviewState {
   key: SectionKey;
   items: ResolvedItem[];
+  title: string | null;
+  subtitle: string | null;
 }
 
 const SpotlightPreviewPage = () => {
@@ -66,11 +70,11 @@ const SpotlightPreviewPage = () => {
 
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
-      const data = e.data as { type?: string; key?: string; items?: ResolvedItem[] } | null;
+      const data = e.data as { type?: string; key?: string; items?: ResolvedItem[]; title?: string | null; subtitle?: string | null } | null;
       if (!data || data.type !== "curation-preview-items") return;
       if (!data.key || !(SECTION_KEYS as readonly string[]).includes(data.key)) return;
       console.log(`[CurationPreview] received ${data.key} — ${(data.items ?? []).length} item(s)`);
-      setState({ key: data.key as SectionKey, items: data.items ?? [] });
+      setState({ key: data.key as SectionKey, items: data.items ?? [], title: data.title ?? null, subtitle: data.subtitle ?? null });
     };
     window.addEventListener("message", onMessage);
     // Tell the editor this frame is mounted and ready to receive items.
@@ -98,7 +102,7 @@ const SpotlightPreviewPage = () => {
         {state ? (
           // Render the section whole — full preview width, no centered max-width column or
           // side padding imposed here. Each component keeps its own intrinsic spacing.
-          PREVIEW_RENDERERS[state.key](state.items)
+          PREVIEW_RENDERERS[state.key](state.items, state.title, state.subtitle)
         ) : (
           <div className="py-24 text-center text-sm text-gray-400">Loading preview…</div>
         )}

@@ -23,13 +23,23 @@ const FALLBACK: Look[] = [
   { id: "4", label: "BOHO BABY", title: "Weekend Look", img: le1, to: "/collections" },
 ];
 
-const ShopTheLook = ({ previewItems }: { previewItems?: ResolvedItem[] }) => {
+const ShopTheLook = ({
+  previewItems,
+  previewTitle,
+  previewSubtitle,
+}: {
+  previewItems?: ResolvedItem[];
+  previewTitle?: string | null;
+  previewSubtitle?: string | null;
+}) => {
   const preview = previewItems !== undefined;
   const navigate = useNavigate();
-  const { editorials: fetchedEditorials } = useCuratedSection("home_shop_the_look", { skip: preview });
+  const { editorials: fetchedEditorials, title: fetchedTitle, subtitle: fetchedSubtitle } = useCuratedSection("home_shop_the_look", { skip: preview });
   const editorials = preview
     ? previewItems.filter((i): i is ResolvedEditorialItem => i.kind === "editorial")
     : fetchedEditorials;
+  const heading = (preview ? previewTitle : fetchedTitle) ?? "Shop the Look";
+  const eyebrow = (preview ? previewSubtitle : fetchedSubtitle) ?? "One Click - Full Outfit";
 
   const go = (link: string) => {
     if (/^https?:\/\//i.test(link)) window.location.assign(link);
@@ -54,11 +64,11 @@ const ShopTheLook = ({ previewItems }: { previewItems?: ResolvedItem[] }) => {
         {/* Header */}
         <div className="mb-6 md:mb-8">
           <p className="text-base font-black tracking-[0.2em] uppercase text-[#0B5B55] mb-0.5 pt-8 sm:pt-12">
-            One Click - Full Outfit
+            {eyebrow}
           </p>
           <div className="flex items-center justify-between">
             <h2 className="font-display text-2xl md:text-3xl font-black text-foreground">
-              Shop the Look
+              {heading}
             </h2>
             <button
               onClick={() => navigate("/collections")}
