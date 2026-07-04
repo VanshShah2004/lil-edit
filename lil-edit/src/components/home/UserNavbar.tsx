@@ -233,7 +233,7 @@ const UserNavbar = () => {
 
               {isProfileOpen && (
                 <div
-                  className="absolute right-0 mt-2 w-56 bg-background rounded-xl shadow-lg border border-border py-2 animate-in fade-in slide-in-from-top-2 overflow-hidden"
+                  className="absolute right-0 mt-2 w-56 bg-background rounded-xl shadow-lg border border-border py-2 animate-in fade-in slide-in-from-top-2 overflow-hidden z-20"
                   onMouseEnter={() => {
                     if (window.innerWidth >= 768) {
                       if (profileCloseTimeoutRef.current) {
@@ -340,8 +340,9 @@ const UserNavbar = () => {
           }`}
       >
         {/* Header — branded gradient band with greeting + avatar */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-brand-teal/12 via-[#E8DDF7]/45 to-emerald-50 border-b border-foreground px-5 pt-7 pb-6">
+        <div className="relative overflow-hidden bg-gradient-to-br from-brand-teal/12 via-[#E8DDF7]/45 to-emerald-50 px-5 pt-7 pb-6">
           <div className="h-1.5 w-full absolute top-0 left-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
+          <div className="absolute left-0 right-0 bottom-[3px] h-px bg-foreground" />
           <button
             type="button"
             onClick={() => setIsLeftMenuOpen(false)}
@@ -368,7 +369,7 @@ const UserNavbar = () => {
           </div>
         </div>
 
-        <nav className="flex flex-col flex-1 py-2 overflow-y-auto">
+        <nav className="flex flex-col flex-1 pt-[3px] pb-2 overflow-y-auto">
           <SideSection label="Front Row">
             <SideLink to="/dashboard" icon={Home} label="Home" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
             <SideLink to="/collections" icon={Shirt} label="Collections" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />

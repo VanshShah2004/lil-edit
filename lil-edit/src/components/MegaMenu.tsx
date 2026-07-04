@@ -69,7 +69,7 @@ const MegaMenu = () => {
   return (
     <div
       ref={megaMenuRef}
-      className="border-t border-border/60 bg-background w-full"
+      className="border-t border-border/60 bg-background w-full shadow-md relative z-0"
       onMouseLeave={() => window.innerWidth >= 768 && setActiveMegaTab(null)}
     >
       <div className="container mx-auto px-1 sm:px-4 lg:px-8 pt-0 pb-1.5 md:py-0.5 lg:py-1">

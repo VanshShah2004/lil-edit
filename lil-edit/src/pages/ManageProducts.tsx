@@ -15,6 +15,7 @@ import {
   Activity,
   Zap,
   ExternalLink,
+  ChevronRight,
   X
 } from "lucide-react";
 import { getBackendBaseUrl } from "@/lib/backend";
@@ -22,7 +23,6 @@ import { authHeader } from "@/lib/apiAuth";
 import { buildPayloadFromProduct } from "@/lib/buildProductPayload";
 import { buildPdpPath, resolvePdpSku } from "@/lib/pdpUrl";
 import UserNavbar from "@/components/home/UserNavbar";
-import AdminSubNav from "@/components/admin/AdminSubNav";
 import Navbar from "@/components/layout/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
@@ -1292,17 +1292,24 @@ const ManageProducts = () => {
       {user ? <UserNavbar /> : <Navbar />}
 
       {/* PAGE HEADER */}
-      <div className={`relative md:pt-[128px] bg-white border-foreground/50 ${isMobileDetailView ? "pt-[120px] pb-0 border-b-0 md:pb-8 md:border-b" : "pt-[160px] pb-8 border-b"}`}>
-        {/* Admin dropdown — hidden on the mobile product detail view */}
-        <div className={isMobileDetailView ? "hidden md:block" : ""}>
-          <AdminSubNav />
-        </div>
-        <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">
+      <div className={`relative md:pt-[calc(var(--navbar-height)+15px)] bg-white border-foreground/50 ${isMobileDetailView ? "pt-[120px] pb-0 border-b-0 md:pb-8 md:border-b" : "pt-[calc(var(--navbar-height)+5px)] pb-8 border-b"}`}>
+        <div className="max-w-screen-2xl mx-auto px-3 lg:px-6">
+          <div className={isMobileDetailView ? "hidden md:block" : ""}>
+            <div className="pt-3 pb-2 mt-1.5 mb-1">
+              <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
+                <Link to="/" className="hover:underline">
+                  Home
+                </Link>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-gray-800 font-medium">Manage Products</span>
+              </div>
+            </div>
+          </div>
           <div className={`space-y-1 ${isMobileDetailView ? "hidden md:block" : ""}`}>
-            <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
+            <div className="flex items-center">
               <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: "#B19CD9" }}>Catalog Studio</p>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">Inventory Management</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Inventory Management</h1>
           </div>
         </div>
       </div>

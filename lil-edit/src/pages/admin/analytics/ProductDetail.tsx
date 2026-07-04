@@ -85,7 +85,7 @@ export default function ProductAnalyticsDetail() {
           is untouched (confirmed correct). */}
       {/* Slightly wider content well — matches AnalyticsLayout's cap/padding so
           this page's width lines up with the rest of the platform. */}
-      <div className="mx-auto max-w-[1680px] px-3 pb-16 pt-[120px] md:px-6 md:pt-[calc(var(--navbar-height)+33px)]">
+      <div className="mx-auto max-w-screen-2xl px-3 pb-16 pt-[120px] lg:px-6 md:pt-[calc(var(--navbar-height)+33px)]">
         {/* Breadcrumb (matches every analytics page) + Back — this page is reached
             from several tables, so Back returns to the real origin. mt-[18px]
             (mobile only) matches Cart's rhythm; zeroed at md: since the container's

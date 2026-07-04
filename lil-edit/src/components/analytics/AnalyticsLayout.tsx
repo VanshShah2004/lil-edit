@@ -111,12 +111,12 @@ export function AnalyticsLayout({
           room on wide monitors, and trimmed side padding (px-3/md:px-6, down
           from px-4/md:px-8) frees up extra width on every screen size, including
           mobile — where the max-width cap never engages. */}
-      <div className="mx-auto max-w-[1680px] px-3 pb-16 pt-[120px] md:px-6 md:pt-[calc(var(--navbar-height)+33px)]">
+      <div className="mx-auto max-w-screen-2xl px-3 pb-16 pt-[120px] lg:px-6 md:pt-[calc(var(--navbar-height)+33px)]">
         {/* Breadcrumb — always present so header height is uniform across pages.
             mt-[18px] (mobile only) matches Cart's breadcrumb rhythm; zeroed at md:
             since the container's own padding above now already carries the full
             Cart-equivalent offset — stacking more on top would double-count it. */}
-        <div className="mt-[18px] mb-5 md:mt-0">
+        <div className="mt-[18px] mb-6 md:mt-0">
           <Breadcrumb
             trail={[
               { label: "Home", to: "/" },
@@ -130,12 +130,12 @@ export function AnalyticsLayout({
             (User Activity, Admin Activity, Order Management, …): a small "Admin"
             eyebrow label, a text-3xl bold title, and a gray-500 subtitle. */}
         <div className="space-y-1 mb-8">
-          <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
+          <div className="flex items-center">
             <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>
               Admin
             </p>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">Analytics</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Analytics</h1>
           <p className="text-sm text-gray-500">Business intelligence for The Lil Edit</p>
         </div>
 

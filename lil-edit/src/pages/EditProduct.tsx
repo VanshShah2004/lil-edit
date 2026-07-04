@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { invalidateAfterMutation } from "@/lib/catalogCache";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Upload,
   X,
   ChevronDown,
+  ChevronRight,
   Zap,
   TrendingUp,
   Star,
@@ -908,10 +909,17 @@ const EditProduct = () => {
             transition={{ duration: 0.6 }}
             className="mb-8 space-y-1"
           >
+            <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
+              <Link to="/" className="hover:underline">
+                Home
+              </Link>
+              <ChevronRight className="w-4 h-4" />
+              <span className="text-gray-800 font-medium">Edit Product</span>
+            </div>
             <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: "#B19CD9" }}>
               Versioning
             </p>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
               Edit Product
             </h1>
             {originalProduct && (

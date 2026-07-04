@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, PackageX, Download, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -10,7 +10,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchAdminOrders, triggerAutoProcess, type AdminOrderSummary, type OrderSortKey } from "@/lib/adminOrdersApi";
 import OrderFilters, { type StatusFilter, type PaymentFilter } from "@/components/admin/orders/OrderFilters";
 import OrdersTable from "@/components/admin/orders/OrdersTable";
-import AdminSubNav from "@/components/admin/AdminSubNav";
 
 const PAGE_SIZE = 20;
 
@@ -253,21 +252,29 @@ const AdminOrdersPage = () => {
     <div className="min-h-screen bg-white text-[#1a1a1a] flex flex-col font-sans">
       {user ? <UserNavbar /> : <Navbar />}
 
-      <div className="relative pt-[160px] md:pt-[128px] bg-white pb-2">
-        <AdminSubNav />
-        <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">
+      <div className="relative pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)] bg-white pb-2">
+        <div className="max-w-screen-2xl mx-auto px-3 lg:px-6">
+          <div className="pt-3 pb-2 mt-1.5 mb-1">
+            <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
+              <Link to="/" className="hover:underline">
+                Home
+              </Link>
+              <ChevronRight className="w-4 h-4" />
+              <span className="text-gray-800 font-medium">Manage Orders</span>
+            </div>
+          </div>
           <div className="space-y-1 mb-8">
-            <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
+            <div className="flex items-center">
               <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: "#B19CD9" }}>Operations</p>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">Order Management</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Order Management</h1>
             <p className="text-sm text-gray-500">{total} order{total !== 1 ? "s" : ""} in the system</p>
           </div>
-          <hr className="-mx-6 lg:-mx-12 border-t border-foreground/50" />
+          <hr className="-mx-3 lg:-mx-6 border-t border-foreground/50" />
         </div>
       </div>
 
-      <main className="flex-1 px-6 lg:px-12 py-8">
+      <main className="flex-1 px-3 lg:px-6 py-8">
         <div className="max-w-screen-2xl mx-auto space-y-6">
           <div className="flex justify-end gap-2 -mt-4">
             <button

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, MessageSquare, Star, Clock, CheckCircle2 } from "lucide-react";
 
@@ -195,33 +195,7 @@ const MyReviewsPage = () => {
               <hr className="-mx-3 sm:-mx-6 mb-5 border-t border-foreground/50" />
 
               {/* Tabbed preview — switch between Pending and Reviewed */}
-              <div role="tablist" aria-label="Reviews" className="flex items-center justify-center gap-6 border-b border-gray-200 mb-6">
-                {TABS.map((t) => {
-                  const active = tab === t.value;
-                  return (
-                    <button
-                      key={t.value}
-                      type="button"
-                      role="tab"
-                      aria-selected={active}
-                      onClick={() => setTab(t.value)}
-                      className={`relative -mb-px flex items-center gap-2 pb-3 pt-1 text-sm font-semibold transition-colors ${
-                        active ? "text-brand-teal" : "text-gray-500 hover:text-gray-800"
-                      }`}
-                    >
-                      {t.label}
-                      <span
-                        className={`text-xs font-bold rounded-full px-2 py-0.5 ${
-                          active ? "bg-brand-teal/10 text-brand-teal" : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {t.count}
-                      </span>
-                      {active && <span className="absolute left-0 right-0 -bottom-px h-0.5 rounded-full bg-brand-teal" />}
-                    </button>
-                  );
-                })}
-              </div>
+              <DraggableTabs tabs={TABS} value={tab} onChange={setTab} />
 
               {/* Active tab panel */}
               {nothingToShow ? (
@@ -260,5 +234,144 @@ const MyReviewsPage = () => {
     </div>
   );
 };
+
+// A segmented control whose active-tab pill can be clicked, or grabbed and
+// dragged to whichever tab it's released closest to.
+function DraggableTabs<T extends string>({
+  tabs,
+  value,
+  onChange,
+}: {
+  tabs: { value: T; label: string; count: number }[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [pillStyle, setPillStyle] = useState({ left: 0, width: 0 });
+  const [dragging, setDragging] = useState(false);
+  const activeIndex = tabs.findIndex((t) => t.value === value);
+
+  const measure = useCallback((index: number) => {
+    const el = tabRefs.current[index];
+    const track = trackRef.current;
+    if (!el || !track) return;
+    const trackRect = track.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    setPillStyle({ left: elRect.left - trackRect.left, width: elRect.width });
+  }, []);
+
+  useLayoutEffect(() => {
+    measure(activeIndex);
+  }, [activeIndex, measure, tabs.length]);
+
+  useEffect(() => {
+    const handleResize = () => measure(activeIndex);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [activeIndex, measure]);
+
+  const nearestIndexToX = useCallback((clientX: number) => {
+    let nearest = 0;
+    let smallestDistance = Infinity;
+    tabRefs.current.forEach((el, i) => {
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const center = rect.left + rect.width / 2;
+      const distance = Math.abs(clientX - center);
+      if (distance < smallestDistance) {
+        smallestDistance = distance;
+        nearest = i;
+      }
+    });
+    return nearest;
+  }, []);
+
+  const handlePointerMove = useCallback(
+    (event: PointerEvent) => {
+      const track = trackRef.current;
+      if (!track) return;
+      const trackRect = track.getBoundingClientRect();
+      const index = nearestIndexToX(event.clientX);
+      const el = tabRefs.current[index];
+      if (!el) return;
+      const elRect = el.getBoundingClientRect();
+      setPillStyle({ left: elRect.left - trackRect.left, width: elRect.width });
+    },
+    [nearestIndexToX],
+  );
+
+  const handlePointerUp = useCallback(
+    (event: PointerEvent) => {
+      setDragging(false);
+      const index = nearestIndexToX(event.clientX);
+      const next = tabs[index];
+      if (next) onChange(next.value);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    },
+    [handlePointerMove, nearestIndexToX, onChange, tabs],
+  );
+
+  const startDrag = useCallback(
+    (event: React.PointerEvent) => {
+      event.preventDefault();
+      setDragging(true);
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+    },
+    [handlePointerMove, handlePointerUp],
+  );
+
+  useEffect(() => {
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [handlePointerMove, handlePointerUp]);
+
+  return (
+    <div
+      ref={trackRef}
+      role="tablist"
+      aria-label="Reviews"
+      className="relative flex items-center justify-center gap-6 border-b border-gray-200 mb-6 select-none"
+    >
+      <span
+        onPointerDown={startDrag}
+        className={`absolute -bottom-px h-0.5 rounded-full bg-brand-teal cursor-grab ${
+          dragging ? "cursor-grabbing" : "transition-[left,width] duration-300 ease-out"
+        }`}
+        style={{ left: pillStyle.left, width: pillStyle.width }}
+      />
+      {tabs.map((t, i) => {
+        const active = value === t.value;
+        return (
+          <button
+            key={t.value}
+            ref={(el) => (tabRefs.current[i] = el)}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(t.value)}
+            onPointerDown={startDrag}
+            className={`relative -mb-px flex items-center gap-2 pb-3 pt-1 text-sm font-semibold transition-colors touch-none ${
+              active ? "text-brand-teal" : "text-gray-500 hover:text-gray-800"
+            }`}
+          >
+            {t.label}
+            <span
+              className={`text-xs font-bold rounded-full px-2 py-0.5 ${
+                active ? "bg-brand-teal/10 text-brand-teal" : "bg-gray-100 text-gray-600"
+              }`}
+            >
+              {t.count}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default MyReviewsPage;

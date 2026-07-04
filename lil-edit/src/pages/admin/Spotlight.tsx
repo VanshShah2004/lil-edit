@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
   LayoutGrid,
@@ -26,7 +27,6 @@ import {
 } from "lucide-react";
 
 import UserNavbar from "@/components/home/UserNavbar";
-import AdminSubNav from "@/components/admin/AdminSubNav";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
@@ -864,21 +864,29 @@ const SpotlightPage = () => {
       {user ? <UserNavbar /> : <Navbar />}
 
       {/* Header */}
-      <div className="relative pt-[160px] md:pt-[128px] bg-white pb-0">
-        <AdminSubNav />
-        <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">
+      <div className="relative pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)] bg-white pb-0">
+        <div className="max-w-screen-2xl mx-auto px-3 lg:px-6">
+          <div className="pt-3 pb-2 mt-1.5 mb-1">
+            <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
+              <Link to="/" className="hover:underline">
+                Home
+              </Link>
+              <ChevronRight className="w-4 h-4" />
+              <span className="text-gray-800 font-medium">The Spotlight</span>
+            </div>
+          </div>
           <div className="space-y-1 mb-8">
-            <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
+            <div className="flex items-center">
               <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>Merchandising</p>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">The Spotlight</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">The Spotlight</h1>
             <p className="text-sm text-gray-500">Control which products and tiles appear across the storefront.</p>
           </div>
-          <hr className="-mx-6 lg:-mx-12 border-t border-foreground/50" />
+          <hr className="-mx-3 lg:-mx-6 border-t border-foreground/50" />
         </div>
       </div>
 
-      <main className="flex-1 px-6 lg:px-12 pb-8 pt-0">
+      <main className="flex-1 px-3 lg:px-6 pb-8 pt-0">
         <div className="max-w-screen-2xl mx-auto">
           {loading ? (
             <div className="flex items-center justify-center py-24 mt-8 text-gray-400"><Loader2 className="w-6 h-6 animate-spin" /></div>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invalidateAfterMutation } from "@/lib/catalogCache";
 import { buildPayloadFromForm } from "@/lib/buildProductPayload";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Upload,
@@ -17,11 +17,11 @@ import {
   Minus,
   Flame,
   Tag,
-  Play
+  Play,
+  ChevronRight
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
-import AdminSubNav from "@/components/admin/AdminSubNav";
 import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 import ProductPreviewView from "@/components/ProductPreviewView";
@@ -635,8 +635,7 @@ const AddProduct = () => {
   return (
     <div className="min-h-screen bg-white overflow-x-hidden w-full selection:bg-gray-900/20">
       {user ? <UserNavbar /> : <Navbar />}
-      <div className="relative pt-[160px] md:pt-[128px] pb-24">
-        <AdminSubNav />
+      <div className="relative pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)] pb-24">
         <div className="mx-auto max-w-screen-2xl px-3 lg:px-6">
           <motion.div
             initial={{ opacity: 0, x: -10 }}
@@ -644,12 +643,21 @@ const AddProduct = () => {
             transition={{ duration: 0.6 }}
             className="mb-8 space-y-1"
           >
-            <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
+            <div className="pt-3 pb-2 mt-1.5">
+              <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
+                <Link to="/" className="hover:underline">
+                  Home
+                </Link>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-gray-800 font-medium">Add Product</span>
+              </div>
+            </div>
+            <div className="flex items-center">
               <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: "#B19CD9" }}>
                 Creator's Studio
               </p>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
               Product Listings
             </h1>
           </motion.div>

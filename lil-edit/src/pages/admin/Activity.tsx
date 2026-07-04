@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   Activity as ActivityIcon,
   AlertCircle,
+  ChevronRight,
   Heart,
   Loader2,
   Package,
@@ -544,24 +545,33 @@ const Activity = () => {
     <div className="min-h-screen bg-white text-[#1a1a1a] flex flex-col font-sans">
       <UserNavbar />
 
-      <div className="relative pt-[160px] md:pt-[128px] bg-white pb-0">
-        <div className="max-w-screen-2xl mx-auto px-6 lg:px-12">
+      <div className="relative pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)] bg-white pb-0">
+        <div className="max-w-screen-2xl mx-auto px-3 lg:px-6">
+          <div className="pt-3 pb-2 mt-1.5 mb-1">
+            <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
+              <Link to="/" className="hover:underline">
+                Home
+              </Link>
+              <ChevronRight className="w-4 h-4" />
+              <span className="text-gray-800 font-medium">User Activity</span>
+            </div>
+          </div>
           <div className="space-y-1 mb-8">
-            <div className="flex items-center min-h-[36px] sm:min-h-[46px]">
+            <div className="flex items-center">
               <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>
                 Admin
               </p>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 pt-[10px] md:pt-0">User Activity</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">User Activity</h1>
             <p className="text-sm text-gray-500">
               A live feed of what shoppers are doing — carts, wishlists, orders, reviews and searches.
             </p>
           </div>
-          <hr className="-mx-6 lg:-mx-12 border-t border-foreground/50" />
+          <hr className="-mx-3 lg:-mx-6 border-t border-foreground/50" />
         </div>
       </div>
 
-      <main className="flex-1 px-6 lg:px-12 pt-4 pb-24 bg-gray-100">
+      <main className="flex-1 px-3 lg:px-6 pt-4 pb-24 bg-gray-100">
         <div className="max-w-4xl mx-auto">
           {/* Controls */}
           <div className="mb-4 space-y-[20px]">

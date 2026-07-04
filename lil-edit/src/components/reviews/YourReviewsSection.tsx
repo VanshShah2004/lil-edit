@@ -162,7 +162,10 @@ export default function YourReviewsSection({ items }: YourReviewsSectionProps) {
                       <>
                         <p className="font-semibold text-gray-900 text-sm line-clamp-2 mb-1">{item.title}</p>
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-xs text-gray-500">Not yet reviewed</p>
+                          <p className="text-xs text-gray-500">
+                            <span className="block sm:inline">Not yet</span>{" "}
+                            <span className="block sm:inline">reviewed</span>
+                          </p>
                           <button
                             type="button"
                             onClick={() => setOpenItemId(isOpen ? null : item.id)}
