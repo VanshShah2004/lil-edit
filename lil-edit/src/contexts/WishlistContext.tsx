@@ -19,6 +19,17 @@ import {
   removeWishlistItem as apiRemove,
   type WishlistItem,
 } from "@/lib/wishlistApi";
+import { hydrateSkus, type ResolvedSkuView } from "@/lib/productHydration";
+import {
+  getGuestWishlist,
+  setGuestWishlist,
+  clearGuestWishlist,
+  addGuestWishlistLine,
+  removeGuestWishlistLine,
+  guestWishlistLineId,
+  parseGuestWishlistLineId,
+  type GuestWishlistLine,
+} from "@/lib/guestStorage";
 
 interface WishlistContextType {
   wishlistItems: WishlistItem[];
@@ -35,6 +46,50 @@ interface WishlistContextType {
 }
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
+
+// Build a display-ready WishlistItem from a stored guest line + its resolved product view.
+function buildGuestWishlistItem(line: GuestWishlistLine, v: ResolvedSkuView): WishlistItem {
+  return {
+    id: guestWishlistLineId(line.sku),
+    sku: line.sku,
+    productSlug: v.slug,
+    title: v.title,
+    slug: v.slug,
+    categorySlug: v.categorySlug,
+    brand: v.brand,
+    price: v.price,
+    originalPrice: v.originalPrice,
+    image: v.image,
+    images: v.images,
+    color: v.color,
+    inStock: v.availability !== "Out of Stock",
+    tags: v.tags,
+    badges: v.badges,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+// Hydrate the localStorage guest wishlist into WishlistItems. Resolves display data by SKU
+// (one batched call) and drops lines whose SKU no longer exists — heal-not-delete.
+async function hydrateGuestWishlist(): Promise<WishlistItem[]> {
+  const lines = getGuestWishlist();
+  if (lines.length === 0) return [];
+  const views = await hydrateSkus(lines.map((l) => l.sku));
+
+  const items: WishlistItem[] = [];
+  const survivingLines: GuestWishlistLine[] = [];
+  for (const line of lines) {
+    const v = views.get(line.sku);
+    if (!v) continue; // sku no longer resolves — prune this guest line
+    items.push(buildGuestWishlistItem(line, v));
+    survivingLines.push({ ...line, product_slug: v.slug }); // heal a stale display slug
+  }
+  if (survivingLines.length !== lines.length) {
+    console.log(`[WishlistContext] guest wishlist healed  ${lines.length}→${survivingLines.length} line(s)`);
+    setGuestWishlist(survivingLines);
+  }
+  return items;
+}
 
 export function WishlistProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -63,18 +118,33 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     [wishlistItems]
   );
 
+  // Logged out → the wishlist lives in localStorage (guest wishlist); logged in → the DB
+  // wishlist is the source of truth.
   useEffect(() => {
-    if (!userId) {
-      // Reset to the logged-out wishlist — syncing to external auth state.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setWishlistItems([]);
-      setLoading(false);
-      return;
-    }
-
     abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
+
+    if (!userId) {
+      console.log(`[WishlistContext] hydrating guest wishlist  tick=${fetchTick}`);
+      // Syncing to external state (localStorage guest wishlist) — same pattern as the DB branch.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoading(true);
+      hydrateGuestWishlist()
+        .then((items) => {
+          if (!ctrl.signal.aborted) setWishlistItems(items);
+        })
+        .catch((err) => {
+          if (!ctrl.signal.aborted) {
+            console.error("[WishlistContext] guest hydrate failed", err);
+            setWishlistItems([]);
+          }
+        })
+        .finally(() => {
+          if (!ctrl.signal.aborted) setLoading(false);
+        });
+      return () => ctrl.abort();
+    }
 
     console.log(`[WishlistContext] fetching wishlist  user=${userId}  tick=${fetchTick}`);
     setLoading(true);
@@ -124,10 +194,30 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     [refetchWishlist],
   );
 
+  // Guest counterpart to undoAddToWishlist — drop the localStorage line, then re-hydrate.
+  const undoAddGuestWishlist = useCallback(
+    (sku: string) => {
+      removeGuestWishlistLine(sku);
+      console.log(`[WishlistContext] undo guest add  sku=${sku}`);
+      refetchWishlist();
+      toast.success("Removed from wishlist!");
+    },
+    [refetchWishlist],
+  );
+
   const addToWishlist = useCallback(
     async (productSlug: string, sku: string) => {
+      // Guest: persist to localStorage and re-hydrate. No login wall — saving is free;
+      // the sign-in prompt happens only when moving an item into the real cart.
       if (!user) {
-        toast.error("Please log in to save items to your wishlist");
+        if (getGuestWishlist().some((l) => l.sku === sku)) return; // already saved
+        addGuestWishlistLine({ product_slug: productSlug, sku });
+        console.log("[WishlistContext] guest addToWishlist", productSlug, sku);
+        refetchWishlist();
+        toast.success("Added to wishlist!", {
+          duration: 6000,
+          action: { label: "Undo", onClick: () => undoAddGuestWishlist(sku) },
+        });
         return;
       }
       // Optimistic: add a placeholder so heart fills instantly
@@ -171,10 +261,19 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         toast.error(err instanceof Error ? err.message : "Could not add to wishlist");
       }
     },
-    [user, refetchWishlist, undoAddToWishlist]
+    [user, refetchWishlist, undoAddToWishlist, undoAddGuestWishlist]
   );
 
   const removeFromWishlist = useCallback(async (wishlistItemId: string) => {
+    // Guest: drop the localStorage line by the sku encoded in its synthetic id.
+    if (!user) {
+      const parsed = parseGuestWishlistLineId(wishlistItemId);
+      if (!parsed) return;
+      removeGuestWishlistLine(parsed.sku);
+      setWishlistItems((prev) => prev.filter((item) => item.id !== wishlistItemId));
+      toast.success("Removed from wishlist!");
+      return;
+    }
     let snapshot: WishlistItem[] = [];
     setWishlistItems((prev) => {
       snapshot = prev;
@@ -187,10 +286,14 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       setWishlistItems(snapshot);
       toast.error("Could not remove from wishlist");
     }
-  }, []);
+  }, [user]);
 
+  // Moving a saved item into the *real* cart requires an account. For guests the Wishlist
+  // page intercepts the click and routes through login (saving a guest_move_to_cart intent),
+  // so these three never run logged-out; the guards are a defensive backstop.
   const moveToCart = useCallback(
     async (wishlistItemId: string) => {
+      if (!user) return;
       let snapshot: WishlistItem[] = [];
       setWishlistItems((prev) => {
         snapshot = prev;
@@ -205,10 +308,11 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         toast.error(err instanceof Error ? err.message : "Could not move to cart");
       }
     },
-    [refetchCart]
+    [user, refetchCart]
   );
 
   const moveAllToCart = useCallback(async () => {
+    if (!user) return;
     let snapshot: WishlistItem[] = [];
     // Optimistically clear in-stock items
     setWishlistItems((prev) => {
@@ -228,13 +332,14 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       setWishlistItems(snapshot);
       toast.error(err instanceof Error ? err.message : "Could not move items to cart");
     }
-  }, [refetchCart, refetchWishlist]);
+  }, [user, refetchCart, refetchWishlist]);
 
   // Move just the checked wishlist lines to cart (the "Move Selected to Cart" button —
   // the selective counterpart to moveAllToCart). Sequential like CartContext.reorder, so
   // one failed/out-of-stock line can't abort the rest. Refetches once at the end.
   const moveSelectedToCart = useCallback(
     async (wishlistItemIds: string[]) => {
+      if (!user) return;
       const ids = wishlistItemIds.filter((id) =>
         wishlistItems.find((item) => item.id === id)?.inStock,
       );
@@ -258,10 +363,15 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       if (failed > 0) toast.error(`${moved} moved, ${failed} failed. Please try again.`);
       else toast.success(`${moved} item${moved !== 1 ? "s" : ""} moved to cart!`);
     },
-    [wishlistItems, refetchCart, refetchWishlist],
+    [user, wishlistItems, refetchCart, refetchWishlist],
   );
 
   const clearWishlistFn = useCallback(async () => {
+    if (!user) {
+      clearGuestWishlist();
+      setWishlistItems([]);
+      return;
+    }
     let snapshot: WishlistItem[] = [];
     setWishlistItems((prev) => {
       snapshot = prev;
@@ -273,7 +383,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       setWishlistItems(snapshot);
       toast.error("Could not clear wishlist");
     }
-  }, []);
+  }, [user]);
 
   return (
     <WishlistContext.Provider

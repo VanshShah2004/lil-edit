@@ -46,10 +46,9 @@ const SIZES = [
 ];
 
 const CATEGORIES = [
-  "Kids Ethnic Wear",
+  "Ethnic Wear",
   "Party Wear",
   "Casual Wear",
-  "Nightwear",
   "Accessories",
 ];
 

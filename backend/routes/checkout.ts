@@ -116,7 +116,7 @@ interface AddressSnapshot {
 
 interface CheckoutSnapshot {
   userId: string;
-  mode: "cart" | "direct";
+  mode: "cart" | "direct" | "guest";
   address: AddressSnapshot;
   item: RawLine | null; // direct mode only — lets the webhook re-price without Redis
   items: PricedLine[];
@@ -130,7 +130,46 @@ interface CheckoutSnapshot {
   couponCode: string | null;
 }
 
-type Source = { mode: "cart"; itemIds?: string[] | undefined } | { mode: "direct"; item: RawLine };
+// "guest" is a multi-item bypass generalizing "direct" (Buy Now): an authenticated user
+// checking out an explicit list of items that is NOT their DB cart — the items a guest built
+// up logged-out, carried in via the request. Like "direct" it never reads/clears cart_items;
+// unlike "direct" it prices a whole list (and tolerates a bad line instead of hard-rejecting).
+type Source =
+  | { mode: "cart"; itemIds?: string[] | undefined }
+  | { mode: "direct"; item: RawLine }
+  | { mode: "guest"; items: RawLine[] };
+
+// Guest items ride in Razorpay `notes` as the durable fallback the webhook can re-price from
+// if the Redis snapshot evicted (there is no DB cart row to recover them from). Compact
+// short-key JSON, chunked across giN keys to respect the per-note-value length limit.
+const GUEST_NOTE_CHUNK = 240;
+const GUEST_NOTE_MAX_CHUNKS = 10;
+function guestItemsToNotes(notes: Record<string, string>, items: RawLine[]): void {
+  const compact = items.map((l) => ({ s: l.sku, z: l.size, q: l.quantity }));
+  const json = JSON.stringify(compact);
+  const chunks: string[] = [];
+  for (let i = 0; i < json.length; i += GUEST_NOTE_CHUNK) chunks.push(json.slice(i, i + GUEST_NOTE_CHUNK));
+  const kept = chunks.slice(0, GUEST_NOTE_MAX_CHUNKS); // Redis snapshot stays the primary path
+  notes.giN = String(kept.length);
+  kept.forEach((c, i) => { notes[`gi${i}`] = c; });
+}
+function guestItemsFromNotes(notes: Record<string, string | number>): RawLine[] | null {
+  const n = Number(notes.giN ?? 0);
+  if (!n) return null;
+  let json = "";
+  for (let i = 0; i < n; i++) {
+    const part = notes[`gi${i}`];
+    if (typeof part !== "string") return null;
+    json += part;
+  }
+  try {
+    const compact = JSON.parse(json) as { s: string; z: string; q: number }[];
+    // product_slug is display-only and re-derived by sku during pricing, so "" is fine here.
+    return compact.map((c) => ({ product_slug: "", sku: c.s, size: c.z, quantity: c.q }));
+  } catch {
+    return null;
+  }
+}
 
 // Small typed error so the pricing helpers can signal an HTTP status to the route.
 class PriceError extends Error {
@@ -182,6 +221,10 @@ async function priceOrder(
       size: (r.size as string) ?? "",
       quantity: r.quantity as number,
     }));
+  } else if (source.mode === "guest") {
+    // Explicit item list from a (now-authenticated) guest — priced as-is, no cart_items read.
+    rawLines = source.items;
+    log.step(`guest items  count=${source.items.length}`);
   } else {
     rawLines = [source.item];
     log.step(`direct item  slug=${source.item.product_slug}  sku=${source.item.sku}  size="${source.item.size}"  qty=${source.item.quantity}`);
@@ -263,9 +306,12 @@ async function priceOrder(
     // buy keeps the line so the route's findOversold returns a clear "out of stock" for
     // the single item the customer explicitly chose (nothing else to fall back on).
     const isOversold = !isUnlimited && stock !== null && stock < qty;
-    if (isOversold && source.mode === "cart") {
+    if (isOversold && source.mode !== "direct") {
+      // cart + guest: one oversold line must not dead-end a multi-line checkout — drop it and
+      // keep pricing the rest. Only a direct (single-item) buy keeps it, so findOversold below
+      // returns a clear "out of stock" for the one item the customer explicitly chose.
       oversoldExcluded += 1;
-      log.warn(`excluding oversold cart line — stock ${stock} < qty ${qty}  sku=${line.sku}  "${(product.title as string ?? "").slice(0, 30)}"`);
+      log.warn(`excluding oversold ${source.mode} line — stock ${stock} < qty ${qty}  sku=${line.sku}  "${(product.title as string ?? "").slice(0, 30)}"`);
       continue;
     }
 
@@ -465,7 +511,8 @@ async function recoverSnapshot(razorpayOrderId: string, capturedPaise: number, l
   const notes = (rzpOrder.notes ?? {}) as Record<string, string | number>;
   const userId = String(notes.userId ?? "");
   const addressId = String(notes.addressId ?? "");
-  const mode = (String(notes.mode ?? "cart") === "direct" ? "direct" : "cart") as "cart" | "direct";
+  const modeRaw = String(notes.mode ?? "cart");
+  const mode = (modeRaw === "direct" ? "direct" : modeRaw === "guest" ? "guest" : "cart") as "cart" | "direct" | "guest";
   if (!userId || !addressId) {
     log.error("notes fallback missing userId/addressId — cannot place");
     return null;
@@ -484,6 +531,10 @@ async function recoverSnapshot(razorpayOrderId: string, capturedPaise: number, l
     try { directItem = itemRaw ? (JSON.parse(itemRaw) as RawLine) : null; } catch { directItem = null; }
     if (!directItem) { log.error("notes fallback — direct item unrecoverable"); return null; }
     source = { mode: "direct", item: directItem };
+  } else if (mode === "guest") {
+    const guestItems = guestItemsFromNotes(notes);
+    if (!guestItems || guestItems.length === 0) { log.error("notes fallback — guest items unrecoverable"); return null; }
+    source = { mode: "guest", items: guestItems };
   } else {
     const itemIdsRaw = typeof notes.itemIds === "string" ? notes.itemIds : "";
     let itemIds: string[] | undefined;
@@ -578,8 +629,8 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
     return;
   }
 
-  const body = req.body as { mode?: unknown; item?: unknown; addressId?: unknown; couponCode?: unknown; itemIds?: unknown };
-  const mode = body.mode === "direct" ? "direct" : "cart";
+  const body = req.body as { mode?: unknown; item?: unknown; items?: unknown; addressId?: unknown; couponCode?: unknown; itemIds?: unknown };
+  const mode = body.mode === "direct" ? "direct" : body.mode === "guest" ? "guest" : "cart";
   const addressId = typeof body.addressId === "string" ? body.addressId : "";
   const couponCode = typeof body.couponCode === "string" ? body.couponCode.trim().toUpperCase() : "";
   const itemIds = Array.isArray(body.itemIds) ? body.itemIds.filter((id): id is string => typeof id === "string") : undefined;
@@ -599,9 +650,12 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
       return;
     }
 
-    // Build + validate the direct item (cart mode reads the user's cart).
+    // Build + validate the source. cart → reads the user's cart; direct → one explicit item;
+    // guest → an explicit list of items (a logged-out shopper's cart, carried in). Neither
+    // direct nor guest reads or clears cart_items.
     let source: Source;
     let directItem: RawLine | null = null;
+    let guestItems: RawLine[] = [];
     if (mode === "direct") {
       const raw = (body.item ?? {}) as Record<string, unknown>;
       const slug = typeof raw.product_slug === "string" ? raw.product_slug : "";
@@ -619,6 +673,27 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
         quantity: Math.min(99, Math.max(1, Math.floor(Number(raw.quantity) || 1))),
       };
       source = { mode: "direct", item: directItem };
+    } else if (mode === "guest") {
+      const rawItems = Array.isArray(body.items) ? body.items : [];
+      guestItems = rawItems
+        .map((entry) => {
+          const raw = (entry ?? {}) as Record<string, unknown>;
+          const sku = typeof raw.sku === "string" ? raw.sku : "";
+          if (!sku) return null;
+          return {
+            product_slug: typeof raw.product_slug === "string" ? raw.product_slug : "",
+            sku,
+            size: typeof raw.size === "string" ? raw.size : "",
+            quantity: Math.min(99, Math.max(1, Math.floor(Number(raw.quantity) || 1))),
+          } as RawLine;
+        })
+        .filter((l): l is RawLine => l !== null);
+      if (guestItems.length === 0) {
+        log.warn("guest mode with no valid items").end("CHECKOUT INITIATE");
+        res.status(400).json({ error: "Your bag is empty." });
+        return;
+      }
+      source = { mode: "guest", items: guestItems };
     } else {
       source = { mode: "cart", itemIds };
     }
@@ -648,7 +723,11 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
           ? priced.oversoldExcluded > 0
             ? "The selected items are out of stock right now."
             : "Your cart is empty."
-          : "Item unavailable.";
+          : mode === "guest"
+            ? priced.oversoldExcluded > 0
+              ? "The selected items are out of stock right now."
+              : "Your bag is empty."
+            : "Item unavailable.";
       log.warn(`nothing to checkout (empty)  oversoldExcluded=${priced.oversoldExcluded}`).end("CHECKOUT INITIATE");
       res.status(400).json({ error: emptyMsg });
       return;
@@ -730,6 +809,7 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
     // even if Redis evicted the snapshot (direct item stashed as JSON).
     const notes: Record<string, string> = { userId, addressId, mode };
     if (directItem) notes.item = JSON.stringify(directItem);
+    if (mode === "guest") guestItemsToNotes(notes, guestItems);
     if (itemIds && itemIds.length > 0) notes.itemIds = JSON.stringify(itemIds);
     if (appliedCode) notes.coupon = appliedCode;
     const amountPaise = Math.round(total * 100);

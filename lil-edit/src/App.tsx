@@ -10,6 +10,8 @@ import AdminRoute from "./components/AdminRoute";
 import PageTitle from "./components/PageTitle";
 import MaintenanceGate from "./components/MaintenanceGate";
 import TrackingBridge from "./components/TrackingBridge";
+import GuestIntentBridge from "./components/GuestIntentBridge";
+import { AuthPromptProvider } from "./contexts/AuthPromptContext";
 
 // Home is the landing route (/ and /dashboard) — keep it eager so the first
 // paint never waits on a chunk fetch. Every other page is split into its own
@@ -100,8 +102,10 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <AuthPromptProvider>
         <PageTitle />
         <TrackingBridge />
+        <GuestIntentBridge />
         <MaintenanceGate>
         <Suspense fallback={<RouteFallback />}>
           <Routes>
@@ -154,6 +158,7 @@ const App = () => (
           </Routes>
         </Suspense>
         </MaintenanceGate>
+        </AuthPromptProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

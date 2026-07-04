@@ -227,11 +227,11 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
                 <p className="text-sm sm:text-xs font-bold text-gray-900">{p.category}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-[11px] sm:text-[9px] font-bold text-gray-600 uppercase tracking-wider">Selling Price (INR)</p>
+                <p className="text-[11px] sm:text-[9px] font-bold text-gray-600 uppercase tracking-wider">Selling Price</p>
                 <p className="text-sm sm:text-xs font-bold text-gray-900">₹{p.price.toLocaleString()}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-[11px] sm:text-[9px] font-bold text-gray-600 uppercase tracking-wider">MRP / Original Price</p>
+                <p className="text-[11px] sm:text-[9px] font-bold text-gray-600 uppercase tracking-wider">Original Price (MRP)</p>
                 <p className="text-sm sm:text-xs font-bold text-gray-900">
                   {p.original_price ? `₹${p.original_price.toLocaleString()}` : "—"}
                 </p>
@@ -352,12 +352,12 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-8 gap-x-4">
               {[
                 { label: "Category", value: p.category },
-                { label: "Gender", value: p.gender || "N/A" },
-                { label: "Sizes", value: p.sizes?.length ? p.sizes.join(", ") : "N/A" },
-                { label: "Fabrication", value: p.fabric || "N/A" },
-                { label: "Silhouette", value: p.fit || "N/A" },
+                { label: "Gender Category", value: p.gender || "N/A" },
+                { label: "Available Sizes", value: p.sizes?.length ? p.sizes.join(", ") : "N/A" },
+                { label: "Fabric & Lining", value: p.fabric || "N/A" },
+                { label: "Silhouette & Fit", value: p.fit || "N/A" },
                 { label: "Occasion", value: p.occasion || "N/A" },
-                { label: "Maintenance", value: p.care_instructions || "N/A" }
+                { label: "Care Instructions", value: p.care_instructions || "N/A" }
               ].map((item, i) => (
                 <div key={i} className="space-y-1">
                   <p className="text-[10px] sm:text-[8px] font-bold text-gray-600 uppercase tracking-widest">{item.label}</p>
@@ -1211,16 +1211,16 @@ const ManageProducts = () => {
         <div class="grid">
           <div><div class="label">Master SKU</div><div class="value" style="font-family:monospace;">${product.base_sku}</div></div>
           <div><div class="label">Brand</div><div class="value">${product.brand}</div></div>
-          <div><div class="label">Selling Price (INR)</div><div class="value">₹${product.price.toLocaleString()}</div></div>
-          <div><div class="label">MRP / Original Price</div><div class="value">${product.original_price ? `₹${product.original_price.toLocaleString()}` : '—'}</div></div>
+          <div><div class="label">Selling Price</div><div class="value">₹${product.price.toLocaleString()}</div></div>
+          <div><div class="label">Original Price (MRP)</div><div class="value">${product.original_price ? `₹${product.original_price.toLocaleString()}` : '—'}</div></div>
           <div><div class="label">Category</div><div class="value">${product.category}</div></div>
-          <div><div class="label">Gender</div><div class="value">${product.gender ?? 'N/A'}</div></div>
+          <div><div class="label">Gender Category</div><div class="value">${product.gender ?? 'N/A'}</div></div>
           <div><div class="label">Total Stock</div><div class="value">${isUnlimited ? 'Unlimited' : `${totalStock} units`}</div></div>
-          <div><div class="label">Sizes</div><div class="value">${product.sizes?.length ? product.sizes.join(', ') : 'N/A'}</div></div>
-          <div><div class="label">Fabrication</div><div class="value">${product.fabric ?? 'N/A'}</div></div>
-          <div><div class="label">Silhouette</div><div class="value">${product.fit ?? 'N/A'}</div></div>
+          <div><div class="label">Available Sizes</div><div class="value">${product.sizes?.length ? product.sizes.join(', ') : 'N/A'}</div></div>
+          <div><div class="label">Fabric & Lining</div><div class="value">${product.fabric ?? 'N/A'}</div></div>
+          <div><div class="label">Silhouette & Fit</div><div class="value">${product.fit ?? 'N/A'}</div></div>
           <div><div class="label">Occasion</div><div class="value">${product.occasion ?? 'N/A'}</div></div>
-          <div><div class="label">Maintenance</div><div class="value">${product.care_instructions ?? 'N/A'}</div></div>
+          <div><div class="label">Care Instructions</div><div class="value">${product.care_instructions ?? 'N/A'}</div></div>
         </div>
 
         <div class="grid">
@@ -1238,7 +1238,7 @@ const ManageProducts = () => {
             </div>
           </div>
           <div><div class="label">Occasion</div><div class="value">${product.occasion ?? 'N/A'}</div></div>
-          <div><div class="label">Maintenance</div><div class="value">${product.care_instructions ?? 'N/A'}</div></div>
+          <div><div class="label">Care Instructions</div><div class="value">${product.care_instructions ?? 'N/A'}</div></div>
         </div>
 
         ${variants.length > 0 ? `

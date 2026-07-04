@@ -37,6 +37,7 @@ import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
+import { useAuthPrompt } from "@/contexts/AuthPromptContext";
 import Footer from "@/components/layout/Footer";
 
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
@@ -46,6 +47,7 @@ import { useRecommendations, type RecommendationAnchor } from "@/hooks/useRecomm
 import { validateCoupon, fetchActiveCoupons, formatCouponSavings, formatCouponOffer, computeCouponSavings, type ActiveCoupon } from "@/lib/checkoutApi";
 import { fetchWishlist } from "@/lib/wishlistApi";
 import { fetchOrders } from "@/lib/ordersApi";
+import { saveGuestIntent, readMovedToCartMarker, clearMovedToCartMarker } from "@/lib/guestStorage";
 
 const abbreviateSize = (size: string) =>
   size.replace(/months?/gi, "M").replace(/years?/gi, "Y").trim();
@@ -89,6 +91,7 @@ function CartSkeleton() {
 export default function Cart() {
   const { user, loading: authLoading } = useAuth();
   const { cartItems, loading: cartLoading, updateQuantity, updateSize, updateColor, removeItem } = useCart();
+  const { promptAuth } = useAuthPrompt();
 
   const [selectedProduct, setSelectedProduct] = useState<QuickViewProduct | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
@@ -98,16 +101,40 @@ export default function Cart() {
   // they're out of stock (nothing to check out); items removed from the cart are
   // dropped from the selection.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Wishlist→cart→login hand-off: while a "moved skus" marker is active, restrict the initial
+  // auto-selection to just the moved items so a returning user's pre-existing cart items aren't
+  // swept into that checkout. Read once on mount; released after the moved items have loaded.
+  const restrictSkusRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const skus = readMovedToCartMarker();
+    if (skus?.length) {
+      restrictSkusRef.current = new Set(skus);
+      clearMovedToCartMarker();
+      console.log(`[Cart] moved-to-cart marker active — initial selection limited to ${skus.length} sku(s)`);
+    }
+  }, []);
   useEffect(() => {
     setSelectedIds((prev) => {
       const cartIds = new Set(cartItems.map((i) => i.id));
       const next = new Set([...prev].filter((id) => cartIds.has(id)));
+      const restrict = restrictSkusRef.current;
       for (const item of cartItems) {
-        if (!prev.has(item.id) && item.availability !== "Out of Stock") next.add(item.id);
+        if (prev.has(item.id)) continue;
+        if (item.availability === "Out of Stock") continue;
+        if (restrict && !restrict.has(item.sku)) continue; // marker active: only moved skus
+        next.add(item.id);
       }
       if (next.size === prev.size && [...next].every((id) => prev.has(id))) return prev;
       return next;
     });
+    // Release the one-shot restriction once every moved item is in the cart, so later manual
+    // adds auto-select normally again.
+    if (
+      restrictSkusRef.current &&
+      [...restrictSkusRef.current].every((sku) => cartItems.some((i) => i.sku === sku))
+    ) {
+      restrictSkusRef.current = null;
+    }
   }, [cartItems]);
   const toggleSelected = (id: string) => {
     setSelectedIds((prev) => {
@@ -334,7 +361,7 @@ export default function Cart() {
           <section className="flex-1 lg:w-[66%] space-y-4 sm:space-y-6">
 
             {/* Summary stat cards */}
-            {!cartLoading && user && cartItems.length > 0 && (
+            {!cartLoading && cartItems.length > 0 && (
               <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-6">
                 <StatCard
                   icon={<ShoppingCart className="w-5 h-5 text-white" fill="currentColor" />}
@@ -357,27 +384,8 @@ export default function Cart() {
             {/* Loading skeleton */}
             {cartLoading && <CartSkeleton />}
 
-            {/* Not logged in */}
-            {!cartLoading && !user && (
-              <div className="w-full py-16 sm:py-20 flex flex-col items-center justify-center bg-white border border-gray-400 rounded-xl">
-                <div className="text-center px-4">
-                  <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
-                    Log in to see your cart
-                  </p>
-                  <p className="text-sm text-gray-500 mb-6">
-                    Sign in to access saved items and check out.
-                  </p>
-                  <Link to="/login">
-                    <Button className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-lg px-8 h-11">
-                      Log In
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            )}
-
             {/* Empty cart */}
-            {!cartLoading && user && cartItems.length === 0 && (
+            {!cartLoading && cartItems.length === 0 && (
               <div className="w-full py-16 sm:py-20 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
                 <div className="text-center px-4">
                   <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
@@ -664,6 +672,9 @@ export default function Cart() {
                 </span>
               </div>
 
+              {/* Coupons are applied once signed in — a guest checks out first, then the
+                  coupon UI is available on the account's checkout. */}
+              {user && (
               <div className="relative">
                 {celebrating && (
                   <div className="absolute inset-x-0 pointer-events-none z-50 overflow-visible" style={{ top: 16 }}>
@@ -826,10 +837,10 @@ export default function Cart() {
                   </p>
                 )}
               </div>
+              )}
 
               <Button
                 onClick={() => {
-                  if (!user) { toast.error("Please log in to checkout"); return; }
                   if (selectedItems.length === 0) { toast.error("Select at least one item to check out"); return; }
                   // A sized product can't be bought without a chosen size (a wishlist→cart
                   // move lands with none). The backend /initiate refuses these too — this
@@ -847,6 +858,27 @@ export default function Cart() {
                   }
                   const overCap = [...skuTotals.values()].find((s) => s.total > 99);
                   if (overCap) { toast.error(`You can order at most 99 of "${overCap.title}". Please reduce the quantity.`); return; }
+                  if (!user) {
+                    // Guest: stash the selected lines, then route through login and back to
+                    // /checkout, where they're placed as a one-off order — the account's own
+                    // DB cart is never touched (see Checkout.tsx guest mode).
+                    saveGuestIntent({
+                      type: "guest_checkout",
+                      items: selectedItems.map((item) => ({
+                        product_slug: item.slug,
+                        sku: item.sku,
+                        size: item.size,
+                        quantity: item.quantity,
+                        title: item.title,
+                        price: item.price,
+                        originalPrice: item.originalPrice,
+                        image: item.image,
+                        colorName: item.color?.name ?? "",
+                      })),
+                    });
+                    promptAuth("/checkout");
+                    return;
+                  }
                   navigate("/checkout", {
                     state: {
                       mode: "cart",

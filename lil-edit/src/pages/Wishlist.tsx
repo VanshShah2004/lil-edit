@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   ChevronRight,
   ShoppingBag,
@@ -28,7 +29,9 @@ import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/Qui
 import type { WishlistItem } from "@/lib/wishlistApi";
 import { useRecommendations, type RecommendationAnchor } from "@/hooks/useRecommendations";
 import { useCart } from "@/contexts/CartContext";
+import { useAuthPrompt } from "@/contexts/AuthPromptContext";
 import { fetchOrders } from "@/lib/ordersApi";
+import { saveGuestIntent } from "@/lib/guestStorage";
 
 const BADGE_PRIORITY = ["newarrival", "trending", "bestseller", "featured"];
 const sortBadges = (badges: string[]) => {
@@ -89,6 +92,7 @@ const WishlistPage = () => {
   } = useWishlist();
 
   const { cartItems, loading: cartLoading } = useCart();
+  const { promptAuth } = useAuthPrompt();
   const [fallbackAnchor, setFallbackAnchor] = useState<RecommendationAnchor | null>(null);
 
   // Which wishlist lines are checked for "Move Selected to Cart" — new items default to
@@ -118,6 +122,18 @@ const WishlistPage = () => {
   const selectedInStockCount = selectedItems.filter((item) => item.inStock).length;
 
   const handleMoveToCart = async (id: string) => {
+    // Guest: moving into the *real* cart needs an account. Stash the item and route through
+    // login → back to /cart, where the intent is consumed into the DB cart (see useGuestIntent).
+    if (!user) {
+      const item = wishlistItems.find((i) => i.id === id);
+      if (!item) return;
+      saveGuestIntent({
+        type: "guest_move_to_cart",
+        items: [{ product_slug: item.slug, sku: item.sku, size: "", quantity: 1 }],
+      });
+      promptAuth("/cart");
+      return;
+    }
     setMovingId(id);
     try {
       await moveToCart(id);
@@ -131,25 +147,39 @@ const WishlistPage = () => {
   // the rest is display-only. Mirrors the QuickView drawer's Buy Now.
   const handleBuyNow = (item: WishlistItem) => {
     console.log(`[WishlistPage] buy now  slug=${item.slug}  sku=${item.sku}`);
-    navigate("/checkout", {
-      state: {
-        mode: "direct",
-        item: {
-          product_slug: item.slug,
-          sku: item.sku,
-          size: "",
-          quantity: 1,
-          title: item.title,
-          price: item.price,
-          originalPrice: item.originalPrice,
-          image: item.image,
-          colorName: item.color?.name ?? "",
-        },
-      },
-    });
+    const enriched = {
+      product_slug: item.slug,
+      sku: item.sku,
+      size: "",
+      quantity: 1,
+      title: item.title,
+      price: item.price,
+      originalPrice: item.originalPrice,
+      image: item.image,
+      colorName: item.color?.name ?? "",
+    };
+    // Guest: route through login and back to /checkout, where this single item is placed
+    // as a one-off order (the account's own cart is untouched — see Checkout.tsx guest mode).
+    if (!user) {
+      saveGuestIntent({ type: "guest_checkout", items: [enriched] });
+      promptAuth("/checkout");
+      return;
+    }
+    navigate("/checkout", { state: { mode: "direct", item: enriched } });
   };
 
   const handleMoveSelectedToCart = async () => {
+    // Guest: stash the selected in-stock items and route through login → back to /cart.
+    if (!user) {
+      const inStock = selectedItems.filter((i) => i.inStock);
+      if (inStock.length === 0) { toast.error("Select at least one in-stock item to move"); return; }
+      saveGuestIntent({
+        type: "guest_move_to_cart",
+        items: inStock.map((i) => ({ product_slug: i.slug, sku: i.sku, size: "", quantity: 1 })),
+      });
+      promptAuth("/cart");
+      return;
+    }
     setMovingAll(true);
     try {
       await moveSelectedToCart(selectedItems.map((item) => item.id));
@@ -271,7 +301,7 @@ const WishlistPage = () => {
           <section className="flex-1 lg:w-[66%] space-y-4 sm:space-y-6">
 
             {/* Summary stat cards */}
-            {!wishlistLoading && user && wishlistItems.length > 0 && (
+            {!wishlistLoading && wishlistItems.length > 0 && (
               <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-6">
                 <StatCard
                   icon={<Heart className="w-5 h-5 text-white" fill="currentColor" />}
@@ -323,15 +353,6 @@ const WishlistPage = () => {
             {/* ITEMS */}
             {wishlistLoading ? (
               <WishlistSkeleton />
-            ) : !user ? (
-              <div className="w-full py-16 sm:py-20 flex flex-col items-center justify-center bg-white border border-gray-400 rounded-xl">
-                <Heart size={48} className="text-primary mb-4 opacity-40" />
-                <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Save items you love</p>
-                <p className="text-sm text-gray-500 mb-6">Log in to view and manage your wishlist.</p>
-                <Link to="/login" className="text-sm font-medium text-primary underline underline-offset-2">
-                  Log in
-                </Link>
-              </div>
             ) : wishlistItems.length === 0 ? (
               <div className="w-full py-16 sm:py-20 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
                 <Heart size={48} className="text-primary mb-4 opacity-40" />

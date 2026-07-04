@@ -14,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import { AXIS, GRID, INK, INK_SOFT, SERIES, compact, shortDate } from "./format";
+import { slugify, useHideable } from "./customize";
 
 // Chart rows are loosely typed — payload fields can be null (e.g. a variant with
 // no colour hex, a product with no conversion). Recharts tolerates nulls at
@@ -27,15 +28,20 @@ export function ChartCard({
   right,
   children,
   className,
+  hideId,
 }: {
   title: string;
   subtitle?: string;
   right?: ReactNode;
   children: ReactNode;
   className?: string;
+  // Override the slug auto-derived from `title` (only if two charts share a title).
+  hideId?: string;
 }) {
+  const { hidden, handlers, jiggleClass, badge } = useHideable(hideId ?? slugify(title), title);
+  if (hidden) return null;
   return (
-    <div className={`rounded-xl border border-gray-400 bg-white p-5 ${className ?? ""}`}>
+    <div {...handlers} className={`rounded-xl border border-gray-400 bg-white p-5 ${className ?? ""} ${jiggleClass}`}>
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
@@ -44,6 +50,7 @@ export function ChartCard({
         {right}
       </div>
       {children}
+      {badge}
     </div>
   );
 }

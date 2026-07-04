@@ -17,7 +17,8 @@ import {
   type SuggestionRow,
   type SearchProductRow,
 } from "../lib/persistCatalog.js";
-import type { ProductRow, ImageRow } from "../lib/catalogRowTypes.js";
+import type { ProductRow, ImageRow, VariantRow } from "../lib/catalogRowTypes.js";
+import { fetchProductsBySkus } from "../lib/productsBySku.js";
 import {
   redisGet,
   redisSet,
@@ -32,7 +33,7 @@ import {
 } from "../lib/redis.js";
 import { createLog, type OpLogger } from "../lib/logger.js";
 import { invalidateAllCurationSections } from "./curation.js";
-import { supabaseAdmin } from "../lib/supabase.js";
+import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { logActivity, optionalUserId } from "../lib/activityLog.js";
@@ -334,6 +335,143 @@ router.get("/detail", async (req: Request, res: Response) => {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
+
+// ─── GET /api/products/by-skus — batch display data for the guest cart/wishlist ──
+// Public (no auth): a logged-out shopper's cart + wishlist live in their browser
+// (see lil-edit/src/lib/guestStorage.ts) and need product display data to render
+// without touching the authenticated cart/wishlist APIs. Resolves each requested sku
+// (variant OR base) to a per-variant view — the SAME per-line mapping GET /api/cart
+// produces — so the frontend can build CartItem/WishlistItem objects client-side.
+// Price/stock come from the DB (client values are never trusted); checkout re-prices
+// authoritatively by sku again before charging.
+router.get("/by-skus", async (req: Request, res: Response) => {
+  const log = createLog().start("PRODUCTS BY SKUS");
+  const raw = (req.query.skus as string | undefined) ?? "";
+  // Cap the batch so a crafted query can't ask for an unbounded product fetch.
+  const skus = [...new Set(raw.split(",").map((s) => s.trim()).filter(Boolean))].slice(0, 100);
+
+  if (skus.length === 0) {
+    log.step("no skus").end("PRODUCTS BY SKUS");
+    res.json({ items: [] });
+    return;
+  }
+  log.step(`skus=${skus.length}`);
+
+  try {
+    const { data: products, error } = await fetchProductsBySkus(
+      byskusDb(),
+      skus,
+      `
+        title, slug, category_slug, brand, base_sku, price, original_price, tags, badges, sizes, is_unlimited,
+        is_featured, is_new_arrival, is_trending, is_bestseller,
+        product_images(id, image_url, is_primary, sort_order, variant_id),
+        product_variants(id, variant_sku, color_name, color_hex, stock, is_unlimited, sort_order)
+      `,
+      log,
+    );
+    if (error) {
+      log.error("product fetch failed", error).end("PRODUCTS BY SKUS");
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    // Index by SKU (base + every variant) so each requested sku resolves to its exact
+    // product even when slugs collide — same idiom as cart.ts / checkout.ts.
+    const skuToProduct = new Map<string, ProductRow>();
+    for (const p of (products ?? []) as unknown as ProductRow[]) {
+      if (p.base_sku) skuToProduct.set(p.base_sku as string, p);
+      for (const v of p.product_variants ?? []) skuToProduct.set(v.variant_sku, p);
+    }
+
+    // One entry per REQUESTED sku that still resolves; unresolvable skus (deleted product
+    // / removed variant) are simply omitted, and the client drops those guest lines.
+    const items = skus
+      .map((sku) => mapSkuView(sku, skuToProduct.get(sku)))
+      .filter((v): v is NonNullable<typeof v> => v !== null);
+
+    log.success(`resolved ${items.length}/${skus.length}`).end("PRODUCTS BY SKUS");
+    res.json({ items });
+  } catch (err) {
+    log.error("unhandled error", err).end("PRODUCTS BY SKUS");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+const byskusDb = () => supabaseAdmin ?? supabaseAnon;
+
+// Resolve one requested sku to a display view (title, variant-preferred image, colors,
+// availability). Mirrors the per-line mapping in backend/routes/cart.ts GET /, plus brand,
+// so a single view feeds both the guest CartItem and the guest WishlistItem.
+function mapSkuView(requestedSku: string, product: ProductRow | undefined) {
+  if (!product) return null;
+
+  const variants: VariantRow[] = [...(product.product_variants ?? [])].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+  );
+  const images: ImageRow[] = [...(product.product_images ?? [])].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+  );
+
+  const variant = variants.find((v) => v.variant_sku === requestedSku) ?? null;
+  const variantImages = variant ? images.filter((img) => img.variant_id === variant.id) : [];
+  const globalImages = images.filter((img) => img.variant_id == null);
+  const primaryImage =
+    variantImages.find((img) => !!img.is_primary)?.image_url ||
+    variantImages[0]?.image_url ||
+    images.find((img) => !!img.is_primary)?.image_url ||
+    images[0]?.image_url ||
+    "";
+  const uniqueImages = [
+    ...new Set([
+      ...variantImages.map((img) => img.image_url as string),
+      ...globalImages.map((img) => img.image_url as string),
+    ]),
+  ].filter(Boolean);
+
+  const isUnlimited = variant ? !!variant.is_unlimited : !!product.is_unlimited;
+  const stock: number | null = isUnlimited ? null : (variant?.stock ?? 0);
+  const availability =
+    stock === null
+      ? "In Stock"
+      : stock <= 0
+        ? "Out of Stock"
+        : stock <= 3
+          ? `Only ${stock} left`
+          : "In Stock";
+
+  return {
+    sku: requestedSku,
+    title: product.title as string,
+    slug: product.slug as string,
+    categorySlug: product.category_slug as string,
+    brand: (product.brand ?? "") as string,
+    price: product.price as number,
+    originalPrice: (product.original_price ?? product.price) as number,
+    image: primaryImage as string,
+    images: uniqueImages,
+    color: {
+      name: (variant?.color_name ?? "") as string,
+      hex: (variant?.color_hex ?? "#cccccc") as string,
+    },
+    colors: variants.map((v) => ({
+      name: (v.color_name ?? "") as string,
+      hex: (v.color_hex ?? "#cccccc") as string,
+      sku: v.variant_sku as string,
+    })),
+    availability,
+    stock,
+    isUnlimited,
+    sizes: (product.sizes ?? []) as string[],
+    tags: (product.tags ?? []) as string[],
+    badges: [
+      ...(product.badges ?? []),
+      ...(product.is_featured ? ["Featured"] : []),
+      ...(product.is_new_arrival ? ["New Arrival"] : []),
+      ...(product.is_trending ? ["Trending"] : []),
+      ...(product.is_bestseller ? ["Bestseller"] : []),
+    ] as string[],
+  };
+}
 
 // ─── GET /api/products/reviews — lazy-loaded reviews ─────────────────────────
 router.get("/reviews", async (req: Request, res: Response) => {

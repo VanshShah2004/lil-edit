@@ -28,6 +28,12 @@ import {
   type InitiatePayload,
   type RazorpaySuccess,
 } from "@/lib/checkoutApi";
+import {
+  readGuestIntent,
+  clearGuestIntent,
+  removeGuestCartLine,
+  type GuestCheckoutItem,
+} from "@/lib/guestStorage";
 
 // Direct ("Buy Now") item rides in on router nav state. The first four fields are the
 // canonical ones the backend re-prices from; the rest are display-only so the summary
@@ -78,7 +84,19 @@ export default function Checkout() {
     navState?.mode === "direct" && navState.item?.product_slug && navState.item?.sku
       ? navState.item
       : null;
-  const mode: "cart" | "direct" = directItem ? "direct" : "cart";
+  // A logged-in user who clicked "Secure Checkout" on the Cart page arrives with an explicit
+  // cart nav state — that always means a normal cart checkout, so any lingering guest intent
+  // is ignored here (and cleared by the effect below).
+  const explicitCart = navState?.mode === "cart";
+  // Guest checkout: the items a shopper built up while logged out, carried through login.
+  // Read once on mount. These are placed as a ONE-OFF order — the account's own DB cart is
+  // never read or cleared (backend mode: "guest"). A hard refresh keeps them (localStorage).
+  const [guestCheckout] = useState<GuestCheckoutItem[] | null>(() => {
+    if (directItem || explicitCart) return null;
+    const intent = readGuestIntent();
+    return intent && intent.type === "guest_checkout" ? intent.items : null;
+  });
+  const mode: "cart" | "direct" | "guest" = directItem ? "direct" : guestCheckout ? "guest" : "cart";
   const carriedCoupon =
     mode === "cart" && navState?.coupon?.code
       ? navState.coupon
@@ -122,13 +140,23 @@ export default function Checkout() {
     return () => { document.title = prev; };
   }, []);
 
+  // Arrived here for a normal cart checkout — drop any stale guest_checkout intent so a later
+  // visit can't be hijacked into guest mode by a leftover intent.
+  useEffect(() => {
+    if (!explicitCart) return;
+    const intent = readGuestIntent();
+    if (intent?.type === "guest_checkout") clearGuestIntent();
+  }, [explicitCart]);
+
   // Subtotal for coupon applicability checks — computed early so the coupon fetch
   // can depend on it. The full `totals` object is built further down.
   const couponSubtotal = useMemo(
     () => (mode === "direct" && directItem
       ? (directItem.price ?? 0) * directItem.quantity
-      : cartItemsForCheckout.reduce((sum, it) => sum + it.price * it.quantity, 0)),
-    [mode, directItem, cartItemsForCheckout],
+      : mode === "guest" && guestCheckout
+        ? guestCheckout.reduce((sum, it) => sum + (it.price ?? 0) * it.quantity, 0)
+        : cartItemsForCheckout.reduce((sum, it) => sum + it.price * it.quantity, 0)),
+    [mode, directItem, guestCheckout, cartItemsForCheckout],
   );
 
   useEffect(() => {
@@ -348,6 +376,18 @@ export default function Checkout() {
         },
       ];
     }
+    if (mode === "guest" && guestCheckout) {
+      return guestCheckout.map((it) => ({
+        key: `${it.sku}-${it.size}`,
+        title: it.title ?? "Item",
+        image: it.image ?? "",
+        price: it.price ?? 0,
+        originalPrice: it.originalPrice ?? it.price ?? 0,
+        quantity: it.quantity,
+        size: it.size,
+        colorName: it.colorName ?? "",
+      }));
+    }
     return cartItemsForCheckout.map((it) => ({
       key: it.id,
       title: it.title,
@@ -358,7 +398,7 @@ export default function Checkout() {
       size: it.size,
       colorName: it.color?.name ?? "",
     }));
-  }, [mode, directItem, cartItemsForCheckout]);
+  }, [mode, directItem, guestCheckout, cartItemsForCheckout]);
 
   // The applied discount is the exact amount the backend returned for this coupon (every
   // coupon's discount is computed server-side). This summary is read-only, so the subtotal
@@ -406,6 +446,12 @@ export default function Checkout() {
       const { orderId, orderNumber } = await verifyCheckout(resp);
       console.log(`[Checkout] verified → order ${orderNumber} (${orderId})  refetchCart=${mode === "cart"}  navigating to order page`);
       if (mode === "cart") refetchCart();
+      if (mode === "guest" && guestCheckout) {
+        // Purchased — drop these lines from the local guest cart so they don't linger if the
+        // user logs out later, and clear the one-off checkout intent.
+        for (const it of guestCheckout) removeGuestCartLine(it.sku, it.size);
+        clearGuestIntent();
+      }
       toast.success("Payment successful!");
       navigate(`/orders/${orderId}?placed=1`);
     } catch (e) {
@@ -455,6 +501,16 @@ export default function Checkout() {
               },
             }
           : {}),
+        ...(mode === "guest" && guestCheckout
+          ? {
+              items: guestCheckout.map((it) => ({
+                product_slug: it.product_slug,
+                sku: it.sku,
+                size: it.size,
+                quantity: it.quantity,
+              })),
+            }
+          : {}),
       };
       const init = await initiateCheckout(payload);
       console.log(`[Checkout] initiated  rzpOrder=${init.razorpayOrderId}  amount=${init.amount}p  total=₹${init.pricing.total}  → opening Razorpay modal`);
@@ -463,7 +519,7 @@ export default function Checkout() {
       // rest (so one out-of-stock item never blocks the whole order). Tell the customer why
       // the amount they're about to pay is lower than the summary — the Razorpay modal below
       // shows the authoritative, reduced amount.
-      if (mode === "cart" && init.pricing.items.length < summaryLines.length) {
+      if ((mode === "cart" || mode === "guest") && init.pricing.items.length < summaryLines.length) {
         const dropped = summaryLines.length - init.pricing.items.length;
         console.warn(`[Checkout] ${dropped} line(s) excluded as out of stock — charging for ${init.pricing.items.length} of ${summaryLines.length}`);
         toast.warning(`${dropped} item${dropped > 1 ? "s are" : " is"} out of stock and won't be charged. Paying for the rest.`);

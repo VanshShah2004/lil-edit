@@ -20,6 +20,8 @@ import type { Product } from "@/types/product";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAuthPrompt } from "@/contexts/AuthPromptContext";
+import { saveGuestIntent } from "@/lib/guestStorage";
 
 interface ProductPreviewViewProps {
   product: Product;
@@ -51,6 +53,7 @@ const ProductPreviewView = ({
   const { addToCart, removeItem, cartItems } = useCart();
   const { isWishlisted, addToWishlist, removeFromWishlist, wishlistItems } = useWishlist();
   const { user } = useAuth();
+  const { promptAuth } = useAuthPrompt();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -232,27 +235,25 @@ const ProductPreviewView = ({
       toast.error("Please select a size before buying");
       return;
     }
+    const enriched = {
+      product_slug: product.slug,
+      sku: currentSku,
+      size: selectedSize ?? "",
+      quantity,
+      title: product.title,
+      price: product.price,
+      originalPrice: product.originalPrice ?? product.price,
+      image: galleryImages[0] ?? "",
+      colorName: activeColor?.name ?? "",
+    };
     if (!user) {
-      toast.error("Please log in to continue");
-      navigate("/login");
+      // Guest: route through login and back to /checkout, where this item is placed as a
+      // one-off order (the cart is untouched — same as the logged-in direct buy).
+      saveGuestIntent({ type: "guest_checkout", items: [enriched] });
+      promptAuth("/checkout");
       return;
     }
-    navigate("/checkout", {
-      state: {
-        mode: "direct",
-        item: {
-          product_slug: product.slug,
-          sku: currentSku,
-          size: selectedSize ?? "",
-          quantity,
-          title: product.title,
-          price: product.price,
-          originalPrice: product.originalPrice ?? product.price,
-          image: galleryImages[0] ?? "",
-          colorName: activeColor?.name ?? "",
-        },
-      },
-    });
+    navigate("/checkout", { state: { mode: "direct", item: enriched } });
   };
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}${buildPdpPath(product.categorySlug, product.slug, currentSku)}` : '';

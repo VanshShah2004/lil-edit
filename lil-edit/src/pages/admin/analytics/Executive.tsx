@@ -8,6 +8,7 @@ import { KpiCard } from "@/components/analytics/KpiCard";
 import { ChartCard, DonutChart, RankedBars, TrendChart } from "@/components/analytics/charts";
 import { InsightGrid } from "@/components/analytics/InsightCard";
 import { executiveInsights } from "@/components/analytics/insights";
+import { Widget, slugify, useHideable } from "@/components/analytics/customize";
 import {
   ChartSkeleton,
   ErrorState,
@@ -52,7 +53,7 @@ export default function ExecutiveDashboard() {
   );
 
   return (
-    <AnalyticsLayout title="Executive overview" description="The health of the business at a glance." filterBar={filterBar} actions={actions}>
+    <AnalyticsLayout title="Executive overview" description="The health of the business at a glance." filterBar={filterBar} actions={actions} customizeKey="executive">
       {query.isError ? (
         <ErrorState
           message={query.error.message}
@@ -160,9 +161,13 @@ export default function ExecutiveDashboard() {
           </Section>
 
           {/* ── AI-style insights (rule-based) ────────────────────────────── */}
-          <Section title="Insights">
-            <InsightGrid insights={insights} empty="Nothing notable this period — steady as she goes." />
-          </Section>
+          {/* One hideable unit — the individual insight cards are dynamic/rule-based,
+              so per-card hiding wouldn't be meaningful. */}
+          <Widget id="insights" label="Insights">
+            <Section title="Insights">
+              <InsightGrid insights={insights} empty="Nothing notable this period — steady as she goes." />
+            </Section>
+          </Widget>
         </>
       )}
     </AnalyticsLayout>
@@ -171,12 +176,14 @@ export default function ExecutiveDashboard() {
 
 // A KPI card whose VALUE is the period-over-period growth %, coloured by direction.
 function GrowthCard({ label, current, previous }: { label: string; current?: number | null; previous?: number | null }) {
+  const { hidden, handlers, jiggleClass, badge } = useHideable(slugify(label), label);
   const cur = current ?? 0;
   const prev = previous ?? 0;
   const change = prev === 0 ? null : ((cur - prev) / Math.abs(prev)) * 100;
   const up = (change ?? 0) >= 0;
+  if (hidden) return null;
   return (
-    <div className="flex flex-col rounded-xl border border-gray-400 bg-white p-4">
+    <div {...handlers} className={cn("flex flex-col rounded-xl border border-gray-400 bg-white p-4", jiggleClass)}>
       <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{label}</span>
       <div className="mt-2 flex items-center gap-1">
         {change == null ? (
@@ -196,6 +203,7 @@ function GrowthCard({ label, current, previous }: { label: string; current?: num
         )}
       </div>
       <span className="mt-2 text-[11px] text-gray-400">vs previous period</span>
+      {badge}
     </div>
   );
 }

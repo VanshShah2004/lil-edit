@@ -20,6 +20,20 @@ import {
   type AddToCartPayload,
   type CartItem,
 } from "@/lib/cartApi";
+import { hydrateSkus, type ResolvedSkuView } from "@/lib/productHydration";
+import {
+  getGuestCart,
+  setGuestCart,
+  clearGuestCart,
+  addGuestCartLine,
+  setGuestCartQty,
+  removeGuestCartLine,
+  changeGuestCartSize,
+  changeGuestCartSku,
+  guestCartLineId,
+  parseGuestCartLineId,
+  type GuestCartLine,
+} from "@/lib/guestStorage";
 
 interface CartContextType {
   cartItems: CartItem[];
@@ -36,6 +50,59 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+
+// Build a display-ready CartItem from a stored guest line + its resolved product view.
+// Mirrors the shape GET /api/cart returns per line so the Cart UI is identical for guests.
+function buildGuestCartItem(line: GuestCartLine, v: ResolvedSkuView): CartItem {
+  return {
+    id: guestCartLineId(line.sku, line.size),
+    sku: line.sku,
+    size: line.size,
+    sizes: v.sizes,
+    quantity: line.quantity,
+    title: v.title,
+    slug: v.slug,
+    categorySlug: v.categorySlug,
+    price: v.price,
+    originalPrice: v.originalPrice,
+    image: v.image,
+    images: v.images,
+    color: v.color,
+    colors: v.colors,
+    availability: v.availability,
+    stock: v.stock,
+    isUnlimited: v.isUnlimited,
+    tags: v.tags,
+    badges: v.badges,
+  };
+}
+
+// Hydrate the localStorage guest cart into CartItems. Resolves display data by SKU (one
+// batched call), drops lines whose SKU no longer exists in the catalog, and heals a stored
+// slug that drifted — the same heal-not-delete posture as the DB cart's GET self-heal.
+async function hydrateGuestCart(): Promise<CartItem[]> {
+  const lines = getGuestCart();
+  if (lines.length === 0) return [];
+  const views = await hydrateSkus(lines.map((l) => l.sku));
+
+  const items: CartItem[] = [];
+  const survivingLines: GuestCartLine[] = [];
+  for (const line of lines) {
+    const v = views.get(line.sku);
+    if (!v) continue; // sku no longer resolves — prune this guest line
+    items.push(buildGuestCartItem(line, v));
+    survivingLines.push({ ...line, product_slug: v.slug }); // heal a stale display slug
+  }
+
+  const healed =
+    survivingLines.length !== lines.length ||
+    survivingLines.some((l, i) => l.product_slug !== lines[i]?.product_slug);
+  if (healed) {
+    console.log(`[CartContext] guest cart healed  ${lines.length}→${survivingLines.length} line(s)`);
+    setGuestCart(survivingLines);
+  }
+  return items;
+}
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -60,19 +127,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
     debounceRef.current = setTimeout(() => setFetchTick((t) => t + 1), 50);
   }, []);
 
-  // Fetch cart whenever user changes or refetchCart() is called
+  // Fetch cart whenever user changes or refetchCart() is called. Logged out → the cart
+  // lives in localStorage (guest cart); logged in → the DB cart is the source of truth.
   useEffect(() => {
-    if (!userId) {
-      // Reset to the logged-out cart — syncing to external auth state.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCartItems([]);
-      setLoading(false);
-      return;
-    }
-
     abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
+
+    if (!userId) {
+      console.log(`[CartContext] hydrating guest cart  tick=${fetchTick}`);
+      // Syncing to external state (localStorage guest cart) — same pattern as the DB branch.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoading(true);
+      hydrateGuestCart()
+        .then((items) => {
+          if (!ctrl.signal.aborted) setCartItems(items);
+        })
+        .catch((err) => {
+          if (!ctrl.signal.aborted) {
+            console.error("[CartContext] guest hydrate failed", err);
+            setCartItems([]);
+          }
+        })
+        .finally(() => {
+          if (!ctrl.signal.aborted) setLoading(false);
+        });
+      return () => ctrl.abort();
+    }
 
     console.log(`[CartContext] fetching cart  user=${userId}  tick=${fetchTick}`);
     setLoading(true);
@@ -124,10 +205,44 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [refetchCart]
   );
 
+  // Guest counterpart to undoAddToCart — subtract this add's contribution from the
+  // localStorage line (removing it if that zeroes out), then re-hydrate.
+  const undoAddGuestCart = useCallback(
+    (sku: string, size: string, addedQty: number) => {
+      const line = getGuestCart().find((l) => l.sku === sku && l.size === size);
+      if (line) {
+        const next = line.quantity - addedQty;
+        if (next > 0) setGuestCartQty(sku, size, next);
+        else removeGuestCartLine(sku, size);
+        console.log(`[CartContext] undo guest add  sku=${sku}  size=${size}  -${addedQty}`);
+      }
+      refetchCart();
+      toast.success("Removed from cart!");
+    },
+    [refetchCart]
+  );
+
   const addToCart = useCallback(
     async (payload: AddToCartPayload) => {
+      const addedQty = payload.quantity ?? 1;
+      // Guest: persist to localStorage and re-hydrate. No login wall — the sign-in
+      // prompt happens later, at checkout (see Cart.tsx).
       if (!user) {
-        toast.error("Please log in to add items to your cart");
+        addGuestCartLine({
+          product_slug: payload.product_slug,
+          sku: payload.sku,
+          size: payload.size,
+          quantity: addedQty,
+        });
+        console.log("[CartContext] guest addToCart", payload.sku, payload.size, `×${addedQty}`);
+        refetchCart();
+        toast.success("Added to cart!", {
+          duration: 6000,
+          action: {
+            label: "Undo",
+            onClick: () => undoAddGuestCart(payload.sku, payload.size, addedQty),
+          },
+        });
         return;
       }
       try {
@@ -137,7 +252,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           action: {
             label: "Undo",
             onClick: () =>
-              void undoAddToCart(payload.sku, payload.size, payload.quantity ?? 1),
+              void undoAddToCart(payload.sku, payload.size, addedQty),
           },
         });
         refetchCart();
@@ -145,7 +260,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         toast.error(err instanceof Error ? err.message : "Could not add to cart");
       }
     },
-    [user, refetchCart, undoAddToCart]
+    [user, refetchCart, undoAddToCart, undoAddGuestCart]
   );
 
   // Re-add a whole order's worth of lines to the cart (the Reorder button on the
@@ -180,6 +295,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   const updateQuantity = useCallback(async (cartItemId: string, quantity: number) => {
+    // Guest: mutate localStorage + local state directly (no API, display data unchanged).
+    if (!user) {
+      const parsed = parseGuestCartLineId(cartItemId);
+      if (!parsed) return;
+      setGuestCartQty(parsed.sku, parsed.size, quantity);
+      setCartItems((prev) =>
+        prev.map((item) => (item.id === cartItemId ? { ...item, quantity } : item))
+      );
+      return;
+    }
     // Capture previous state for rollback inside the functional updater
     let snapshot: CartItem[] = [];
     setCartItems((prev) => {
@@ -194,9 +319,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCartItems(snapshot);
       toast.error("Could not update quantity");
     }
-  }, []);
+  }, [user]);
 
   const updateSize = useCallback(async (cartItemId: string, size: string) => {
+    // Guest: change the stored size (merging into an existing sku+size line) then
+    // re-hydrate — a merge can combine two lines, so we rebuild from storage.
+    if (!user) {
+      const parsed = parseGuestCartLineId(cartItemId);
+      if (!parsed) return;
+      changeGuestCartSize(parsed.sku, parsed.size, size);
+      refetchCart();
+      return;
+    }
     let snapshot: CartItem[] = [];
     setCartItems((prev) => {
       snapshot = prev;
@@ -212,9 +346,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCartItems(snapshot);
       toast.error("Could not update size");
     }
-  }, [refetchCart]);
+  }, [user, refetchCart]);
 
   const updateColor = useCallback(async (cartItemId: string, sku: string) => {
+    // Guest: change the stored variant sku (merging into an existing newSku+size line)
+    // then re-hydrate — the new sku brings its own image/color/stock.
+    if (!user) {
+      const parsed = parseGuestCartLineId(cartItemId);
+      if (!parsed) return;
+      changeGuestCartSku(parsed.sku, sku, parsed.size);
+      refetchCart();
+      return;
+    }
     let snapshot: CartItem[] = [];
     setCartItems((prev) => {
       snapshot = prev;
@@ -233,9 +376,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCartItems(snapshot);
       toast.error("Could not update color");
     }
-  }, [refetchCart]);
+  }, [user, refetchCart]);
 
   const removeItem = useCallback(async (cartItemId: string) => {
+    if (!user) {
+      const parsed = parseGuestCartLineId(cartItemId);
+      if (!parsed) return;
+      removeGuestCartLine(parsed.sku, parsed.size);
+      setCartItems((prev) => prev.filter((item) => item.id !== cartItemId));
+      return;
+    }
     let snapshot: CartItem[] = [];
     setCartItems((prev) => {
       snapshot = prev;
@@ -247,9 +397,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCartItems(snapshot);
       toast.error("Could not remove item");
     }
-  }, []);
+  }, [user]);
 
   const clearCartFn = useCallback(async () => {
+    if (!user) {
+      clearGuestCart();
+      setCartItems([]);
+      return;
+    }
     let snapshot: CartItem[] = [];
     setCartItems((prev) => {
       snapshot = prev;
@@ -261,7 +416,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCartItems(snapshot);
       toast.error("Could not clear cart");
     }
-  }, []);
+  }, [user]);
 
   return (
     <CartContext.Provider

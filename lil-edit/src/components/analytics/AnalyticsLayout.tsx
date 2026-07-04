@@ -18,6 +18,7 @@ import {
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import { cn } from "@/lib/utils";
+import { CustomiseButton, CustomizeEmptyState, CustomizeProvider, EditModeChrome, HiddenTray } from "./customize";
 
 const ACCENT = "#0F766E";
 
@@ -80,12 +81,17 @@ export function AnalyticsLayout({
   filterBar,
   actions,
   children,
+  customizeKey,
 }: {
   title: string;
   description?: string;
   filterBar?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
+  // When set, this page opts into the iPhone-style hide/show customisation
+  // (long-press / right-click a card). Pages that leave it undefined behave
+  // exactly as before. See components/analytics/customize.tsx.
+  customizeKey?: string;
 }) {
   const location = useLocation();
   // Preserve the active query string (date range + filters) when switching tabs,
@@ -183,19 +189,28 @@ export function AnalyticsLayout({
             </ul>
           </nav>
 
-          {/* Main content */}
+          {/* Main content. Wrapped in the customisation provider — inert unless the
+              page passed a `customizeKey`, so non-opted-in pages are unchanged. */}
           <main className="min-w-0 flex-1">
-            <div className="mb-4 flex flex-col gap-3 border-b border-gray-200 pb-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">{title}</h2>
-                  {description && <p className="mt-0.5 text-sm text-gray-500">{description}</p>}
+            <CustomizeProvider pageKey={customizeKey}>
+              <div className="mb-4 flex flex-col gap-3 border-b border-gray-200 pb-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">{title}</h2>
+                    {description && <p className="mt-0.5 text-sm text-gray-500">{description}</p>}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {actions}
+                    <CustomiseButton />
+                  </div>
                 </div>
-                {actions}
+                {filterBar}
               </div>
-              {filterBar}
-            </div>
-            {children}
+              {children}
+              <CustomizeEmptyState />
+              <HiddenTray />
+              <EditModeChrome />
+            </CustomizeProvider>
           </main>
         </div>
       </div>

@@ -76,8 +76,10 @@ export interface InitiateResult {
 }
 
 export interface InitiatePayload {
-  mode: "cart" | "direct";
+  mode: "cart" | "direct" | "guest";
   item?: CheckoutItemInput;
+  /** Guest mode only — the explicit list of items to charge (a logged-out shopper's cart). */
+  items?: CheckoutItemInput[];
   addressId: string;
   couponCode?: string;
   /** Cart mode only — checkout just these cart_items ids instead of the whole cart. */

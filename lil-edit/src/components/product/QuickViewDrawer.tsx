@@ -16,6 +16,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAuthPrompt } from "@/contexts/AuthPromptContext";
+import { saveGuestIntent } from "@/lib/guestStorage";
 
 const BADGE_PRIORITY = ["newarrival", "trending", "bestseller", "featured"];
 const sortBadges = (badges: string[]) => {
@@ -85,6 +88,8 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
   const { cartItems, updateQuantity } = useCart();
   const { moveToCart, isWishlisted, addToWishlist, removeFromWishlist, wishlistItems } =
     useWishlist();
+  const { user } = useAuth();
+  const { promptAuth } = useAuthPrompt();
   const closeRef = useRef<HTMLButtonElement>(null);
   const swipeStartX = useRef(0);
   const swipeActive = useRef(false);
@@ -195,25 +200,42 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
   // Direct "Buy Now": straight to checkout with just this item (cart untouched). The
   // backend re-prices from {slug, sku, size, quantity}; the rest is display-only.
   const handleBuyNow = () => {
+    const enriched = {
+      product_slug: product.slug,
+      sku: product.sku,
+      size: product.size ?? "",
+      quantity: liveQty,
+      title: product.title,
+      price: product.price,
+      originalPrice: product.originalPrice,
+      image: product.image,
+      colorName: product.color?.name ?? "",
+    };
+    // Guest: prompt login/signup, then resume to /checkout, where this item is placed as a
+    // one-off order (the cart is untouched — same as the logged-in direct buy).
+    if (!user) {
+      saveGuestIntent({ type: "guest_checkout", items: [enriched] });
+      onClose();
+      promptAuth("/checkout");
+      return;
+    }
     onClose();
-    navigate("/checkout", {
-      state: {
-        mode: "direct",
-        item: {
-          product_slug: product.slug,
-          sku: product.sku,
-          size: product.size ?? "",
-          quantity: liveQty,
-          title: product.title,
-          price: product.price,
-          originalPrice: product.originalPrice,
-          image: product.image,
-          colorName: product.color?.name ?? "",
-        },
-      },
-    });
+    navigate("/checkout", { state: { mode: "direct", item: enriched } });
   };
-  const handleMoveToCart = async () => { await moveToCart(product.id); onClose(); };
+  const handleMoveToCart = async () => {
+    // Guest: moving into the real cart needs an account — stash it and route through login → /cart.
+    if (!user) {
+      saveGuestIntent({
+        type: "guest_move_to_cart",
+        items: [{ product_slug: product.slug, sku: product.sku, size: "", quantity: 1 }],
+      });
+      onClose();
+      promptAuth("/cart");
+      return;
+    }
+    await moveToCart(product.id);
+    onClose();
+  };
   const handleWishlistToggle = () => {
     if (wishlisted && wishlistItemForProduct) {
       void removeFromWishlist(wishlistItemForProduct.id);

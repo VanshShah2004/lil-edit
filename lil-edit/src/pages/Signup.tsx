@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/layout/Navbar";
@@ -22,12 +22,21 @@ const Signup = () => {
   const [successMsg, setSuccessMsg] = useState("");
   const { sendSignupOtp, verifySignupOtpAndCompleteProfile, signInWithGoogle, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Preserve the guest flow's destination (?redirect=/checkout or /cart) through the OTP
+  // steps, falling back to the dashboard. Same-origin absolute paths only (no open redirect).
+  const redirectParam = searchParams.get("redirect");
+  const redirectTo =
+    redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+      ? redirectParam
+      : "/dashboard";
 
   useEffect(() => {
     if (user) {
-      navigate("/dashboard", { replace: true });
+      navigate(redirectTo, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, redirectTo]);
 
   // Show loading state
   if (authLoading) {
@@ -84,7 +93,7 @@ const Signup = () => {
         last_name: lastName,
       });
 
-      navigate("/dashboard", { replace: true });
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "OTP verification failed. Please try again.");
     } finally {
