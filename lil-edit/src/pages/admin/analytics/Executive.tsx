@@ -176,12 +176,14 @@ export default function ExecutiveDashboard() {
 
 // A KPI card whose VALUE is the period-over-period growth %, coloured by direction.
 function GrowthCard({ label, current, previous }: { label: string; current?: number | null; previous?: number | null }) {
-  const { hidden, handlers, jiggleClass, badge } = useHideable(slugify(label), label);
+  const { hidden, handlers, jiggleClass, badge, placeholder } = useHideable(slugify(label), label, {
+    placeholderMinH: "min-h-[104px]",
+  });
   const cur = current ?? 0;
   const prev = previous ?? 0;
   const change = prev === 0 ? null : ((cur - prev) / Math.abs(prev)) * 100;
   const up = (change ?? 0) >= 0;
-  if (hidden) return null;
+  if (hidden) return placeholder;
   return (
     <div {...handlers} className={cn("flex flex-col rounded-xl border border-gray-400 bg-white p-4", jiggleClass)}>
       <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{label}</span>

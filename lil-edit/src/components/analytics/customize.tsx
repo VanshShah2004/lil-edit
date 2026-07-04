@@ -226,10 +226,18 @@ export interface HideableProps {
   onContextMenu?: (e: RMouseEvent) => void;
   style?: CSSProperties;
 }
+export interface HideableOptions {
+  /** Copied onto the in-place placeholder so it keeps the card's grid footprint (e.g. a col-span). */
+  placeholderClassName?: string;
+  /** Fallback min-height for the placeholder — a solo hidden card has no visible
+   *  sibling to stretch against. Defaults to a KPI-card height. */
+  placeholderMinH?: string;
+}
 export interface Hideable {
   /** True when this page's customization is active. */
   enabled: boolean;
-  /** True when this specific card is hidden → the primitive should return null. */
+  /** True when this specific card is hidden. The primitive should `return placeholder`
+   *  (the in-place dashed "bring back" slot while editing, else null → nothing). */
   hidden: boolean;
   /** True in edit mode → the primitive should render inert (no navigation). */
   editing: boolean;
@@ -239,11 +247,14 @@ export interface Hideable {
   jiggleClass: string;
   /** The − remove badge; render inside the root. null unless editing. */
   badge: ReactNode;
+  /** What to render when `hidden`: a dashed grey "+" slot in the card's own place
+   *  (edit mode), or null when not editing (card is fully gone). */
+  placeholder: ReactNode;
 }
 
-export function useHideable(id: string, label: string): Hideable {
+export function useHideable(id: string, label: string, opts?: HideableOptions): Hideable {
   const ctx = useCustomize();
-  const { enabled, editing, register, unregister, openMenu, enterEdit, hide, isHidden } = ctx;
+  const { enabled, editing, register, unregister, openMenu, enterEdit, hide, show, isHidden } = ctx;
 
   useEffect(() => {
     if (!enabled) return;
@@ -259,7 +270,7 @@ export function useHideable(id: string, label: string): Hideable {
   const hidden = enabled && isHidden(id);
 
   if (!enabled) {
-    return { enabled: false, hidden: false, editing: false, handlers: {}, jiggleClass: "", badge: null };
+    return { enabled: false, hidden: false, editing: false, handlers: {}, jiggleClass: "", badge: null, placeholder: null };
   }
 
   const style: CSSProperties = {
@@ -278,6 +289,18 @@ export function useHideable(id: string, label: string): Hideable {
     style,
   };
 
+  // A hidden card leaves an in-place dashed "+" slot WHILE EDITING, so it can be
+  // brought back exactly where it lived. Not editing → it renders nothing at all.
+  const placeholder =
+    hidden && editing ? (
+      <HiddenPlaceholder
+        label={label}
+        onShow={() => show(id)}
+        className={opts?.placeholderClassName}
+        minH={opts?.placeholderMinH}
+      />
+    ) : null;
+
   return {
     enabled: true,
     hidden,
@@ -285,6 +308,7 @@ export function useHideable(id: string, label: string): Hideable {
     handlers,
     jiggleClass: editing ? "relative dash-jiggle" : "",
     badge: editing ? <HideBadge label={label} onClick={() => hide(id)} /> : null,
+    placeholder,
   };
 }
 
@@ -307,10 +331,56 @@ function HideBadge({ label, onClick }: { label: string; onClick: () => void }) {
   );
 }
 
+// The in-place "bring back" slot shown where a hidden card used to sit, WHILE
+// editing. A dashed grey rectangle with a + — click anywhere on it to restore the
+// card. It stretches (h-full) to match its visible siblings in the same grid row,
+// falling back to `minH` when the whole row is hidden.
+function HiddenPlaceholder({
+  label,
+  onShow,
+  className,
+  minH,
+}: {
+  label: string;
+  onShow: () => void;
+  className?: string;
+  minH?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`Bring back ${label}`}
+      title={`Bring back ${label}`}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onShow();
+      }}
+      className={cn(
+        "group flex h-full w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-100 p-4 text-center transition-colors hover:border-emerald-400 hover:bg-emerald-50",
+        minH ?? "min-h-[104px]",
+        className,
+      )}
+    >
+      <span
+        className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 bg-white group-hover:border-emerald-400"
+        style={{ color: ACCENT }}
+      >
+        <Plus className="h-4 w-4" strokeWidth={3} />
+      </span>
+      <span className="line-clamp-2 text-xs font-medium text-gray-500">{label}</span>
+    </button>
+  );
+}
+
 // ─── Generic wrapper for non-grid, full-width one-offs (e.g. the Insights block) ─
 export function Widget({ id, label, className, children }: { id: string; label: string; className?: string; children: ReactNode }) {
-  const { hidden, handlers, jiggleClass, badge } = useHideable(id, label);
-  if (hidden) return null;
+  const { hidden, placeholder, handlers, jiggleClass, badge } = useHideable(id, label, {
+    placeholderClassName: className,
+    placeholderMinH: "min-h-[140px]",
+  });
+  if (hidden) return placeholder;
   return (
     <div {...handlers} className={cn(className, jiggleClass)}>
       {children}
@@ -333,41 +403,6 @@ export function CustomiseButton() {
       <SlidersHorizontal className="h-4 w-4" />
       <span className="hidden sm:inline">Customise</span>
     </button>
-  );
-}
-
-// ─── The tray of hidden cards (edit mode) ─────────────────────────────────────
-export function HiddenTray() {
-  const { enabled, editing, hiddenWidgets, show } = useCustomize();
-  if (!enabled || !editing) return null;
-  return (
-    <section className="mt-8 rounded-xl border border-dashed border-gray-400 bg-white/70 p-4">
-      <div className="mb-3 flex items-center gap-2">
-        <h3 className="text-sm font-bold uppercase tracking-wide text-gray-500">Hidden cards</h3>
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-gray-500">{hiddenWidgets.length}</span>
-      </div>
-      {hiddenWidgets.length === 0 ? (
-        <p className="text-xs text-gray-400">
-          Nothing hidden. Tap the <span className="font-semibold">−</span> on any card to hide it — it’ll appear here to bring back.
-        </p>
-      ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          {hiddenWidgets.map((w) => (
-            <button
-              key={w.id}
-              type="button"
-              onClick={() => show(w.id)}
-              className="group flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-left text-sm text-gray-700 hover:border-emerald-400 hover:bg-emerald-50"
-            >
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-white text-emerald-600 group-hover:border-emerald-400" style={{ color: ACCENT }}>
-                <Plus className="h-3.5 w-3.5" strokeWidth={3} />
-              </span>
-              <span className="truncate">{w.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
   );
 }
 

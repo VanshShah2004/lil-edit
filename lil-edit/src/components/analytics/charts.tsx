@@ -38,8 +38,11 @@ export function ChartCard({
   // Override the slug auto-derived from `title` (only if two charts share a title).
   hideId?: string;
 }) {
-  const { hidden, handlers, jiggleClass, badge } = useHideable(hideId ?? slugify(title), title);
-  if (hidden) return null;
+  const { hidden, handlers, jiggleClass, badge, placeholder } = useHideable(hideId ?? slugify(title), title, {
+    placeholderClassName: className,
+    placeholderMinH: "min-h-[220px]",
+  });
+  if (hidden) return placeholder;
   return (
     <div {...handlers} className={`rounded-xl border border-gray-400 bg-white p-5 ${className ?? ""} ${jiggleClass}`}>
       <div className="mb-4 flex items-start justify-between gap-3">

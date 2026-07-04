@@ -38,8 +38,10 @@ export function KpiCard({
   onClick,
   hideId,
 }: KpiCardProps) {
-  const { hidden, editing, handlers, jiggleClass, badge } = useHideable(hideId ?? slugify(label), label);
-  if (hidden) return null;
+  const { hidden, editing, handlers, jiggleClass, badge, placeholder } = useHideable(hideId ?? slugify(label), label, {
+    placeholderMinH: "min-h-[104px]",
+  });
+  if (hidden) return placeholder;
 
   const hasComparison = previous != null;
   const delta = hasComparison ? computeDelta(current, previous, higherIsBetter) : null;

@@ -18,7 +18,7 @@ import {
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import { cn } from "@/lib/utils";
-import { CustomiseButton, CustomizeEmptyState, CustomizeProvider, EditModeChrome, HiddenTray } from "./customize";
+import { CustomiseButton, CustomizeEmptyState, CustomizeProvider, EditModeChrome } from "./customize";
 
 const ACCENT = "#0F766E";
 
@@ -208,7 +208,6 @@ export function AnalyticsLayout({
               </div>
               {children}
               <CustomizeEmptyState />
-              <HiddenTray />
               <EditModeChrome />
             </CustomizeProvider>
           </main>
