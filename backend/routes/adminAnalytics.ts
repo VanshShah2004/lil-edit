@@ -4,8 +4,10 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "../lib/supabase.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
+import { adminMutationLimiter } from "../middleware/rateLimiters.js";
 import { redisGet, redisSet, redisKey } from "../lib/redis.js";
 import { createLog, fms, type OpLogger } from "../lib/logger.js";
+import { logAdminAction } from "../lib/adminAudit.js";
 
 // ─── Admin Analytics API ──────────────────────────────────────────────────────
 // Read-only aggregation endpoints for the admin analytics platform. Every page
@@ -263,5 +265,125 @@ router.get("/product/:slug", (req, res) => {
 router.get("/live", (req, res) =>
   void servePage(req, res, "live", "analytics_live", () => ({}), { cacheable: false, windowed: false })
 );
+
+// ─── Dashboard layout (global, admin-curated card visibility) ─────────────────
+// Backs the iPhone-style hide/show for analytics cards (frontend: customize.tsx).
+// State is GLOBAL — one shared set of hidden cards per page for ALL admins — stored
+// in dashboard_hidden_widgets, where a row exists ⇔ the card is hidden. Reads and
+// writes go through the service-role client; the table is RLS-locked so the
+// PostgREST client roles can't touch it directly. See migration
+// 20260714_dashboard_widget_layout.sql.
+const LAYOUT_MIGRATION_HINT =
+  "Dashboard layout isn't set up in the database yet. Run lil-edit/supabase/" +
+  "migrations/20260714_dashboard_widget_layout.sql in the Supabase SQL editor.";
+
+const MAX_KEY_LEN = 120;
+const isValidKey = (v: unknown): v is string =>
+  typeof v === "string" && v.trim().length > 0 && v.trim().length <= MAX_KEY_LEN;
+
+// Current hidden widget_ids for a page, sorted for a stable response.
+async function readHiddenWidgets(db: SupabaseClient, page: string): Promise<string[]> {
+  const { data, error } = await db
+    .from("dashboard_hidden_widgets")
+    .select("widget_id")
+    .eq("page_key", page);
+  if (error) throw error;
+  return ((data ?? []) as Array<{ widget_id: string }>).map((r) => r.widget_id).sort();
+}
+
+// GET /layout?page=executive → { page, hidden: string[] }
+// Fail-OPEN: if the table is missing (migration not run) or the read otherwise
+// fails, return an empty list so the dashboard still renders every card. A layout
+// preference must never black out the page.
+router.get("/layout", async (req: Request, res: Response) => {
+  const log = createLog().start("ANALYTICS LAYOUT GET");
+  const db = serviceClientOr503(res, log);
+  if (!db) return;
+  const page = (req.query.page as string | undefined)?.trim() ?? "";
+  if (!isValidKey(page)) {
+    log.warn(`invalid page="${page}"`).end("ANALYTICS LAYOUT GET");
+    res.status(400).json({ error: "Provide a page." });
+    return;
+  }
+  try {
+    const hidden = await readHiddenWidgets(db, page);
+    log.success(`page=${page}  hidden=${hidden.length}`).end("ANALYTICS LAYOUT GET");
+    res.json({ page, hidden });
+  } catch (err) {
+    const e = err as { code?: string; message?: string };
+    if (isMissingObjectError(e.code, e.message)) {
+      log.warn("table missing — fail-open to []").end("ANALYTICS LAYOUT GET");
+      res.json({ page, hidden: [] });
+      return;
+    }
+    log.error("read failed", err).end("ANALYTICS LAYOUT GET");
+    res.status(500).json({ error: e.message ?? String(err) });
+  }
+});
+
+// POST /layout { page, widgetId, hidden } → { page, hidden: string[] }
+// hidden:true upserts a row (card hidden); hidden:false deletes it (card restored).
+// Admin-only (whole router) + rate-limited + audit-logged.
+router.post("/layout", adminMutationLimiter, async (req: Request, res: Response) => {
+  const log = createLog().start("ANALYTICS LAYOUT SET");
+  const db = serviceClientOr503(res, log);
+  if (!db) return;
+  const actorId = (req as AuthenticatedRequest).userId;
+
+  const body = (req.body ?? {}) as { page?: unknown; widgetId?: unknown; hidden?: unknown };
+  if (!isValidKey(body.page) || !isValidKey(body.widgetId) || typeof body.hidden !== "boolean") {
+    log.warn("invalid body").end("ANALYTICS LAYOUT SET");
+    res.status(400).json({ error: "Provide page, widgetId and hidden (boolean)." });
+    return;
+  }
+  const page = body.page.trim();
+  const widgetId = body.widgetId.trim();
+  const hidden = body.hidden;
+  log.step(`actor=${actorId}  page=${page}  widget=${widgetId}  hidden=${hidden}`);
+
+  try {
+    if (hidden) {
+      // Record the actor's email for a self-contained "who hid this" (parity with
+      // site_settings). One cheap PK lookup; toggles are infrequent + rate-limited.
+      const { data: prof } = await db.from("profiles").select("email").eq("id", actorId).maybeSingle();
+      const email = (prof as { email?: string | null } | null)?.email ?? null;
+      const { error } = await db.from("dashboard_hidden_widgets").upsert(
+        { page_key: page, widget_id: widgetId, hidden_by: actorId, hidden_by_email: email, hidden_at: new Date().toISOString() },
+        { onConflict: "page_key,widget_id" },
+      );
+      if (error) throw error;
+    } else {
+      const { error } = await db
+        .from("dashboard_hidden_widgets")
+        .delete()
+        .eq("page_key", page)
+        .eq("widget_id", widgetId);
+      if (error) throw error;
+    }
+
+    const list = await readHiddenWidgets(db, page);
+    log.success(`ok  page=${page}  hidden=${list.length}`).end("ANALYTICS LAYOUT SET");
+    void logAdminAction({
+      adminId: actorId,
+      action: hidden ? "dashboard_widget_hidden" : "dashboard_widget_shown",
+      targetType: "analytics",
+      targetId: `${page}:${widgetId}`,
+      summary: hidden
+        ? `Hid the "${widgetId}" card on the ${page} analytics page`
+        : `Restored the "${widgetId}" card on the ${page} analytics page`,
+      metadata: { page, widgetId, hidden },
+    });
+    res.json({ page, hidden: list });
+  } catch (err) {
+    const e = err as { code?: string; message?: string };
+    if (isMissingObjectError(e.code, e.message)) {
+      log.warn("table missing — migration not applied").end("ANALYTICS LAYOUT SET");
+      res.status(503).json({ error: LAYOUT_MIGRATION_HINT });
+      return;
+    }
+    log.error("write failed", err).end("ANALYTICS LAYOUT SET");
+    res.status(500).json({ error: e.message ?? String(err) });
+  }
+});
 
 export default router;

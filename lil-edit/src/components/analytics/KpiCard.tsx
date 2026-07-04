@@ -4,6 +4,7 @@ import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
 import { ACCENT, computeDelta, deltaColor } from "./format";
 import { NoDataYet } from "./states";
+import { slugify, useHideable } from "./customize";
 
 export interface KpiCardProps {
   label: string;
@@ -20,6 +21,9 @@ export interface KpiCardProps {
   tracksLater?: boolean;
   hint?: string;
   onClick?: () => void;
+  // Override the slug auto-derived from `label` (only needed if two cards on a
+  // page share a label). The card is hideable in the analytics customise mode.
+  hideId?: string;
 }
 
 export function KpiCard({
@@ -32,24 +36,31 @@ export function KpiCard({
   tracksLater,
   hint,
   onClick,
+  hideId,
 }: KpiCardProps) {
+  const { hidden, editing, handlers, jiggleClass, badge } = useHideable(hideId ?? slugify(label), label);
+  if (hidden) return null;
+
   const hasComparison = previous != null;
   const delta = hasComparison ? computeDelta(current, previous, higherIsBetter) : null;
   const showNoData = tracksLater && (current == null || current === 0) && !hasComparison;
 
   const DirIcon = delta?.direction === "up" ? ArrowUpRight : delta?.direction === "down" ? ArrowDownRight : Minus;
 
-  const clickable = !!onClick;
+  // In edit mode the card is inert (no navigation) — you're arranging, not drilling in.
+  const clickable = !!onClick && !editing;
   const Wrapper = clickable ? "button" : "div";
 
   return (
     <Wrapper
+      {...handlers}
       type={clickable ? "button" : undefined}
-      onClick={onClick}
+      onClick={clickable ? onClick : undefined}
       title={hint}
       className={cn(
         "group relative flex flex-col rounded-xl border border-gray-400 bg-white p-4 text-left transition-shadow",
-        clickable && "cursor-pointer hover:border-gray-500 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)]"
+        clickable && "cursor-pointer hover:border-gray-500 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)]",
+        jiggleClass
       )}
     >
       <span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
@@ -103,6 +114,7 @@ export function KpiCard({
           <span className="text-[11px] text-gray-300">{hint ? "" : " "}</span>
         )}
       </div>
+      {badge}
     </Wrapper>
   );
 }

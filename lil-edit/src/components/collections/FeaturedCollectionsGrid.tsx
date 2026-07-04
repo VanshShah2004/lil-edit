@@ -58,7 +58,7 @@ export default function FeaturedCollectionsGrid({ previewItems }: { previewItems
   console.log(`[FeaturedCollectionsGrid] curated=${curated.length} → rendering ${featured.length} (mock fill=${featured.length - Math.min(curated.length, 6)})`);
 
   return (
-    <section>
+    <section className="px-4 sm:px-6 lg:px-8">
       <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
         Featured Collections
       </h2>
