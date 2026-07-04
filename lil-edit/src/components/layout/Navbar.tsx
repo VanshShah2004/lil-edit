@@ -239,11 +239,34 @@ const Navbar = () => {
             <SideLink to="/cart" icon={ShoppingCart} label="Cart" pathname={location.pathname} onClick={() => setMobileOpen(false)} badge={cartCount} badgeClass="bg-[#0F766E]" />
           </SideSection>
 
-          <SideSection label="Account">
-            <SideLink to="/login" icon={User} label="Log in" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
-            <SideLink to="/signup" icon={User} label="Sign up" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
-          </SideSection>
         </nav>
+
+        {/* Account — pinned footer */}
+        <div className="px-3 py-3 border-t border-foreground shrink-0">
+          <div className="flex gap-3"
+            onMouseEnter={() => setIsLoginHovered(false)}
+            onMouseLeave={() => setIsSignupHovered(false)}
+          >
+            <Link to="/login" className="flex-1" onClick={() => setMobileOpen(false)}
+              onMouseEnter={() => setIsLoginHovered(true)}
+              onMouseLeave={() => setIsLoginHovered(false)}
+            >
+              <Button className={`w-full font-body transition-all duration-300 border-2 ${isSignupHovered
+                ? "bg-primary/10 text-primary border-primary"
+                : "bg-primary text-primary-foreground border-transparent hover:bg-primary/90"
+                }`}>Log in</Button>
+            </Link>
+            <Link to="/signup" className="flex-1" onClick={() => setMobileOpen(false)}
+              onMouseEnter={() => setIsSignupHovered(true)}
+              onMouseLeave={() => setIsSignupHovered(false)}
+            >
+              <Button className={`w-full font-body transition-all duration-300 border-2 ${isLoginHovered
+                ? "bg-primary/10 text-primary border-primary"
+                : "bg-transparent text-primary border-primary hover:bg-primary hover:text-primary-foreground"
+                }`}>Sign up</Button>
+            </Link>
+          </div>
+        </div>
 
         <div className="h-1.5 w-full shrink-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
       </aside>
