@@ -1156,7 +1156,7 @@ const AddProduct = () => {
                                         fileInputRef.current?.click();
                                       }, 300);
                                     }}
-                                    className="ml-auto sm:ml-0 py-2.5 px-6 rounded-md bg-gray-50 hover:bg-gray-900 hover:text-white border border-gray-300 hover:border-primary text-gray-900 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg hover:shadow-primary/20 whitespace-nowrap"
+                                    className="ml-auto sm:ml-0 py-2.5 px-6 rounded-md bg-black text-white border border-black text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg whitespace-nowrap"
                                   >
                                     Edit Gallery
                                   </button>
@@ -1505,12 +1505,12 @@ const AddProduct = () => {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleSaveDraft}
                     disabled={isSaving || uploadingCount > 0}
-                    className="flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-md border border-gray-200 text-gray-900 font-bold uppercase tracking-widest text-xs shadow-md hover:shadow-xl hover:bg-black hover:text-white hover:border-black active:bg-black active:text-white transition-all duration-300 disabled:opacity-50 group"
+                    className="flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-md border border-black bg-black text-white font-bold uppercase tracking-widest text-xs shadow-md hover:shadow-xl transition-all duration-300 disabled:opacity-50 group"
                   >
                     {isSaving ? (
-                      <Loader className="w-4 h-4 animate-spin text-gray-900 group-hover:text-white" />
+                      <Loader className="w-4 h-4 animate-spin text-white" />
                     ) : (
-                      <Save className="w-4 h-4 text-gray-900 group-hover:text-white" />
+                      <Save className="w-4 h-4 text-white" />
                     )}
                     {isSaving ? "Saving..." : "Save Draft"}
                   </motion.button>
@@ -1529,7 +1529,7 @@ const AddProduct = () => {
                     }
                     className={`flex-1 flex items-center justify-center gap-3 px-8 py-4 rounded-md font-bold uppercase tracking-widest text-xs transition-all duration-300 shadow-xl hover:shadow-2xl ${
                       !formData.name || !formData.category || !formData.gender || !formData.sku
-                        ? "bg-gray-100 text-gray-800 cursor-not-allowed shadow-none border border-gray-200"
+                        ? "bg-gray-100 text-gray-800 cursor-not-allowed shadow-none border border-gray-400"
                         : "bg-[#B19CD9] text-black hover:brightness-105 shadow-[#B19CD9]/30"
                     } disabled:opacity-50 text-xs`}
                   >

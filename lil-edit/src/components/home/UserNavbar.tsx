@@ -133,7 +133,7 @@ const UserNavbar = () => {
         ref={headerRef}
         className={`fixed top-0 left-0 right-0 z-50 border-b border-border transition-all duration-300 bg-background shadow-sm`}
       >
-        <div className="container mx-auto flex items-center justify-between h-[5rem] md:h-[3.1rem] lg:h-[3.4rem] px-3 sm:px-4 lg:px-8">
+        <div className="max-w-screen-2xl mx-auto flex items-center justify-between h-[5rem] md:h-[3.1rem] lg:h-[3.4rem] px-3 lg:px-6">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <button
               type="button"
