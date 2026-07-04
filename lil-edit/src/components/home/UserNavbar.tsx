@@ -18,6 +18,10 @@ import {
   MessageSquare,
   ScrollText,
   BarChart3,
+  Plus,
+  ClipboardList,
+  LayoutGrid,
+  Settings,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
@@ -265,13 +269,6 @@ const UserNavbar = () => {
                         Admin
                       </div>
                       <Link
-                        to="/admin/analytics"
-                        onClick={closeProfileMenu}
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
-                      >
-                        <BarChart3 className="w-4 h-4" /> Analytics
-                      </Link>
-                      <Link
                         to="/admin/settings"
                         onClick={closeProfileMenu}
                         className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
@@ -279,7 +276,7 @@ const UserNavbar = () => {
                         <ShieldCheck className="w-4 h-4" /> Admin Settings
                       </Link>
                       <Link
-                        to="/admin/activity"
+                        to="/admin/user-activity"
                         onClick={closeProfileMenu}
                         className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
                       >
@@ -291,6 +288,13 @@ const UserNavbar = () => {
                         className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
                       >
                         <ScrollText className="w-4 h-4" /> Admin Activity
+                      </Link>
+                      <Link
+                        to="/admin/analytics"
+                        onClick={closeProfileMenu}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
+                      >
+                        <BarChart3 className="w-4 h-4" /> Analytics
                       </Link>
                     </>
                   )}
@@ -371,20 +375,39 @@ const UserNavbar = () => {
             <SideLink to="/about" icon={Info} label="About Us" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
           </SideSection>
 
-          <SideSection label="Your Closet">
-            <SideLink to="/wishlist" icon={Heart} label="Wishlist" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} badge={wishlistCount} badgeClass="bg-primary" />
-            <SideLink to="/cart" icon={ShoppingCart} label="Cart" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} badge={cartCount} badgeClass="bg-[#0F766E]" />
-            <SideLink to="/orders" icon={Package} label="My Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-            <SideLink to="/reviews" icon={MessageSquare} label="My Reviews" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-          </SideSection>
+          {!isAdmin && (
+            <SideSection label="Your Closet">
+              <SideLink to="/wishlist" icon={Heart} label="Wishlist" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} badge={wishlistCount} badgeClass="bg-primary" />
+              <SideLink to="/cart" icon={ShoppingCart} label="Cart" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} badge={cartCount} badgeClass="bg-[#0F766E]" />
+              <SideLink to="/orders" icon={Package} label="My Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+              <SideLink to="/reviews" icon={MessageSquare} label="My Reviews" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+            </SideSection>
+          )}
 
           {isAdmin && (
-            <SideSection label="Backstage">
-              <SideLink to="/admin/analytics" icon={BarChart3} label="Analytics" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-              <SideLink to="/admin/settings" icon={ShieldCheck} label="Admin Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-              <SideLink to="/admin/activity" icon={Activity} label="User Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-              <SideLink to="/admin/audit-log" icon={ScrollText} label="Admin Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-            </SideSection>
+            <>
+              <SideSection label="Workshop">
+                <SideLink to="/admin/add-product" icon={Plus} label="Add Product" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/manage-products" icon={Shirt} label="Manage Products" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/orders" icon={ClipboardList} label="Manage Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/spotlight" icon={LayoutGrid} label="The Spotlight" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/general-settings" icon={Settings} label="General Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+              </SideSection>
+
+              <SideSection label="Backstage">
+                <SideLink to="/admin/analytics" icon={BarChart3} label="Analytics" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/settings" icon={ShieldCheck} label="Admin Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/user-activity" icon={Activity} label="User Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/audit-log" icon={ScrollText} label="Admin Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+              </SideSection>
+
+              <SideSection label="Your Closet">
+                <SideLink to="/wishlist" icon={Heart} label="Wishlist" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} badge={wishlistCount} badgeClass="bg-primary" />
+                <SideLink to="/cart" icon={ShoppingCart} label="Cart" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} badge={cartCount} badgeClass="bg-[#0F766E]" />
+                <SideLink to="/orders" icon={Package} label="My Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/reviews" icon={MessageSquare} label="My Reviews" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+              </SideSection>
+            </>
           )}
 
           <SideSection label="You">
@@ -422,8 +445,8 @@ const UserNavbar = () => {
 // Uppercase, tracked section label with grouped links beneath it.
 function SideSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="mx-3 pt-2.5 md:pt-2 pb-1.5 border-t border-foreground/55 first:border-t-0 first:pt-1">
-      <p className="px-3 py-1.5 mb-1 font-display text-base md:text-sm font-black uppercase tracking-[0.16em] text-foreground/85">
+    <div className="mx-3 pt-1 md:pt-0.5 pb-1.5 border-t border-foreground/55 first:border-t-0 first:pt-1">
+      <p className="px-3 py-0.5 mb-1 font-display text-base md:text-sm font-black uppercase tracking-[0.16em] text-foreground/85">
         {label}
       </p>
       <div className="flex flex-col gap-0.5">{children}</div>

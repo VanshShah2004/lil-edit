@@ -129,7 +129,7 @@ const App = () => (
             <Route path="/admin/manage-products" element={<AdminRoute><ManageProducts /></AdminRoute>} />
             <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
             <Route path="/admin/orders/:orderId" element={<AdminRoute><AdminOrderDetail /></AdminRoute>} />
-            <Route path="/admin/activity" element={<AdminRoute><AdminActivity /></AdminRoute>} />
+            <Route path="/admin/user-activity" element={<AdminRoute><AdminActivity /></AdminRoute>} />
             <Route path="/admin/audit-log" element={<AdminRoute><AdminAuditLog /></AdminRoute>} />
             <Route path="/admin/spotlight" element={<AdminRoute><AdminSpotlight /></AdminRoute>} />
             <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />

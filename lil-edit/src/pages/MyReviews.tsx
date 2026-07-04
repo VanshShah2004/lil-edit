@@ -142,10 +142,10 @@ const MyReviewsPage = () => {
 
       <main className="flex-1 flex flex-col w-full pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)]">
         {/* Breadcrumb */}
-        <div className="page-container px-4 sm:px-6 pt-1 pb-6">
-          <div className="flex flex-wrap items-center text-xs sm:text-sm text-gray-600 gap-y-2">
+        <div className="page-container px-4 sm:px-6 pt-3 pb-2 mt-1.5">
+          <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
             <Link to="/" className="hover:underline">Home</Link>
-            <ChevronRight className="w-4 h-4 mx-1" />
+            <ChevronRight className="w-4 h-4" />
             <span className="text-gray-800 font-medium">Reviews</span>
           </div>
         </div>
