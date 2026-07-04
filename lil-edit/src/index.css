@@ -3,6 +3,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Dashboard "jiggle" edit mode (analytics card hide/show) ──────────────────
+   Applied by useHideable() (components/analytics/customize.tsx) while the customise
+   / edit mode is active. Each card also gets a small randomised negative
+   animation-delay inline, so they wobble out of phase — the classic iOS
+   home-screen look. Honours reduced-motion. */
+@keyframes dash-jiggle {
+  0%   { transform: rotate(-0.9deg); }
+  50%  { transform: rotate(0.9deg); }
+  100% { transform: rotate(-0.9deg); }
+}
+.dash-jiggle {
+  animation: dash-jiggle 0.32s ease-in-out infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-jiggle {
+    animation: none;
+  }
+}
+
 @layer base {
   :root {
     /* Soft lavender mist — violet family only, no blue */
