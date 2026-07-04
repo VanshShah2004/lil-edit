@@ -163,7 +163,7 @@ const UserNavbar = () => {
                 setIsSearchOpen(true);
                 setIsLeftMenuOpen(false);
               }}
-              className="h-10 w-10 sm:h-10 sm:w-10 md:h-9 md:w-9 rounded-full border border-gray-300 bg-background text-foreground hover:bg-secondary transition-colors flex items-center justify-center"
+              className="h-10 w-10 sm:h-10 sm:w-10 md:h-9 md:w-9 rounded-full border border-gray-400 bg-background text-foreground hover:bg-secondary transition-colors flex items-center justify-center"
               aria-label="Search"
             >
               <Search className="w-5 h-5 sm:w-4 sm:h-4" />
@@ -171,7 +171,7 @@ const UserNavbar = () => {
             <button
               type="button"
               onClick={() => navigate("/wishlist")}
-              className="h-10 w-10 sm:h-10 sm:w-10 md:h-9 md:w-9 rounded-full border border-gray-300 bg-background text-foreground hover:bg-secondary transition-colors relative flex items-center justify-center"
+              className="h-10 w-10 sm:h-10 sm:w-10 md:h-9 md:w-9 rounded-full border border-gray-400 bg-background text-foreground hover:bg-secondary transition-colors relative flex items-center justify-center"
               aria-label={`Wishlist${wishlistCount > 0 ? ` (${wishlistCount} items)` : ""}`}
             >
               <Heart className="w-5 h-5" />
@@ -184,7 +184,7 @@ const UserNavbar = () => {
             <button
               type="button"
               onClick={() => navigate("/cart")}
-              className="h-10 w-10 sm:h-10 sm:w-10 md:h-9 md:w-9 rounded-full border border-gray-300 bg-background text-foreground hover:bg-secondary transition-colors relative flex items-center justify-center"
+              className="h-10 w-10 sm:h-10 sm:w-10 md:h-9 md:w-9 rounded-full border border-gray-400 bg-background text-foreground hover:bg-secondary transition-colors relative flex items-center justify-center"
               aria-label={`Cart${cartCount > 0 ? ` (${cartCount} items)` : ""}`}
             >
               <ShoppingCart className="w-5 h-5" />
