@@ -19,7 +19,10 @@ export type AdminActionType =
   | "admin_access_granted"
   | "admin_access_revoked"
   | "maintenance_enabled"
-  | "maintenance_disabled";
+  | "maintenance_disabled"
+  | "review_verified"
+  | "review_unverified"
+  | "review_deleted";
 
 interface AdminActionEntry {
   // The acting admin (req.userId). NULLable only defensively — every call site is

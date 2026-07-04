@@ -324,7 +324,7 @@ const WishlistPage = () => {
             {wishlistLoading ? (
               <WishlistSkeleton />
             ) : !user ? (
-              <div className="w-full py-16 sm:py-20 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
+              <div className="w-full py-16 sm:py-20 flex flex-col items-center justify-center bg-white border border-gray-400 rounded-xl">
                 <Heart size={48} className="text-primary mb-4 opacity-40" />
                 <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Save items you love</p>
                 <p className="text-sm text-gray-500 mb-6">Log in to view and manage your wishlist.</p>

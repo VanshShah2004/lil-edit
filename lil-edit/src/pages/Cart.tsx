@@ -359,7 +359,7 @@ export default function Cart() {
 
             {/* Not logged in */}
             {!cartLoading && !user && (
-              <div className="w-full py-16 sm:py-20 flex flex-col items-center justify-center bg-white border border-gray-200 rounded-xl">
+              <div className="w-full py-16 sm:py-20 flex flex-col items-center justify-center bg-white border border-gray-400 rounded-xl">
                 <div className="text-center px-4">
                   <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
                     Log in to see your cart

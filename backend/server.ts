@@ -16,6 +16,7 @@ import adminAccessRouter from "./routes/adminAccess.js";
 import adminActivityRouter from "./routes/adminActivity.js";
 import adminAuditLogRouter from "./routes/adminAuditLog.js";
 import couponsRouter from "./routes/coupons.js";
+import adminReviewsRouter from "./routes/adminReviews.js";
 import curationRouter from "./routes/curation.js";
 import checkoutRouter, { webhookHandler } from "./routes/checkout.js";
 import shareRouter from "./routes/share.js";
@@ -115,6 +116,9 @@ app.use("/api/admin/orders", adminOrdersRouter);
 // the grant/revoke POSTs apply the tight admin write-limiter inside the router.
 app.use("/api/admin/access",   adminAccessRouter);
 app.use("/api/admin/coupons",  couponsRouter);
+// Admin review moderation (verify/delete). Every endpoint is gated by
+// requireAuth + requireAdmin inside the router.
+app.use("/api/admin/reviews",  adminReviewsRouter);
 // Admin activity feed (read-only). GETs ride the global limiter; every endpoint is
 // gated by requireAuth + requireAdmin inside the router.
 app.use("/api/admin/activity", adminActivityRouter);
