@@ -32,10 +32,23 @@ const ACCENT = "#0F766E";
 const LONG_PRESS_MS = 500;
 const MOVE_CANCEL_PX = 10;
 const DRAG_THRESHOLD_PX = 6; // pointer travel before a press becomes a reorder drag
-const DRAG_LIFT = "scale(1.045)"; // the picked-up card's slight enlargement, iOS-style
+const DRAG_LIFT_SCALE = 1.045; // the picked-up card's slight enlargement, iOS-style
+const GLIDE_MS = 200; // sibling reflow glide duration
+const SETTLE_MS = 260; // dropped card easing home
+// easeOutQuint — decisive start, long gentle tail; reads as "silky", not linear.
+const SMOOTH_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 
 const prefersReducedMotion = () =>
   typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// True only on a real mouse+hover ("desktop") environment — the only place a
+// right-click has meaning. On touch/coarse-pointer devices the long-press already
+// owns entering edit mode (useLongPress below); some mobile browsers ALSO fire a
+// native `contextmenu` on that same long-press, which would pop this menu open on
+// top of the jiggle transition. Checked fresh per-event rather than cached, since
+// hooking up mice/keyboards to tablets can change it mid-session.
+const hasDesktopContextMenu = () =>
+  typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 interface WidgetMeta {
@@ -245,11 +258,19 @@ function useLongPress(onLongPress: () => void, active: boolean): TouchHandlers {
 // with the hide/placeholder logic on the very same element. The chosen order is
 // GLOBAL and DB-backed (CustomizeContext.reorder). Off a group, every hook is inert.
 //
-// Motion model (the iOS feel): the picked-up card LIFTS (scale + shadow, jiggle
-// off) and follows the pointer 1:1 via an imperative inline transform; when it
-// crosses a sibling the order flips and the siblings FLIP-glide (WAAPI) into
-// their new slots while the held card stays glued to the finger; on release it
-// settles from the finger into its final slot. Reduced-motion skips the glides.
+// Motion model (the iOS feel), tuned for smoothness:
+//   • The picked-up card LIFTS (scale + shadow, jiggle off) and follows the pointer
+//     via `translate` written once per animation frame in a single rAF loop —
+//     pointer events only stash coordinates, so input rate never causes extra paints.
+//   • Hit-testing runs off CACHED slot rects (rebuilt only at pickup and on each
+//     flip), so the steady loop reads NO layout — the usual source of drag jank.
+//   • When the card crosses a sibling the order flips and siblings FLIP-glide (WAAPI
+//     on `translate`) into their new slots; the held card is re-anchored to its new
+//     slot pre-paint so it stays glued to the finger with no jump.
+//   • Jiggle is on `rotate`, drag/glide on `translate`/`scale` — independent
+//     properties, so a sibling can wobble and glide at once with no conflict.
+//   • On release the card settles from the finger into its final slot. Reduced-motion
+//     skips every glide.
 interface ReorderContextValue {
   enabled: boolean;
   order: (id: string) => number;
@@ -289,25 +310,31 @@ export function ReorderGroup({ groupKey, className, children }: { groupKey: stri
   const [working, setWorking] = useState<string[] | null>(null); // live order during a drag
   const workingRef = useRef<string[] | null>(null);
   const gestureRef = useRef<{ id: string; pointerId: number; x: number; y: number; dragging: boolean } | null>(null);
-  // Imperative drag visuals. The picked-up card follows the pointer 1:1 via an
-  // inline transform written straight to its DOM node (no React render per move).
-  // Its untransformed slot position is cached here and re-measured pre-paint
-  // whenever the order shuffles under it.
-  const dragVisRef = useRef<{
+  // Live drag state. `grabX/Y` = where in the card the finger grabbed (constant);
+  // `slotLeft/Top` = the card's CURRENT untransformed slot (re-measured on each flip);
+  // `pointerX/Y` = latest pointer; `tx/ty` = last applied translate. The rAF loop
+  // computes translate = pointer − grab − slot, so slot changes never jump the card.
+  const dragRef = useRef<{
     id: string;
-    layoutLeft: number;
-    layoutTop: number;
-    startLeft: number;
-    startTop: number;
-    startX: number;
-    startY: number;
-    curX: number;
-    curY: number;
+    grabX: number;
+    grabY: number;
+    slotLeft: number;
+    slotTop: number;
+    pointerX: number;
+    pointerY: number;
+    tx: number;
+    ty: number;
   } | null>(null);
-  // Rects snapshotted just before an order flip, so siblings can FLIP-glide.
-  const flipRectsRef = useRef<Map<string, DOMRect> | null>(null);
+  // Cached slot rects for the hit-test (rebuilt at pickup + each flip) — the loop
+  // reads these instead of hitting layout every frame.
+  const slotRectsRef = useRef<Map<string, { left: number; top: number; right: number; bottom: number }>>(new Map());
+  // Visual rects snapshotted just before an order flip, so siblings can FLIP-glide.
+  const flipPrevRef = useRef<Map<string, DOMRect> | null>(null);
+  // In-flight sibling glide animations, so a rapid re-flip cancels the old one first.
+  const glideAnimsRef = useRef<Map<string, Animation>>(new Map());
+  const rafRef = useRef<number | null>(null);
   // Where the finger released the card, so it can animate ("settle") into its slot.
-  const settleRef = useRef<{ id: string; desiredLeft: number; desiredTop: number } | null>(null);
+  const settleRef = useRef<{ id: string; visualLeft: number; visualTop: number } | null>(null);
 
   const registerMember = useCallback((id: string) => {
     setMembers((prev) => (prev.includes(id) ? prev : [...prev, id]));
@@ -330,6 +357,13 @@ export function ReorderGroup({ groupKey, className, children }: { groupKey: stri
     return [...inSaved, ...rest];
   }, [members, saved]);
 
+  // Latest-value mirrors so the stable rAF loop / hit-test read current state without
+  // being recreated mid-drag (which would break the animation-frame chain).
+  const membersRef = useRef(members);
+  membersRef.current = members;
+  const baseRef = useRef(base);
+  baseRef.current = base;
+
   const effective = working ?? base;
   const order = useCallback(
     (id: string) => {
@@ -340,21 +374,106 @@ export function ReorderGroup({ groupKey, className, children }: { groupKey: stri
   );
   const isDragging = useCallback((id: string) => draggingId === id, [draggingId]);
 
-  // Which member's rect the pointer is over (the drop target under the finger).
-  // The dragged card itself is excluded — it rides under the pointer, so its own
-  // rect would otherwise mask every target beneath it.
-  const hitTest = useCallback(
-    (x: number, y: number, excludeId: string): string | null => {
-      for (const id of members) {
-        if (id === excludeId) continue;
-        const el = nodesRef.current.get(id);
-        if (!el) continue;
-        const r = el.getBoundingClientRect();
-        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return id;
+  // Which member's cached slot the pointer is over (the drop target under the
+  // finger). Reads slotRectsRef — NOT layout — so it's free to call every frame. The
+  // dragged card is excluded: it rides under the pointer and would mask targets.
+  const hitTestSlots = useCallback((x: number, y: number, excludeId: string): string | null => {
+    const ids = membersRef.current;
+    const rects = slotRectsRef.current;
+    for (const mid of ids) {
+      if (mid === excludeId) continue;
+      const r = rects.get(mid);
+      if (!r) continue;
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return mid;
+    }
+    return null;
+  }, []);
+
+  // Snapshot every member's slot rect into the hit-test cache. (Jiggle is a sub-degree
+  // rotate about the centre, so its effect on these rects is negligible.)
+  const measureSlots = useCallback(() => {
+    const map = new Map<string, { left: number; top: number; right: number; bottom: number }>();
+    nodesRef.current.forEach((node, id) => {
+      const r = node.getBoundingClientRect();
+      map.set(id, { left: r.left, top: r.top, right: r.right, bottom: r.bottom });
+    });
+    slotRectsRef.current = map;
+  }, []);
+
+  const stopRaf = useCallback(() => {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, []);
+
+  // The single per-frame loop: write the follow transform, then hit-test off the
+  // cache. All the drag's painting happens here — decoupled from pointer-event rate.
+  const runTick = useCallback(() => {
+    const d = dragRef.current;
+    if (!d) {
+      rafRef.current = null;
+      return;
+    }
+    const el = nodesRef.current.get(d.id);
+    if (el) {
+      d.tx = d.pointerX - d.grabX - d.slotLeft;
+      d.ty = d.pointerY - d.grabY - d.slotTop;
+      el.style.translate = `${d.tx}px ${d.ty}px`;
+      el.style.scale = String(DRAG_LIFT_SCALE);
+    }
+    const target = hitTestSlots(d.pointerX, d.pointerY, d.id);
+    if (target) {
+      const cur = workingRef.current ?? baseRef.current;
+      const from = cur.indexOf(d.id);
+      const to = cur.indexOf(target);
+      if (from >= 0 && to >= 0 && from !== to) {
+        // Snapshot pre-flip VISUAL rects (incl. any in-flight glide) so the layout
+        // effect can FLIP-glide siblings continuously from where they actually are.
+        const rects = new Map<string, DOMRect>();
+        nodesRef.current.forEach((node, nid) => rects.set(nid, node.getBoundingClientRect()));
+        flipPrevRef.current = rects;
+        const next = [...cur];
+        next.splice(from, 1);
+        next.splice(to, 0, d.id);
+        workingRef.current = next;
+        setWorking(next);
       }
-      return null;
+    }
+    rafRef.current = requestAnimationFrame(runTick);
+  }, [hitTestSlots]);
+
+  const startRaf = useCallback(() => {
+    if (rafRef.current == null) rafRef.current = requestAnimationFrame(runTick);
+  }, [runTick]);
+
+  const beginDrag = useCallback(
+    (id: string, px: number, py: number) => {
+      const el = nodesRef.current.get(id);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        dragRef.current = {
+          id,
+          grabX: px - r.left, // where in the card the finger grabbed — held constant
+          grabY: py - r.top,
+          slotLeft: r.left,
+          slotTop: r.top,
+          pointerX: px,
+          pointerY: py,
+          tx: 0,
+          ty: 0,
+        };
+        el.classList.remove("dash-jiggle"); // the held card is calm; siblings keep jiggling
+        el.style.rotate = "0deg";
+        el.style.willChange = "translate, scale";
+      }
+      measureSlots();
+      workingRef.current = base;
+      setWorking(base);
+      setDraggingId(id);
+      startRaf();
     },
-    [members],
+    [base, measureSlots, startRaf],
   );
 
   const onPointerDown = useCallback(
@@ -374,63 +493,16 @@ export function ReorderGroup({ groupKey, className, children }: { groupKey: stri
       if (!g.dragging) {
         if (Math.hypot(e.clientX - g.x, e.clientY - g.y) < DRAG_THRESHOLD_PX) return;
         g.dragging = true;
-        // Pick the card up: cache its untransformed slot position, stop its jiggle
-        // immediately (React re-renders it jiggle-less a frame later), promote it
-        // to its own layer.
-        const el = nodesRef.current.get(id);
-        if (el) {
-          const r = el.getBoundingClientRect();
-          dragVisRef.current = {
-            id,
-            layoutLeft: r.left,
-            layoutTop: r.top,
-            startLeft: r.left,
-            startTop: r.top,
-            startX: g.x,
-            startY: g.y,
-            curX: e.clientX,
-            curY: e.clientY,
-          };
-          el.classList.remove("dash-jiggle");
-          el.style.willChange = "transform";
-        }
-        workingRef.current = base;
-        setWorking(base);
-        setDraggingId(id);
+        beginDrag(id, e.clientX, e.clientY);
       }
-      // The card follows the finger 1:1 — inline transform written straight to the
-      // DOM node on every move, so it visibly travels instead of snapping slots.
-      const v = dragVisRef.current;
-      if (v && v.id === id) {
-        v.curX = e.clientX;
-        v.curY = e.clientY;
-        const el = nodesRef.current.get(id);
-        if (el) {
-          const tx = v.startLeft + (v.curX - v.startX) - v.layoutLeft;
-          const ty = v.startTop + (v.curY - v.startY) - v.layoutTop;
-          el.style.transform = `translate(${tx}px, ${ty}px) ${DRAG_LIFT}`;
-        }
-      }
-      const target = hitTest(e.clientX, e.clientY, id);
-      if (target) {
-        const cur = workingRef.current ?? base;
-        const from = cur.indexOf(id);
-        const to = cur.indexOf(target);
-        if (from >= 0 && to >= 0 && from !== to) {
-          // Snapshot every card's rect BEFORE the order flips so the layout effect
-          // below can FLIP-glide the siblings from where they were to where they land.
-          const rects = new Map<string, DOMRect>();
-          nodesRef.current.forEach((node, nid) => rects.set(nid, node.getBoundingClientRect()));
-          flipRectsRef.current = rects;
-          const next = [...cur];
-          next.splice(from, 1);
-          next.splice(to, 0, id);
-          workingRef.current = next;
-          setWorking(next);
-        }
+      // Cheap: just stash the latest pointer position — the rAF loop paints from it.
+      const d = dragRef.current;
+      if (d && d.id === id) {
+        d.pointerX = e.clientX;
+        d.pointerY = e.clientY;
       }
     },
-    [base, hitTest],
+    [beginDrag],
   );
 
   const finishDrag = useCallback(
@@ -438,16 +510,13 @@ export function ReorderGroup({ groupKey, className, children }: { groupKey: stri
       const g = gestureRef.current;
       gestureRef.current = null;
       const wasDragging = !!g?.dragging;
-      const v = dragVisRef.current;
-      dragVisRef.current = null;
-      if (wasDragging && v) {
-        // Where the finger let go — the settle effect glides the card from here
-        // into its final slot once the drop has rendered.
-        settleRef.current = {
-          id: v.id,
-          desiredLeft: v.startLeft + (v.curX - v.startX),
-          desiredTop: v.startTop + (v.curY - v.startY),
-        };
+      stopRaf();
+      const d = dragRef.current;
+      dragRef.current = null;
+      if (wasDragging && d) {
+        // The card's current on-screen position (slot + applied translate) — the
+        // settle effect glides it from here into its final slot once the drop renders.
+        settleRef.current = { id: d.id, visualLeft: d.slotLeft + d.tx, visualTop: d.slotTop + d.ty };
       }
       const final = workingRef.current;
       workingRef.current = null;
@@ -466,7 +535,7 @@ export function ReorderGroup({ groupKey, className, children }: { groupKey: stri
       }
       setWorking(null);
     },
-    [base, members, reorder, groupKey],
+    [base, members, reorder, groupKey, stopRaf],
   );
 
   // Once the saved order updates after a drop — the optimistic write landing OR a
@@ -479,46 +548,81 @@ export function ReorderGroup({ groupKey, className, children }: { groupKey: stri
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [base]);
 
-  // While a drag is live, every order shuffle moves the dragged card's SLOT — so,
-  // pre-paint: re-measure that slot with the transform stripped (keeps the card
-  // glued to the finger with no jump), then FLIP-glide the siblings from their
-  // snapshotted rects into their new slots.
+  // Every order flip during a drag moves the held card's SLOT and every sibling's.
+  // Pre-paint, in batched passes (writes → reads → writes, so layout flushes once):
+  // strip transforms, re-measure true slots, re-anchor the held card to the finger,
+  // and FLIP-glide the siblings from their pre-flip visual rects into their new slots.
   useLayoutEffect(() => {
-    const v = dragVisRef.current;
-    if (!draggingId || !working || !v) return;
-    const el = nodesRef.current.get(v.id);
-    if (el) {
-      el.style.transform = "none";
-      const r = el.getBoundingClientRect();
-      v.layoutLeft = r.left;
-      v.layoutTop = r.top;
-      const tx = v.startLeft + (v.curX - v.startX) - v.layoutLeft;
-      const ty = v.startTop + (v.curY - v.startY) - v.layoutTop;
-      el.style.transform = `translate(${tx}px, ${ty}px) ${DRAG_LIFT}`;
+    const d = dragRef.current;
+    if (!draggingId || !working || !d) return;
+    const reduce = prefersReducedMotion();
+    const prev = flipPrevRef.current;
+    flipPrevRef.current = null;
+
+    // Pass A (writes): neutralise transforms so the coming reads are true slots.
+    const dragEl = nodesRef.current.get(d.id);
+    if (dragEl) {
+      dragEl.style.translate = "0px 0px";
+      dragEl.style.scale = "1";
     }
-    const prev = flipRectsRef.current;
-    flipRectsRef.current = null;
-    if (prev && !prefersReducedMotion()) {
+    nodesRef.current.forEach((_node, nid) => {
+      if (nid === d.id) return;
+      const running = glideAnimsRef.current.get(nid);
+      if (running) {
+        running.cancel();
+        glideAnimsRef.current.delete(nid);
+      }
+    });
+
+    // Pass B (reads): measure every card's true slot in one layout flush; refresh cache.
+    const slots = new Map<string, { left: number; top: number; right: number; bottom: number }>();
+    nodesRef.current.forEach((node, nid) => {
+      const r = node.getBoundingClientRect();
+      slots.set(nid, { left: r.left, top: r.top, right: r.right, bottom: r.bottom });
+    });
+    slotRectsRef.current = slots;
+
+    // Pass C (writes): glue the held card to the finger at its new slot; glide siblings.
+    if (dragEl) {
+      const s = slots.get(d.id);
+      if (s) {
+        d.slotLeft = s.left;
+        d.slotTop = s.top;
+      }
+      d.tx = d.pointerX - d.grabX - d.slotLeft;
+      d.ty = d.pointerY - d.grabY - d.slotTop;
+      dragEl.style.translate = `${d.tx}px ${d.ty}px`;
+      dragEl.style.scale = String(DRAG_LIFT_SCALE);
+    }
+    if (prev && !reduce) {
       nodesRef.current.forEach((node, nid) => {
-        if (nid === v.id) return;
+        if (nid === d.id) return;
         const was = prev.get(nid);
-        if (!was) return;
-        const now = node.getBoundingClientRect();
+        const now = slots.get(nid);
+        if (!was || !now) return;
         const dx = was.left - now.left;
         const dy = was.top - now.top;
-        if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
-        // WAAPI, not inline styles: it layers OVER the jiggle keyframes and cleans
-        // itself up, so the wobble resumes the instant the glide lands.
-        node.animate(
-          [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0px, 0px)" }],
-          { duration: 180, easing: "cubic-bezier(0.2, 0, 0, 1)" },
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+        // WAAPI on `translate` — layers OVER the jiggle's `rotate` and cleans itself
+        // up, so a sibling wobbles AND glides at once and the wobble is never dropped.
+        node.style.willChange = "translate";
+        const anim = node.animate(
+          [{ translate: `${dx}px ${dy}px` }, { translate: "0px 0px" }],
+          { duration: GLIDE_MS, easing: SMOOTH_EASE },
         );
+        glideAnimsRef.current.set(nid, anim);
+        const done = () => {
+          node.style.willChange = "";
+          if (glideAnimsRef.current.get(nid) === anim) glideAnimsRef.current.delete(nid);
+        };
+        anim.onfinish = done;
+        anim.oncancel = done;
       });
     }
   }, [working, draggingId]);
 
-  // When the drag ends, the card glides ("settles") from wherever the finger left
-  // it into its final slot — commit and cancel both pass through here.
+  // When the drag ends, the card settles from where the finger left it into its final
+  // slot (translate + scale ease home; shadow fades). Commit and cancel both land here.
   useLayoutEffect(() => {
     if (draggingId) return;
     const s = settleRef.current;
@@ -526,26 +630,33 @@ export function ReorderGroup({ groupKey, className, children }: { groupKey: stri
     if (!s) return;
     const el = nodesRef.current.get(s.id);
     if (!el) return;
-    el.style.transform = "";
+    el.style.translate = ""; // drop the imperative follow so the card sits in its slot
+    el.style.scale = "";
+    el.style.rotate = ""; // hand rotate back to the jiggle keyframes
     el.style.willChange = "";
     const r = el.getBoundingClientRect();
-    const dx = s.desiredLeft - r.left;
-    const dy = s.desiredTop - r.top;
-    if (prefersReducedMotion() || (Math.abs(dx) < 2 && Math.abs(dy) < 2)) return;
-    el.style.zIndex = "60"; // stay above siblings while gliding home
+    const dx = s.visualLeft - r.left;
+    const dy = s.visualTop - r.top;
+    if (prefersReducedMotion() || (Math.abs(dx) < 1 && Math.abs(dy) < 1)) return;
+    el.style.zIndex = "60"; // above siblings while gliding home
+    el.style.position = "relative";
     const anim = el.animate(
       [
-        { transform: `translate(${dx}px, ${dy}px) ${DRAG_LIFT}`, boxShadow: "0 12px 32px rgba(0,0,0,0.18)" },
-        { transform: "translate(0px, 0px) scale(1)", boxShadow: "0 0 0 rgba(0,0,0,0)" },
+        { translate: `${dx}px ${dy}px`, scale: String(DRAG_LIFT_SCALE), boxShadow: "0 12px 32px rgba(0,0,0,0.18)" },
+        { translate: "0px 0px", scale: "1", boxShadow: "0 0 0 rgba(0,0,0,0)" },
       ],
-      { duration: 220, easing: "cubic-bezier(0.2, 0, 0, 1)" },
+      { duration: SETTLE_MS, easing: SMOOTH_EASE },
     );
-    const clear = () => {
+    const done = () => {
       el.style.zIndex = "";
+      el.style.position = "";
     };
-    anim.onfinish = clear;
-    anim.oncancel = clear;
+    anim.onfinish = done;
+    anim.oncancel = done;
   }, [draggingId]);
+
+  // Stop the frame loop if the group unmounts mid-drag.
+  useEffect(() => () => stopRaf(), [stopRaf]);
 
   const onPointerUp = useCallback(
     (id: string, e: RPointerEvent<HTMLElement>) => {
@@ -712,6 +823,7 @@ export function useHideable(id: string, label: string, opts?: HideableOptions): 
 
   const handlers: HideableProps & TouchHandlers = {
     onContextMenu: (e) => {
+      if (!hasDesktopContextMenu()) return; // mobile: long-press already owns edit mode, no popup menu
       e.preventDefault();
       openMenu(e.clientX, e.clientY, id, label);
     },
