@@ -650,6 +650,24 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
       return;
     }
 
+    // A verified phone number is required to place an order — mirrors the checkout UI gate
+    // so the requirement holds even if the client is bypassed.
+    const { data: prof, error: profErr } = await db()
+      .from("profiles")
+      .select("is_phone_number_verified")
+      .eq("id", userId)
+      .maybeSingle();
+    if (profErr) {
+      log.error("profile phone-verification lookup failed", profErr).end("CHECKOUT INITIATE");
+      res.status(500).json({ error: "Could not verify your account details. Please try again." });
+      return;
+    }
+    if (!prof?.is_phone_number_verified) {
+      log.warn("refusing initiate — phone not verified").end("CHECKOUT INITIATE");
+      res.status(400).json({ error: "Please verify your phone number before checking out." });
+      return;
+    }
+
     // Build + validate the source. cart → reads the user's cart; direct → one explicit item;
     // guest → an explicit list of items (a logged-out shopper's cart, carried in). Neither
     // direct nor guest reads or clears cart_items.

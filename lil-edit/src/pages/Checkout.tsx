@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ChevronRight, Lock, MapPin, Tag, Loader2, Check, ShieldCheck, Plus, Package, Sparkles, Award, Banknote } from "lucide-react";
+import { ChevronRight, Lock, MapPin, Tag, Loader2, Check, ShieldCheck, Plus, Package, Sparkles, Award, Banknote, Phone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
+import PhoneVerify from "@/components/profile/PhoneVerify";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { supabase } from "@/lib/supabase";
@@ -56,6 +57,12 @@ interface CheckoutNavState {
 const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 const titleCase = (value: string) =>
   value.replace(/\b\w/g, (char) => char.toUpperCase());
+// Show only the last 4 digits of a saved phone (e.g. "+919876543210" → "•••• 3210").
+const maskPhone = (full?: string | null) => {
+  if (!full) return "";
+  const last4 = full.replace(/\D/g, "").slice(-4);
+  return `•••• ${last4}`;
+};
 
 // Inline "add address" form on checkout — mirrors the Profile AddressManager fields, but
 // saves straight to the addresses table so the new row gets a real id we can select for
@@ -225,6 +232,17 @@ export default function Checkout() {
   }, []);
 
   const [paying, setPaying] = useState(false);
+
+  // Phone gate — a verified phone is required to pay (enforced again server-side on /initiate).
+  // Seed from the profile once it loads; flips true immediately on an in-session verify.
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [editingPhone, setEditingPhone] = useState(false);
+  // Holds the number confirmed this session, so the masked display is correct immediately
+  // (before the shared profile has refetched). Falls back to the persisted profile number.
+  const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
+  useEffect(() => {
+    if (profile?.is_phone_number_verified) setPhoneVerified(true);
+  }, [profile?.is_phone_number_verified]);
 
   const userId = user?.id ?? null;
 
@@ -472,6 +490,10 @@ export default function Checkout() {
     }
     if (!selectedAddressId) {
       toast.error("Please select a delivery address");
+      return;
+    }
+    if (!phoneVerified) {
+      toast.error("Please verify your phone number to continue");
       return;
     }
 
@@ -844,6 +866,47 @@ export default function Checkout() {
               )}
             </div>
 
+            {/* Contact number — a verified phone is required to place the order */}
+            <div className="bg-white border border-gray-400 rounded-lg p-4 sm:p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-brand-teal" /> Contact Number
+                </h2>
+                {phoneVerified && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingPhone((v) => !v)}
+                    className="text-sm font-semibold text-brand-teal hover:underline"
+                  >
+                    {editingPhone ? "Cancel" : "Change"}
+                  </button>
+                )}
+              </div>
+
+              {phoneVerified && !editingPhone ? (
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                  <ShieldCheck className="w-4 h-4 text-green-600 shrink-0" />
+                  <span>Verified · {maskPhone(verifiedPhone ?? profile?.phone_number)}</span>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-500 mb-3">
+                    We'll use this for order and delivery updates. Verify your number to continue.
+                  </p>
+                  <PhoneVerify
+                    savedPhone={profile?.phone_number || ""}
+                    compact
+                    label={null}
+                    onVerified={(fullPhone) => {
+                      setVerifiedPhone(fullPhone);
+                      setPhoneVerified(true);
+                      setEditingPhone(false);
+                    }}
+                  />
+                </>
+              )}
+            </div>
+
             {/* Items */}
             <div className="bg-white border border-gray-400 rounded-lg p-4 sm:p-5 shadow-sm">
               <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">
@@ -1123,7 +1186,7 @@ export default function Checkout() {
 
               <Button
                 onClick={() => void handlePay()}
-                disabled={paying || summaryLines.length === 0 || !selectedAddressId}
+                disabled={paying || summaryLines.length === 0 || !selectedAddressId || !phoneVerified}
                 className="order-5 w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base flex items-center justify-center gap-2 transition-colors"
               >
                 {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock size={14} />}
@@ -1132,6 +1195,9 @@ export default function Checkout() {
 
               {!selectedAddressId && addresses.length > 0 && (
                 <p className="order-6 text-xs text-rose-600 text-center -mt-2">Select a delivery address to continue.</p>
+              )}
+              {selectedAddressId && !phoneVerified && (
+                <p className="order-6 text-xs text-rose-600 text-center -mt-2">Verify your phone number to continue.</p>
               )}
 
               <div className="order-7 grid grid-cols-3 gap-2 pt-1 sm:pt-2">

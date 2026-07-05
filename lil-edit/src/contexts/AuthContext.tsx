@@ -52,6 +52,8 @@ interface AuthContextType {
     newPassword: string;
   }) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Re-fetch the current user's profile row (e.g. after a phone verification). No-op if logged out. */
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -99,6 +101,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log(`[AuthContext] profile load settled  user=${userId}  → profileLoaded=true`);
       setProfileLoaded(true);
     }
+  };
+
+  const refreshProfile = async () => {
+    const { data } = await supabase.auth.getUser();
+    const uid = data.user?.id;
+    if (!uid) return;
+    await fetchProfile(uid);
   };
 
   const loadProfileInBackground = (userId: string) => {
@@ -359,6 +368,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         verifySignupOtpAndCompleteProfile,
         verifyPasswordResetOtpAndUpdatePassword,
         signOut,
+        refreshProfile,
       }}
     >
       {children}
