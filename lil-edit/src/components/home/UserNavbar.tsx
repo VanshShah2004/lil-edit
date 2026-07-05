@@ -59,8 +59,8 @@ const UserNavbar = () => {
   // that navigates to the full Admin Settings page, then logout.
   const accountMenuItems = [
     { to: "/profile", label: "Profile", icon: User },
-    { to: "/orders", label: "My Orders", icon: Package },
-    { to: "/reviews", label: "My Reviews", icon: MessageSquare },
+    { to: "/orders", label: "Your Orders", icon: Package },
+    { to: "/reviews", label: "Your Reviews", icon: MessageSquare },
   ];
 
   const closeProfileMenu = () => setIsProfileOpen(false);
@@ -380,8 +380,8 @@ const UserNavbar = () => {
             <SideSection label="Your Closet">
               <SideLink to="/wishlist" icon={Heart} label="Wishlist" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} badge={wishlistCount} badgeClass="bg-primary" />
               <SideLink to="/cart" icon={ShoppingCart} label="Cart" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} badge={cartCount} badgeClass="bg-[#0F766E]" />
-              <SideLink to="/orders" icon={Package} label="My Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-              <SideLink to="/reviews" icon={MessageSquare} label="My Reviews" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+              <SideLink to="/orders" icon={Package} label="Your Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+              <SideLink to="/reviews" icon={MessageSquare} label="Your Reviews" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
             </SideSection>
           )}
 
@@ -405,8 +405,8 @@ const UserNavbar = () => {
               <SideSection label="Your Closet">
                 <SideLink to="/wishlist" icon={Heart} label="Wishlist" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} badge={wishlistCount} badgeClass="bg-primary" />
                 <SideLink to="/cart" icon={ShoppingCart} label="Cart" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} badge={cartCount} badgeClass="bg-[#0F766E]" />
-                <SideLink to="/orders" icon={Package} label="My Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-                <SideLink to="/reviews" icon={MessageSquare} label="My Reviews" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/orders" icon={Package} label="Your Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/reviews" icon={MessageSquare} label="Your Reviews" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               </SideSection>
             </>
           )}
