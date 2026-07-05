@@ -277,7 +277,12 @@ const LAYOUT_MIGRATION_HINT =
   "Dashboard layout isn't set up in the database yet. Run lil-edit/supabase/" +
   "migrations/20260714_dashboard_widget_layout.sql in the Supabase SQL editor.";
 
+const ORDER_MIGRATION_HINT =
+  "Dashboard card ordering isn't set up in the database yet. Run lil-edit/supabase/" +
+  "migrations/20260715_dashboard_widget_order.sql in the Supabase SQL editor.";
+
 const MAX_KEY_LEN = 120;
+const MAX_ORDER_LEN = 200; // an analytics section never holds anywhere near this many cards
 const isValidKey = (v: unknown): v is string =>
   typeof v === "string" && v.trim().length > 0 && v.trim().length <= MAX_KEY_LEN;
 
@@ -289,6 +294,40 @@ async function readHiddenWidgets(db: SupabaseClient, page: string): Promise<stri
     .eq("page_key", page);
   if (error) throw error;
   return ((data ?? []) as Array<{ widget_id: string }>).map((r) => r.widget_id).sort();
+}
+
+// Saved per-section order for a page → { [groupKey]: orderedIds }. One row per
+// (page, section-group); a group absent from the map falls back to author order.
+async function readWidgetOrder(db: SupabaseClient, page: string): Promise<Record<string, string[]>> {
+  const { data, error } = await db
+    .from("dashboard_widget_order")
+    .select("group_key, ordered_ids")
+    .eq("page_key", page);
+  if (error) throw error;
+  const out: Record<string, string[]> = {};
+  for (const row of (data ?? []) as Array<{ group_key: string; ordered_ids: unknown }>) {
+    out[row.group_key] = Array.isArray(row.ordered_ids)
+      ? (row.ordered_ids as unknown[]).filter((x): x is string => typeof x === "string")
+      : [];
+  }
+  return out;
+}
+
+// Sanitise an incoming ordered-ids array: strings only, trimmed, non-empty, length
+// -bounded, de-duped (first occurrence wins), capped. Order is preserved.
+function sanitizeOrderedIds(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of v) {
+    if (typeof raw !== "string") continue;
+    const id = raw.trim();
+    if (!id || id.length > MAX_KEY_LEN || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+    if (out.length >= MAX_ORDER_LEN) break;
+  }
+  return out;
 }
 
 // GET /layout?page=executive → { page, hidden: string[] }
@@ -305,17 +344,30 @@ router.get("/layout", async (req: Request, res: Response) => {
     res.status(400).json({ error: "Provide a page." });
     return;
   }
+  // Hidden set and per-section order fail open INDEPENDENTLY: either table may be
+  // missing (its migration not yet run) without blacking out the other. A layout
+  // preference must never black out the page.
   try {
-    const hidden = await readHiddenWidgets(db, page);
-    log.success(`page=${page}  hidden=${hidden.length}`).end("ANALYTICS LAYOUT GET");
-    res.json({ page, hidden });
+    const hidden = await readHiddenWidgets(db, page).catch((err) => {
+      const e = err as { code?: string; message?: string };
+      if (isMissingObjectError(e.code, e.message)) {
+        log.warn("hidden table missing — fail-open to []");
+        return [] as string[];
+      }
+      throw err;
+    });
+    const order = await readWidgetOrder(db, page).catch((err) => {
+      const e = err as { code?: string; message?: string };
+      if (isMissingObjectError(e.code, e.message)) {
+        log.warn("order table missing — fail-open to {}");
+        return {} as Record<string, string[]>;
+      }
+      throw err;
+    });
+    log.success(`page=${page}  hidden=${hidden.length}  groups=${Object.keys(order).length}`).end("ANALYTICS LAYOUT GET");
+    res.json({ page, hidden, order });
   } catch (err) {
     const e = err as { code?: string; message?: string };
-    if (isMissingObjectError(e.code, e.message)) {
-      log.warn("table missing — fail-open to []").end("ANALYTICS LAYOUT GET");
-      res.json({ page, hidden: [] });
-      return;
-    }
     log.error("read failed", err).end("ANALYTICS LAYOUT GET");
     res.status(500).json({ error: e.message ?? String(err) });
   }
@@ -382,6 +434,61 @@ router.post("/layout", adminMutationLimiter, async (req: Request, res: Response)
       return;
     }
     log.error("write failed", err).end("ANALYTICS LAYOUT SET");
+    res.status(500).json({ error: e.message ?? String(err) });
+  }
+});
+
+// POST /layout/order { page, groupKey, orderedIds } → { page, groupKey, orderedIds }
+// Upserts the ONE row for (page, section-group) with the admin's chosen card order.
+// Saving the same ids in author order is a harmless no-op row. Admin-only (whole
+// router) + rate-limited + audit-logged. Stored globally — shared by all admins.
+router.post("/layout/order", adminMutationLimiter, async (req: Request, res: Response) => {
+  const log = createLog().start("ANALYTICS LAYOUT ORDER");
+  const db = serviceClientOr503(res, log);
+  if (!db) return;
+  const actorId = (req as AuthenticatedRequest).userId;
+
+  const body = (req.body ?? {}) as { page?: unknown; groupKey?: unknown; orderedIds?: unknown };
+  if (!isValidKey(body.page) || !isValidKey(body.groupKey) || !Array.isArray(body.orderedIds)) {
+    log.warn("invalid body").end("ANALYTICS LAYOUT ORDER");
+    res.status(400).json({ error: "Provide page, groupKey and orderedIds (array of card ids)." });
+    return;
+  }
+  const page = body.page.trim();
+  const groupKey = body.groupKey.trim();
+  const orderedIds = sanitizeOrderedIds(body.orderedIds);
+  log.step(`actor=${actorId}  page=${page}  group=${groupKey}  n=${orderedIds.length}`);
+
+  try {
+    // Record the actor's email for a self-contained "who arranged this" (parity
+    // with dashboard_hidden_widgets). One cheap PK lookup; reorders are infrequent
+    // + rate-limited.
+    const { data: prof } = await db.from("profiles").select("email").eq("id", actorId).maybeSingle();
+    const email = (prof as { email?: string | null } | null)?.email ?? null;
+    const { error } = await db.from("dashboard_widget_order").upsert(
+      { page_key: page, group_key: groupKey, ordered_ids: orderedIds, updated_by: actorId, updated_by_email: email, updated_at: new Date().toISOString() },
+      { onConflict: "page_key,group_key" },
+    );
+    if (error) throw error;
+
+    log.success(`ok  page=${page}  group=${groupKey}  n=${orderedIds.length}`).end("ANALYTICS LAYOUT ORDER");
+    void logAdminAction({
+      adminId: actorId,
+      action: "dashboard_widgets_reordered",
+      targetType: "analytics",
+      targetId: `${page}:${groupKey}`,
+      summary: `Rearranged the cards in the "${groupKey}" section of the ${page} analytics page`,
+      metadata: { page, groupKey, orderedIds },
+    });
+    res.json({ page, groupKey, orderedIds });
+  } catch (err) {
+    const e = err as { code?: string; message?: string };
+    if (isMissingObjectError(e.code, e.message)) {
+      log.warn("table missing — migration not applied").end("ANALYTICS LAYOUT ORDER");
+      res.status(503).json({ error: ORDER_MIGRATION_HINT });
+      return;
+    }
+    log.error("write failed", err).end("ANALYTICS LAYOUT ORDER");
     res.status(500).json({ error: e.message ?? String(err) });
   }
 });

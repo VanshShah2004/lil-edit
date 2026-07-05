@@ -18,7 +18,7 @@ import {
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import { cn } from "@/lib/utils";
-import { CustomiseButton, CustomizeEmptyState, CustomizeProvider, EditModeChrome } from "./customize";
+import { CustomiseButton, CustomizeEmptyState, CustomizeProvider, EditModeChrome, ReorderGroup } from "./customize";
 
 const ACCENT = "#0F766E";
 
@@ -237,7 +237,17 @@ export function Section({ title, hint, children, right }: { title?: string; hint
   );
 }
 
-// Responsive KPI grid wrapper.
-export function KpiGrid({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{children}</div>;
+// Responsive KPI grid wrapper. Pass a `groupKey` to make the cards inside
+// drag-rearrangeable in the analytics customise/jiggle mode (the arrangement is
+// saved globally). Without it the grid renders exactly as before.
+export function KpiGrid({ children, groupKey }: { children: ReactNode; groupKey?: string }) {
+  const cls = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";
+  if (groupKey) {
+    return (
+      <ReorderGroup groupKey={groupKey} className={cls}>
+        {children}
+      </ReorderGroup>
+    );
+  }
+  return <div className={cls}>{children}</div>;
 }

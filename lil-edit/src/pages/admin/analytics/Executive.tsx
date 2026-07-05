@@ -8,7 +8,7 @@ import { KpiCard } from "@/components/analytics/KpiCard";
 import { ChartCard, DonutChart, RankedBars, TrendChart } from "@/components/analytics/charts";
 import { InsightGrid } from "@/components/analytics/InsightCard";
 import { executiveInsights } from "@/components/analytics/insights";
-import { Widget, slugify, useHideable } from "@/components/analytics/customize";
+import { ReorderGroup, Widget, slugify, useHideable } from "@/components/analytics/customize";
 import {
   ChartSkeleton,
   ErrorState,
@@ -72,7 +72,7 @@ export default function ExecutiveDashboard() {
         <>
           {/* ── Money ─────────────────────────────────────────────────────── */}
           <Section title="Revenue & orders">
-            <KpiGrid>
+            <KpiGrid groupKey="exec-money">
               <KpiCard label="Gross revenue" value={inr(d.kpis.gross_revenue)} current={d.kpis.gross_revenue} previous={d.previous.gross_revenue} hint="Sum of order subtotals before discounts (excludes cancelled)" />
               <KpiCard label="Net revenue" value={inr(d.kpis.net_revenue)} current={d.kpis.net_revenue} previous={d.previous.net_revenue} hint="Amount actually charged (excludes cancelled)" />
               <KpiCard label="Orders" value={num(d.kpis.orders)} current={d.kpis.orders} previous={d.previous.orders} />
@@ -88,7 +88,7 @@ export default function ExecutiveDashboard() {
 
           {/* ── Customers & engagement ────────────────────────────────────── */}
           <Section title="Customers & engagement">
-            <KpiGrid>
+            <KpiGrid groupKey="exec-engagement">
               <KpiCard label="Customers" value={num(d.kpis.customers)} current={d.kpis.customers} previous={d.previous.customers} onClick={() => navigate(`/admin/analytics/customers${location.search}`)} />
               <KpiCard label="New customers" value={num(d.kpis.new_customers)} current={d.kpis.new_customers} previous={d.previous.new_customers} />
               <GrowthCard label="Customer growth" current={d.kpis.customers} previous={d.previous.customers} />
@@ -102,7 +102,7 @@ export default function ExecutiveDashboard() {
 
           {/* ── Charts ────────────────────────────────────────────────────── */}
           <Section title="Trends">
-            <div className="grid gap-4 lg:grid-cols-2">
+            <ReorderGroup groupKey="exec-trends" className="grid gap-4 lg:grid-cols-2">
               {/* Revenue & orders are different scales — shown as small multiples
                   (two synced charts) rather than a dual-axis chart. */}
               <ChartCard title="Revenue & orders over time" subtitle="Two scales — shown separately, shared timeline">
@@ -157,7 +157,7 @@ export default function ExecutiveDashboard() {
                   <p className="py-10 text-center text-xs text-gray-400">No sales in this range.</p>
                 )}
               </ChartCard>
-            </div>
+            </ReorderGroup>
           </Section>
 
           {/* ── AI-style insights (rule-based) ────────────────────────────── */}

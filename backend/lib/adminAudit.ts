@@ -24,7 +24,8 @@ export type AdminActionType =
   | "review_unverified"
   | "review_deleted"
   | "dashboard_widget_hidden"
-  | "dashboard_widget_shown";
+  | "dashboard_widget_shown"
+  | "dashboard_widgets_reordered";
 
 interface AdminActionEntry {
   // The acting admin (req.userId). NULLable only defensively — every call site is
