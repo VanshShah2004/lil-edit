@@ -222,7 +222,7 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
                   type="button"
                   onClick={handleSendOtp}
                   disabled={isSendingOtp}
-                  className="flex-1 sm:flex-none flex items-center justify-center text-sm px-3 py-2 text-teal-700 hover:bg-teal-50 active:scale-[0.98] rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap text-center"
+                  className="flex-1 sm:flex-none flex items-center justify-center text-sm px-3 py-2 border border-teal-700 text-teal-700 hover:bg-teal-50 active:scale-[0.98] rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap text-center"
                 >
                   {isSendingOtp ? (
                     <>
