@@ -29,7 +29,7 @@ const parsePhone = (full: string): { code: string; number: string } => {
 };
 
 export default function PhoneVerify({ savedPhone, onVerified, compact = false, label = "Phone Number" }: PhoneVerifyProps) {
-  const { user, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
 
   const [countryCode, setCountryCode] = useState("+91");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -93,7 +93,11 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
   };
 
   const handleVerifyOtp = async () => {
-    if (!otp || !mockOtpSent || !user) return;
+    if (!otp || !mockOtpSent) return;
+    if (!user) {
+      toast.error("Please log in to continue");
+      return;
+    }
 
     try {
       setIsVerifyingOtp(true);
@@ -135,7 +139,15 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
 
   const fullPhone = `${countryCode}${phoneNumber}`;
   const isDirty = fullPhone !== savedFull;
-  const canSend = phoneNumber.length === 10 && isDirty;
+  // The number on screen counts as verified only when it matches the persisted one AND that
+  // number is actually verified — in this session (isPhoneVerified) or per the profile row.
+  // Keying off isDirty alone would wrongly lock out a saved-but-never-verified number: the
+  // Verify button must stay available for it, or checkout's server gate leaves the user stuck.
+  const savedIsVerified =
+    isPhoneVerified ||
+    Boolean(profile?.is_phone_number_verified && (profile.phone_number || "") === savedFull);
+  const showVerified = savedFull !== "" && !isDirty && savedIsVerified;
+  const canSend = phoneNumber.length === 10 && !showVerified;
 
   return (
     <div>
@@ -168,7 +180,7 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
         </div>
 
         {/* Verify Button inlined with input */}
-        {!mockOtpSent && !isPhoneVerified && (
+        {!mockOtpSent && !showVerified && (
           <button
             type="button"
             onClick={handleSendOtp}
@@ -191,9 +203,9 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
       </div>
 
       {/* Verification UI */}
-      {phoneNumber.length === 10 && isDirty && (
+      {phoneNumber.length === 10 && !showVerified && (
         <>
-          {mockOtpSent && !isPhoneVerified && (
+          {mockOtpSent && (
             <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
               <input
                 type="text"
@@ -238,9 +250,12 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
           )}
 
           {otpError && <p className="text-sm text-destructive mt-1">{otpError}</p>}
-          {isPhoneVerified && <p className="text-sm text-green-600 font-medium mt-1">Phone verified ✅</p>}
         </>
       )}
+      {/* Persistent verified state — shows on load for an already-verified number and
+          immediately after a successful in-session verify (outside the isDirty gate,
+          which goes false the moment the verify saves). */}
+      {showVerified && <p className="text-sm text-green-600 font-medium mt-1">Phone verified ✅</p>}
     </div>
   );
 }

@@ -79,7 +79,7 @@ const ADDR_INPUT_CLS =
   "w-full px-3 py-2 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/40";
 
 export default function Checkout() {
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, profileLoaded, loading: authLoading } = useAuth();
   const { cartItems, loading: cartLoading, refetchCart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
@@ -234,8 +234,9 @@ export default function Checkout() {
   const [paying, setPaying] = useState(false);
 
   // Phone gate — a verified phone is required to pay (enforced again server-side on /initiate).
-  // Seed from the profile once it loads; flips true immediately on an in-session verify.
-  const [phoneVerified, setPhoneVerified] = useState(false);
+  // Seeded synchronously when the profile is already in context (no verify-UI flash for
+  // returning users); the effect below latches it for profiles that load after mount.
+  const [phoneVerified, setPhoneVerified] = useState(() => Boolean(profile?.is_phone_number_verified));
   const [editingPhone, setEditingPhone] = useState(false);
   // Holds the number confirmed this session, so the masked display is correct immediately
   // (before the shared profile has refetched). Falls back to the persisted profile number.
@@ -883,7 +884,9 @@ export default function Checkout() {
                 )}
               </div>
 
-              {phoneVerified && !editingPhone ? (
+              {user && !profileLoaded ? (
+                <p className="text-sm text-gray-500">Loading your contact details…</p>
+              ) : phoneVerified && !editingPhone ? (
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
                   <ShieldCheck className="w-4 h-4 text-green-600 shrink-0" />
                   <span>Verified · {maskPhone(verifiedPhone ?? profile?.phone_number)}</span>
@@ -891,7 +894,8 @@ export default function Checkout() {
               ) : (
                 <>
                   <p className="text-xs text-gray-500 mb-3">
-                    We'll use this for order and delivery updates. Verify your number to continue.
+                    We'll use this for order and delivery updates.{" "}
+                    {phoneVerified ? "Enter a new number and verify it to switch." : "Verify your number to continue."}
                   </p>
                   <PhoneVerify
                     savedPhone={profile?.phone_number || ""}
