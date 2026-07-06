@@ -72,6 +72,8 @@ const AdminSpotlight   = lazyWithLog("AdminSpotlight",   () => import("./pages/a
 const AdminSettings    = lazyWithLog("AdminSettings",    () => import("./pages/admin/AdminSettings"));
 const AdminGeneralSettings = lazyWithLog("AdminGeneralSettings", () => import("./pages/admin/GeneralSettings"));
 const AdminSpotlightPreview = lazyWithLog("AdminSpotlightPreview", () => import("./pages/admin/SpotlightPreview"));
+const AdminEmailOrderConfirmation = lazyWithLog("AdminEmailOrderConfirmation", () => import("./pages/admin/EmailOrderConfirmation"));
+const AdminStatusChange = lazyWithLog("AdminStatusChange", () => import("./pages/admin/StatusChange"));
 
 // Analytics platform — its own chunk group (charts + tables), never on the shopper bundle.
 const AnExecutive   = lazyWithLog("AnExecutive",   () => import("./pages/admin/analytics/Executive"));
@@ -154,6 +156,8 @@ const App = () => (
             <Route path="/admin/analytics/live" element={<AdminRoute><AnLive /></AdminRoute>} />
             {/* Loaded inside The Spotlight's preview iframe — not user-navigable UI. */}
             <Route path="/admin/spotlight/preview" element={<AdminRoute><AdminSpotlightPreview /></AdminRoute>} />
+            <Route path="/admin/email-orderconfirmation" element={<AdminRoute><AdminEmailOrderConfirmation /></AdminRoute>} />
+            <Route path="/admin/status-change" element={<AdminRoute><AdminStatusChange /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

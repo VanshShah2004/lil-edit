@@ -51,6 +51,7 @@ export interface OrderConfirmationPayload {
   items: OrderConfirmationItem[];
   subtotal: number;
   discount: number;
+  couponCode?: string | undefined;
   shippingFee: number;
   total: number;
   itemCount: number;
@@ -65,7 +66,7 @@ export interface OrderConfirmationPayload {
 export function buildConfirmationEmail(order: OrderConfirmationPayload): { subject: string; html: string; text: string } {
   const greeting = order.recipientName ? `Hi ${esc(order.recipientName)},` : "Hi there,";
   const orderNo = esc(order.orderNumber);
-  const subject = `Order ${order.orderNumber} confirmed — thank you!`;
+  const subject = `🎉 Your Order ${order.orderNumber} Is Confirmed — We're Getting It Ready! ⭐`;
   const placed = fmtDate(order.placedAt);
 
   // One row per line item: [thumbnail][title + size/colour + qty][line total]. The thumb
@@ -73,7 +74,7 @@ export function buildConfirmationEmail(order: OrderConfirmationPayload): { subje
   const itemRows = order.items.map((it) => {
     const meta = [it.size, it.colorName].filter(Boolean).join(" · ");
     const thumbCell = it.imageUrl
-      ? `<td width="56" style="padding:12px 12px 12px 0;border-bottom:1px solid #f3f3f3;vertical-align:top;"><img src="${esc(it.imageUrl)}" width="44" height="44" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid #eeeeee;display:block;" /></td>`
+      ? `<td width="56" style="padding:12px 12px 12px 0;border-bottom:1px solid #f3f3f3;vertical-align:top;"><img src="${esc(it.imageUrl)}" width="44" height="44" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:4px;border:1px solid #eeeeee;display:block;" /></td>`
       : `<td width="0" style="padding:0;border-bottom:1px solid #f3f3f3;"></td>`;
     return `
       <tr>
@@ -83,20 +84,22 @@ export function buildConfirmationEmail(order: OrderConfirmationPayload): { subje
           ${meta ? `<div style="font-size:12px;color:#999999;margin-top:3px;">${esc(meta)}</div>` : ""}
           <div style="font-size:12px;color:#999999;margin-top:3px;">Qty ${it.quantity} · ${inr(it.unitPrice)} each</div>
         </td>
-        <td style="padding:12px 0;border-bottom:1px solid #f3f3f3;text-align:right;vertical-align:top;font-size:14px;color:#1a1a1a;font-weight:600;white-space:nowrap;">${inr(it.lineTotal)}</td>
+        <td style="padding:12px 0;border-bottom:1px solid #f3f3f3;text-align:right;vertical-align:top;font-size:14px;color:#1a1a1a;font-weight:600;white-space:nowrap;">${it.quantity} × ${inr(it.unitPrice)}</td>
       </tr>`;
   }).join("");
 
-  const totalLine = (label: string, value: string, strong = false) => {
-    const cell = `padding:6px 0;font-size:${strong ? "15px" : "13px"};color:${strong ? "#1a1a1a" : "#666666"};${strong ? "border-top:2px solid #1a1a1a;padding-top:12px;font-weight:700;" : ""}`;
-    return `<tr><td style="${cell}">${label}</td><td style="${cell}text-align:right;font-weight:${strong ? "700" : "500"};">${value}</td></tr>`;
+  const totalLine = (label: string, value: string, opts: { strong?: boolean; green?: boolean } = {}) => {
+    const { strong = false, green = false } = opts;
+    const color = strong ? "#1a1a1a" : green ? "#16a34a" : "#666666";
+    const cell = `padding:6px 0;font-size:${strong ? "15px" : "13px"};color:${color};${strong ? "border-top:2px solid #1a1a1a;padding-top:12px;font-weight:700;" : ""}`;
+    return `<tr><td style="${cell}">${label}</td><td style="${cell}text-align:right;font-weight:${strong ? "700" : green ? "600" : "500"};">${value}</td></tr>`;
   };
 
   const totalsRows = [
     totalLine("Subtotal", inr(order.subtotal)),
-    order.discount > 0 ? totalLine("Discount", `- ${inr(order.discount)}`) : "",
-    totalLine("Shipping", order.shippingFee > 0 ? inr(order.shippingFee) : "Free"),
-    totalLine("Total", inr(order.total), true),
+    order.discount > 0 ? totalLine(`COUPON${order.couponCode ? ` (${order.couponCode})` : ""}`, `- ${inr(order.discount)}`, { green: true }) : "",
+    totalLine("Delivery", order.shippingFee > 0 ? inr(order.shippingFee) : "Free"),
+    totalLine("Total", inr(order.total), { strong: true }),
   ].join("");
 
   const addr = order.address;
@@ -112,13 +115,13 @@ export function buildConfirmationEmail(order: OrderConfirmationPayload): { subje
 
   const cta = order.orderUrl
     ? `<div style="text-align:center;margin:28px 0 4px;">
-         <a href="${esc(order.orderUrl)}" style="display:inline-block;background:#1a1a1a;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 28px;border-radius:8px;">View your order</a>
+         <a href="${esc(order.orderUrl)}" style="display:inline-block;background:#0F766E;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 28px;border-radius:8px;">View your order</a>
        </div>`
     : "";
 
   const html = `
   <div style="background:#f6f6f8;padding:32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-    <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #eeeeee;">
+    <div style="max-width:560px;margin:0 auto;background:#ffffff;overflow:hidden;border:1px solid #eeeeee;">
       <div style="background:#B19CD9;padding:24px 32px;">
         <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:600;color:#1a1a1a;letter-spacing:-0.2px;">The Lil Edit</div>
       </div>
@@ -137,7 +140,7 @@ export function buildConfirmationEmail(order: OrderConfirmationPayload): { subje
         ${addressBlock}
         ${cta}
       </div>
-      <div style="padding:20px 32px;border-top:1px solid #f0f0f0;color:#bbbbbb;font-size:12px;text-align:center;">
+      <div style="padding:18px 20px;background:#000000;color:#ffffff;font-size:12px;line-height:1.5;text-align:center;border-radius:0;width:100%;box-sizing:border-box;">
         The Lil Edit · Curated fashion for little ones
       </div>
     </div>
@@ -169,8 +172,8 @@ export function buildConfirmationEmail(order: OrderConfirmationPayload): { subje
     textItems,
     "",
     `Subtotal: ${inr(order.subtotal)}`,
-    order.discount > 0 ? `Discount: - ${inr(order.discount)}` : null,
-    `Shipping: ${order.shippingFee > 0 ? inr(order.shippingFee) : "Free"}`,
+    order.discount > 0 ? `Coupon${order.couponCode ? ` (${order.couponCode})` : ""}: - ${inr(order.discount)}` : null,
+    `Delivery: ${order.shippingFee > 0 ? inr(order.shippingFee) : "Free"}`,
     `Total: ${inr(order.total)}`,
     textAddr ? "" : null,
     textAddr || null,
@@ -233,6 +236,15 @@ const STATUS_BLURB: Record<string, string> = {
   cancelled: "Your order has been cancelled. If this is unexpected, please reach out to us.",
 };
 
+const STATUS_ICON: Record<string, string> = {
+  pending: "⏳",
+  confirmed: "✅",
+  processing: "🛠️",
+  shipped: "🚚",
+  delivered: "📦",
+  cancelled: "❌",
+};
+
 // Minimal HTML escape so a stray character in a name/order number can't break the
 // markup. (XSS risk is low — the recipient is the customer themselves — but cheap.)
 function esc(s: string): string {
@@ -245,27 +257,28 @@ function esc(s: string): string {
 export function buildStatusEmail(payload: OrderStatusEmailPayload): { subject: string; html: string; text: string } {
   const label = STATUS_LABELS[payload.toStatus] ?? payload.toStatus;
   const blurb = STATUS_BLURB[payload.toStatus] ?? `Your order status is now ${label}.`;
+  const icon = STATUS_ICON[payload.toStatus] ?? "📦";
   const greeting = payload.recipientName ? `Hi ${esc(payload.recipientName)},` : "Hi there,";
   const orderNo = esc(payload.orderNumber);
   const subject = `Your order ${payload.orderNumber} is now ${label}`;
 
   const cta = payload.orderUrl
     ? `<div style="text-align:center;margin:8px 0 4px;">
-         <a href="${esc(payload.orderUrl)}" style="display:inline-block;background:#1a1a1a;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 28px;border-radius:8px;">View your order</a>
+         <a href="${esc(payload.orderUrl)}" style="display:inline-block;background:#0F766E;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 28px;border-radius:4px;">🔗 View your order</a>
        </div>`
     : "";
 
   const html = `
   <div style="background:#f6f6f8;padding:32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-    <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #eeeeee;">
+    <div style="max-width:520px;margin:0 auto;background:#ffffff;overflow:hidden;border:1px solid #eeeeee;">
       <div style="background:#B19CD9;padding:24px 32px;">
         <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:600;color:#1a1a1a;letter-spacing:-0.2px;">The Lil Edit</div>
       </div>
       <div style="padding:32px;">
         <p style="font-size:15px;color:#333333;margin:0 0 16px;">${greeting}</p>
-        <p style="font-size:15px;color:#333333;margin:0 0 24px;line-height:1.6;">${blurb}</p>
+        <p style="font-size:15px;color:#333333;margin:0 0 24px;line-height:1.6;">${icon} ${blurb}</p>
         <div style="text-align:center;margin:0 0 24px;">
-          <span style="display:inline-block;background:#1a1a1a;color:#ffffff;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:8px 18px;border-radius:999px;">${esc(label)}</span>
+          <span style="display:inline-block;background:#1a1a1a;color:#ffffff;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:8px 18px;border-radius:4px;">${esc(label)}</span>
         </div>
         <table style="width:100%;border-collapse:collapse;margin:0 0 24px;">
           <tr>
@@ -275,7 +288,7 @@ export function buildStatusEmail(payload: OrderStatusEmailPayload): { subject: s
         </table>
         ${cta}
       </div>
-      <div style="padding:20px 32px;border-top:1px solid #f0f0f0;color:#bbbbbb;font-size:12px;text-align:center;">
+      <div style="padding:18px 20px;background:#000000;color:#ffffff;font-size:12px;line-height:1.5;text-align:center;border-radius:0;width:100%;box-sizing:border-box;">
         The Lil Edit · Curated fashion for little ones
       </div>
     </div>

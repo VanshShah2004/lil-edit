@@ -454,6 +454,7 @@ async function afterPlacement(snap: CheckoutSnapshot, razorpayOrderId: string, r
         })),
         subtotal: snap.subtotal,
         discount: snap.discount,
+        couponCode: snap.couponCode ?? undefined,
         shippingFee: snap.shippingFee,
         total: snap.total,
         itemCount: snap.itemCount,

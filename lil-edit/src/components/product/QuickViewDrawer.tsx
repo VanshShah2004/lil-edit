@@ -19,6 +19,7 @@ import { useWishlist } from "@/contexts/WishlistContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAuthPrompt } from "@/contexts/AuthPromptContext";
 import { saveGuestIntent } from "@/lib/guestStorage";
+import ShareSheet from "@/components/product/ShareSheet";
 
 const BADGE_PRIORITY = ["newarrival", "trending", "bestseller", "featured"];
 const sortBadges = (badges: string[]) => {
@@ -97,6 +98,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
   const isDesktop = useIsDesktop();
   const [activeImg, setActiveImg] = useState(0);
   const [slideDir, setSlideDir] = useState<1 | -1>(1);
+  const [shareOpen, setShareOpen] = useState(false);
 
   // Resizable sheet height — the drag handle lets the user pull the drawer
   // taller/shorter instead of only dragging it closed.
@@ -484,6 +486,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
+    <>
     <AnimatePresence>
       {open && (
         <>
@@ -538,7 +541,9 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
                   </button>
                 )}
                 <button
-                  className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 shadow-sm hover:bg-gray-100 transition-colors text-gray-500 hover:text-brand-teal outline-none"
+                  onClick={() => setShareOpen(true)}
+                  disabled={productUnavailable}
+                  className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 shadow-sm hover:bg-gray-100 transition-colors text-gray-500 hover:text-brand-teal outline-none disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label="Share product"
                 >
                   <Share2 size={19} />
@@ -633,5 +638,24 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
         </>
       )}
     </AnimatePresence>
+
+    {/* Branded share sheet — same experience as the PDP, layered above the
+        drawer (z-350). Wired once here, so it works in both the mobile and
+        desktop drawer layouts. */}
+    <ShareSheet
+      open={shareOpen}
+      onClose={() => setShareOpen(false)}
+      product={{
+        categorySlug: product.categorySlug,
+        slug: product.slug,
+        sku: product.sku,
+        title: product.title,
+        brand: product.brand ?? "",
+        price: product.price,
+        originalPrice: product.originalPrice,
+        image: product.image,
+      }}
+    />
+    </>
   );
 }

@@ -64,6 +64,7 @@ interface OrderRow {
   payment_status: string;
   subtotal: number | string;
   discount: number | string;
+  coupon_code?: string | null;
   shipping_fee: number | string;
   tax: number | string | null;
   total: number | string;
@@ -717,7 +718,7 @@ router.post("/:id/resend-receipt", adminMutationLimiter, async (req: Request, re
     const { data, error } = await db()
       .from("orders")
       .select(`
-        id, user_id, order_number, subtotal, discount, shipping_fee, total, item_count,
+        id, user_id, order_number, subtotal, discount, coupon_code, shipping_fee, total, item_count,
         payment_method, status, created_at, shipping_address,
         order_items(${ORDER_ITEMS_SELECT})
       `)
@@ -775,6 +776,7 @@ router.post("/:id/resend-receipt", adminMutationLimiter, async (req: Request, re
       })),
       subtotal: Number(row.subtotal) || 0,
       discount: Number(row.discount) || 0,
+      couponCode: row.coupon_code || undefined,
       shippingFee: Number(row.shipping_fee) || 0,
       total: Number(row.total) || 0,
       itemCount: row.item_count,

@@ -47,6 +47,7 @@ interface ReceiptOrderRow {
   order_number: string;
   subtotal: number | string;
   discount: number | string;
+  coupon_code: string | null;
   shipping_fee: number | string;
   total: number | string;
   item_count: number;
@@ -89,7 +90,7 @@ export async function sendReceiptIfMissing(orderId: string): Promise<void> {
     const { data, error } = await db()
       .from("orders")
       .select(`
-        id, user_id, order_number, subtotal, discount, shipping_fee, total, item_count,
+        id, user_id, order_number, subtotal, discount, coupon_code, shipping_fee, total, item_count,
         payment_method, status, created_at, shipping_address,
         order_items(sku, title, image_url, size, color_name, unit_price, line_total, quantity)
       `)
@@ -128,6 +129,7 @@ export async function sendReceiptIfMissing(orderId: string): Promise<void> {
       })),
       subtotal: Number(row.subtotal) || 0,
       discount: Number(row.discount) || 0,
+      couponCode: row.coupon_code || undefined,
       shippingFee: Number(row.shipping_fee) || 0,
       total: Number(row.total) || 0,
       itemCount: row.item_count,

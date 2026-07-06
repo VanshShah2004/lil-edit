@@ -32,6 +32,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuthPrompt } from "@/contexts/AuthPromptContext";
 import { fetchOrders } from "@/lib/ordersApi";
 import { saveGuestIntent } from "@/lib/guestStorage";
+import ShareSheet, { type ShareSheetProduct } from "@/components/product/ShareSheet";
 
 const BADGE_PRIORITY = ["newarrival", "trending", "bestseller", "featured"];
 const sortBadges = (badges: string[]) => {
@@ -79,6 +80,8 @@ const WishlistPage = () => {
   const [movingAll, setMovingAll] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<QuickViewProduct | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const [shareProduct, setShareProduct] = useState<ShareSheetProduct | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const { user, loading: authLoading } = useAuth();
   const {
@@ -186,6 +189,21 @@ const WishlistPage = () => {
     } finally {
       setMovingAll(false);
     }
+  };
+
+  // Open the branded share sheet (same experience as the PDP) for a single item.
+  const openShare = (item: WishlistItem) => {
+    setShareProduct({
+      categorySlug: item.categorySlug,
+      slug: item.slug,
+      sku: item.sku,
+      title: item.title,
+      brand: item.brand,
+      price: item.price,
+      originalPrice: item.originalPrice,
+      image: item.image,
+    });
+    setShareOpen(true);
   };
 
   const openQuickView = (item: WishlistItem) => {
@@ -494,7 +512,7 @@ const WishlistPage = () => {
                     {/* SHARE + DELETE */}
                     <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 flex flex-row gap-1">
                       <button
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); openShare(item); }}
                         className="p-1.5 rounded-full text-gray-500 hover:text-brand-teal hover:bg-teal-50 transition-colors"
                         title="Share"
                       >
@@ -663,6 +681,12 @@ const WishlistPage = () => {
         product={selectedProduct}
         onClose={() => setQuickViewOpen(false)}
         hideBuyNow
+      />
+
+      <ShareSheet
+        open={shareOpen}
+        product={shareProduct}
+        onClose={() => setShareOpen(false)}
       />
     </div>
   );
