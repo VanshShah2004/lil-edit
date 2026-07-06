@@ -349,7 +349,7 @@ function DraggableTabs<T extends string>({
         return (
           <button
             key={t.value}
-            ref={(el) => (tabRefs.current[i] = el)}
+            ref={(el) => { tabRefs.current[i] = el; }}
             type="button"
             role="tab"
             aria-selected={active}

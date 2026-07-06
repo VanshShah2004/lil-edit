@@ -14,7 +14,7 @@ import {
 } from "react-icons/fa";
 import { IoChatbubbleEllipses } from "react-icons/io5";
 import { toast } from "sonner";
-import { buildPdpPath } from "@/lib/pdpUrl";
+import { getBackendBaseUrl } from "@/lib/backend";
 
 export interface ShareSheetProduct {
   categorySlug: string;
@@ -57,10 +57,14 @@ const ShareSheet = ({ open, onClose, product }: ShareSheetProps) => {
     typeof window !== "undefined" ? window.innerWidth >= 768 : false,
   );
 
-  const shareUrl =
-    product && typeof window !== "undefined"
-      ? `${window.location.origin}${buildPdpPath(product.categorySlug, product.slug, product.sku)}`
-      : "";
+  // Share the backend /share/product URL, NOT the SPA PDP URL: link-preview
+  // crawlers (WhatsApp/iMessage/Telegram/FB…) don't run JS, so the SPA page gives
+  // them an empty shell and no card renders. The /share route serves OG tags —
+  // primary image (variant-aware), product name, description, price — so the
+  // message shows the product card; humans who tap it are bounced to the PDP.
+  const shareUrl = product
+    ? `${getBackendBaseUrl()}/share/product/${product.categorySlug}/${product.slug}$${product.sku}`
+    : "";
   const websiteUrl = typeof window !== "undefined" ? window.location.origin : "";
   const discountPercent =
     product && product.originalPrice > product.price

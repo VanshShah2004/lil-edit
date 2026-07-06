@@ -27,6 +27,7 @@ import adminAnalyticsRouter from "./routes/adminAnalytics.js";
 import { maintenanceGate } from "./middleware/maintenanceGate.js";
 import { startMaintenanceWatcher } from "./lib/maintenance.js";
 import { startReceiptSweep } from "./lib/orderReceipt.js";
+import { startAutoProcessNotifySweep } from "./lib/processingNotify.js";
 import { buildProductOgMeta, injectOgIntoHtml } from "./lib/ogTags.js";
 import { fetchProductBySku } from "./lib/persistCatalog.js";
 import { publicSiteUrl } from "./lib/siteUrl.js";
@@ -302,4 +303,9 @@ app.listen(PORT, () => {
   // Self-healing receipt recovery: periodically re-send confirmation receipts that were
   // lost at placement (works even when the Razorpay webhook isn't configured).
   startReceiptSweep();
+
+  // Email customers when the scheduled confirmed→processing transition (auto_confirm_to_
+  // processing, run by pg_cron) moves their order — the DB-side transition can't reach the
+  // Node mailer, so this sweep sends the "now processing" notice on its own.
+  startAutoProcessNotifySweep();
 });

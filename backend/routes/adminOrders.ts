@@ -16,6 +16,9 @@ import { publicSiteUrl } from "../lib/siteUrl.js";
 // Resolve a customer's email (profiles.email, else the auth identity) so a missing profile
 // email can't silently drop a notification or receipt.
 import { resolveRecipientEmail } from "../lib/recipientEmail.js";
+// After the auto-transition moves orders confirmed→processing, email the affected
+// customers the "now processing" notice (the DB-side transition can't reach the mailer).
+import { sweepAutoProcessedNotifications } from "../lib/processingNotify.js";
 
 const router = Router();
 const db = () => supabaseAdmin ?? supabaseAnon;
@@ -950,6 +953,13 @@ router.post("/auto-process", adminMutationLimiter, async (req: Request, res: Res
     const result = Array.isArray(data) ? data[0] : data;
     const transitionedCount = result?.transitioned_count ?? 0;
     const errorMessage = result?.error_message ?? null;
+
+    // Email the just-transitioned customers their "now processing" notice. Fire-and-forget
+    // so the endpoint stays fast; the sweep is idempotent + dedup-guarded, so triggering it
+    // here (free-tier path) and from the boot interval (pg_cron path) can't double-send.
+    if (transitionedCount > 0) {
+      void sweepAutoProcessedNotifications();
+    }
 
     if (errorMessage) {
       log.warn(`completed with errors  transitioned=${transitionedCount}  errors=${errorMessage}`);

@@ -16,6 +16,7 @@ import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import CouponsManager from "@/components/admin/CouponsManager";
 import ReviewsManager from "@/components/admin/ReviewsManager";
+import EmailPreviews from "@/components/admin/EmailPreviews";
 import MaintenanceControl from "@/components/admin/MaintenanceControl";
 import {
   AlertDialog,
@@ -346,6 +347,8 @@ const GeneralSettings = () => {
           <CouponsManager />
 
           <ReviewsManager />
+
+          <EmailPreviews />
 
           <MaintenanceControl />
         </div>

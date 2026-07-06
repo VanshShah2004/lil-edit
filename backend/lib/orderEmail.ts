@@ -216,7 +216,6 @@ export interface OrderStatusEmailPayload {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: "Pending",
   confirmed: "Confirmed",
   processing: "Processing",
   shipped: "Shipped",
@@ -228,7 +227,6 @@ const STATUS_LABELS: Record<string, string> = {
 // internal admin note is deliberately NOT included — it can carry internal remarks
 // (e.g. correction reasons) that shouldn't leak to the customer.
 const STATUS_BLURB: Record<string, string> = {
-  pending: "We've received your order and it's awaiting processing.",
   confirmed: "Your order has been confirmed and will be prepared shortly.",
   processing: "Good news — we're preparing your order for shipment.",
   shipped: "Your order is on its way!",
@@ -237,7 +235,6 @@ const STATUS_BLURB: Record<string, string> = {
 };
 
 const STATUS_ICON: Record<string, string> = {
-  pending: "⏳",
   confirmed: "✅",
   processing: "🛠️",
   shipped: "🚚",
@@ -260,7 +257,7 @@ export function buildStatusEmail(payload: OrderStatusEmailPayload): { subject: s
   const icon = STATUS_ICON[payload.toStatus] ?? "📦";
   const greeting = payload.recipientName ? `Hi ${esc(payload.recipientName)},` : "Hi there,";
   const orderNo = esc(payload.orderNumber);
-  const subject = `Your order ${payload.orderNumber} is now ${label}`;
+  const subject = `Your order ${payload.orderNumber} is now ${label}! 💜`;
 
   const cta = payload.orderUrl
     ? `<div style="text-align:center;margin:8px 0 4px;">

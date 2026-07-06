@@ -2,11 +2,12 @@
 // buildStatusEmail). Renders dummy data for each status through the same markup/inline
 // styles as the real HTML email so admins can eyeball it without triggering a real send.
 import { useState } from "react";
-import { Smartphone, Monitor } from "lucide-react";
+import EmailPreviewShell from "@/components/admin/EmailPreviewShell";
 import logo from "@/assets/logo.png";
 
+// Orders start at "confirmed" — "pending" is not a reachable order status (see
+// 20260707_remove_pending_order_status.sql and lil-edit/src/lib/adminOrdersApi.ts).
 const STATUS_LABELS: Record<string, string> = {
-  pending: "Pending",
   confirmed: "Confirmed",
   processing: "Processing",
   shipped: "Shipped",
@@ -15,7 +16,6 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_BLURB: Record<string, string> = {
-  pending: "We've received your order and it's awaiting processing.",
   confirmed: "Your order has been confirmed and will be prepared shortly.",
   processing: "Good news — we're preparing your order for shipment.",
   shipped: "Your order is on its way!",
@@ -56,7 +56,7 @@ function buildHistorySteps(status: string): Array<{ label: string; stamp: string
       { label: "Cancelled", stamp: JOURNEY_STAMPS.cancelled, current: true, cancelled: true },
     ];
   }
-  const idx = status === "pending" ? -1 : JOURNEY.indexOf(status);
+  const idx = JOURNEY.indexOf(status);
   return JOURNEY.slice(0, idx + 1).map((s, i) => ({ label: JOURNEY_LABELS[s], stamp: JOURNEY_STAMPS[s], current: i === idx }));
 }
 
@@ -190,91 +190,36 @@ const EmailCard = ({ maxWidth, label, blurb, status }: { maxWidth?: number; labe
 
 const StatusChangePreview = () => {
   const [status, setStatus] = useState("shipped");
-  const [view, setView] = useState<"mobile" | "desktop">("mobile");
   const label = STATUS_LABELS[status];
   const blurb = STATUS_BLURB[status];
-  const subjectLine = `Your order ${order.orderNumber} is now ${label}`;
+  const subjectLine = `Your order ${order.orderNumber} is now ${label}! 💜`;
+
+  // Status picker — drives which status the previewed email reflects.
+  const statusTabs = (
+    <div className="flex flex-wrap gap-2">
+      {STATUSES.map((s) => (
+        <button
+          key={s}
+          onClick={() => setStatus(s)}
+          className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition ${
+            status === s ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"
+          }`}
+        >
+          {STATUS_LABELS[s]}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[#e9e9ee] py-6 px-4">
-      <div className="mx-auto max-w-[900px]">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-gray-900">Order Status Change Email Preview</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setView("mobile")}
-              aria-label="Mobile view"
-              title="Mobile view"
-              className={`rounded-full border p-2 transition ${
-                view === "mobile" ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"
-              }`}
-            >
-              <Smartphone className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setView("desktop")}
-              aria-label="Desktop view"
-              title="Desktop view"
-              className={`rounded-full border p-2 transition ${
-                view === "desktop" ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"
-              }`}
-            >
-              <Monitor className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        <div className="mb-5 flex flex-wrap gap-2">
-          {STATUSES.map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatus(s)}
-              className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition ${
-                status === s ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"
-              }`}
-            >
-              {STATUS_LABELS[s]}
-            </button>
-          ))}
-        </div>
-
-        {view === "mobile" ? (
-          <div className="mx-auto max-w-[380px]">
-            {/* Phone frame */}
-            <div className="rounded-[2rem] border-[6px] border-gray-900 bg-gray-900 shadow-xl">
-              <div className="rounded-[1.6rem] overflow-hidden bg-white">
-                <div className="flex gap-1.5 border-b border-gray-200 bg-white px-4 py-2.5 text-[12px] leading-snug">
-                  <span className="shrink-0 text-gray-500">Subject:</span>
-                  <span className="font-semibold text-gray-900">{subjectLine}</span>
-                </div>
-                <div style={{ background: "#f6f6f8", maxHeight: "70vh", overflowY: "auto" }}>
-                  <EmailCard maxWidth={380} label={label} blurb={blurb} status={status} />
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-sm border border-gray-300 bg-white shadow-sm">
-            {/* Browser chrome */}
-            <div className="flex items-center gap-1.5 border-b border-gray-200 bg-gray-100 px-4 py-2.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
-              <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
-              <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
-              <span className="ml-3 truncate rounded bg-white px-3 py-1 text-[11px] text-gray-500 border border-gray-200">
-                mail.google.com/mail/u/0/#inbox
-              </span>
-            </div>
-            <div className="flex gap-2 border-b border-gray-200 bg-white px-6 py-3 text-[13px]">
-              <span className="shrink-0 text-gray-500">Subject:</span>
-              <span className="font-semibold text-gray-900">{subjectLine}</span>
-            </div>
-            <div style={{ background: "#f6f6f8", padding: "8px 12px", maxHeight: "70vh", overflowY: "auto" }}>
-              <EmailCard label={label} blurb={blurb} status={status} />
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+    <EmailPreviewShell
+      title="Order Status Change"
+      subtitle="The update sent when an order moves to processing, shipped, delivered or cancelled."
+      subject={subjectLine}
+      controls={statusTabs}
+    >
+      {(view) => <EmailCard maxWidth={view === "mobile" ? 380 : undefined} label={label} blurb={blurb} status={status} />}
+    </EmailPreviewShell>
   );
 };
 
