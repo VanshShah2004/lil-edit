@@ -314,7 +314,7 @@ export default function Cart() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF9F7] flex flex-col text-gray-900 overflow-x-hidden">
+    <div className="min-h-screen bg-white flex flex-col text-gray-900 overflow-x-hidden">
       {user ? <UserNavbar /> : <Navbar />}
 
       <main
@@ -328,10 +328,6 @@ export default function Cart() {
             </Link>
             <ChevronRight className="w-4 h-4" />
             <span className="text-gray-800 font-medium">Your Bag</span>
-            <ChevronRight className="w-4 h-4" />
-            <span className="text-gray-500">Shipping</span>
-            <ChevronRight className="w-4 h-4" />
-            <span className="text-gray-500">Payment</span>
           </div>
         </div>
 

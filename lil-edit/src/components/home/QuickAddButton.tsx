@@ -1,0 +1,97 @@
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { useCart } from "@/contexts/CartContext";
+import { hydrateSkus } from "@/lib/productHydration";
+
+// Only slug + sku are needed to add a line; sizes are fetched on demand. Kept as
+// a narrow shape so any card (curated homepage items, PDP recommendations, …)
+// can pass its product without conforming to a heavier type.
+type QuickAddProduct = { slug: string; sku: string };
+
+// Desktop-only quick add: hover reveals this button (parent wrapper is hidden on
+// mobile). Clicking fetches sizes for the SKU on demand — the card only carries
+// slug/sku/price, not the full size list — then either adds directly (no sizes)
+// or opens a size picker before adding.
+const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
+  const { addToCart } = useCart();
+  const [open, setOpen] = useState(false);
+  const [sizes, setSizes] = useState<string[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onOutside = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, [open]);
+
+  const doAdd = async (size: string) => {
+    setAdding(true);
+    try {
+      await addToCart({ product_slug: product.slug, sku: product.sku, size, quantity: 1 });
+      toast.success("Added to cart!");
+      setOpen(false);
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const map = await hydrateSkus([product.sku]);
+      const resolvedSizes = map.get(product.sku)?.sizes ?? [];
+      if (resolvedSizes.length <= 1) {
+        await doAdd(resolvedSizes[0] ?? "");
+        return;
+      }
+      setSizes(resolvedSizes);
+      setOpen(true);
+    } catch {
+      toast.error("Couldn't load sizes — try again");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div ref={wrapperRef} className="relative" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={(e) => void handleClick(e)}
+        disabled={loading || adding}
+        className="w-full py-1.5 bg-white/90 backdrop-blur text-foreground rounded-lg font-medium text-[10px] md:text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm disabled:opacity-60"
+      >
+        {loading ? "…" : adding ? "Adding…" : "Add to Cart"}
+      </button>
+
+      {open && sizes && (
+        <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-xl shadow-lg border border-border p-2 z-20">
+          <p className="text-[10px] font-semibold text-muted-foreground mb-1.5 px-1">Select Size</p>
+          <div className="flex flex-wrap gap-1.5">
+            {sizes.map((size) => (
+              <button
+                key={size}
+                onClick={() => void doAdd(size)}
+                disabled={adding}
+                className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-gray-100 hover:bg-[#0F766E] hover:text-white transition-colors disabled:opacity-60"
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default QuickAddButton;

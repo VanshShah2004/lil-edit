@@ -116,15 +116,6 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
     : activeTab === "suggestions" ? groupedMetaFlat
     : [...topProducts, ...groupedMetaFlat];
 
-  // Starting flat-index for each metadata group, given the active tab's leading items.
-  const groupStarts: number[] = [];
-  {
-    let idx = activeTab === "all" ? topProducts.length : 0;
-    for (const g of groupedMeta) {
-      groupStarts.push(idx);
-      idx += g.items.length;
-    }
-  }
 
   // Reset selection when tab or suggestions list changes.
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -224,47 +215,36 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
     );
   }
 
-  // Pill for a non-product (metadata) result — icon (or color swatch) + label,
-  // grouped under its type's section header.
+  // Chip for a non-product (metadata) result — icon (or color swatch) + label
+  // on top, small all-caps type tag underneath.
   function renderMetaChip(s: Suggestion, i: number) {
     const isSelected = i === selectedIndex;
-    const Icon = TYPE_CONFIG[s.type].icon;
+    const { label: typeLabel, icon: Icon } = TYPE_CONFIG[s.type];
     return (
       <button
         key={s.id}
         onClick={() => handleSelect(s)}
-        className={`flex items-center gap-1.5 pl-2 pr-3 py-1.5 rounded-full text-sm font-medium border transition-colors max-w-full ${
+        className={`flex flex-col items-start gap-0.5 px-3 py-1.5 rounded-2xl border transition-colors max-w-full ${
           isSelected
             ? "bg-teal-50 border-teal-300 text-teal-800"
             : "border-border bg-secondary/40 text-foreground/80 hover:border-teal-600/40 hover:bg-teal-50/60"
         }`}
       >
-        {s.type === "color" ? (
-          <span
-            className="w-3.5 h-3.5 rounded-full border border-border/60 shrink-0"
-            style={{ background: COLOR_SWATCH[s.label.toLowerCase()] ?? "#d1d5db" }}
-          />
-        ) : (
-          <Icon className="w-3.5 h-3.5 shrink-0 text-teal-700/70" />
-        )}
-        <span className="truncate"><Highlighted text={s.label} query={query} /></span>
+        <span className="flex items-center gap-1.5 max-w-full">
+          {s.type === "color" ? (
+            <span
+              className="w-3.5 h-3.5 rounded-full border border-border/60 shrink-0"
+              style={{ background: COLOR_SWATCH[s.label.toLowerCase()] ?? "#d1d5db" }}
+            />
+          ) : (
+            <Icon className="w-3.5 h-3.5 shrink-0 text-teal-700/70" />
+          )}
+          <span className="truncate text-sm font-medium"><Highlighted text={s.label} query={query} /></span>
+        </span>
+        <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/70 pl-5">
+          {typeLabel}
+        </span>
       </button>
-    );
-  }
-
-  // One labeled section of metadata chips (e.g. "Categories", "Colors").
-  function renderMetaGroup(type: SuggestionType, items: Suggestion[], startIndex: number) {
-    const { label, icon: Icon } = TYPE_CONFIG[type];
-    return (
-      <div key={type}>
-        <p className={sectionLabel}>
-          <Icon className="w-3 h-3" />
-          {label}
-        </p>
-        <div className="px-3 sm:px-4 md:px-8 pb-2.5 flex flex-wrap gap-2">
-          {items.map((s, j) => renderMetaChip(s, startIndex + j))}
-        </div>
-      </div>
     );
   }
 
@@ -339,9 +319,9 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
           {productItems.map((s, i) => renderProductCard(s, i))}
         </div>
       ) : activeTab === "suggestions" ? (
-        /* Suggestions tab — metadata grouped by type */
-        <div className="pb-1">
-          {groupedMeta.map((g, gi) => renderMetaGroup(g.type, g.items, groupStarts[gi]))}
+        /* Suggestions tab — metadata chips clustered by type, each labeled individually */
+        <div className="px-3 sm:px-4 md:px-8 pb-3 pt-1 flex flex-wrap gap-2">
+          {groupedMetaFlat.map((s, i) => renderMetaChip(s, i))}
         </div>
       ) : (
         /* All tab — best-match products up top, then grouped suggestion chips */
@@ -357,7 +337,11 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
               </div>
             </div>
           )}
-          {groupedMeta.map((g, gi) => renderMetaGroup(g.type, g.items, groupStarts[gi]))}
+          {groupedMetaFlat.length > 0 && (
+            <div className="px-3 sm:px-4 md:px-8 pb-2.5 pt-1 flex flex-wrap gap-2">
+              {groupedMetaFlat.map((s, i) => renderMetaChip(s, topProducts.length + i))}
+            </div>
+          )}
         </div>
       )}
     </div>

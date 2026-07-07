@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useCuratedSection, pdpUrlFor } from "@/hooks/useCuratedSection";
 import type { ResolvedItem, ResolvedProductItem } from "@/lib/curationApi";
+import QuickAddButton from "@/components/home/QuickAddButton";
 
 interface Card {
   key: string;
@@ -95,14 +96,11 @@ const RecommendedForYou = ({
                   >
                     <Heart className="w-3.5 h-3.5" fill={wishlisted ? "currentColor" : "none"} />
                   </button>
-                  <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <button
-                      onClick={p ? (e) => { e.stopPropagation(); navigate(pdpUrlFor(p)); } : undefined}
-                      className="w-full py-1.5 bg-white/90 backdrop-blur text-foreground rounded-lg font-medium text-[10px] md:text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm"
-                    >
-                      Add to Cart
-                    </button>
-                  </div>
+                  {p && (
+                    <div className="hidden md:block absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                      <QuickAddButton product={p} />
+                    </div>
+                  )}
                 </div>
                 <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
                   <h3 className="font-display text-xs md:text-sm font-medium text-foreground leading-snug">{card.name}</h3>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { Heart, SearchX, Search, SlidersHorizontal, X } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
@@ -15,6 +15,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { buildPdpPath } from "@/lib/pdpUrl";
 import { searchProducts, type SearchProduct } from "@/services/searchService";
+import { useSearchSuggestions } from "@/hooks/useSearchSuggestions";
+import SuggestionsDropdown from "@/components/search/SuggestionsDropdown";
+import { useRecommendations, type RecommendationAnchor, type RecommendedProduct } from "@/hooks/useRecommendations";
+import { useCuratedSection } from "@/hooks/useCuratedSection";
 
 const POPULAR_TERMS = ["Lehenga", "Dress", "Girls", "Boys", "Festive", "Co-ord Set"];
 
@@ -82,12 +86,45 @@ export default function SearchResults() {
     if (t) navigate(`/search?q=${encodeURIComponent(t)}`);
   };
 
+  // "You May Also Like" — anchored to the top result. Over-fetch, then drop any
+  // product whose slug already appears in the results so the section only ever
+  // surfaces things NOT already on the page.
+  const recAnchor: RecommendationAnchor | null = products[0]
+    ? { slug: products[0].slug, categorySlug: products[0].categorySlug, price: products[0].price }
+    : null;
+  const { recommendations, loading: recsLoading } = useRecommendations(recAnchor, 24);
+  const resultSlugs = useMemo(() => new Set(products.map((p) => p.slug)), [products]);
+  const filteredRecs = useMemo(
+    () => recommendations.filter((r) => !resultSlugs.has(r.slug)).slice(0, 5),
+    [recommendations, resultSlugs],
+  );
+
+  // No-results fallback — the recommendation engine needs a product anchor, which
+  // we don't have when nothing matched. Fall back to the curated "Recommended For
+  // You" section so the page still surfaces something to explore.
+  const noResults = !!query && !loading && products.length === 0;
+  const { products: curatedProducts } = useCuratedSection("home_recommended", { skip: !noResults });
+  const fallbackRecs: RecommendedProduct[] = useMemo(
+    () =>
+      curatedProducts.slice(0, 5).map((p) => ({
+        title: p.title,
+        slug: p.slug,
+        categorySlug: p.categorySlug,
+        price: p.price,
+        originalPrice: p.originalPrice,
+        image: p.image ?? "",
+        sku: p.sku,
+        badges: p.badges,
+      })),
+    [curatedProducts],
+  );
+
   return (
-    <div className="min-h-screen bg-[#FAF9F7] flex flex-col text-gray-900 overflow-x-hidden">
+    <div className="min-h-screen bg-white flex flex-col text-gray-900 overflow-x-hidden">
       {user ? <UserNavbar /> : <Navbar />}
 
-      <main className="flex-1 w-full pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)] pb-14">
-        <div className="page-container px-4 sm:px-6 pt-1 sm:pt-2">
+      <main className="flex-1 w-full pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)]">
+        <div className="page-container px-4 sm:px-6 pt-1 sm:pt-2 pb-14">
           {/* CENTERED, PRE-FILLED SEARCH BAR (remounts per query to reset its draft) */}
           <SearchField key={query} initial={query} onSubmit={goSearch} />
 
@@ -114,6 +151,15 @@ export default function SearchResults() {
             )}
           </div>
         </div>
+
+        {/* YOU MAY ALSO LIKE — alongside real results (excluding what's shown),
+            or the curated fallback when nothing matched */}
+        {!loading && products.length > 0 && (recsLoading || filteredRecs.length > 0) && (
+          <RecommendationsSection recs={filteredRecs} loading={recsLoading} />
+        )}
+        {noResults && fallbackRecs.length > 0 && (
+          <RecommendationsSection recs={fallbackRecs} loading={false} />
+        )}
       </main>
 
       <Footer />
@@ -121,45 +167,161 @@ export default function SearchResults() {
   );
 }
 
-// ─── Centered search field ──────────────────────────────────────────────────
-function SearchField({ initial, onSubmit }: { initial: string; onSubmit: (term: string) => void }) {
-  const [draft, setDraft] = useState(initial);
+// ─── You may also like ──────────────────────────────────────────────────────
+function RecommendationsSection({ recs, loading }: { recs: RecommendedProduct[]; loading: boolean }) {
+  const navigate = useNavigate();
   return (
-    <form
-      onSubmit={(e) => { e.preventDefault(); onSubmit(draft); }}
-      className="mx-auto w-full max-w-2xl"
-    >
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-          <Search className="w-4 h-4" />
+    <section className="mt-14 sm:mt-20 bg-[#E8DDF7] pt-6 sm:pt-10 pb-14">
+      <div className="page-container px-3 sm:px-6">
+        <div className="flex items-end justify-between mb-6 sm:mb-8">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900">You May Also Like</h2>
+            <p className="text-sm text-gray-500 mt-1">Similar styles you'll love</p>
+          </div>
+          <Link to="/collections" className="hidden sm:block text-sm font-semibold text-brand-teal hover:underline">
+            View All
+          </Link>
         </div>
-        <input
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Search products, categories, or trends..."
-          className="w-full bg-white border border-gray-300 rounded-md py-2 pl-11 pr-28 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/30 focus:border-brand-teal transition-all placeholder:text-gray-400"
-        />
-        <div className="absolute inset-y-0 right-1.5 flex items-center gap-1">
-          {draft && (
-            <button
-              type="button"
-              onClick={() => setDraft("")}
-              className="p-1.5 text-gray-400 hover:text-gray-700 transition-colors"
-              aria-label="Clear search"
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+          {/* Loading skeleton */}
+          {loading && recs.length === 0 &&
+            [...Array(5)].map((_, idx) => (
+              <div
+                key={`rec-skeleton-${idx}`}
+                className={`bg-white p-2 md:p-1.5 rounded-2xl shadow-sm border border-gray-200 animate-pulse ${idx >= 4 ? "max-sm:hidden" : ""}`}
+              >
+                <div className="aspect-[3/4] sm:aspect-[4/5] md:aspect-[5/6] rounded-xl bg-gray-200 mb-2 md:mb-1.5" />
+                <div className="px-1 pb-0.5 space-y-2">
+                  <div className="h-3 bg-gray-200 rounded w-3/4" />
+                  <div className="h-3 bg-gray-200 rounded w-1/3" />
+                </div>
+              </div>
+            ))}
+
+          {/* Loaded recommendations */}
+          {recs.map((p, idx) => (
+            <div
+              key={`${p.slug}-${p.sku}`}
+              onClick={() => navigate(buildPdpPath(p.categorySlug, p.slug, p.sku))}
+              className={`group bg-white p-2 md:p-1.5 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer ${idx >= 4 ? "max-sm:hidden" : ""}`}
             >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-          <button
-            type="submit"
-            className="px-4 h-8 rounded-md bg-brand-teal hover:bg-[#0C5D53] text-white font-bold text-sm transition-colors"
-          >
-            Search
-          </button>
+              <div className="relative rounded-xl overflow-hidden aspect-[3/4] sm:aspect-[4/5] md:aspect-[5/6] mb-2 md:mb-1.5 bg-gray-100">
+                {p.image ? (
+                  <img
+                    src={p.image}
+                    alt={p.title}
+                    loading="lazy"
+                    onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-100" />
+                )}
+                {p.badges?.[0] && (
+                  <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/90 text-brand-teal shadow-sm">
+                    {p.badges[0]}
+                  </span>
+                )}
+              </div>
+              <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xs md:text-sm font-medium text-slate-900 leading-snug line-clamp-2">{p.title}</h3>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs md:text-sm font-semibold text-brand-teal">₹{p.price}</p>
+                  {p.originalPrice > p.price && (
+                    <p className="text-[10px] text-gray-400 line-through">₹{p.originalPrice}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-    </form>
+    </section>
+  );
+}
+
+// ─── Centered search field (with live autosuggestions) ──────────────────────
+function SearchField({ initial, onSubmit }: { initial: string; onSubmit: (term: string) => void }) {
+  const [draft, setDraft] = useState(initial);
+  // Suggestions open only when the value is altered (typed into) — not on a
+  // plain focus of the pre-filled query; close on submit, selection, Escape,
+  // or a click outside the field.
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  const { suggestions, loading } = useSearchSuggestions(draft);
+  const hasQuery = draft.trim().length >= 1;
+
+  // Close the dropdown on any click/tap outside the field wrapper.
+  useEffect(() => {
+    if (!open) return;
+    const handleOutside = (e: MouseEvent | TouchEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("touchstart", handleOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("touchstart", handleOutside);
+    };
+  }, [open]);
+
+  const submit = (term: string) => {
+    setOpen(false);
+    onSubmit(term);
+  };
+
+  return (
+    <div ref={wrapRef} className="relative mx-auto w-full max-w-2xl">
+      <form onSubmit={(e) => { e.preventDefault(); submit(draft); }}>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+            <Search className="w-4 h-4" />
+          </div>
+          <input
+            type="text"
+            value={draft}
+            onChange={(e) => { setDraft(e.target.value); setOpen(true); }}
+            placeholder="Search products, categories, or trends..."
+            className="w-full bg-white border border-gray-400 rounded-md py-2 pl-11 pr-28 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/30 focus:border-brand-teal transition-all placeholder:text-gray-400"
+          />
+          <div className="absolute inset-y-0 right-1.5 flex items-center gap-1">
+            {draft && (
+              <button
+                type="button"
+                onClick={() => { setDraft(""); setOpen(false); }}
+                className="p-1.5 text-gray-400 hover:text-gray-700 transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              type="submit"
+              className="px-4 h-8 rounded-md bg-brand-teal hover:bg-[#0C5D53] text-white font-bold text-sm transition-colors"
+            >
+              Search
+            </button>
+          </div>
+        </div>
+      </form>
+
+      {/* Live suggestions dropdown — appears as the field is altered */}
+      {open && hasQuery && (
+        <div className="absolute left-0 right-0 top-full mt-2 z-50 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden max-h-[70vh] overflow-y-auto no-scrollbar">
+          <SuggestionsDropdown
+            suggestions={suggestions}
+            loading={loading}
+            query={draft}
+            onClose={() => setOpen(false)}
+            onSubmit={submit}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -250,7 +412,7 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
           {/* FILTERS */}
           <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
             <SheetTrigger asChild>
-              <button className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-md border border-gray-300 bg-white text-xs sm:text-sm font-medium text-gray-700 hover:border-brand-teal hover:text-brand-teal transition-colors">
+              <button className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-md border border-gray-400 bg-white text-xs sm:text-sm font-medium text-gray-700 hover:border-brand-teal hover:text-brand-teal transition-colors">
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 Filters
                 {activeCount > 0 && (
@@ -332,7 +494,7 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
 
           {/* SORT */}
           <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-            <SelectTrigger className="h-9 w-[185px] sm:w-[205px] justify-between gap-1.5 bg-white border-gray-300 rounded-md text-xs sm:text-sm font-medium text-gray-700">
+            <SelectTrigger className="h-9 w-[185px] sm:w-[205px] justify-between gap-1.5 bg-white border-gray-400 rounded-md text-xs sm:text-sm font-medium text-gray-700">
               <span className="flex items-center gap-1.5 min-w-0 flex-1">
                 <span className="text-gray-500 shrink-0">Sort&nbsp;:&nbsp;</span>
                 <span className="flex-1 text-center min-w-0">
@@ -385,7 +547,7 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
               <div
                 key={p.sku}
                 onClick={() => navigate(buildPdpPath(p.categorySlug, p.slug, p.sku))}
-                className="group bg-white p-2 md:p-1.5 rounded-2xl shadow-md border border-gray-300 hover:shadow-xl hover:border-gray-400 hover:-translate-y-0.5 transition-all cursor-pointer"
+                className="group bg-white p-2 md:p-1.5 rounded-2xl shadow-md border border-gray-400 hover:shadow-xl hover:border-gray-500 hover:-translate-y-0.5 transition-all cursor-pointer"
               >
                 <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5 bg-gray-100">
                   {p.image ? (

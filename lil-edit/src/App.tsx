@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
 import AdminRoute from "./components/AdminRoute";
 import PageTitle from "./components/PageTitle";
+import ScrollToTop from "./components/ScrollToTop";
 import MaintenanceGate from "./components/MaintenanceGate";
 import TrackingBridge from "./components/TrackingBridge";
 import GuestIntentBridge from "./components/GuestIntentBridge";
@@ -106,6 +107,7 @@ const App = () => (
       <BrowserRouter>
         <AuthPromptProvider>
         <PageTitle />
+        <ScrollToTop />
         <TrackingBridge />
         <GuestIntentBridge />
         <MaintenanceGate>

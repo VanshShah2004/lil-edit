@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 import ProductDetailSkeleton from "@/components/ProductDetailSkeleton";
 import ProductPreviewView from "@/components/ProductPreviewView";
+import QuickAddButton from "@/components/home/QuickAddButton";
 import type { Product, ReviewsData } from "@/types/product";
 import { getBackendBaseUrl } from "@/lib/backend";
 import { buildPdpPath } from "@/lib/pdpUrl";
@@ -884,7 +885,8 @@ export default function ProductDetail() {
               <div
                 key={item.slug}
                 onMouseEnter={() => prefetchProductDetail(item.slug, item.sku, item.categorySlug)}
-                className={`group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all ${idx >= 4 ? "max-sm:hidden" : ""}`}
+                onClick={() => navigate(buildPdpPath(item.categorySlug, item.slug, item.sku))}
+                className={`group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer ${idx >= 4 ? "max-sm:hidden" : ""}`}
               >
                 <div className="relative rounded-xl overflow-hidden aspect-[3/4] sm:aspect-[4/5] md:aspect-[5/6] mb-2 md:mb-1.5">
                   {item.image && (
@@ -924,13 +926,8 @@ export default function ProductDetail() {
                       fill={isWishlisted(item.slug, item.sku) ? "currentColor" : "none"}
                     />
                   </button>
-                  <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <Link
-                      to={buildPdpPath(item.categorySlug, item.slug, item.sku)}
-                      className="w-full py-1.5 bg-white/90 backdrop-blur text-slate-900 rounded-lg font-medium text-[10px] md:text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm block text-center"
-                    >
-                      View Details
-                    </Link>
+                  <div className="hidden md:block absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                    <QuickAddButton product={item} />
                   </div>
                 </div>
                 <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
