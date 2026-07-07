@@ -123,7 +123,7 @@ export default function SearchResults() {
     <div className="min-h-screen bg-white flex flex-col text-gray-900 overflow-x-hidden">
       {user ? <UserNavbar /> : <Navbar />}
 
-      <main className="flex-1 w-full pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)]">
+      <main className="flex-1 w-full pt-[calc(var(--navbar-height)+15px)] sm:pt-[calc(var(--navbar-height)+15px)]">
         <div className="page-container px-4 sm:px-6 pt-1 sm:pt-2 pb-14">
           {/* CENTERED, PRE-FILLED SEARCH BAR (remounts per query to reset its draft) */}
           <SearchField key={query} initial={query} onSubmit={goSearch} />
@@ -171,7 +171,7 @@ export default function SearchResults() {
 function RecommendationsSection({ recs, loading }: { recs: RecommendedProduct[]; loading: boolean }) {
   const navigate = useNavigate();
   return (
-    <section className="mt-14 sm:mt-20 bg-[#E8DDF7] pt-6 sm:pt-10 pb-14">
+    <section className="mt-10 bg-[#E8DDF7] pt-6 sm:pt-10 pb-14">
       <div className="page-container px-3 sm:px-6">
         <div className="flex items-end justify-between mb-6 sm:mb-8">
           <div>
@@ -286,7 +286,7 @@ function SearchField({ initial, onSubmit }: { initial: string; onSubmit: (term: 
             value={draft}
             onChange={(e) => { setDraft(e.target.value); setOpen(true); }}
             placeholder="Search products, categories, or trends..."
-            className="w-full bg-white border border-gray-400 rounded-md py-2 pl-11 pr-28 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/30 focus:border-brand-teal transition-all placeholder:text-gray-400"
+            className="w-full bg-white border border-gray-700 rounded-md py-2 pl-11 pr-28 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/30 focus:border-brand-teal transition-all placeholder:text-gray-400"
           />
           <div className="absolute inset-y-0 right-1.5 flex items-center gap-1">
             {draft && (
@@ -401,8 +401,8 @@ function ResultsView({ products }: { products: SearchProduct[] }) {
   return (
     <>
       {/* TOOLBAR: count · filters · sort */}
-      <div className="flex items-center justify-between gap-2 mb-5 pb-4 border-b border-gray-200">
-        <p className="text-xs sm:text-sm text-gray-500 truncate">
+      <div className="flex items-center justify-between gap-2 mb-6">
+        <p className="text-xs sm:text-sm text-gray-700 truncate">
           {visible.length === products.length
             ? `${products.length} ${products.length === 1 ? "product" : "products"}`
             : `${visible.length} of ${products.length} products`}
