@@ -18,7 +18,6 @@ import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import RouteFallback from "@/components/RouteFallback";
-import FeaturesBar from "@/components/landing/FeaturesBar";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Accordion,
@@ -29,7 +28,7 @@ import {
 
 // Where "still have questions" / exchange requests go. Brand domain is
 // theliledit.com (see the system@theliledit.internal actor used server-side).
-const SUPPORT_EMAIL = "hello@theliledit.com";
+const SUPPORT_EMAIL = "hello.theliledit@gmail.com";
 
 type FaqLink = { to: string; label: string; external?: boolean };
 type FaqItem = { q: string; a: string; link?: FaqLink };
@@ -266,6 +265,7 @@ const Faq = () => {
   const { user, loading: authLoading } = useAuth();
   const { hash } = useLocation();
   const [query, setQuery] = useState("");
+  const [activeSection, setActiveSection] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const trimmed = query.trim().toLowerCase();
@@ -285,6 +285,7 @@ const Faq = () => {
   useEffect(() => {
     if (!hash) return;
     const id = hash.slice(1);
+    setActiveSection(id);
     const t = window.setTimeout(() => {
       document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 80);
@@ -296,6 +297,7 @@ const Faq = () => {
   }
 
   const scrollToSection = (id: string) => {
+    setActiveSection(id);
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -307,7 +309,7 @@ const Faq = () => {
         {/* Hero — mirrors the About page's lavender band + teal accent so the two
             info pages read as siblings. */}
         <section className="w-full bg-[#E9DFF5] border-b border-[#DCD0EB]/60">
-          <div className="page-container py-12 md:py-16 lg:py-20 text-center">
+          <div className="page-container pt-12 pb-12 md:pt-16 md:pb-16 lg:pt-[60px] lg:pb-20 text-center">
             <span className="inline-flex items-center gap-2 text-xs md:text-sm font-body font-bold tracking-[0.35em] text-[#0B5B55] mb-5 uppercase">
               <HelpCircle className="h-4 w-4" />
               How can we help?
@@ -334,7 +336,7 @@ const Faq = () => {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search for an answer…"
-                  className="w-full rounded-full border border-[#DCD0EB] bg-white/90 py-3.5 pl-12 pr-11 text-[15px] font-body text-foreground shadow-sm shadow-purple-900/5 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#0B5B55]/25 focus:border-[#0B5B55]/40 [&::-webkit-search-cancel-button]:appearance-none"
+                  className="w-full rounded-lg border border-[#DCD0EB] bg-white/90 py-3.5 pl-12 pr-11 text-[15px] font-body text-foreground shadow-sm shadow-purple-900/5 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#0B5B55]/25 focus:border-[#0B5B55]/40 [&::-webkit-search-cancel-button]:appearance-none"
                 />
                 {query ? (
                   <button
@@ -344,7 +346,7 @@ const Faq = () => {
                       searchRef.current?.focus();
                     }}
                     aria-label="Clear search"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-black/5 hover:text-foreground transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-black/5 hover:text-foreground transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -356,26 +358,31 @@ const Faq = () => {
 
         {/* Category jump-nav — only useful while browsing the full list. */}
         {!searching ? (
-          <div className="border-b border-border/60 bg-card/40">
-            <div className="page-container py-5">
-              <div className="flex flex-wrap justify-center gap-2.5">
-                {SECTIONS.map((section) => (
+          <div className="page-container pt-5 pb-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-center sm:gap-2.5">
+              {SECTIONS.map((section) => {
+                const isActive = activeSection === section.id;
+                return (
                   <button
                     key={section.id}
                     type="button"
                     onClick={() => scrollToSection(section.id)}
-                    className="inline-flex items-center gap-2 rounded-full border border-[#DCD0EB] bg-white px-4 py-1.5 text-sm font-body text-[#0B5B55] hover:bg-[#E9DFF5] hover:border-[#0B5B55]/30 transition-colors"
+                    className={`inline-flex items-center justify-center gap-1.5 rounded-sm border border-[#0B5B55] px-2 py-1.5 text-xs font-body transition-colors whitespace-nowrap sm:gap-2 sm:px-4 sm:text-sm ${
+                      isActive
+                        ? "bg-[#0B5B55] text-white"
+                        : "bg-white text-[#0B5B55] hover:bg-[#E9DFF5] hover:border-[#0B5B55]/30"
+                    }`}
                   >
-                    <section.icon className="h-3.5 w-3.5" />
+                    <section.icon className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
                     {section.title}
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
           </div>
         ) : null}
 
-        <section className="page-container py-12 md:py-16">
+        <section className="page-container py-8 md:py-10">
           {searching ? (
             /* ── Search results ──────────────────────────────────────────────
                Keyed on the query so the accordion remounts per keystroke and
@@ -388,7 +395,7 @@ const Faq = () => {
               </p>
 
               {results.length === 0 ? (
-                <div className="text-center rounded-2xl border border-border/70 bg-card px-6 py-12">
+                <div className="text-center rounded-lg border border-border/70 bg-card px-6 py-12">
                   <HelpCircle className="mx-auto h-10 w-10 text-primary/70 mb-4" />
                   <h2 className="font-display text-xl text-foreground mb-2">
                     We couldn't find that one
@@ -399,7 +406,7 @@ const Faq = () => {
                   </p>
                   <a
                     href={`mailto:${SUPPORT_EMAIL}`}
-                    className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-body font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-body font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
                   >
                     <Mail className="h-4 w-4" />
                     Email our team
@@ -410,13 +417,13 @@ const Faq = () => {
                   key={trimmed}
                   type="multiple"
                   defaultValue={results.map((_, i) => `result-${i}`)}
-                  className="rounded-2xl border border-border/70 bg-card px-5 sm:px-7 shadow-sm shadow-purple-900/[0.03]"
+                  className="rounded-lg border border-gray-400 bg-card px-5 sm:px-7 shadow-sm shadow-purple-900/[0.03]"
                 >
                   {results.map((item, i) => (
                     <AccordionItem
                       key={`result-${i}`}
                       value={`result-${i}`}
-                      className="border-border/60 last:border-0"
+                      className="border-gray-400 last:border-0"
                     >
                       <AccordionTrigger className="text-left font-body font-semibold text-foreground hover:no-underline gap-4 py-5">
                         <span className="flex flex-col gap-1.5">
@@ -445,7 +452,7 @@ const Faq = () => {
                   className="scroll-mt-24 md:scroll-mt-28"
                 >
                   <div className="flex items-center gap-4 mb-5">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0B5B55]/10 text-[#0B5B55] ring-1 ring-[#0B5B55]/15">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[#0B5B55]/10 text-[#0B5B55] ring-1 ring-[#0B5B55]/15">
                       <section.icon className="h-5 w-5" />
                     </div>
                     <div>
@@ -459,13 +466,13 @@ const Faq = () => {
                   <Accordion
                     type="single"
                     collapsible
-                    className="rounded-2xl border border-border/70 bg-card px-5 sm:px-7 shadow-sm shadow-purple-900/[0.03]"
+                    className="rounded-lg border border-gray-400 bg-card px-5 sm:px-7 shadow-sm shadow-purple-900/[0.03]"
                   >
                     {section.items.map((item, i) => (
                       <AccordionItem
                         key={`${section.id}-${i}`}
                         value={`${section.id}-${i}`}
-                        className="border-border/60 last:border-0"
+                        className="border-gray-400 last:border-0"
                       >
                         <AccordionTrigger className="text-left font-body font-semibold text-foreground hover:no-underline gap-4 py-5">
                           {item.q}
@@ -485,7 +492,7 @@ const Faq = () => {
         {/* Still-need-help CTA */}
         <section className="bg-white border-y border-border/70">
           <div className="page-container py-12 md:py-16 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-primary/10">
               <Mail className="h-6 w-6 text-primary" />
             </div>
             <h2 className="font-display text-3xl md:text-4xl text-foreground mb-3">
@@ -497,15 +504,13 @@ const Faq = () => {
             </p>
             <a
               href={`mailto:${SUPPORT_EMAIL}`}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 font-body font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-8 py-3 font-body font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <Mail className="h-4 w-4" />
               {SUPPORT_EMAIL}
             </a>
           </div>
         </section>
-
-        <FeaturesBar />
       </main>
 
       <Footer />

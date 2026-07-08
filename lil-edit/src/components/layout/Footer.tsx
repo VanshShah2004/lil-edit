@@ -69,7 +69,7 @@ const Footer = () => {
             <li><Link to="/faq" className="hover:text-primary transition-colors">FAQ</Link></li>
             <li><Link to="/faq#shipping" className="hover:text-primary transition-colors">Shipping</Link></li>
             <li><Link to="/faq#returns" className="hover:text-primary transition-colors">Returns</Link></li>
-            <li><a href="mailto:hello@theliledit.com" className="hover:text-primary transition-colors">Contact Us</a></li>
+            <li><a href="mailto:hello.theliledit@gmail.com" className="hover:text-primary transition-colors">Contact Us</a></li>
           </ul>
         </div>
 
