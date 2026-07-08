@@ -31,6 +31,7 @@ const ROUTE_TITLES: Array<{ pattern: string; label: string }> = [
   { pattern: "/wishlist",             label: "Wishlist" },
   { pattern: "/about",                label: "About" },
   { pattern: "/faq",                  label: "FAQ" },
+  { pattern: "/contact",              label: "Contact Us" },
   { pattern: "/profile",              label: "Profile" },
   { pattern: "/orders",               label: "Orders" },
   { pattern: "/orders/:orderId",      label: "Order Details" },
