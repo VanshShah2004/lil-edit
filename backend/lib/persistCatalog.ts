@@ -940,6 +940,21 @@ const FIELD_SCORES = {
   "fuzzy": 30,
 };
 
+// Fractional match-quality bonus in [0, 1.9] — strictly smaller than the
+// smallest gap between adjacent FIELD_SCORES tiers (2), so it refines the
+// ordering WITHIN a tier without ever flipping one field tier over another.
+// Rewards coverage (the query spanning more of the matched text = tighter
+// match) and position (matching nearer the front of the text). This is what
+// keeps same-tier results ranked by how well they match the query instead of
+// collapsing into the alphabetical localeCompare tiebreak.
+function matchQuality(text: string, lower: string): number {
+  const idx = text.indexOf(lower);
+  if (idx < 0 || text.length === 0) return 0;
+  const coverage = lower.length / text.length; // 1 = query covers the whole text
+  const position = 1 - idx / text.length;      // 1 = match starts at the front
+  return coverage * 1.4 + position * 0.5;
+}
+
 function scoreEntry(
   entry: SearchCatalogEntry,
   lower: string,
@@ -947,41 +962,47 @@ function scoreEntry(
   const t = entry.title.toLowerCase();
 
   if (t === lower) return { score: FIELD_SCORES["title:exact"], field: "title" };
-  if (t.startsWith(lower)) return { score: FIELD_SCORES["title:starts"], field: "title" };
+  if (t.startsWith(lower)) return { score: FIELD_SCORES["title:starts"] + matchQuality(t, lower), field: "title" };
   if (t.split(/\s+/).some(w => w !== lower && w.startsWith(lower)))
-    return { score: FIELD_SCORES["title:word-starts"], field: "title" };
-  if (t.includes(lower)) return { score: FIELD_SCORES["title:contains"], field: "title" };
+    return { score: FIELD_SCORES["title:word-starts"] + matchQuality(t, lower), field: "title" };
+  if (t.includes(lower)) return { score: FIELD_SCORES["title:contains"] + matchQuality(t, lower), field: "title" };
 
   const cat = entry.category.toLowerCase();
-  if (cat.startsWith(lower)) return { score: FIELD_SCORES["category:starts"], field: "category" };
-  if (cat.includes(lower)) return { score: FIELD_SCORES["category"], field: "category" };
+  if (cat.startsWith(lower)) return { score: FIELD_SCORES["category:starts"] + matchQuality(cat, lower), field: "category" };
+  if (cat.includes(lower)) return { score: FIELD_SCORES["category"] + matchQuality(cat, lower), field: "category" };
 
+  // Tags/badges: scan ALL entries for the best-scoring match (an early
+  // weak "contains" must not shadow a later, stronger "starts-with").
+  let bestTag = 0;
   for (const tag of entry.tags) {
     const tl = tag.toLowerCase();
-    if (tl.startsWith(lower)) return { score: FIELD_SCORES["tag:starts"], field: "tag" };
-    if (tl.includes(lower)) return { score: FIELD_SCORES["tag"], field: "tag" };
+    if (tl.startsWith(lower)) bestTag = Math.max(bestTag, FIELD_SCORES["tag:starts"] + matchQuality(tl, lower));
+    else if (tl.includes(lower)) bestTag = Math.max(bestTag, FIELD_SCORES["tag"] + matchQuality(tl, lower));
   }
+  if (bestTag > 0) return { score: bestTag, field: "tag" };
 
   const occ = entry.occasion.toLowerCase();
-  if (occ.startsWith(lower)) return { score: FIELD_SCORES["occasion:starts"], field: "occasion" };
-  if (occ.includes(lower)) return { score: FIELD_SCORES["occasion"], field: "occasion" };
+  if (occ.startsWith(lower)) return { score: FIELD_SCORES["occasion:starts"] + matchQuality(occ, lower), field: "occasion" };
+  if (occ.includes(lower)) return { score: FIELD_SCORES["occasion"] + matchQuality(occ, lower), field: "occasion" };
 
+  let bestBadge = 0;
   for (const badge of entry.badges) {
     const bl = badge.toLowerCase();
-    if (bl.startsWith(lower)) return { score: FIELD_SCORES["badge:starts"], field: "badge" };
-    if (bl.includes(lower)) return { score: FIELD_SCORES["badge"], field: "badge" };
+    if (bl.startsWith(lower)) bestBadge = Math.max(bestBadge, FIELD_SCORES["badge:starts"] + matchQuality(bl, lower));
+    else if (bl.includes(lower)) bestBadge = Math.max(bestBadge, FIELD_SCORES["badge"] + matchQuality(bl, lower));
   }
+  if (bestBadge > 0) return { score: bestBadge, field: "badge" };
 
   const fab = entry.fabric.toLowerCase();
-  if (fab.startsWith(lower)) return { score: FIELD_SCORES["fabric:starts"], field: "fabric" };
-  if (fab.includes(lower)) return { score: FIELD_SCORES["fabric"], field: "fabric" };
+  if (fab.startsWith(lower)) return { score: FIELD_SCORES["fabric:starts"] + matchQuality(fab, lower), field: "fabric" };
+  if (fab.includes(lower)) return { score: FIELD_SCORES["fabric"] + matchQuality(fab, lower), field: "fabric" };
 
   const fit = entry.fit.toLowerCase();
-  if (fit.startsWith(lower)) return { score: FIELD_SCORES["fit:starts"], field: "fit" };
-  if (fit.includes(lower)) return { score: FIELD_SCORES["fit"], field: "fit" };
+  if (fit.startsWith(lower)) return { score: FIELD_SCORES["fit:starts"] + matchQuality(fit, lower), field: "fit" };
+  if (fit.includes(lower)) return { score: FIELD_SCORES["fit"] + matchQuality(fit, lower), field: "fit" };
 
   if (entry.gender.toLowerCase().includes(lower))
-    return { score: FIELD_SCORES["gender"], field: "gender" };
+    return { score: FIELD_SCORES["gender"] + matchQuality(entry.gender.toLowerCase(), lower), field: "gender" };
 
   if (lower.length >= 3 && fuzzyMatchesTitle(entry.title, lower))
     return { score: FIELD_SCORES["fuzzy"], field: "fuzzy" };
@@ -1021,14 +1042,14 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
   for (const { entry } of scored) {
     const cat = entry.category.toLowerCase();
     if (cat.includes(lower)) {
-      const s = cat.startsWith(lower) ? FIELD_SCORES["category:starts"] : FIELD_SCORES["category"];
+      const s = (cat.startsWith(lower) ? FIELD_SCORES["category:starts"] : FIELD_SCORES["category"]) + matchQuality(cat, lower);
       upsertMeta(`category:${entry.category_slug}`, { type: "category", id: `category:${entry.category_slug}`, label: entry.category, sublabel: "Category", image: "", slug: "", categorySlug: entry.category_slug, sku: "" }, s);
     }
 
     if (entry.occasion) {
       const occ = entry.occasion.toLowerCase();
       if (occ.includes(lower)) {
-        const s = occ.startsWith(lower) ? FIELD_SCORES["occasion:starts"] : FIELD_SCORES["occasion"];
+        const s = (occ.startsWith(lower) ? FIELD_SCORES["occasion:starts"] : FIELD_SCORES["occasion"]) + matchQuality(occ, lower);
         upsertMeta(`occasion:${occ}`, { type: "occasion", id: `occasion:${occ}`, label: entry.occasion, sublabel: "Occasion", image: "", slug: "", categorySlug: "", sku: "" }, s);
       }
     }
@@ -1036,7 +1057,7 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
     for (const tag of entry.tags) {
       const tl = tag.toLowerCase();
       if (tl.includes(lower)) {
-        const s = tl.startsWith(lower) ? FIELD_SCORES["tag:starts"] : FIELD_SCORES["tag"];
+        const s = (tl.startsWith(lower) ? FIELD_SCORES["tag:starts"] : FIELD_SCORES["tag"]) + matchQuality(tl, lower);
         upsertMeta(`tag:${tl}`, { type: "tag", id: `tag:${tl}`, label: tag, sublabel: "Tag", image: "", slug: "", categorySlug: "", sku: "" }, s);
       }
     }
@@ -1044,7 +1065,7 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
     for (const badge of entry.badges) {
       const bl = badge.toLowerCase();
       if (bl.includes(lower)) {
-        const s = bl.startsWith(lower) ? FIELD_SCORES["badge:starts"] : FIELD_SCORES["badge"];
+        const s = (bl.startsWith(lower) ? FIELD_SCORES["badge:starts"] : FIELD_SCORES["badge"]) + matchQuality(bl, lower);
         upsertMeta(`badge:${bl}`, { type: "badge", id: `badge:${bl}`, label: badge, sublabel: "Badge", image: "", slug: "", categorySlug: "", sku: "" }, s);
       }
     }
@@ -1052,7 +1073,7 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
     if (entry.fabric) {
       const fab = entry.fabric.toLowerCase();
       if (fab.includes(lower)) {
-        const s = fab.startsWith(lower) ? FIELD_SCORES["fabric:starts"] : FIELD_SCORES["fabric"];
+        const s = (fab.startsWith(lower) ? FIELD_SCORES["fabric:starts"] : FIELD_SCORES["fabric"]) + matchQuality(fab, lower);
         upsertMeta(`fabric:${fab}`, { type: "fabric", id: `fabric:${fab}`, label: entry.fabric, sublabel: "Material", image: "", slug: "", categorySlug: "", sku: "" }, s);
       }
     }
@@ -1060,7 +1081,7 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
     if (entry.fit) {
       const fitl = entry.fit.toLowerCase();
       if (fitl.includes(lower)) {
-        const s = fitl.startsWith(lower) ? FIELD_SCORES["fit:starts"] : FIELD_SCORES["fit"];
+        const s = (fitl.startsWith(lower) ? FIELD_SCORES["fit:starts"] : FIELD_SCORES["fit"]) + matchQuality(fitl, lower);
         upsertMeta(`fit:${fitl}`, { type: "fit", id: `fit:${fitl}`, label: entry.fit, sublabel: "Fit", image: "", slug: "", categorySlug: "", sku: "" }, s);
       }
     }

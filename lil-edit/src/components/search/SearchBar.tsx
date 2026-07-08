@@ -34,7 +34,7 @@ export default function SearchBar({ value, onChange, onClose, autoFocus = false 
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder="Search products, categories, or trends..."
-            className="w-full bg-secondary/50 border border-border/50 rounded-md py-3 pl-12 pr-10 text-base md:text-lg focus:outline-none focus:ring-2 focus:ring-teal-600/30 focus:border-teal-600 focus:bg-background transition-all placeholder:text-muted-foreground/70"
+            className="w-full bg-white border border-gray-400 rounded-md py-3 pl-12 pr-10 text-base md:text-lg focus:outline-none focus:ring-2 focus:ring-teal-600/30 focus:border-teal-600 focus:bg-white transition-all placeholder:text-muted-foreground/70"
           />
           {value && (
             <button
@@ -45,7 +45,7 @@ export default function SearchBar({ value, onChange, onClose, autoFocus = false 
               className="absolute inset-y-0 right-0 pr-4 flex items-center text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Clear search"
             >
-              <div className="bg-secondary p-1 rounded-full">
+              <div className="bg-gray-100 p-1 rounded-full">
                 <X className="w-4 h-4" />
               </div>
             </button>

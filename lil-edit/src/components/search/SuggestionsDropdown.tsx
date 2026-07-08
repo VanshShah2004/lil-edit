@@ -43,9 +43,6 @@ const TYPE_CONFIG: Record<SuggestionType, { label: string; icon: LucideIcon }> =
   keyword:  { label: "For You",       icon: Users },
 };
 
-// Render order for grouped metadata sections — most useful filters first.
-const META_TYPE_ORDER: SuggestionType[] = ["category", "occasion", "trend", "color", "fabric", "fit", "keyword", "tag", "badge"];
-
 // Swatch colors for "color" suggestions, keyed by the lexicon's canonical label (lowercased).
 const COLOR_SWATCH: Record<string, string> = {
   red: "#ef4444",
@@ -82,39 +79,27 @@ function Highlighted({ text, query }: { text: string; query: string }) {
   );
 }
 
-// Buckets metadata suggestions by type, in META_TYPE_ORDER, preserving each
-// type's existing (score-sorted) order.
-function groupMetaItems(items: Suggestion[]): Array<{ type: SuggestionType; items: Suggestion[] }> {
-  const byType = new Map<SuggestionType, Suggestion[]>();
-  for (const item of items) {
-    const arr = byType.get(item.type);
-    if (arr) arr.push(item);
-    else byType.set(item.type, [item]);
-  }
-  return META_TYPE_ORDER
-    .filter((t) => byType.has(t))
-    .map((t) => ({ type: t, items: byType.get(t)! }));
-}
-
 export default function SuggestionsDropdown({ suggestions, loading, query, onClose, onSubmit }: Props) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("all");
   const [selectedIndex, setSelectedIndex] = useState(-1);
 
   const productItems = suggestions.filter(s => s.type === "product");
+  // Metadata suggestions kept in the backend's overall relevance order (ranked
+  // by how well each matches the query), NOT re-bucketed by type.
   const metaItems    = suggestions.filter(s => s.type !== "product");
-  const groupedMeta  = groupMetaItems(metaItems);
-  const groupedMetaFlat = groupedMeta.flatMap(g => g.items);
-  // "All" tab leads with a compact 2x2 grid of top product matches; the rest
-  // live in the Products tab.
-  const topProducts = productItems.slice(0, 4);
+  // "All" tab leads with the top product matches. With more than 2 matches we
+  // show a swipeable carousel of all of them (like "Discover More"); with 2 or
+  // fewer, a simple single row of up to 2 cards.
+  const productCarousel = productItems.length > 2;
+  const topProducts = productCarousel ? productItems : productItems.slice(0, 2);
 
   // Flat list used for keyboard nav / empty-state. Order must match the render
   // order for the active tab so arrow-key highlighting lines up visually.
   const visibleItems =
     activeTab === "products"    ? productItems
-    : activeTab === "suggestions" ? groupedMetaFlat
-    : [...topProducts, ...groupedMetaFlat];
+    : activeTab === "suggestions" ? metaItems
+    : [...topProducts, ...metaItems];
 
 
   // Reset selection when tab or suggestions list changes.
@@ -184,25 +169,29 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
     }
   }
 
-  // Image card for a product result, laid out for a 2-column grid. `i` is the
-  // index into `visibleItems` so the keyboard highlight lines up correctly.
-  function renderProductCard(s: Suggestion, i: number) {
+  // Image card for a product result. In a 2-column grid by default; when
+  // `carousel` is set it gets a fixed width so it sits in a horizontal
+  // scroll-snap strip (with a peek of the next card). `i` is the index into
+  // `visibleItems` so the keyboard highlight lines up correctly.
+  function renderProductCard(s: Suggestion, i: number, carousel = false) {
     const isSelected = i === selectedIndex;
     return (
       <button
         key={s.id}
         onClick={() => handleSelect(s)}
         className={`flex flex-col rounded-xl text-left overflow-hidden border transition-colors ${
+          carousel ? "w-[42%] sm:w-[30%] shrink-0 snap-start" : ""
+        } ${
           isSelected
             ? "border-teal-400 ring-2 ring-teal-200 bg-teal-50/40"
-            : "border-border/60 hover:border-teal-600/40 hover:bg-secondary/30"
+            : "border-gray-400 hover:border-teal-600/40 hover:bg-gray-50"
         }`}
       >
-        <div className="aspect-square w-full bg-secondary overflow-hidden">
+        <div className="aspect-square w-full bg-gray-100 overflow-hidden">
           {s.image ? (
             <img src={s.image} alt={s.label} className="w-full h-full object-cover" loading="lazy" />
           ) : (
-            <div className="w-full h-full bg-secondary" />
+            <div className="w-full h-full bg-gray-100" />
           )}
         </div>
         <div className="px-2 py-1.5">
@@ -227,7 +216,7 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
         className={`flex flex-col items-start gap-0.5 px-3 py-1.5 rounded-2xl border transition-colors max-w-full ${
           isSelected
             ? "bg-teal-50 border-teal-300 text-teal-800"
-            : "border-border bg-secondary/40 text-foreground/80 hover:border-teal-600/40 hover:bg-teal-50/60"
+            : "border-gray-400 bg-white text-foreground/80 hover:border-teal-600/40 hover:bg-teal-50/60"
         }`}
       >
         <span className="flex items-center gap-1.5 max-w-full">
@@ -268,7 +257,7 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
               className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-semibold transition-all border ${
                 isActive
                   ? "bg-teal-700 text-white border-teal-700 shadow-sm"
-                  : "bg-secondary/50 text-foreground/70 border-border hover:border-teal-700/50 hover:text-teal-700"
+                  : "bg-secondary/50 text-foreground/70 border-gray-400 hover:border-teal-700/50 hover:text-teal-700"
               }`}
             >
               <span className="capitalize">{tab}</span>
@@ -289,7 +278,7 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
         <div className="px-3 sm:px-4 md:px-8 pb-3">
           {activeTab !== "suggestions" && (
             <div className={`grid grid-cols-2 gap-2 sm:gap-3 animate-pulse ${activeTab === "all" ? "mb-4" : ""}`}>
-              {[0, 1, 2, 3].map(i => (
+              {(activeTab === "all" ? [0, 1] : [0, 1, 2, 3]).map(i => (
                 <div key={i}>
                   <div className="aspect-square rounded-xl bg-secondary mb-1.5" />
                   <div className="h-3.5 bg-secondary rounded w-3/4 mb-1" />
@@ -320,8 +309,8 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
         </div>
       ) : activeTab === "suggestions" ? (
         /* Suggestions tab — metadata chips clustered by type, each labeled individually */
-        <div className="px-3 sm:px-4 md:px-8 pb-3 pt-1 flex flex-wrap gap-2">
-          {groupedMetaFlat.map((s, i) => renderMetaChip(s, i))}
+        <div className="px-3 sm:px-4 md:px-8 pb-3 pt-1 flex flex-wrap gap-2 justify-center">
+          {metaItems.map((s, i) => renderMetaChip(s, i))}
         </div>
       ) : (
         /* All tab — best-match products up top, then grouped suggestion chips */
@@ -332,14 +321,20 @@ export default function SuggestionsDropdown({ suggestions, loading, query, onClo
                 <ShoppingBag className="w-3 h-3" />
                 Best Matches
               </p>
-              <div className="px-3 sm:px-4 md:px-8 pb-2.5 grid grid-cols-2 gap-2 sm:gap-3">
-                {topProducts.map((s, i) => renderProductCard(s, i))}
-              </div>
+              {productCarousel ? (
+                <div className="flex gap-2 sm:gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory pl-[15px] pr-3 sm:pr-4 md:pr-8 pb-2.5">
+                  {topProducts.map((s, i) => renderProductCard(s, i, true))}
+                </div>
+              ) : (
+                <div className="px-3 sm:px-4 md:px-8 pb-2.5 grid grid-cols-2 gap-2 sm:gap-3 max-w-md">
+                  {topProducts.map((s, i) => renderProductCard(s, i))}
+                </div>
+              )}
             </div>
           )}
-          {groupedMetaFlat.length > 0 && (
-            <div className="px-3 sm:px-4 md:px-8 pb-2.5 pt-1 flex flex-wrap gap-2">
-              {groupedMetaFlat.map((s, i) => renderMetaChip(s, topProducts.length + i))}
+          {metaItems.length > 0 && (
+            <div className="px-3 sm:px-4 md:px-8 pb-2.5 pt-1 flex flex-wrap gap-2 justify-center">
+              {metaItems.map((s, i) => renderMetaChip(s, topProducts.length + i))}
             </div>
           )}
         </div>
