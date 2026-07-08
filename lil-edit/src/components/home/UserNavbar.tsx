@@ -396,6 +396,7 @@ const UserNavbar = () => {
                 <SideSubLink to="/collections?c=occasion" icon={PartyPopper} label="By Occasion" onClick={() => setIsLeftMenuOpen(false)} />
               </SideCollapse>
             )}
+            <SideLink to="/profile" icon={User} label="Profile" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
             <SideLink to="/about" icon={Info} label="About Us" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
           </SideSection>
 
@@ -433,10 +434,6 @@ const UserNavbar = () => {
               </SideSection>
             </>
           )}
-
-          <SideSection label="You">
-            <SideLink to="/profile" icon={User} label="Profile" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-          </SideSection>
         </nav>
 
         {/* Logout — pinned footer */}
