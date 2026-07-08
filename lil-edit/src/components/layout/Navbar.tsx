@@ -390,13 +390,13 @@ function SideCollapse({
           aria-label={`${open ? "Collapse" : "Expand"} ${label}`}
           className="px-3 py-2 md:py-1.5 self-stretch flex items-center"
         >
-          <ChevronRight className={`w-5 h-5 md:w-3.5 md:h-3.5 shrink-0 transition-transform ${open ? "rotate-90" : ""} ${active ? "text-[#0F766E]" : "text-foreground/60 group-hover:text-foreground"}`} />
+          <ChevronRight className={`w-5 h-5 md:w-3.5 md:h-3.5 shrink-0 ${active ? "text-[#0F766E]" : "text-foreground/60 group-hover:text-foreground"}`} />
         </button>
       </div>
       <div
         className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${open ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}
       >
-        <div className="ml-4 pl-2 border-l border-foreground/15 flex flex-col gap-0.5 py-0.5">
+        <div className="ml-4 pl-2 border-l-2 border-gray-400 flex flex-col gap-0.5 py-0.5">
           {children}
         </div>
       </div>
