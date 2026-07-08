@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import UserNavbar from "@/components/home/UserNavbar";
 import Navbar from "@/components/layout/Navbar";
+import RouteFallback from "@/components/RouteFallback";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchAdminOrders, triggerAutoProcess, type AdminOrderSummary, type OrderSortKey } from "@/lib/adminOrdersApi";
@@ -104,7 +105,7 @@ const AdminOrdersPage = () => {
   }, [search, status, payment, sort, page, autoProcessTick]);
 
   if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <RouteFallback />;
   }
 
   const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;

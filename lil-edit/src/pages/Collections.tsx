@@ -1,7 +1,8 @@
-import { ChevronRight, Heart, ArrowRight } from "lucide-react";
+import { Heart, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Navbar from "@/components/layout/Navbar";
+import RouteFallback from "@/components/RouteFallback";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
 import FeaturedCollectionsGrid from "@/components/collections/FeaturedCollectionsGrid";
@@ -38,23 +39,15 @@ export default function Collections() {
   const { user, loading: authLoading } = useAuth();
 
   if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <RouteFallback />;
   }
 
   return (
     <div className="min-h-screen bg-white text-gray-900 overflow-x-hidden w-full">
       {user ? <UserNavbar /> : <Navbar />}
 
-      {/* BREADCRUMB */}
-      <div className="w-full px-4 sm:px-6 py-3 sm:py-4">
-        <div className="max-w-7xl mx-auto flex items-center text-xs sm:text-sm text-gray-600 gap-1.5 sm:gap-2">
-          <a href="/" className="hover:text-gray-900 transition-colors">
-            Home
-          </a>
-          <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          <span className="text-gray-900 font-medium">Collections</span>
-        </div>
-      </div>
+      {/* Navbar offset spacer */}
+      <div className="pt-[var(--navbar-height)]" />
 
       {/* HERO SECTION */}
       <section className="relative w-full bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 overflow-hidden py-32 sm:py-32 md:py-40 min-h-[50vh] sm:min-h-[40vh] flex flex-col justify-center">

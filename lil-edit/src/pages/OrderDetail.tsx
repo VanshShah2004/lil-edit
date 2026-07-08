@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { Card } from "@/components/ui/card";
 import Navbar from "@/components/layout/Navbar";
+import RouteFallback from "@/components/RouteFallback";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
@@ -304,7 +305,7 @@ const OrderDetailPage = () => {
   }, [order]);
 
   if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <RouteFallback />;
   }
 
   const addr = order?.shippingAddress;

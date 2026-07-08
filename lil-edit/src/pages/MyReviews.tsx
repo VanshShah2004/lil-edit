@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ChevronRight, MessageSquare, Star, Clock, CheckCircle2 } from "lucide-react";
 
 import Navbar from "@/components/layout/Navbar";
+import RouteFallback from "@/components/RouteFallback";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
@@ -127,7 +128,7 @@ const MyReviewsPage = () => {
   const nothingToShow = !loading && shownReviews.length === 0 && shownPending.length === 0;
 
   if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <RouteFallback />;
   }
 
   const TABS: { value: Tab; label: string; count: number }[] = [

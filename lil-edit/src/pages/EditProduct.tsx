@@ -21,6 +21,7 @@ import {
   ArrowLeft
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
+import RouteFallback from "@/components/RouteFallback";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
@@ -878,7 +879,7 @@ const EditProduct = () => {
 
 
   if (authLoading || isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <RouteFallback />;
   }
 
   return (

@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Navbar from "@/components/layout/Navbar";
+import RouteFallback from "@/components/RouteFallback";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
@@ -234,7 +235,7 @@ const OrdersPage = () => {
   }, [sortedOrders]);
 
   if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <RouteFallback />;
   }
 
   // Re-add every line of an order to the bag, then send the shopper to the cart.

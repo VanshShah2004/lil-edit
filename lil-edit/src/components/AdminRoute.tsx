@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import RouteFallback from "@/components/RouteFallback";
 
 interface AdminRouteProps {
   children: React.ReactNode;
@@ -14,14 +15,7 @@ export const AdminRoute = ({ children }: AdminRouteProps) => {
   // real admin to /dashboard on a hard refresh / direct navigation.
   if (loading || (user && !profileLoaded)) {
     console.log(`[AdminRoute] WAIT — loading=${loading}  user=${!!user}  profileLoaded=${profileLoaded}`);
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
+    return <RouteFallback />;
   }
 
   if (!user) {

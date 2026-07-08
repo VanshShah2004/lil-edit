@@ -24,6 +24,7 @@ import { buildPayloadFromProduct } from "@/lib/buildProductPayload";
 import { buildPdpPath, resolvePdpSku } from "@/lib/pdpUrl";
 import UserNavbar from "@/components/home/UserNavbar";
 import Navbar from "@/components/layout/Navbar";
+import RouteFallback from "@/components/RouteFallback";
 import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
 import { toast } from "sonner";
@@ -1285,7 +1286,7 @@ const ManageProducts = () => {
   const filterSegW = filterTrackW > 0 ? (filterTrackW - FILTER_PAD * 2) / 3 : 0;
   const filterActiveIndex = FILTER_SEGMENTS.indexOf(filterStatus);
 
-  if (authLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (authLoading) return <RouteFallback />;
 
   return (
     <div className="min-h-screen bg-white text-[#1a1a1a] selection:bg-black/5 flex flex-col font-sans">

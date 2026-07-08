@@ -377,21 +377,25 @@ const UserNavbar = () => {
         <nav className="flex flex-col flex-1 pt-[3px] pb-2 overflow-y-auto">
           <SideSection label="Front Row">
             <SideLink to="/dashboard" icon={Home} label="Home" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-            <SideCollapse
-              to="/collections"
-              icon={Shirt}
-              label="Collections"
-              active={location.pathname === "/collections" || location.pathname.startsWith("/collections/")}
-              open={isCollectionsOpen}
-              onToggle={() => setIsCollectionsOpen((prev) => !prev)}
-              onNavigate={() => setIsLeftMenuOpen(false)}
-            >
-              <SideSubLink to="/collections?c=new-arrivals" icon={Sparkles} label="New Arrivals" onClick={() => setIsLeftMenuOpen(false)} />
-              <SideSubLink to="/collections?c=girls" icon={Heart} label="Girls" onClick={() => setIsLeftMenuOpen(false)} />
-              <SideSubLink to="/collections?c=boys" icon={Star} label="Boys" onClick={() => setIsLeftMenuOpen(false)} />
-              <SideSubLink to="/collections?c=trending" icon={TrendingUp} label="Trending" onClick={() => setIsLeftMenuOpen(false)} />
-              <SideSubLink to="/collections?c=occasion" icon={PartyPopper} label="By Occasion" onClick={() => setIsLeftMenuOpen(false)} />
-            </SideCollapse>
+            {isAdmin ? (
+              <SideLink to="/collections" icon={Shirt} label="Collections" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+            ) : (
+              <SideCollapse
+                to="/collections"
+                icon={Shirt}
+                label="Collections"
+                active={location.pathname === "/collections" || location.pathname.startsWith("/collections/")}
+                open={isCollectionsOpen}
+                onToggle={() => setIsCollectionsOpen((prev) => !prev)}
+                onNavigate={() => setIsLeftMenuOpen(false)}
+              >
+                <SideSubLink to="/collections?c=new-arrivals" icon={Sparkles} label="New Arrivals" onClick={() => setIsLeftMenuOpen(false)} />
+                <SideSubLink to="/collections?c=girls" icon={Heart} label="Girls" onClick={() => setIsLeftMenuOpen(false)} />
+                <SideSubLink to="/collections?c=boys" icon={Star} label="Boys" onClick={() => setIsLeftMenuOpen(false)} />
+                <SideSubLink to="/collections?c=trending" icon={TrendingUp} label="Trending" onClick={() => setIsLeftMenuOpen(false)} />
+                <SideSubLink to="/collections?c=occasion" icon={PartyPopper} label="By Occasion" onClick={() => setIsLeftMenuOpen(false)} />
+              </SideCollapse>
+            )}
             <SideLink to="/about" icon={Info} label="About Us" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
           </SideSection>
 
@@ -415,10 +419,10 @@ const UserNavbar = () => {
               </SideSection>
 
               <SideSection label="Backstage">
-                <SideLink to="/admin/analytics" icon={BarChart3} label="Analytics" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
                 <SideLink to="/admin/settings" icon={ShieldCheck} label="Admin Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
                 <SideLink to="/admin/user-activity" icon={Activity} label="User Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
                 <SideLink to="/admin/audit-log" icon={ScrollText} label="Admin Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/analytics" icon={BarChart3} label="Analytics" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               </SideSection>
 
               <SideSection label="Your Closet">

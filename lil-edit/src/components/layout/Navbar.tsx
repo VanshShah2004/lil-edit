@@ -19,6 +19,7 @@ const Navbar = () => {
   const [isCollectionsOpen, setIsCollectionsOpen] = useState(true);
   const headerRef = useRef<HTMLElement>(null);
   const accountRef = useRef<HTMLDivElement>(null);
+  const accountBarRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
   useLayoutEffect(() => {
@@ -36,7 +37,13 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (accountRef.current && !accountRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      // The login/signup bar renders outside accountRef (it's a full-width row
+      // below the header), so guard against it too — otherwise this mousedown
+      // handler closes the bar before a login/signup click can navigate.
+      const insideButton = accountRef.current?.contains(target);
+      const insideBar = accountBarRef.current?.contains(target);
+      if (!insideButton && !insideBar) {
         setIsAccountOpen(false);
       }
     };
@@ -159,7 +166,7 @@ const Navbar = () => {
 
       {/* Login / Signup Bar (mobile) */}
       {isAccountOpen && (
-        <div className="border-b border-border bg-background md:hidden">
+        <div ref={accountBarRef} className="border-b border-border bg-background md:hidden">
           <div className="max-w-screen-2xl mx-auto flex items-center px-3 lg:px-6 py-3">
             <div className="flex gap-3 flex-1 max-w-sm"
               onMouseEnter={() => setIsLoginHovered(false)}

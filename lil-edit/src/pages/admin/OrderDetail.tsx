@@ -7,6 +7,7 @@ import logo from "@/assets/logo.png";
 
 import UserNavbar from "@/components/home/UserNavbar";
 import Navbar from "@/components/layout/Navbar";
+import RouteFallback from "@/components/RouteFallback";
 import Footer from "@/components/layout/Footer";
 import {
   Select,
@@ -587,7 +588,7 @@ const AdminOrderDetailPage = () => {
   };
 
   if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <RouteFallback />;
   }
 
   const addr = order?.shippingAddress;

@@ -1,7 +1,6 @@
 import { lazy, Suspense, type ComponentType } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
-import { Loader } from "lucide-react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,6 +9,7 @@ import AdminRoute from "./components/AdminRoute";
 import PageTitle from "./components/PageTitle";
 import ScrollToTop from "./components/ScrollToTop";
 import MaintenanceGate from "./components/MaintenanceGate";
+import RouteFallback from "./components/RouteFallback";
 import TrackingBridge from "./components/TrackingBridge";
 import GuestIntentBridge from "./components/GuestIntentBridge";
 import { AuthPromptProvider } from "./contexts/AuthPromptContext";
@@ -92,12 +92,6 @@ const AnInventory   = lazyWithLog("AnInventory",   () => import("./pages/admin/a
 const AnLive        = lazyWithLog("AnLive",        () => import("./pages/admin/analytics/Live"));
 
 const queryClient = new QueryClient();
-
-const RouteFallback = () => (
-  <div className="flex min-h-screen items-center justify-center">
-    <Loader className="h-6 w-6 animate-spin text-gray-900" />
-  </div>
-);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

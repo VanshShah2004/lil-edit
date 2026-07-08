@@ -28,6 +28,7 @@ import {
 
 import UserNavbar from "@/components/home/UserNavbar";
 import Navbar from "@/components/layout/Navbar";
+import RouteFallback from "@/components/RouteFallback";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadProductImage } from "@/lib/uploadImage";
@@ -925,7 +926,7 @@ const SpotlightPage = () => {
   };
 
   if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <RouteFallback />;
   }
 
   const canAddProduct = selected && (selected.itemType === "product" || selected.itemType === "mixed");
