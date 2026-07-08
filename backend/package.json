@@ -8,7 +8,7 @@
     "dev": "tsx watch server.ts",
     "build": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "node --import tsx --test test/mailer.test.ts test/orderEmail.test.ts"
+    "test": "node --import tsx --test test/mailer.test.ts test/orderEmail.test.ts test/searchRanking.test.ts"
   },
   "keywords": [],
   "author": "",

@@ -753,7 +753,7 @@ export interface SuggestionRow {
 
 // ─── In-memory search catalog (rebuilt from DB, 10 min TTL) ──────────────────
 
-interface SearchCatalogVariant {
+export interface SearchCatalogVariant {
   sku: string;
   colorName: string;
   colorHex: string;
@@ -761,7 +761,7 @@ interface SearchCatalogVariant {
   inStock: boolean;
 }
 
-interface SearchCatalogEntry {
+export interface SearchCatalogEntry {
   id: string;
   title: string;
   slug: string;
@@ -774,6 +774,7 @@ interface SearchCatalogEntry {
   fabric: string;
   fit: string;
   gender: string;
+  details: string;
   image: string;
   price: number;
   original_price: number;
@@ -803,6 +804,7 @@ interface SearchCatalogDbRow {
   fabric: string | null;
   fit: string | null;
   gender: string | null;
+  description_points: string[] | null;
   price: number | null;
   original_price: number | null;
   product_images: Array<{ image_url: string; is_primary: boolean; variant_id: string | null; sort_order: number | null }> | null;
@@ -819,7 +821,7 @@ interface SearchCatalogDbRow {
 
 const SEARCH_CATALOG_SELECT = `
   id, title, slug, base_sku, category, category_slug,
-  tags, badges, occasion, fabric, fit, gender, price, original_price,
+  tags, badges, occasion, fabric, fit, gender, description_points, price, original_price,
   product_images(image_url, is_primary, variant_id, sort_order),
   product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
 `.trim();
@@ -878,6 +880,7 @@ async function loadSearchCatalog(log: OpLogger): Promise<SearchCatalogEntry[]> {
       fabric: p.fabric ?? "",
       fit: p.fit ?? "",
       gender: p.gender ?? "",
+      details: (p.description_points ?? []).join(" "),
       image: productImage,
       price: p.price ?? 0,
       original_price: p.original_price ?? p.price ?? 0,
@@ -934,10 +937,13 @@ const FIELD_SCORES = {
   "badge": 55,
   "fabric:starts": 53,
   "fabric": 50,
+  "color:starts": 53,
+  "color": 50,
   "fit:starts": 50,
   "fit": 48,
   "gender": 45,
   "fuzzy": 30,
+  "details": 10,
 };
 
 // Fractional match-quality bonus in [0, 1.9] — strictly smaller than the
@@ -955,21 +961,36 @@ function matchQuality(text: string, lower: string): number {
   return coverage * 1.4 + position * 0.5;
 }
 
-function scoreEntry(
+// Title matches rank in a bucket ABOVE the entire point ladder: titleRank 0–3
+// (exact / starts / word-starts / contains) always sorts before NO_TITLE_MATCH,
+// regardless of numeric score. Fuzzy title matches stay in the non-title bucket —
+// they're a typo-tolerance fallback, not a real title hit.
+export const NO_TITLE_MATCH = 4;
+
+// Inclusion floor for the result set. Every non-title field match scores above
+// this (the lowest tier, product-details, is 10), so nothing that matches is
+// suppressed — including when an exact title match exists.
+export const MIN_RESULT_SCORE = 5;
+
+// Core field scorer. Product-level fields (title, category, tags, …) come from
+// the entry; the colour signal is the single colour name passed in, so the same
+// engine scores one variant (its own colour) or a variant-less product ("").
+function scoreFields(
   entry: SearchCatalogEntry,
+  colorName: string,
   lower: string,
-): { score: number; field: string } {
+): { score: number; field: string; titleRank: number } {
   const t = entry.title.toLowerCase();
 
-  if (t === lower) return { score: FIELD_SCORES["title:exact"], field: "title" };
-  if (t.startsWith(lower)) return { score: FIELD_SCORES["title:starts"] + matchQuality(t, lower), field: "title" };
+  if (t === lower) return { score: FIELD_SCORES["title:exact"], field: "title", titleRank: 0 };
+  if (t.startsWith(lower)) return { score: FIELD_SCORES["title:starts"] + matchQuality(t, lower), field: "title", titleRank: 1 };
   if (t.split(/\s+/).some(w => w !== lower && w.startsWith(lower)))
-    return { score: FIELD_SCORES["title:word-starts"] + matchQuality(t, lower), field: "title" };
-  if (t.includes(lower)) return { score: FIELD_SCORES["title:contains"] + matchQuality(t, lower), field: "title" };
+    return { score: FIELD_SCORES["title:word-starts"] + matchQuality(t, lower), field: "title", titleRank: 2 };
+  if (t.includes(lower)) return { score: FIELD_SCORES["title:contains"] + matchQuality(t, lower), field: "title", titleRank: 3 };
 
   const cat = entry.category.toLowerCase();
-  if (cat.startsWith(lower)) return { score: FIELD_SCORES["category:starts"] + matchQuality(cat, lower), field: "category" };
-  if (cat.includes(lower)) return { score: FIELD_SCORES["category"] + matchQuality(cat, lower), field: "category" };
+  if (cat.startsWith(lower)) return { score: FIELD_SCORES["category:starts"] + matchQuality(cat, lower), field: "category", titleRank: NO_TITLE_MATCH };
+  if (cat.includes(lower)) return { score: FIELD_SCORES["category"] + matchQuality(cat, lower), field: "category", titleRank: NO_TITLE_MATCH };
 
   // Tags/badges: scan ALL entries for the best-scoring match (an early
   // weak "contains" must not shadow a later, stronger "starts-with").
@@ -979,11 +1000,11 @@ function scoreEntry(
     if (tl.startsWith(lower)) bestTag = Math.max(bestTag, FIELD_SCORES["tag:starts"] + matchQuality(tl, lower));
     else if (tl.includes(lower)) bestTag = Math.max(bestTag, FIELD_SCORES["tag"] + matchQuality(tl, lower));
   }
-  if (bestTag > 0) return { score: bestTag, field: "tag" };
+  if (bestTag > 0) return { score: bestTag, field: "tag", titleRank: NO_TITLE_MATCH };
 
   const occ = entry.occasion.toLowerCase();
-  if (occ.startsWith(lower)) return { score: FIELD_SCORES["occasion:starts"] + matchQuality(occ, lower), field: "occasion" };
-  if (occ.includes(lower)) return { score: FIELD_SCORES["occasion"] + matchQuality(occ, lower), field: "occasion" };
+  if (occ.startsWith(lower)) return { score: FIELD_SCORES["occasion:starts"] + matchQuality(occ, lower), field: "occasion", titleRank: NO_TITLE_MATCH };
+  if (occ.includes(lower)) return { score: FIELD_SCORES["occasion"] + matchQuality(occ, lower), field: "occasion", titleRank: NO_TITLE_MATCH };
 
   let bestBadge = 0;
   for (const badge of entry.badges) {
@@ -991,23 +1012,100 @@ function scoreEntry(
     if (bl.startsWith(lower)) bestBadge = Math.max(bestBadge, FIELD_SCORES["badge:starts"] + matchQuality(bl, lower));
     else if (bl.includes(lower)) bestBadge = Math.max(bestBadge, FIELD_SCORES["badge"] + matchQuality(bl, lower));
   }
-  if (bestBadge > 0) return { score: bestBadge, field: "badge" };
+  if (bestBadge > 0) return { score: bestBadge, field: "badge", titleRank: NO_TITLE_MATCH };
 
   const fab = entry.fabric.toLowerCase();
-  if (fab.startsWith(lower)) return { score: FIELD_SCORES["fabric:starts"] + matchQuality(fab, lower), field: "fabric" };
-  if (fab.includes(lower)) return { score: FIELD_SCORES["fabric"] + matchQuality(fab, lower), field: "fabric" };
+  if (fab.startsWith(lower)) return { score: FIELD_SCORES["fabric:starts"] + matchQuality(fab, lower), field: "fabric", titleRank: NO_TITLE_MATCH };
+  if (fab.includes(lower)) return { score: FIELD_SCORES["fabric"] + matchQuality(fab, lower), field: "fabric", titleRank: NO_TITLE_MATCH };
+
+  // Colour — same tier as fabric, scored against THIS variant's colour only.
+  const cl = colorName.toLowerCase();
+  if (cl) {
+    if (cl.startsWith(lower)) return { score: FIELD_SCORES["color:starts"] + matchQuality(cl, lower), field: "color", titleRank: NO_TITLE_MATCH };
+    if (cl.includes(lower)) return { score: FIELD_SCORES["color"] + matchQuality(cl, lower), field: "color", titleRank: NO_TITLE_MATCH };
+  }
 
   const fit = entry.fit.toLowerCase();
-  if (fit.startsWith(lower)) return { score: FIELD_SCORES["fit:starts"] + matchQuality(fit, lower), field: "fit" };
-  if (fit.includes(lower)) return { score: FIELD_SCORES["fit"] + matchQuality(fit, lower), field: "fit" };
+  if (fit.startsWith(lower)) return { score: FIELD_SCORES["fit:starts"] + matchQuality(fit, lower), field: "fit", titleRank: NO_TITLE_MATCH };
+  if (fit.includes(lower)) return { score: FIELD_SCORES["fit"] + matchQuality(fit, lower), field: "fit", titleRank: NO_TITLE_MATCH };
 
   if (entry.gender.toLowerCase().includes(lower))
-    return { score: FIELD_SCORES["gender"] + matchQuality(entry.gender.toLowerCase(), lower), field: "gender" };
+    return { score: FIELD_SCORES["gender"] + matchQuality(entry.gender.toLowerCase(), lower), field: "gender", titleRank: NO_TITLE_MATCH };
 
   if (lower.length >= 3 && fuzzyMatchesTitle(entry.title, lower))
-    return { score: FIELD_SCORES["fuzzy"], field: "fuzzy" };
+    return { score: FIELD_SCORES["fuzzy"], field: "fuzzy", titleRank: NO_TITLE_MATCH };
 
-  return { score: 0, field: "" };
+  // Weakest signal: a flat 10 points if the query only shows up in the
+  // product's description bullet points, nowhere else.
+  if (entry.details.toLowerCase().includes(lower))
+    return { score: FIELD_SCORES["details"], field: "details", titleRank: NO_TITLE_MATCH };
+
+  return { score: 0, field: "", titleRank: NO_TITLE_MATCH };
+}
+
+/** Score ONE colour variant: product-level fields + its own colour name. */
+export function scoreVariant(
+  entry: SearchCatalogEntry,
+  v: SearchCatalogVariant,
+  lower: string,
+): { score: number; field: string; titleRank: number } {
+  return scoreFields(entry, v.colorName, lower);
+}
+
+/**
+ * Product-level score = the best of its variants (colour is the only
+ * per-variant signal, so this is the max variant score). Used where results
+ * are one-per-product (the suggestions dropdown); the full results page ranks
+ * each variant individually via scoreVariant.
+ */
+export function scoreEntry(
+  entry: SearchCatalogEntry,
+  lower: string,
+): { score: number; field: string; titleRank: number } {
+  if (entry.variants.length === 0) return scoreFields(entry, "", lower);
+  let best = scoreFields(entry, entry.variants[0]!.colorName, lower);
+  for (let i = 1; i < entry.variants.length; i++) {
+    const s = scoreFields(entry, entry.variants[i]!.colorName, lower);
+    if (s.score > best.score) best = s;
+  }
+  return best;
+}
+
+// A colour match surfaces only the colourway(s) that actually matched — a
+// "maroon" search must not render the blue and green cards of the same
+// product. Every other match type keeps flattening to all colour variants.
+export function matchingVariants(
+  entry: SearchCatalogEntry,
+  field: string,
+  lower: string,
+): SearchCatalogVariant[] {
+  if (field !== "color") return entry.variants;
+  return entry.variants.filter((v) => v.colorName.toLowerCase().includes(lower));
+}
+
+// In-stock variant count; a variant-less product renders one always-in-stock card.
+function stockBreadth(entry: SearchCatalogEntry): number {
+  if (entry.variants.length === 0) return 1;
+  return entry.variants.filter((v) => v.inStock).length;
+}
+
+/**
+ * Shared ranking comparator for suggestions and full search results:
+ *   1. title-match bucket + subtype (titleRank 0–3 before NO_TITLE_MATCH)
+ *   2. point-ladder score (descending) within the bucket
+ *   3. broader stock availability first
+ *   4. alphabetical title
+ */
+export function compareRanked(
+  a: { entry: SearchCatalogEntry; score: number; titleRank: number },
+  b: { entry: SearchCatalogEntry; score: number; titleRank: number },
+): number {
+  return (
+    a.titleRank - b.titleRank ||
+    b.score - a.score ||
+    stockBreadth(b.entry) - stockBreadth(a.entry) ||
+    a.entry.title.localeCompare(b.entry.title)
+  );
 }
 
 // ─── fetchSuggestions ─────────────────────────────────────────────────────────
@@ -1022,12 +1120,12 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
   const catalog = await loadSearchCatalog(log);
 
   // Score every product in the catalog.
-  const scored: Array<{ entry: SearchCatalogEntry; score: number; field: string }> = [];
+  const scored: Array<{ entry: SearchCatalogEntry; score: number; field: string; titleRank: number }> = [];
   for (const entry of catalog) {
-    const { score, field } = scoreEntry(entry, lower);
-    if (score > 0) scored.push({ entry, score, field });
+    const { score, field, titleRank } = scoreEntry(entry, lower);
+    if (score > MIN_RESULT_SCORE) scored.push({ entry, score, field, titleRank });
   }
-  scored.sort((a, b) => b.score - a.score || a.entry.title.localeCompare(b.entry.title));
+  scored.sort(compareRanked);
   log.step(`Scoring - ${scored.length}/${catalog.length} products matched`);
 
   // ─── Collect unique metadata suggestions from all matched products ──────────
@@ -1075,6 +1173,15 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
       if (fab.includes(lower)) {
         const s = (fab.startsWith(lower) ? FIELD_SCORES["fabric:starts"] : FIELD_SCORES["fabric"]) + matchQuality(fab, lower);
         upsertMeta(`fabric:${fab}`, { type: "fabric", id: `fabric:${fab}`, label: entry.fabric, sublabel: "Material", image: "", slug: "", categorySlug: "", sku: "" }, s);
+      }
+    }
+
+    for (const v of entry.variants) {
+      if (!v.colorName) continue;
+      const cl = v.colorName.toLowerCase();
+      if (cl.includes(lower)) {
+        const s = (cl.startsWith(lower) ? FIELD_SCORES["color:starts"] : FIELD_SCORES["color"]) + matchQuality(cl, lower);
+        upsertMeta(`color:${cl}`, { type: "color", id: `color:${cl}`, label: v.colorName, sublabel: "Colour", image: "", slug: "", categorySlug: "", sku: "" }, s);
       }
     }
 
@@ -1126,16 +1233,21 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
     .map((m) => m.row);
 
   // Products tab is inventory-bound (these navigate to real PDPs); cap at 8.
-  const productSuggestions: SuggestionRow[] = scored.slice(0, 8).map(({ entry }) => ({
-    type: "product" as const,
-    id: entry.id,
-    label: entry.title,
-    sublabel: entry.category,
-    image: entry.image,
-    slug: entry.slug,
-    categorySlug: entry.category_slug,
-    sku: entry.base_sku,
-  }));
+  // A colour match points at the matched colourway (variant image + sku, which
+  // the PDP resolves) instead of the base product's primary colour.
+  const productSuggestions: SuggestionRow[] = scored.slice(0, 8).map(({ entry, field }) => {
+    const matched = field === "color" ? matchingVariants(entry, field, lower)[0] : undefined;
+    return {
+      type: "product" as const,
+      id: entry.id,
+      label: entry.title,
+      sublabel: entry.category,
+      image: matched?.image || entry.image,
+      slug: entry.slug,
+      categorySlug: entry.category_slug,
+      sku: matched?.sku || entry.base_sku,
+    };
+  });
 
   log.step(`Suggestions - ${metaSuggestions.length} metadata + ${productSuggestions.length} products`);
   return [...metaSuggestions, ...productSuggestions];
@@ -1159,27 +1271,31 @@ export interface SearchProductRow {
 }
 
 /**
- * Returns every catalog product matching `q`, ranked highest-relevance first —
- * the data behind the full search results page. Same scoring engine as
- * fetchSuggestions, but uncapped (the suggestions dropdown shows the top 8;
- * the results page shows them all).
+ * Returns every matching variant card ranked highest-relevance first — the
+ * data behind the full search results page. Same field-scoring engine as
+ * fetchSuggestions, but scored and ranked PER VARIANT and uncapped (the
+ * suggestions dropdown shows the top 8 products; the results page shows all
+ * matching colourways).
  */
 export async function searchProducts(q: string, log: OpLogger): Promise<SearchProductRow[]> {
   const lower = q.toLowerCase();
   const catalog = await loadSearchCatalog(log);
 
-  const scored: Array<{ entry: SearchCatalogEntry; score: number }> = [];
-  for (const entry of catalog) {
-    const { score } = scoreEntry(entry, lower);
-    if (score > 0) scored.push({ entry, score });
-  }
-  scored.sort((a, b) => b.score - a.score || a.entry.title.localeCompare(b.entry.title));
-  log.step(`Search - ${scored.length}/${catalog.length} products matched "${q}"`);
+  const rows = rankVariantRows(catalog, lower);
+  log.step(`Search - ${rows.length} variant cards matched "${q}" across ${catalog.length} products`);
+  return rows;
+}
 
-  // Flatten to one row per variant (colour) — each becomes its own results card.
-  // Products with no variants fall back to a single base-sku row.
-  const rows: SearchProductRow[] = [];
-  for (const { entry } of scored) {
+/**
+ * Per-VARIANT ranking for the full results page: every colour variant is
+ * scored and sorted as its own card (product-level fields + its own colour),
+ * so a "maroon" search ranks the maroon colourway on its colour match while
+ * the blue colourway of the same product only ranks if it matches some other
+ * way. Ties: title bucket → score → in-stock first → alphabetical title.
+ */
+export function rankVariantRows(catalog: SearchCatalogEntry[], lower: string): SearchProductRow[] {
+  const ranked: Array<{ row: SearchProductRow; score: number; titleRank: number }> = [];
+  for (const entry of catalog) {
     const base = {
       id: entry.id,
       title: entry.title,
@@ -1191,26 +1307,36 @@ export async function searchProducts(q: string, log: OpLogger): Promise<SearchPr
       badges: entry.badges,
     };
     if (entry.variants.length === 0) {
-      rows.push({
-        ...base,
-        sku: entry.base_sku,
-        image: entry.image,
-        color: { name: "", hex: "#cccccc" },
-        inStock: true,
-      });
+      const { score, titleRank } = scoreEntry(entry, lower);
+      if (score > MIN_RESULT_SCORE) {
+        ranked.push({
+          score,
+          titleRank,
+          row: { ...base, sku: entry.base_sku, image: entry.image, color: { name: "", hex: "#cccccc" }, inStock: true },
+        });
+      }
       continue;
     }
     for (const v of entry.variants) {
-      rows.push({
-        ...base,
-        sku: v.sku,
-        image: v.image,
-        color: { name: v.colorName, hex: v.colorHex },
-        inStock: v.inStock,
-      });
+      const { score, titleRank } = scoreVariant(entry, v, lower);
+      if (score > MIN_RESULT_SCORE) {
+        ranked.push({
+          score,
+          titleRank,
+          row: { ...base, sku: v.sku, image: v.image, color: { name: v.colorName, hex: v.colorHex }, inStock: v.inStock },
+        });
+      }
     }
   }
-  return rows;
+  // Stable sort keeps a product's equal-scoring colourways in catalog order.
+  ranked.sort(
+    (a, b) =>
+      a.titleRank - b.titleRank ||
+      b.score - a.score ||
+      Number(b.row.inStock) - Number(a.row.inStock) ||
+      a.row.title.localeCompare(b.row.title),
+  );
+  return ranked.map((r) => r.row);
 }
 
 /** Minimal lookup for lazy-loaded reviews (title only). */
