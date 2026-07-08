@@ -47,6 +47,7 @@ const NotFound       = lazyWithLog("NotFound",        () => import("./pages/NotF
 const About          = lazyWithLog("About",           () => import("./pages/About"));
 const Faq            = lazyWithLog("Faq",             () => import("./pages/Faq"));
 const Contact        = lazyWithLog("Contact",         () => import("./pages/Contact"));
+const Returns        = lazyWithLog("Returns",         () => import("./pages/Returns"));
 const ForgotPassword = lazyWithLog("ForgotPassword",  () => import("./pages/ForgotPassword"));
 const AuthCallback   = lazyWithLog("AuthCallback",    () => import("./pages/AuthCallback"));
 const ProductDetail  = lazyWithLog("ProductDetail",   () => import("./pages/ProductDetail"));
@@ -125,6 +126,7 @@ const App = () => (
             <Route path="/about" element={<About />} />
             <Route path="/faq" element={<Faq />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/returns" element={<Returns />} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
             <Route path="/orders/all" element={<ProtectedRoute><AllOrders /></ProtectedRoute>} />
