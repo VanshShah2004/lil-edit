@@ -1,6 +1,6 @@
 import { useState, useRef, useLayoutEffect, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Heart, ShoppingCart, Menu, X, Search, Home, Shirt, Info, User, ChevronRight } from "lucide-react";
+import { Heart, ShoppingCart, Menu, X, Search, Home, Shirt, Info, User, ChevronRight, Sparkles, Star, TrendingUp, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
@@ -16,6 +16,7 @@ const Navbar = () => {
   const [isSignupHovered, setIsSignupHovered] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isCollectionsOpen, setIsCollectionsOpen] = useState(true);
   const headerRef = useRef<HTMLElement>(null);
   const accountRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -230,7 +231,21 @@ const Navbar = () => {
         <nav className="flex flex-col flex-1 pt-[3px] pb-2 overflow-y-auto">
           <SideSection label="Explore">
             <SideLink to="/" icon={Home} label="Home" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
-            <SideLink to="/collections" icon={Shirt} label="Collections" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
+            <SideCollapse
+              to="/collections"
+              icon={Shirt}
+              label="Collections"
+              active={location.pathname === "/collections" || location.pathname.startsWith("/collections/")}
+              open={isCollectionsOpen}
+              onToggle={() => setIsCollectionsOpen((prev) => !prev)}
+              onNavigate={() => setMobileOpen(false)}
+            >
+              <SideSubLink to="/collections?c=new-arrivals" icon={Sparkles} label="New Arrivals" onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections?c=girls" icon={Heart} label="Girls" onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections?c=boys" icon={Star} label="Boys" onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections?c=trending" icon={TrendingUp} label="Trending" onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections?c=occasion" icon={PartyPopper} label="By Occasion" onClick={() => setMobileOpen(false)} />
+            </SideCollapse>
             <SideLink to="/about" icon={Info} label="About Us" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
           </SideSection>
 
@@ -327,6 +342,88 @@ function SideLink({
         </span>
       )}
       <ChevronRight className={`${hasBadge ? "ml-1.5" : "ml-auto"} w-5 h-5 md:w-3.5 md:h-3.5 shrink-0 transition-transform ${active ? "text-[#0F766E]" : "text-foreground/60 group-hover:text-foreground group-hover:translate-x-0.5"}`} />
+    </Link>
+  );
+}
+
+// An expandable nav row that toggles a nested list of sub-links beneath it.
+function SideCollapse({
+  to,
+  icon: Icon,
+  label,
+  active,
+  open,
+  onToggle,
+  onNavigate,
+  children,
+}: {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  active: boolean;
+  open: boolean;
+  onToggle: () => void;
+  onNavigate: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div
+        className={`group flex items-center rounded-lg transition-colors ${active
+          ? "bg-brand-teal/10 text-[#0F766E] font-semibold"
+          : "text-foreground hover:bg-secondary"
+          }`}
+      >
+        <Link
+          to={to}
+          onClick={onNavigate}
+          aria-current={active ? "page" : undefined}
+          className="flex flex-1 items-center gap-3 px-3 py-2 md:py-1.5"
+        >
+          <Icon className={`w-5 h-5 md:w-4 md:h-4 shrink-0 ${active ? "text-[#0F766E]" : "text-muted-foreground"}`} />
+          <span className="font-medium text-base md:text-sm">{label}</span>
+        </Link>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-label={`${open ? "Collapse" : "Expand"} ${label}`}
+          className="px-3 py-2 md:py-1.5 self-stretch flex items-center"
+        >
+          <ChevronRight className={`w-5 h-5 md:w-3.5 md:h-3.5 shrink-0 transition-transform ${open ? "rotate-90" : ""} ${active ? "text-[#0F766E]" : "text-foreground/60 group-hover:text-foreground"}`} />
+        </button>
+      </div>
+      <div
+        className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${open ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}
+      >
+        <div className="ml-4 pl-2 border-l border-foreground/15 flex flex-col gap-0.5 py-0.5">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// A nested sub-link rendered inside a SideCollapse group.
+function SideSubLink({
+  to,
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <Link
+      to={to}
+      onClick={onClick}
+      className="group flex items-center gap-2.5 px-3 py-1.5 md:py-1 rounded-lg text-foreground hover:bg-secondary transition-colors"
+    >
+      <Icon className="w-4 h-4 md:w-3.5 md:h-3.5 shrink-0 text-muted-foreground group-hover:text-[#0F766E]" />
+      <span className="font-medium text-sm md:text-[13px]">{label}</span>
     </Link>
   );
 }
