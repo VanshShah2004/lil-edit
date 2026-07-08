@@ -36,14 +36,15 @@ const HomeCollage = ({ previewItems }: { previewItems?: ResolvedItem[] }) => {
 
   const parts = useMemo(() => {
     // Each of the six collage image slots maps to a curated editorial item (in
-    // order). A slot uses the item's image (custom_image_url) for mobile and
-    // meta.desktop_image_url for desktop, falling back to the bundled assets when
-    // the section isn't curated / the migration hasn't been applied.
+    // order). The two breakpoints are independent: mobile uses the item's image
+    // (custom_image_url), desktop uses meta.desktop_image_url, and whichever a
+    // breakpoint lacks falls back to its OWN bundled default — so uploading just
+    // one of the two leaves the other showing the default (not the uploaded one).
     const slot = (idx: number, mob: string, desk: string) => {
       const it = editorials[idx];
       return {
         mobile: it?.image || mob,
-        desktop: metaStr(it?.meta, "desktop_image_url") || it?.image || desk,
+        desktop: metaStr(it?.meta, "desktop_image_url") || desk,
       };
     };
     const s0 = slot(0, img1, img1Desktop);

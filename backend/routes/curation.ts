@@ -582,7 +582,11 @@ router.put("/sections/:key/items", adminMutationLimiter, async (req: Request, re
         res.status(400).json({ error: `Item ${i + 1}: product items need a base SKU` });
         return;
       }
-      if (it.kind === "editorial" && !it.custom_image_url) {
+      // Editorial tiles normally need an image. Home Collage is the exception: its
+      // slots are pure per-breakpoint overrides and any missing image (mobile,
+      // desktop, or both) falls back to the storefront's built-in default, so an
+      // imageless collage tile is valid.
+      if (it.kind === "editorial" && key !== "home_collage" && !it.custom_image_url) {
         log.warn(`item ${i} editorial without image`).end("CURATION SET ITEMS");
         res.status(400).json({ error: `Item ${i + 1}: editorial tiles need an image` });
         return;

@@ -32,6 +32,7 @@ import RouteFallback from "@/components/RouteFallback";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadProductImage } from "@/lib/uploadImage";
+import { metaStr } from "@/hooks/useCuratedSection";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import {
   fetchAdminSections,
@@ -286,14 +287,20 @@ function EditorialTileModal({
   const [title, setTitle] = useState(initial?.customTitle ?? "");
   const [subtitle, setSubtitle] = useState(initial?.customSubtitle ?? "");
   const [imageUrl, setImageUrl] = useState(initial?.customImageUrl ?? "");
+  const [desktopImageUrl, setDesktopImageUrl] = useState(metaStr(initial?.meta, "desktop_image_url"));
   const [link, setLink] = useState(initial?.linkUrl ?? "");
   const [badge, setBadge] = useState(initial?.badge ?? "");
   const [uploading, setUploading] = useState(false);
+  const [uploadingDesktop, setUploadingDesktop] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const desktopFileRef = useRef<HTMLInputElement>(null);
 
   // Shop the Look cards never render a badge (label/title/link only), so don't
   // offer the field there — it would be a dead input.
   const showBadge = sectionKey !== "home_shop_the_look";
+  // Only the collage storefront component reads meta.desktop_image_url today —
+  // offering the field elsewhere would be a dead control.
+  const showDesktopImage = sectionKey === "home_collage";
 
   const handleUpload = async (file: File) => {
     setUploading(true);
@@ -308,18 +315,43 @@ function EditorialTileModal({
     }
   };
 
+  const handleUploadDesktop = async (file: File) => {
+    setUploadingDesktop(true);
+    try {
+      const url = await uploadProductImage(file, "curation", sectionKey);
+      setDesktopImageUrl(url);
+      toast.success("Desktop image uploaded");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploadingDesktop(false);
+    }
+  };
+
   const handleSave = () => {
-    if (!imageUrl) { toast.error("An image is required for a tile"); return; }
+    const mobileImage = imageUrl.trim();
+    const desktopImage = showDesktopImage ? desktopImageUrl.trim() : "";
+    // Home Collage tiles are pure per-breakpoint overrides — mobile, desktop, or both
+    // may be left empty and the storefront fills each gap with its built-in default,
+    // so an all-empty tile is valid. Every other editorial section still needs its image.
+    if (!showDesktopImage && !mobileImage) {
+      toast.error("An image is required for a tile");
+      return;
+    }
     // Any existing meta (size, object_position, …) is preserved untouched — those
     // extras are no longer editable from this form.
     const meta: Record<string, unknown> = { ...(initial?.meta ?? {}) };
+    if (showDesktopImage) {
+      if (desktopImage) meta.desktop_image_url = desktopImage;
+      else delete meta.desktop_image_url;
+    }
     onSave({
       tempId: initial?.tempId ?? nextTempId(),
       kind: "editorial",
       productBaseSku: null,
       customTitle: title.trim() || null,
       customSubtitle: subtitle.trim() || null,
-      customImageUrl: imageUrl,
+      customImageUrl: mobileImage || null,
       linkUrl: link.trim() || null,
       // Sections without a badge slot (Shop the Look) also clear any badge a tile
       // may have carried from before.
@@ -342,23 +374,34 @@ function EditorialTileModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {/* Image */}
+          {/* Image (mobile, when a section also offers a desktop variant) */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Image *</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">{showDesktopImage ? "Mobile image" : "Image *"}</label>
             <div className="flex items-center gap-3">
               <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shrink-0 flex items-center justify-center">
                 {imageUrl ? <img src={imageUrl} alt="" className="w-full h-full object-cover" /> : <ImagePlus className="w-6 h-6 text-gray-300" />}
               </div>
               <div className="space-y-1.5">
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  disabled={uploading}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-200 rounded-md px-3 py-2 hover:border-gray-900 disabled:opacity-50"
-                >
-                  {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
-                  {uploading ? "Uploading…" : "Upload image"}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={uploading}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-400 rounded-md px-3 py-2 hover:border-gray-900 disabled:opacity-50"
+                  >
+                    {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
+                    {uploading ? "Uploading…" : "Upload image"}
+                  </button>
+                  {imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setImageUrl("")}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 border border-red-300 rounded-md px-3 py-2 hover:border-red-500 hover:bg-red-50"
+                    >
+                      <X className="w-3.5 h-3.5" /> Remove
+                    </button>
+                  )}
+                </div>
                 <input
                   ref={fileRef}
                   type="file"
@@ -366,10 +409,56 @@ function EditorialTileModal({
                   className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleUpload(f); e.target.value = ""; }}
                 />
-                <p className="text-[11px] text-gray-400">JPG/PNG, compressed on upload.</p>
+                <p className="text-[11px] text-gray-400">
+                  {showDesktopImage ? "Uses the built-in collage image on mobile if left empty." : "JPG/PNG, compressed on upload."}
+                </p>
               </div>
             </div>
           </div>
+
+          {/* Desktop image — optional per-breakpoint override. HomeCollage renders
+              meta.desktop_image_url at md+ and falls back to the built-in default
+              (independent of the mobile image above). */}
+          {showDesktopImage && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Desktop image (optional)</label>
+              <div className="flex items-center gap-3">
+                <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shrink-0 flex items-center justify-center">
+                  {desktopImageUrl ? <img src={desktopImageUrl} alt="" className="w-full h-full object-cover" /> : <Monitor className="w-6 h-6 text-gray-300" />}
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => desktopFileRef.current?.click()}
+                      disabled={uploadingDesktop}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-400 rounded-md px-3 py-2 hover:border-gray-900 disabled:opacity-50"
+                    >
+                      {uploadingDesktop ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
+                      {uploadingDesktop ? "Uploading…" : "Upload image"}
+                    </button>
+                    {desktopImageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setDesktopImageUrl("")}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 border border-red-300 rounded-md px-3 py-2 hover:border-red-500 hover:bg-red-50"
+                      >
+                        <X className="w-3.5 h-3.5" /> Remove
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    ref={desktopFileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleUploadDesktop(f); e.target.value = ""; }}
+                  />
+                  <p className="text-[11px] text-gray-400">Uses the built-in collage image on desktop if left empty.</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <Field label="Title" value={title} onChange={setTitle} placeholder="e.g. Celebration Look" />
           <Field label="Subtitle / label" value={subtitle} onChange={setSubtitle} placeholder="e.g. FESTIVE EDIT" />
@@ -378,7 +467,7 @@ function EditorialTileModal({
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100">
-          <button onClick={onClose} className="text-sm font-semibold text-gray-600 px-4 py-2 hover:text-gray-900">Cancel</button>
+          <button onClick={onClose} className="text-sm font-semibold text-red-600 border border-red-300 rounded-lg px-4 py-2 hover:border-red-500 hover:bg-red-50">Cancel</button>
           <button
             onClick={handleSave}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-white px-4 py-2 rounded-lg"
@@ -450,7 +539,7 @@ function Field({ label, value, onChange, placeholder }: { label: string; value: 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-900"
+        className="w-full px-3 py-2 text-sm border border-gray-400 rounded-lg focus:outline-none focus:border-gray-900"
       />
     </div>
   );
@@ -480,7 +569,13 @@ function ItemRow({
   onQuickView: (p: ResolvedProductItem) => void;
 }) {
   const isProduct = item.kind === "product";
-  const img = isProduct ? item.product?.image ?? null : item.customImageUrl;
+  // A separate desktop image is stored in meta.desktop_image_url (Home Collage only).
+  // Surface a small monitor badge so the list flags tiles that carry one.
+  const desktopImage = isProduct ? "" : metaStr(item.meta, "desktop_image_url");
+  const hasDesktopImage = !!desktopImage;
+  // Show the mobile image, or the desktop image for a desktop-only tile, so the
+  // thumbnail is never blank when the tile actually has imagery.
+  const img = isProduct ? item.product?.image ?? null : item.customImageUrl || desktopImage || null;
   const missing = isProduct && !item.product; // product unpublished/deleted
   const title = isProduct ? item.product?.title ?? item.productBaseSku ?? "Unknown product" : item.customTitle ?? "Untitled tile";
   const sub = isProduct ? item.productBaseSku ?? "" : item.customSubtitle ?? "";
@@ -525,6 +620,14 @@ function ItemRow({
           <div className="relative w-20 h-20 sm:w-16 sm:h-16 rounded-lg overflow-hidden bg-gray-200 shrink-0 flex items-center justify-center">
             {img ? <img src={img} alt={title} className="w-full h-full object-cover" /> : <ImagePlus className="w-5 h-5 text-gray-300" />}
             {slotBadge}
+            {hasDesktopImage && (
+              <span
+                title="Has a separate desktop image"
+                className="absolute bottom-0.5 right-0.5 w-5 h-5 flex items-center justify-center rounded-md bg-black/55 text-white pointer-events-none"
+              >
+                <Monitor className="w-3 h-3" />
+              </span>
+            )}
           </div>
         )}
 
@@ -1136,7 +1239,7 @@ const SpotlightPage = () => {
                       {canAddTile && (
                         <button
                           onClick={() => setTileEditing({ item: null })}
-                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-200 rounded-md px-3 py-2 bg-white hover:border-gray-900"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-400 rounded-md px-3 py-2 bg-white hover:border-gray-900"
                         >
                           <ImagePlus className="w-3.5 h-3.5" /> Add tile
                         </button>
@@ -1144,7 +1247,7 @@ const SpotlightPage = () => {
                       <button
                         onClick={() => setHeadingEditing(true)}
                         title="Edit heading & subheading"
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-200 rounded-md px-3 py-2 bg-white hover:border-gray-900"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-400 rounded-md px-3 py-2 bg-white hover:border-gray-900"
                       >
                         <Pencil className="w-3.5 h-3.5" /> Edit heading
                       </button>
