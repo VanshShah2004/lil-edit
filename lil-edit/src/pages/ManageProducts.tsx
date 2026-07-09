@@ -21,6 +21,7 @@ import {
 import { getBackendBaseUrl } from "@/lib/backend";
 import { authHeader } from "@/lib/apiAuth";
 import { buildPayloadFromProduct } from "@/lib/buildProductPayload";
+import { fetchSizeCharts, type SizeChart } from "@/lib/sizeChartsApi";
 import { buildPdpPath, resolvePdpSku } from "@/lib/pdpUrl";
 import UserNavbar from "@/components/home/UserNavbar";
 import Navbar from "@/components/layout/Navbar";
@@ -68,6 +69,7 @@ interface ProductItem {
   fit?: string;
   occasion?: string;
   care_instructions?: string;
+  size_chart_id?: string | null;
   description_points?: string[];
   gender?: string;
   sizes?: string[];
@@ -85,6 +87,40 @@ interface ProductItem {
   is_unlimited?: boolean;
 }
 
+
+// Charts are fetched once per page load and shared by every ProductVersionView
+// so switching between products/versions doesn't refetch the list.
+let sizeChartsCache: SizeChart[] | null = null;
+let sizeChartsPromise: Promise<SizeChart[]> | null = null;
+
+/**
+ * Resolves a size_charts.id to its display name.
+ * Returns undefined while the chart list is loading, null when the product has
+ * no chart (or the chart was deleted), and the chart name otherwise.
+ */
+function useSizeChartName(id?: string | null): string | null | undefined {
+  const [charts, setCharts] = useState<SizeChart[] | null>(sizeChartsCache);
+
+  useEffect(() => {
+    if (!id || sizeChartsCache) return;
+    if (!sizeChartsPromise) {
+      sizeChartsPromise = fetchSizeCharts()
+        .then((data) => { sizeChartsCache = data; return data; })
+        .catch((err) => {
+          console.error("[ManageProducts] size charts load failed:", err);
+          sizeChartsPromise = null; // allow a retry on next mount
+          return [];
+        });
+    }
+    let active = true;
+    void sizeChartsPromise.then((data) => { if (active) setCharts(data); });
+    return () => { active = false; };
+  }, [id]);
+
+  if (!id) return null;
+  if (!charts) return undefined;
+  return charts.find((c) => c.id === id)?.name ?? null;
+}
 
 const isPlaceholderDescription = (pts?: string[]) => {
   if (!pts || pts.length === 0) return true;
@@ -146,6 +182,10 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
   const p = version.data;
   const images = version.type === "PUBLISHED" ? p.product_images ?? [] : p.draft_product_images ?? [];
   const variants = version.type === "PUBLISHED" ? p.product_variants ?? [] : p.draft_product_variants ?? [];
+  const sizeChartName = useSizeChartName(p.size_chart_id);
+  // undefined = backend response has no size_chart_id column (old backend code /
+  // select); null = column present but product has no chart (backfill not run).
+  console.log(`[ProductVersionView] sku=${p.base_sku} (${version.type}) size_chart_id=${String(p.size_chart_id)} → name=${String(sizeChartName)}`);
 
   // Carousel: images for the active tab, the current index, and looped navigation.
   const tabImages = activeImageTab === "Global"
@@ -355,6 +395,7 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
                 { label: "Category", value: p.category },
                 { label: "Gender Category", value: p.gender || "N/A" },
                 { label: "Available Sizes", value: p.sizes?.length ? p.sizes.join(", ") : "N/A" },
+                { label: "Sizing Chart", value: sizeChartName === undefined ? "…" : sizeChartName ?? "N/A" },
                 { label: "Fabric & Lining", value: p.fabric || "N/A" },
                 { label: "Silhouette & Fit", value: p.fit || "N/A" },
                 { label: "Occasion", value: p.occasion || "N/A" },

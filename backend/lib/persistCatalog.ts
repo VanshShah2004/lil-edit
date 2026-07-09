@@ -24,7 +24,7 @@ function requireAdmin() {
  */
 const MANAGE_PRODUCT_SELECT = `
   id, title, slug, base_sku, brand, category, category_slug, gender,
-  price, original_price, fabric, fit, occasion, care_instructions,
+  price, original_price, fabric, fit, occasion, care_instructions, size_chart_id,
   description_points, sizes, tags, badges,
   is_featured, is_new_arrival, is_bestseller, is_trending, is_unlimited,
   created_at, updated_at,
@@ -34,7 +34,7 @@ const MANAGE_PRODUCT_SELECT = `
 
 const MANAGE_DRAFT_SELECT = `
   id, title, slug, base_sku, brand, category, category_slug, gender,
-  price, original_price, fabric, fit, occasion, care_instructions,
+  price, original_price, fabric, fit, occasion, care_instructions, size_chart_id,
   description_points, sizes, tags, badges,
   is_featured, is_new_arrival, is_bestseller, is_trending, is_unlimited,
   created_at, updated_at,

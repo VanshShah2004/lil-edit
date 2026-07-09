@@ -28,6 +28,7 @@ import Footer from "@/components/layout/Footer";
 import ProductPreviewView from "@/components/ProductPreviewView";
 import StockToggleSlider from "@/components/StockToggleSlider";
 import StyledSelect from "@/components/StyledSelect";
+import SizeChartSelect from "@/components/admin/SizeChartSelect";
 import ImageTabSlider from "@/components/ImageTabSlider";
 import type { Product, ProductImage, ProductColor } from "@/types/product";
 import { generateColorSku } from "@/utils/sku";
@@ -69,6 +70,8 @@ interface FormData {
   fit: string;
   occasion: string;
   care_instructions: string;
+  /** size_charts.id backing this product's size guide ("" until charts load). */
+  sizeChartId: string;
   descriptionPoints: string[];
   selectedSizes: string[];
   selectedColors: {
@@ -236,6 +239,7 @@ const AddProduct = () => {
     fit: "",
     occasion: "",
     care_instructions: "",
+    sizeChartId: "",
     descriptionPoints: [],
     selectedSizes: [],
     selectedColors: [],
@@ -1069,6 +1073,17 @@ const AddProduct = () => {
                         </motion.button>
                       ))}
                     </div>
+
+                    <motion.div whileHover={{ scale: 1.01 }} className="group pt-2">
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 transition-colors group-focus-within:text-gray-900">
+                        Sizing Chart
+                      </label>
+                      <SizeChartSelect
+                        value={formData.sizeChartId}
+                        onChange={(id) => setFormData((prev) => ({ ...prev, sizeChartId: id }))}
+                        className="sm:max-w-sm"
+                      />
+                    </motion.div>
                   </div>
                 </div>
 

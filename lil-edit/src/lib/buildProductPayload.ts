@@ -12,6 +12,8 @@ export interface CurationPayload {
   fit: string;
   occasion: string;
   care_instructions: string;
+  /** size_charts.id the product's size guide points at; "" = none chosen. */
+  sizeChartId: string;
   descriptionPoints: string[];
   tags: string[];
   selectedSizes: string[];
@@ -46,6 +48,7 @@ interface FormLike {
   fit: string;
   occasion: string;
   care_instructions: string;
+  sizeChartId: string;
   descriptionPoints: string[];
   tags: string[];
   selectedSizes: string[];
@@ -76,6 +79,7 @@ export function buildPayloadFromForm(
     fit: formData.fit,
     occasion: formData.occasion,
     care_instructions: formData.care_instructions,
+    sizeChartId: formData.sizeChartId,
     descriptionPoints: formData.descriptionPoints,
     tags: formData.tags,
     selectedSizes: formData.selectedSizes,
@@ -125,6 +129,7 @@ interface DbProduct {
   fit?: string;
   occasion?: string;
   care_instructions?: string;
+  size_chart_id?: string | null;
   description_points?: string[];
   tags?: string[];
   sizes?: string[];
@@ -155,6 +160,7 @@ export function buildPayloadFromProduct(
     fit: product.fit || "",
     occasion: product.occasion || "",
     care_instructions: product.care_instructions || "",
+    sizeChartId: product.size_chart_id || "",
     descriptionPoints: product.description_points || [],
     tags: product.tags || [],
     selectedSizes: product.sizes || [],

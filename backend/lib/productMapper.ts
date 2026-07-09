@@ -77,6 +77,7 @@ export type ProductRowDraft = {
   fit: string | null;
   occasion: string | null;
   care_instructions: string | null;
+  size_chart_id: string | null;
   description_points: string[];
   sizes: string[];
   tags: string[];
@@ -144,6 +145,7 @@ export function mapCurationPayloadToCatalog(data: CurationPayload): {
     fit: asString(data.fit).trim() || null,
     occasion: asString(data.occasion).trim() || null,
     care_instructions: asString(data.care_instructions).trim() || null,
+    size_chart_id: asString(data.sizeChartId).trim() || null,
     description_points: asStringArray(data.descriptionPoints),
     sizes:
       asStringArray(data.selectedSizes).length > 0

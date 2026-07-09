@@ -28,6 +28,7 @@ import Footer from "@/components/layout/Footer";
 import ProductPreviewView from "@/components/ProductPreviewView";
 import StockToggleSlider from "@/components/StockToggleSlider";
 import ImageTabSlider from "@/components/ImageTabSlider";
+import SizeChartSelect from "@/components/admin/SizeChartSelect";
 import type { Product, ProductImage, ProductColor } from "@/types/product";
 import { generateColorSku } from "@/utils/sku";
 import { slugify } from "@/utils/slug";
@@ -68,6 +69,8 @@ interface FormData {
   fit: string;
   occasion: string;
   care_instructions: string;
+  /** size_charts.id backing this product's size guide ("" until charts load). */
+  sizeChartId: string;
   descriptionPoints: string[];
   selectedSizes: string[];
   selectedColors: {
@@ -135,6 +138,7 @@ function buildCurationPayload(formData: FormData, imagePreviews: string[], isSto
     fit: formData.fit,
     occasion: formData.occasion,
     care_instructions: formData.care_instructions,
+    sizeChartId: formData.sizeChartId,
     descriptionPoints: formData.descriptionPoints,
     tags: formData.tags,
     selectedSizes: formData.selectedSizes,
@@ -252,6 +256,7 @@ interface EditableProduct {
   fit?: string;
   occasion?: string;
   care_instructions?: string;
+  size_chart_id?: string | null;
   description_points?: string[];
   gender?: string;
   sizes?: string[];
@@ -319,6 +324,7 @@ const EditProduct = () => {
     fit: "",
     occasion: "",
     care_instructions: "",
+    sizeChartId: "",
     descriptionPoints: [],
     selectedSizes: [],
     selectedColors: [],
@@ -383,6 +389,7 @@ const EditProduct = () => {
           fit: product.fit || "",
           occasion: product.occasion || "",
           care_instructions: product.care_instructions || "",
+          sizeChartId: product.size_chart_id || "",
           descriptionPoints: (product.description_points || []).filter((pt: string) => pt !== "No product details added yet."),
           selectedSizes: product.sizes || [],
           selectedColors: (variants || []).map((v: ProductVariantRow) => ({
@@ -433,6 +440,7 @@ const EditProduct = () => {
             fit: product.fit || "",
             occasion: product.occasion || "",
             care_instructions: product.care_instructions || "",
+            sizeChartId: product.size_chart_id || "",
             descriptionPoints: (product.description_points || []).filter((pt: string) => pt !== "No product details added yet."),
             selectedSizes: product.sizes || [],
             selectedColors: (variants || []).map((v: ProductVariantRow) => ({
@@ -732,7 +740,7 @@ const EditProduct = () => {
     // 1. Basic Fields
     const fields = [
       "name", "brand", "sku", "category", "gender", "price", "originalPrice",
-      "fabric", "fit", "occasion", "care_instructions", "featured", "newArrival", "bestseller",
+      "fabric", "fit", "occasion", "care_instructions", "sizeChartId", "featured", "newArrival", "bestseller",
       "trending", "slug", "categorySlug"
     ];
     for (const f of fields) {
@@ -1335,6 +1343,17 @@ const EditProduct = () => {
                       </motion.button>
                     ))}
                   </div>
+
+                  <motion.div whileHover={{ scale: 1.01 }} className="group">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 transition-colors group-focus-within:text-gray-900">
+                      Sizing Chart
+                    </label>
+                    <SizeChartSelect
+                      value={formData.sizeChartId}
+                      onChange={(id) => setFormData((prev) => ({ ...prev, sizeChartId: id }))}
+                      className="sm:max-w-sm"
+                    />
+                  </motion.div>
                 </div>
 
                 {/* Color Palette */}
