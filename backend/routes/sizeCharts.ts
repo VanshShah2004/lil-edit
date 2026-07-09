@@ -213,8 +213,13 @@ router.delete("/:id", adminMutationLimiter, async (req: Request, res: Response) 
   const { id } = req.params as { id: string };
   const actorId = (req as AuthenticatedRequest).userId;
 
-  const { data: existing } = await db.from("size_charts").select("name").eq("id", id).maybeSingle();
-  const deletedName = (existing as { name?: string } | null)?.name ?? null;
+  const { data: existing } = await db.from("size_charts").select("name, is_default").eq("id", id).maybeSingle();
+  const target = existing as { name?: string; is_default?: boolean } | null;
+
+  if (target?.is_default) {
+    res.status(400).json({ error: "The default chart can't be deleted." });
+    return;
+  }
 
   const { error } = await db.from("size_charts").delete().eq("id", id);
   if (error) {
@@ -227,8 +232,8 @@ router.delete("/:id", adminMutationLimiter, async (req: Request, res: Response) 
     action: "size_chart_deleted",
     targetType: "size_chart",
     targetId: id,
-    summary: `Deleted sizing chart "${deletedName ?? id}"`,
-    metadata: { chartId: id, name: deletedName },
+    summary: `Deleted sizing chart "${target?.name ?? id}"`,
+    metadata: { chartId: id, name: target?.name ?? null },
   });
   res.status(204).send();
 });

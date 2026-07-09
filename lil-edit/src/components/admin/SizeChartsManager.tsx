@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import {
   AlertCircle,
-  ChevronDown,
   ChevronUp,
   Copy,
   Loader2,
@@ -24,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import StockToggleSlider from "@/components/StockToggleSlider";
 import {
   fetchSizeCharts,
   createSizeChart,
@@ -87,12 +87,10 @@ const SizeChartsManager = () => {
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
 
-  const [renameTarget, setRenameTarget] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
-  const [renaming, setRenaming] = useState(false);
-
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [unit, setUnit] = useState<"inches" | "centimeters">("inches");
+  const [draftName, setDraftName] = useState("");
+  const [savedName, setSavedName] = useState("");
   const [draftRows, setDraftRows] = useState<SizeChartRow[]>([]);
   const [savedRowsJson, setSavedRowsJson] = useState("");
   const [saving, setSaving] = useState(false);
@@ -139,6 +137,8 @@ const SizeChartsManager = () => {
     const rows = chart.rows.length ? chart.rows.map(withSizeFields) : [blankRow()];
     setExpandedId(chart.id);
     setUnit("inches");
+    setDraftName(chart.name);
+    setSavedName(chart.name);
     setDraftRows(rows);
     setSavedRowsJson(JSON.stringify(rows));
   };
@@ -151,7 +151,8 @@ const SizeChartsManager = () => {
     openEditor(chart);
   };
 
-  const dirty = expandedId !== null && JSON.stringify(draftRows) !== savedRowsJson;
+  const dirty =
+    expandedId !== null && (JSON.stringify(draftRows) !== savedRowsJson || draftName.trim() !== savedName);
 
   const updateCell = (rowIndex: number, key: keyof SizeChartMeasurements, value: string) => {
     setDraftRows((rows) =>
@@ -188,8 +189,13 @@ const SizeChartsManager = () => {
     toast.success("Centimeters filled from inches (× 2.54).");
   };
 
-  const handleSaveRows = async () => {
+  const handleSave = async () => {
     if (!expandedId) return;
+    const name = draftName.trim();
+    if (!name) {
+      toast.error("Chart name is required.");
+      return;
+    }
     const rows = draftRows.filter((row) => row.sizeTo > 0);
     if (rows.length === 0) {
       toast.error("Add at least one row with a size range.");
@@ -197,8 +203,12 @@ const SizeChartsManager = () => {
     }
     setSaving(true);
     try {
-      const updated = await updateSizeChart(expandedId, { rows });
+      const payload: Partial<{ name: string; rows: SizeChartRow[] }> = { rows };
+      if (name !== savedName) payload.name = name;
+      const updated = await updateSizeChart(expandedId, payload);
       setCharts((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      setDraftName(updated.name);
+      setSavedName(updated.name);
       setDraftRows(updated.rows.length ? updated.rows : [blankRow()]);
       setSavedRowsJson(JSON.stringify(updated.rows));
       toast.success(`"${updated.name}" saved.`);
@@ -206,29 +216,6 @@ const SizeChartsManager = () => {
       toast.error(err instanceof Error ? err.message : "Could not save sizing chart.");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const startRename = (chart: SizeChart) => {
-    setRenameTarget(chart.id);
-    setRenameValue(chart.name);
-  };
-
-  const confirmRename = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!renameTarget) return;
-    const name = renameValue.trim();
-    if (!name) return;
-    setRenaming(true);
-    try {
-      const updated = await updateSizeChart(renameTarget, { name });
-      setCharts((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-      toast.success(`Renamed to "${name}".`);
-      setRenameTarget(null);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not rename chart.");
-    } finally {
-      setRenaming(false);
     }
   };
 
@@ -263,7 +250,7 @@ const SizeChartsManager = () => {
 
       <div className="rounded-lg border border-gray-900 bg-white overflow-hidden shadow-sm">
 
-        <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-gray-900">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-gray-900">
           <p className="text-xs font-bold uppercase tracking-wider text-gray-700">
             All charts{!loading && !loadError ? ` (${charts.length})` : ""}
           </p>
@@ -279,8 +266,8 @@ const SizeChartsManager = () => {
         </div>
 
         {showCreateForm && (
-          <div className="p-5 border-b border-gray-200">
-            <form onSubmit={handleCreate} className="flex items-end gap-3">
+          <div className="p-4 sm:p-5 border-b border-gray-200">
+            <form onSubmit={handleCreate} className="flex flex-col sm:flex-row sm:items-end gap-3">
               <div className="flex-1">
                 <label className="block text-xs font-semibold text-gray-800 mb-1">Chart name</label>
                 <input
@@ -295,22 +282,24 @@ const SizeChartsManager = () => {
                   maxLength={80}
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => { setShowCreateForm(false); setNewName(""); }}
-                disabled={creating}
-                className="rounded-md border border-red-300 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={creating}
-                className="inline-flex items-center gap-1.5 rounded-md px-5 py-2 text-xs font-semibold text-white shadow-sm transition-all disabled:opacity-50"
-                style={{ background: `linear-gradient(135deg, ${ACCENT}, #9A82C9)` }}
-              >
-                {creating ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" /> Creating…</>) : "Create chart"}
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setShowCreateForm(false); setNewName(""); }}
+                  disabled={creating}
+                  className="flex-1 sm:flex-none rounded-md border border-red-300 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-md px-5 py-2 text-xs font-semibold text-white shadow-sm transition-all disabled:opacity-50"
+                  style={{ background: `linear-gradient(135deg, ${ACCENT}, #9A82C9)` }}
+                >
+                  {creating ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" /> Creating…</>) : "Create chart"}
+                </button>
+              </div>
             </form>
           </div>
         )}
@@ -352,63 +341,36 @@ const SizeChartsManager = () => {
           <ul className="divide-y divide-gray-400">
             {charts.map((chart) => {
               const isExpanded = expandedId === chart.id;
-              const isRenaming = renameTarget === chart.id;
               return (
                 <li key={chart.id}>
-                  <div className="flex items-center gap-4 px-5 py-4">
+                  <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4">
                     <div className="min-w-0 flex-1">
-                      {isRenaming ? (
-                        <form onSubmit={confirmRename} className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            autoFocus
-                            value={renameValue}
-                            onChange={(e) => setRenameValue(e.target.value)}
-                            disabled={renaming}
-                            maxLength={80}
-                            className="rounded-md border border-gray-400 px-2 py-1 text-sm text-gray-900 outline-none focus:border-[#B19CD9] focus:ring-2 focus:ring-[#B19CD9]/30"
-                          />
-                          <button type="submit" disabled={renaming} className="text-xs font-semibold" style={{ color: ACCENT }}>
-                            {renaming ? "Saving…" : "Save"}
-                          </button>
-                          <button type="button" onClick={() => setRenameTarget(null)} disabled={renaming} className="text-xs font-semibold text-gray-500">
-                            Cancel
-                          </button>
-                        </form>
-                      ) : (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-bold text-gray-900">{chart.name}</span>
-                          {chart.is_default && (
-                            <span className="px-1.5 py-0.5 rounded-md bg-[#B19CD9]/15 text-[10px] font-bold uppercase tracking-wide text-[#6B5B95]">
-                              Default
-                            </span>
-                          )}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-bold text-gray-900 truncate">{chart.name}</span>
+                        {chart.is_default && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-[#B19CD9]/15 text-[10px] font-bold uppercase tracking-wide text-[#6B5B95]">
+                            Default
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-600 mt-1">{chart.rows.length} size{chart.rows.length === 1 ? "" : "s"}</p>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => startRename(chart)}
-                        title="Rename chart"
-                        className="inline-flex items-center rounded-md border border-gray-400 p-1.5 text-gray-500 hover:bg-gray-50 transition-colors"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
+                    <div className="flex items-center justify-end gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={() => toggleEditor(chart)}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-gray-400 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                        title={isExpanded ? "Close" : "Edit chart"}
+                        className="inline-flex items-center rounded-md border border-gray-400 p-1.5 text-gray-700 hover:bg-gray-50 transition-colors"
                       >
-                        {isExpanded ? (<>Close <ChevronUp className="w-3.5 h-3.5" /></>) : (<>Edit rows <ChevronDown className="w-3.5 h-3.5" /></>)}
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
                       </button>
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(chart)}
-                        title="Delete chart"
-                        className="inline-flex items-center gap-1 rounded-md border border-gray-400 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        disabled={chart.is_default}
+                        title={chart.is_default ? "The default chart can't be deleted" : "Delete chart"}
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-400 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                       >
                         <Trash2 className="w-3.5 h-3.5 text-red-500" />
                       </button>
@@ -416,24 +378,28 @@ const SizeChartsManager = () => {
                   </div>
 
                   {isExpanded && (
-                    <div className="px-5 pb-5">
-                      <div className="rounded-lg border border-gray-300 bg-gray-50 p-4">
+                    <div className="px-4 sm:px-5 pb-5">
+                      <div className="rounded-lg border border-gray-300 bg-gray-50 p-3 sm:p-4">
+                        <div className="mb-4">
+                          <label className="block text-xs font-semibold text-gray-800 mb-1">Chart name</label>
+                          <input
+                            type="text"
+                            value={draftName}
+                            onChange={(e) => setDraftName(e.target.value)}
+                            maxLength={80}
+                            className={`${inputClass} max-w-full sm:max-w-sm`}
+                          />
+                        </div>
+
                         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                          <div className="inline-flex rounded-md border border-gray-400 overflow-hidden">
-                            {(["inches", "centimeters"] as const).map((u) => (
-                              <button
-                                key={u}
-                                type="button"
-                                onClick={() => setUnit(u)}
-                                className={`px-3 py-1.5 text-xs font-semibold capitalize transition-colors ${
-                                  unit === u ? "text-white" : "text-gray-700 hover:bg-gray-100"
-                                }`}
-                                style={unit === u ? { background: `linear-gradient(135deg, ${ACCENT}, #9A82C9)` } : undefined}
-                              >
-                                {u}
-                              </button>
-                            ))}
-                          </div>
+                          <StockToggleSlider
+                            isUnlimited={unit === "centimeters"}
+                            onChange={(isCm) => setUnit(isCm ? "centimeters" : "inches")}
+                            limitedLabel="Inches"
+                            unlimitedLabel="Centimeters"
+                            accentColor="#0d9488"
+                            className="w-44 h-9"
+                          />
                           <button
                             type="button"
                             onClick={copyInchesToCm}
@@ -459,35 +425,43 @@ const SizeChartsManager = () => {
                               {draftRows.map((row, i) => (
                                 <tr key={i}>
                                   <td className="px-3 py-2">
-                                    <div className="flex items-center gap-1.5">
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        step="1"
-                                        placeholder="From"
-                                        value={row.sizeFrom}
-                                        onChange={(e) => updateSizeRange(i, { sizeFrom: Number(e.target.value) || 0 })}
-                                        className="w-14 rounded-md border border-gray-300 px-2 py-1.5 text-xs text-gray-900 outline-none focus:border-[#B19CD9] focus:ring-2 focus:ring-[#B19CD9]/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                      />
-                                      <span className="text-xs text-gray-500">-</span>
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        step="1"
-                                        placeholder="To"
-                                        value={row.sizeTo}
-                                        onChange={(e) => updateSizeRange(i, { sizeTo: Number(e.target.value) || 0 })}
-                                        className="w-14 rounded-md border border-gray-300 px-2 py-1.5 text-xs text-gray-900 outline-none focus:border-[#B19CD9] focus:ring-2 focus:ring-[#B19CD9]/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                      />
-                                      <select
-                                        value={row.sizeUnit}
-                                        onChange={(e) => updateSizeRange(i, { sizeUnit: e.target.value as SizeUnit })}
-                                        className="rounded-md border border-gray-300 px-1.5 py-1.5 text-xs text-gray-900 outline-none focus:border-[#B19CD9] focus:ring-2 focus:ring-[#B19CD9]/30"
-                                      >
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <div className="flex items-center gap-1">
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          step="1"
+                                          placeholder="From"
+                                          value={row.sizeFrom}
+                                          onChange={(e) => updateSizeRange(i, { sizeFrom: Number(e.target.value) || 0 })}
+                                          className="w-12 rounded-md border border-gray-300 px-2 py-1.5 text-xs text-gray-900 outline-none focus:border-[#B19CD9] focus:ring-2 focus:ring-[#B19CD9]/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                        <span className="text-xs text-gray-400">–</span>
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          step="1"
+                                          placeholder="To"
+                                          value={row.sizeTo}
+                                          onChange={(e) => updateSizeRange(i, { sizeTo: Number(e.target.value) || 0 })}
+                                          className="w-12 rounded-md border border-gray-300 px-2 py-1.5 text-xs text-gray-900 outline-none focus:border-[#B19CD9] focus:ring-2 focus:ring-[#B19CD9]/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                      </div>
+                                      <div className="inline-flex rounded-md border border-gray-300 overflow-hidden shrink-0">
                                         {SIZE_UNITS.map((u) => (
-                                          <option key={u} value={u}>{u}</option>
+                                          <button
+                                            key={u}
+                                            type="button"
+                                            onClick={() => updateSizeRange(i, { sizeUnit: u })}
+                                            className={`w-16 shrink-0 py-1.5 text-[11px] font-semibold text-center transition-colors ${
+                                              row.sizeUnit === u ? "text-white" : "text-gray-600 hover:bg-gray-100"
+                                            }`}
+                                            style={row.sizeUnit === u ? { background: `linear-gradient(135deg, ${ACCENT}, #9A82C9)` } : undefined}
+                                          >
+                                            {u}
+                                          </button>
                                         ))}
-                                      </select>
+                                      </div>
                                     </div>
                                   </td>
                                   {COLUMNS.map((col) => (
@@ -518,19 +492,19 @@ const SizeChartsManager = () => {
                           </table>
                         </div>
 
-                        <div className="flex items-center justify-between gap-3 mt-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
                           <button
                             type="button"
                             onClick={addRow}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-gray-400 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+                            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-gray-400 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
                           >
                             <Plus className="w-3.5 h-3.5" /> Add row
                           </button>
                           <button
                             type="button"
-                            onClick={() => void handleSaveRows()}
+                            onClick={() => void handleSave()}
                             disabled={!dirty || saving}
-                            className="inline-flex items-center gap-1.5 rounded-md px-5 py-2 text-xs font-semibold text-white shadow-sm transition-all disabled:opacity-50"
+                            className="inline-flex items-center justify-center gap-1.5 rounded-md px-5 py-2 text-xs font-semibold text-white shadow-sm transition-all disabled:opacity-50"
                             style={{ background: `linear-gradient(135deg, ${ACCENT}, #9A82C9)` }}
                           >
                             {saving ? (<><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving…</>) : "Save changes"}

@@ -13,8 +13,9 @@
 -- RLS is enabled with no public policies so only the service-role backend can
 -- read/write, matching the coupons table's convention.
 --
--- Seeds one default chart ("Kids Wear (Default)") with the brand's baseline
--- measurements.
+-- Seeds one default chart ("Default Sizing") with the brand's baseline
+-- measurements. The default chart can be renamed/edited freely but can't be
+-- deleted (locked in the backend, see routes/sizeCharts.ts).
 --
 -- ⚠️ MANUAL STEP: run in the Supabase SQL editor.
 -- =============================================================================
@@ -33,7 +34,7 @@ ALTER TABLE public.size_charts ENABLE ROW LEVEL SECURITY;
 
 INSERT INTO public.size_charts (name, is_default, rows)
 VALUES (
-  'Kids Wear (Default)',
+  'Default Sizing',
   true,
   '[
     {"size":"6 - 12 Months","sizeFrom":6,"sizeTo":12,"sizeUnit":"Months","inches":{"topLength":13,"chest":22,"sleeve":8,"bottomLength":15,"waist":15},"centimeters":{"topLength":33.02,"chest":55.88,"sleeve":20.32,"bottomLength":38.1,"waist":38.1}},
