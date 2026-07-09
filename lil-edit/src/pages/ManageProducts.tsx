@@ -1392,7 +1392,7 @@ const ManageProducts = () => {
                   className="group flex-1 flex items-center justify-center py-2 sm:py-1.5"
                 >
                   <span
-                    className={`relative z-30 pointer-events-none text-[11px] sm:text-[9px] font-bold uppercase tracking-wider transition-colors ${filterStatus === status ? "text-gray-900" : "text-gray-600 group-hover:text-gray-600"}`}
+                    className={`relative z-30 pointer-events-none text-[11px] sm:text-[9px] font-bold uppercase tracking-wider transition-colors ${filterStatus === status ? "text-white" : "text-gray-600 group-hover:text-gray-600"}`}
                   >
                     {status}
                   </span>
@@ -1417,7 +1417,7 @@ const ManageProducts = () => {
                   animate={{ x: filterActiveIndex * filterSegW }}
                   transition={{ type: "spring", stiffness: 420, damping: 34 }}
                   style={{ width: filterSegW }}
-                  className="absolute top-1 bottom-1 left-1 z-20 rounded bg-white shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing"
+                  className="absolute top-1 bottom-1 left-1 z-20 rounded bg-black shadow-sm cursor-grab active:cursor-grabbing"
                 />
               )}
             </div>

@@ -43,6 +43,8 @@ export interface ProductRow {
   occasion?: string | null;
   care_instructions?: string | null;
   size_chart_id?: string | null;
+  /** Embedded sizing chart (PDP select only) via the size_chart_id FK. */
+  size_charts?: { id: string; name: string; rows: unknown[] } | null;
   sizes?: string[] | null;
   is_featured?: boolean | null;
   is_new_arrival?: boolean | null;

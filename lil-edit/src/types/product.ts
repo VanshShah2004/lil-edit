@@ -38,6 +38,31 @@ export interface ReviewsData {
   reviews: Review[];
 }
 
+// ─── Sizing chart (admin-authored, served embedded in the PDP payload) ────────
+
+export interface SizeChartMeasurements {
+  topLength: number;
+  chest: number;
+  sleeve: number;
+  bottomLength: number;
+  waist: number;
+}
+
+export interface SizeChartRow {
+  /** Display label composed server-side, e.g. "6 - 12 Months". */
+  size: string;
+  sizeFrom: number;
+  sizeTo: number;
+  sizeUnit: "Months" | "Years";
+  inches: SizeChartMeasurements;
+  centimeters: SizeChartMeasurements;
+}
+
+export interface ProductSizeChart {
+  name: string;
+  rows: SizeChartRow[];
+}
+
 export interface Product {
   title: string;
   slug: string;
@@ -63,6 +88,8 @@ export interface Product {
   bestseller: boolean;
   trending: boolean;
   isUnlimited?: boolean;
+  /** Sizing chart linked via size_chart_id; null/absent = no chart (button hidden). */
+  sizeChart?: ProductSizeChart | null;
   /** Loaded separately via GET /api/products/reviews on PDP */
   reviewsData?: ReviewsData;
 }

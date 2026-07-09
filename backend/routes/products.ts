@@ -222,6 +222,11 @@ function mapDatabaseProductToFrontend(dbProduct: ProductRow, isDraft: boolean) {
     fit: dbProduct.fit || "",
     occasion: dbProduct.occasion || "",
     care_instructions: dbProduct.care_instructions || "",
+    // Embedded via the size_chart_id FK; null when the product has no chart so the
+    // PDP simply hides its Size Chart button.
+    sizeChart: dbProduct.size_charts
+      ? { name: dbProduct.size_charts.name, rows: dbProduct.size_charts.rows ?? [] }
+      : null,
     sizes: dbProduct.sizes || [],
     images: globalImages.length > 0 ? globalImages : mappedImages,
     colors,

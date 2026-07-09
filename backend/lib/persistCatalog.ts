@@ -74,6 +74,7 @@ const PDP_PRODUCT_SELECT = `
   is_bestseller,
   is_trending,
   is_unlimited,
+  size_charts(id, name, rows),
   product_images(id, image_url, is_primary, sort_order, variant_id),
   product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
 `.trim();
@@ -101,6 +102,8 @@ export interface PdpProductRow {
   is_bestseller: boolean;
   is_trending: boolean;
   is_unlimited: boolean;
+  /** Embedded sizing chart via the size_chart_id FK (null when unset). */
+  size_charts?: { id: string; name: string; rows: unknown[] } | null;
   product_images: Array<{
     id: string;
     image_url: string;
@@ -1606,7 +1609,28 @@ export async function fetchProductBySku(
     .maybeSingle();
   if (error) throw error;
   log.step(`DB fetch - product by sku complete  ${fms(performance.now() - t0)}  found=${!!published}`);
-  return published as PdpProductRow | null;
+
+  const row = published as PdpProductRow | null;
+
+  // The PDP always shows a size guide: products with no linked chart (or whose
+  // chart was deleted — FK is ON DELETE SET NULL) fall back to the default
+  // chart. Failure here (e.g. size_charts table missing) never breaks the PDP —
+  // the product just ships without a chart and the button stays hidden.
+  if (row && !row.size_charts) {
+    const { data: defChart, error: chartErr } = await sb
+      .from("size_charts")
+      .select("id, name, rows")
+      .eq("is_default", true)
+      .maybeSingle();
+    if (chartErr) {
+      log.step(`Size chart fallback - unavailable (${chartErr.message})`);
+    } else if (defChart) {
+      row.size_charts = defChart as { id: string; name: string; rows: unknown[] };
+      log.step(`Size chart fallback - attached default chart "${defChart.name}"`);
+    }
+  }
+
+  return row;
 }
 
 export async function fetchRecommendedProducts(

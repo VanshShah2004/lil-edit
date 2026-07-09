@@ -1251,7 +1251,7 @@ const EditProduct = () => {
                           value={formData.sku}
                           readOnly
                           placeholder="Select category & gender"
-                          className={`w-full px-5 py-4 rounded-md border border-sky-200 bg-sky-50 text-gray-800 cursor-not-allowed outline-none transition-all duration-300 font-mono text-[13px] tracking-wider`}
+                          className={`w-full px-5 py-4 rounded-xl border border-sky-200 bg-sky-50 text-gray-800 cursor-not-allowed outline-none transition-all duration-300 font-mono text-[13px] tracking-wider`}
                         />
                         {formData.sku && (
                           <div className="absolute right-4 top-1/2 -translate-y-1/2">

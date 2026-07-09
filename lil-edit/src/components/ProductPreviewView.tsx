@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Heart, Minus, Plus, Share2, X } from "lucide-react";
+import { Heart, Minus, Plus, Ruler, Share2, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Carousel,
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import ProductGalleryImage from "@/components/ProductGalleryImage";
 import { preconnectProductImageOrigin } from "@/lib/productImage";
 import ShareSheet from "@/components/product/ShareSheet";
+import SizeChartDialog from "@/components/product/SizeChartDialog";
 import type { Product } from "@/types/product";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
@@ -43,6 +44,7 @@ const ProductPreviewView = ({
   const [viewerApi, setViewerApi] = useState<CarouselApi>();
   const thumbnailStripRef = useRef<HTMLDivElement>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [sizeChartOpen, setSizeChartOpen] = useState(false);
   const [cartBusy, setCartBusy] = useState(false);
   const [wishlistBusy, setWishlistBusy] = useState(false);
   const { addToCart, removeItem, cartItems } = useCart();
@@ -342,7 +344,7 @@ const ProductPreviewView = ({
               key={currentSku}
               initial={{ opacity: 0, x: 5 }}
               animate={{ opacity: 1, x: 0 }}
-              className="text-[10px] font-mono font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded border border-gray-400"
+              className="text-[10px] font-mono font-medium text-white bg-black px-2 py-1 rounded-md border border-gray-400"
             >
               {currentSku}
             </motion.div>
@@ -480,7 +482,19 @@ const ProductPreviewView = ({
           </div>
 
           <div className="mb-5">
-            <p className="text-sm font-medium mb-2">Size</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium">Size</p>
+              {product.sizeChart && product.sizeChart.rows.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSizeChartOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[#0B5B55] px-2.5 py-1 text-xs font-semibold text-[#0B5B55] hover:bg-[#0B5B55]/5 transition-colors"
+                >
+                  <Ruler size={14} />
+                  Size Chart
+                </button>
+              )}
+            </div>
             <div className="flex flex-wrap gap-2">
               {product.sizes.map((size) => (
                 <button
@@ -670,6 +684,14 @@ const ProductPreviewView = ({
           image: galleryImages[0] ?? "",
         }}
       />
+
+      {product.sizeChart && product.sizeChart.rows.length > 0 && (
+        <SizeChartDialog
+          chart={product.sizeChart}
+          open={sizeChartOpen}
+          onOpenChange={setSizeChartOpen}
+        />
+      )}
     </div>
   );
 };

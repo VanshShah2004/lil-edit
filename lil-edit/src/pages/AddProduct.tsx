@@ -959,7 +959,7 @@ const AddProduct = () => {
                           value={formData.sku}
                           readOnly
                           placeholder={isGeneratingSku ? "Generating..." : "Select category & gender"}
-                          className={`w-full px-5 py-4 rounded-md border border-gray-200 ${isGeneratingSku ? 'bg-[#F0F0F2] animate-pulse' : 'bg-[#F5F4F6]'} text-gray-800 cursor-not-allowed outline-none transition-all duration-300 font-mono text-[13px] tracking-wider`}
+                          className={`w-full px-5 py-4 rounded-xl border border-gray-200 ${isGeneratingSku ? 'bg-[#F0F0F2] animate-pulse' : 'bg-[#F5F4F6]'} text-gray-800 cursor-not-allowed outline-none transition-all duration-300 font-mono text-[13px] tracking-wider`}
                         />
                         {isGeneratingSku && (
                           <div className="absolute right-4 top-1/2 -translate-y-1/2">
