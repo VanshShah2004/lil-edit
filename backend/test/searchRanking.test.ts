@@ -5,6 +5,8 @@ import {
   scoreVariant,
   compareRanked,
   rankVariantRows,
+  planQuery,
+  MATCH_STRENGTH,
   NO_TITLE_MATCH,
   MIN_RESULT_SCORE,
   type SearchCatalogEntry,
@@ -48,8 +50,8 @@ function rank(entries: SearchCatalogEntry[], q: string): Array<{ title: string; 
 }
 
 test("title-match bucket beats any non-title score, regardless of points", () => {
-  const titleContains = { entry: entry({ title: "Sunflower Dress" }), score: 80, titleRank: 3 };
-  const nonTitleHuge = { entry: entry({ title: "Aaa First Alphabetically" }), score: 99, titleRank: NO_TITLE_MATCH };
+  const titleContains = { entry: entry({ title: "Sunflower Dress" }), score: 80, titleRank: 3, strength: 0 };
+  const nonTitleHuge = { entry: entry({ title: "Aaa First Alphabetically" }), score: 99, titleRank: NO_TITLE_MATCH, strength: 0 };
   assert.ok(compareRanked(titleContains, nonTitleHuge) < 0, "weakest title match must sort before strongest non-title match");
 });
 
@@ -87,18 +89,18 @@ test("fuzzy title matches stay in the non-title bucket", () => {
 
 test("equal-score ties break on broader stock availability", () => {
   // Both exact title matches (flat score, identical titles) — stock breadth decides.
-  const wideStock = { entry: entry({ title: "Kurta", variants: [variant(true), variant(true), variant(false)] }), score: 100, titleRank: 0 };
-  const slimStock = { entry: entry({ title: "Kurta", variants: [variant(true), variant(false), variant(false)] }), score: 100, titleRank: 0 };
+  const wideStock = { entry: entry({ title: "Kurta", variants: [variant(true), variant(true), variant(false)] }), score: 100, titleRank: 0, strength: 0 };
+  const slimStock = { entry: entry({ title: "Kurta", variants: [variant(true), variant(false), variant(false)] }), score: 100, titleRank: 0, strength: 0 };
   assert.ok(compareRanked(wideStock, slimStock) < 0);
   assert.ok(compareRanked(slimStock, wideStock) > 0);
   // A variant-less product counts as one in-stock card.
-  const noVariants = { entry: entry({ title: "Kurta" }), score: 100, titleRank: 0 };
+  const noVariants = { entry: entry({ title: "Kurta" }), score: 100, titleRank: 0, strength: 0 };
   assert.ok(compareRanked(wideStock, noVariants) < 0);
 });
 
 test("final tiebreak is alphabetical title", () => {
-  const a = { entry: entry({ title: "Anarkali Set" }), score: 50, titleRank: NO_TITLE_MATCH };
-  const b = { entry: entry({ title: "Banarasi Set" }), score: 50, titleRank: NO_TITLE_MATCH };
+  const a = { entry: entry({ title: "Anarkali Set" }), score: 50, titleRank: NO_TITLE_MATCH, strength: 0 };
+  const b = { entry: entry({ title: "Banarasi Set" }), score: 50, titleRank: NO_TITLE_MATCH, strength: 0 };
   assert.ok(compareRanked(a, b) < 0);
   assert.ok(compareRanked(b, a) > 0);
 });
@@ -237,4 +239,129 @@ test("details matches rank below every other non-title tier (gender, the next-we
   const detailsOnly = scoreEntry(entry({ title: "Tee A", details: "soft breathable cotton feel" }), "breathable");
   const genderOnly = scoreEntry(entry({ title: "Tee B", gender: "girls" }), "girls");
   assert.ok(detailsOnly.score < genderOnly.score);
+});
+
+// ─── Multi-word progressive relaxation ────────────────────────────────────────
+
+test("planQuery: tokens drop stopwords, 1-char words, and duplicates; chunks need 3+ words", () => {
+  assert.deepEqual(planQuery("kurta"), { phrase: "kurta", tokens: [], chunks: [] });
+  assert.deepEqual(planQuery("maroon kurta"), { phrase: "maroon kurta", tokens: ["maroon", "kurta"], chunks: [] });
+  assert.deepEqual(planQuery("the kurta"), { phrase: "the kurta", tokens: ["kurta"], chunks: [] });
+  assert.deepEqual(planQuery("of the"), { phrase: "of the", tokens: [], chunks: [] });
+  assert.deepEqual(planQuery("red red kurta").tokens, ["red", "kurta"]);
+  assert.deepEqual(planQuery("red silk kurta"), {
+    phrase: "red silk kurta",
+    tokens: ["red", "silk", "kurta"],
+    chunks: ["red silk", "silk kurta"],
+  });
+});
+
+test("single-word queries keep exactly the old behaviour (phrase strength, same tiers)", () => {
+  const m = scoreEntry(entry({ title: "Silk Kurta" }), "kurta");
+  assert.equal(m.field, "title");
+  assert.equal(m.titleRank, 3); // word-equal quirk: "kurta" === token, so contains tier
+  assert.equal(m.strength, MATCH_STRENGTH.phrase);
+  const miss = scoreEntry(entry({ title: "Plain Tee" }), "lehenga");
+  assert.equal(miss.score, 0);
+  assert.equal(miss.strength, MATCH_STRENGTH.phrase);
+});
+
+test("strength buckets order results at equal title rank: phrase > all-words > single word", () => {
+  // Query "silk kurta" — all three land in the non-title bucket (rank 4).
+  const phraseHit = entry({ title: "Tee A", fabric: "Silk Kurta Blend" });      // phrase matches fabric
+  const allWordsHit = entry({ title: "Tee B", fabric: "Silk", category: "Kurta Sets" }); // both words, different fields
+  const oneWordHit = entry({ title: "Tee C", fabric: "Silk" });                 // only "silk" matches
+  const ranked = rank([oneWordHit, allWordsHit, phraseHit], "silk kurta");
+  assert.deepEqual(ranked.map((r) => r.title), ["Tee A", "Tee B", "Tee C"]);
+  // Strength decides even though the all-words entry's best score (category ~78)
+  // beats the phrase entry's fabric score (~54).
+  const s = (e: SearchCatalogEntry) => scoreEntry(e, "silk kurta");
+  assert.equal(s(phraseHit).strength, MATCH_STRENGTH.phrase);
+  assert.equal(s(allWordsHit).strength, MATCH_STRENGTH.allWords);
+  assert.equal(s(oneWordHit).strength, MATCH_STRENGTH.word);
+  assert.ok(s(allWordsHit).score > s(phraseHit).score);
+});
+
+test('"vansh product": no phrase match still returns per-word matches instead of nothing', () => {
+  const vanshHit = entry({ title: "Vansh Kurta" });                       // "vansh" hits the title
+  const productHit = entry({ title: "Basic Tee", details: "our product line" }); // "product" only in details
+  const ranked = rank([productHit, vanshHit], "vansh product");
+  assert.deepEqual(ranked.map((r) => r.title), ["Vansh Kurta", "Basic Tee"]);
+  // Both are word fallbacks; the title hit leads via its title rank.
+  assert.equal(scoreEntry(vanshHit, "vansh product").titleRank, 1); // title starts with "vansh"
+  assert.equal(scoreEntry(productHit, "vansh product").titleRank, NO_TITLE_MATCH);
+});
+
+test("matching ALL words outranks matching one word at the same title rank", () => {
+  // Query "vansh product": both entries hit the title via "vansh" (rank 2),
+  // but only the first also matches "product" (in details) — all-words wins,
+  // even though the single-word entry's raw score is slightly higher.
+  const bothWords = entry({ title: "Vansh Kurta", details: "product info sheet" });
+  const oneWord = entry({ title: "Vansh Tee" });
+  const ranked = rank([oneWord, bothWords], "vansh product");
+  assert.deepEqual(ranked.map((r) => r.title), ["Vansh Kurta", "Vansh Tee"]);
+  assert.equal(scoreEntry(bothWords, "vansh product").strength, MATCH_STRENGTH.allWords);
+  assert.equal(scoreEntry(oneWord, "vansh product").strength, MATCH_STRENGTH.word);
+});
+
+test("stopwords only count inside the full phrase, never as standalone words", () => {
+  // "the kurta": "the" is dropped; matching "kurta" means matching ALL words.
+  const m = scoreEntry(entry({ title: "Silk Kurta" }), "the kurta");
+  assert.ok(m.score > MIN_RESULT_SCORE);
+  assert.equal(m.strength, MATCH_STRENGTH.allWords);
+  // An all-stopword query can only match as a phrase.
+  assert.deepEqual(rank([entry({ title: "Plain Tee" })], "of the"), []);
+  const phraseOnly = scoreEntry(entry({ title: "Tee", details: "one of the best" }), "of the");
+  assert.equal(phraseOnly.strength, MATCH_STRENGTH.phrase);
+  assert.ok(phraseOnly.score > MIN_RESULT_SCORE);
+});
+
+test("fuzzy runs on words of 2+ chars in word attempts", () => {
+  // "gown rd": "rd" matches nothing directly but fuzzy-hits title word "red"
+  // (distance 1) — without 2-char fuzzy the all-words attempt would fail.
+  const m = scoreEntry(entry({ title: "Red Gown" }), "gown rd");
+  assert.equal(m.strength, MATCH_STRENGTH.allWords);
+  assert.ok(m.score > MIN_RESULT_SCORE);
+  // Typo'd word in a multi-word query still finds the product.
+  const typo = scoreEntry(entry({ title: "Festive Kurta" }), "festive kurtta");
+  assert.equal(typo.strength, MATCH_STRENGTH.allWords);
+});
+
+test("contiguous chunks of a 3+ word query match as their own bucket", () => {
+  // "red silk kurta" against a product matching only "silk kurta" as a phrase:
+  // the AND attempt fails (no "red"), but the chunk clears at strength 2.
+  const chunkHit = entry({ title: "Silk Kurta Set" });
+  const oneWordHit = entry({ title: "Silk Scarf" }); // only "silk" matches (also rank 1)
+  const m = scoreEntry(chunkHit, "red silk kurta");
+  assert.equal(m.strength, MATCH_STRENGTH.chunk);
+  assert.equal(m.titleRank, 1); // "silk kurta set" starts with the chunk
+  const ranked = rank([oneWordHit, chunkHit], "red silk kurta");
+  assert.deepEqual(ranked.map((r) => r.title), ["Silk Kurta Set", "Silk Scarf"]);
+});
+
+test("multi-word colour queries rank the matching colourway above its siblings", () => {
+  // "maroon kurta": the maroon colourway matches all words (title + its colour),
+  // the blue colourway only matches "kurta" — same title rank, weaker strength.
+  const e = entry({
+    title: "Kurta Set",
+    variants: [variant(true, "Blue"), variant(true, "Maroon")],
+  });
+  const rows = rankVariantRows([e], "maroon kurta");
+  assert.deepEqual(rows.map((r) => r.color.name), ["Maroon", "Blue"]);
+  // The product-level match remembers which word hit the colour, so the
+  // suggestions dropdown can point at the maroon colourway's image/sku.
+  assert.equal(scoreEntry(e, "maroon kurta").colorHit, "maroon");
+  // Single-word colour queries keep the old colorHit shape (the whole query).
+  assert.equal(scoreEntry(e, "maroon").colorHit, "maroon");
+});
+
+test("word-fallback matches still clear the inclusion floor", () => {
+  const cases: Array<[SearchCatalogEntry, string]> = [
+    [entry({ title: "Tee", details: "vansh signature stitching" }), "vansh product"], // details via word
+    [entry({ title: "Tee", tags: ["festive"] }), "festive lehenga"],                  // tag via word
+  ];
+  for (const [e, q] of cases) {
+    const { score } = scoreEntry(e, q);
+    assert.ok(score > MIN_RESULT_SCORE, `"${q}" against "${e.title}" scored ${score}`);
+  }
 });

@@ -101,15 +101,24 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    /* Reserve the viewport scrollbar's gutter permanently so opening an overlay (which
-       hides the scrollbar) never changes the layout width — keeps the page and the
-       fixed navbar perfectly still.
-       NOTE: `overflow-x: hidden` is deliberately NOT here. On <html> it makes <html>
-       the scroll container, which breaks react-remove-scroll (used by every Radix
-       dropdown/dialog): it locks <body> and can't remove <html>'s scrollbar, so its
-       margin compensation shoves the page sideways on open. We clip horizontal overflow
-       on <body> instead (below), leaving normal scroll propagation intact. */
-    scrollbar-gutter: stable;
+  }
+
+  /* Reserve the viewport scrollbar's gutter permanently so opening an overlay (which
+     hides the scrollbar) never changes the layout width — keeps the page and the
+     fixed navbar perfectly still.
+     Scoped to `pointer: fine` (mouse/trackpad) devices only: touch devices have no
+     space-taking scrollbar to reserve for, so on mobile this rule only ever created
+     dead gutter space — visible as a thin white strip at the screen edges wherever a
+     `position: fixed; inset: 0` overlay (e.g. AlertDialog) stops short of it.
+     NOTE: `overflow-x: hidden` is deliberately NOT here. On <html> it makes <html>
+     the scroll container, which breaks react-remove-scroll (used by every Radix
+     dropdown/dialog): it locks <body> and can't remove <html>'s scrollbar, so its
+     margin compensation shoves the page sideways on open. We clip horizontal overflow
+     on <body> instead (below), leaving normal scroll propagation intact. */
+  @media (pointer: fine) {
+    html {
+      scrollbar-gutter: stable;
+    }
   }
 
   /* react-remove-scroll still adds a compensating margin/padding to <body> when it

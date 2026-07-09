@@ -24,6 +24,9 @@ const ACTION_CATEGORIES: Record<string, readonly string[]> = {
     "coupon_deleted",
     "curation_updated",
     "curation_section_updated",
+    "size_chart_created",
+    "size_chart_updated",
+    "size_chart_deleted",
   ],
   orders: ["order_status_changed", "payment_status_changed"],
   // Platform = admin-access changes + site maintenance toggles (both platform-level).

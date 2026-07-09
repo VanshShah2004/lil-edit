@@ -15,6 +15,7 @@ import {
   Power,
   PowerOff,
   RefreshCw,
+  Ruler,
   ShieldAlert,
   ShieldCheck,
   ShieldOff,
@@ -120,6 +121,12 @@ function visualFor(action: AdminActionType): Visual {
       return { Icon: Ticket, color: "#D97706", bg: "rgba(217,119,6,0.12)" };
     case "coupon_deleted":
       return { Icon: Ticket, ...RED };
+    case "size_chart_created":
+      return { Icon: Ruler, ...GREEN };
+    case "size_chart_updated":
+      return { Icon: Ruler, color: "#D97706", bg: "rgba(217,119,6,0.12)" };
+    case "size_chart_deleted":
+      return { Icon: Ruler, ...RED };
     case "order_status_changed":
       return { Icon: ClipboardList, color: "#2563EB", bg: "rgba(37,99,235,0.10)" };
     case "payment_status_changed":
@@ -163,9 +170,14 @@ function chipsFor(item: AuditActionItem): string[] {
       return [`${n} item${n === 1 ? "" : "s"}`];
     }
     case "coupon_updated":
-    case "curation_section_updated": {
+    case "curation_section_updated":
+    case "size_chart_updated": {
       const fields = Array.isArray(m.fields) ? (m.fields as unknown[]).map(asStr).filter(Boolean) : [];
       return fields.slice(0, 4).map(prettyField);
+    }
+    case "size_chart_created": {
+      const n = asNum(m.rowCount);
+      return n ? [`${n} size${n === 1 ? "" : "s"}`] : [];
     }
     case "coupon_created": {
       const dt = asStr(m.discount_type);

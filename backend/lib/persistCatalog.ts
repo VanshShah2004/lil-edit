@@ -961,6 +961,58 @@ function matchQuality(text: string, lower: string): number {
   return coverage * 1.4 + position * 0.5;
 }
 
+// ─── Multi-word query planning ────────────────────────────────────────────────
+
+// Match-strength ladder for multi-word queries, progressively relaxed: the full
+// phrase is strongest; then "every meaningful word matched somewhere"; then a
+// contiguous chunk of the words; weakest is a single-word fallback. Strength
+// sorts BELOW the title bucket but ABOVE the numeric score, so at equal title
+// rank a stronger attempt always outranks a weaker fallback.
+export const MATCH_STRENGTH = {
+  phrase: 0,
+  allWords: 1,
+  chunk: 2,
+  word: 3,
+} as const;
+
+// Tiny glue words carry no signal on their own — they only count as part of the
+// full phrase (or inside a chunk), never as standalone word attempts.
+const STOPWORDS = new Set([
+  "a", "an", "and", "the", "of", "to", "in", "for", "on", "at", "by", "or", "with",
+]);
+
+// Degenerate-input guards: a 100-char query of dozens of words must not explode
+// the attempt matrix. 8 tokens yield at most 27 chunk windows; we keep the
+// largest windows (most specific) up to the cap.
+const MAX_QUERY_TOKENS = 8;
+const MAX_QUERY_CHUNKS = 12;
+
+export interface QueryPlan {
+  phrase: string;   // the whole lowercased query — always attempted first
+  tokens: string[]; // meaningful words (deduped, stopwords/1-char dropped); empty for single-word queries
+  chunks: string[]; // contiguous multi-word windows, largest first; only for 3+ tokens
+}
+
+/** Decompose a lowercased query into its progressive-relaxation attempts. */
+export function planQuery(lower: string): QueryPlan {
+  const tokens: string[] = [];
+  for (const tok of lower.split(/\s+/)) {
+    if (tok.length < 2 || STOPWORDS.has(tok) || tokens.includes(tok)) continue;
+    tokens.push(tok);
+    if (tokens.length >= MAX_QUERY_TOKENS) break;
+  }
+  // A single-word query has nothing to relax — the phrase attempt IS the query.
+  if (tokens.length === 1 && tokens[0] === lower) tokens.length = 0;
+
+  const chunks: string[] = [];
+  for (let size = tokens.length - 1; size >= 2 && chunks.length < MAX_QUERY_CHUNKS; size--) {
+    for (let i = 0; i + size <= tokens.length && chunks.length < MAX_QUERY_CHUNKS; i++) {
+      chunks.push(tokens.slice(i, i + size).join(" "));
+    }
+  }
+  return { phrase: lower, tokens, chunks };
+}
+
 // Title matches rank in a bucket ABOVE the entire point ladder: titleRank 0–3
 // (exact / starts / word-starts / contains) always sorts before NO_TITLE_MATCH,
 // regardless of numeric score. Fuzzy title matches stay in the non-title bucket —
@@ -975,10 +1027,14 @@ export const MIN_RESULT_SCORE = 5;
 // Core field scorer. Product-level fields (title, category, tags, …) come from
 // the entry; the colour signal is the single colour name passed in, so the same
 // engine scores one variant (its own colour) or a variant-less product ("").
+// fuzzyMinLen keeps typo-tolerance conservative per attempt type: 3 for the
+// full phrase (historic behaviour), 2 for word attempts (user-tuned), Infinity
+// to skip fuzzy entirely for multi-word chunks.
 function scoreFields(
   entry: SearchCatalogEntry,
   colorName: string,
   lower: string,
+  fuzzyMinLen = 3,
 ): { score: number; field: string; titleRank: number } {
   const t = entry.title.toLowerCase();
 
@@ -1032,7 +1088,7 @@ function scoreFields(
   if (entry.gender.toLowerCase().includes(lower))
     return { score: FIELD_SCORES["gender"] + matchQuality(entry.gender.toLowerCase(), lower), field: "gender", titleRank: NO_TITLE_MATCH };
 
-  if (lower.length >= 3 && fuzzyMatchesTitle(entry.title, lower))
+  if (lower.length >= fuzzyMinLen && fuzzyMatchesTitle(entry.title, lower))
     return { score: FIELD_SCORES["fuzzy"], field: "fuzzy", titleRank: NO_TITLE_MATCH };
 
   // Weakest signal: a flat 10 points if the query only shows up in the
@@ -1043,30 +1099,132 @@ function scoreFields(
   return { score: 0, field: "", titleRank: NO_TITLE_MATCH };
 }
 
+/** A candidate's best composite match across every attempted phrase/word. */
+export interface RankedMatch {
+  score: number;      // best score across cleared attempts
+  field: string;      // field of the best-scoring attempt
+  titleRank: number;  // best (lowest) title rank across cleared attempts
+  strength: number;   // strongest (lowest) MATCH_STRENGTH across cleared attempts
+  colorHit: string;   // the attempted string that matched a colour, "" if none
+}
+
+// Composite precedence shared by every consumer: title bucket, then match
+// strength, then the point ladder.
+function compareMatch(
+  a: { titleRank: number; strength: number; score: number },
+  b: { titleRank: number; strength: number; score: number },
+): number {
+  return a.titleRank - b.titleRank || a.strength - b.strength || b.score - a.score;
+}
+
+/**
+ * Progressive relaxation: try the full phrase, then all-words AND, then
+ * contiguous chunks, then individual words. The candidate keeps a composite of
+ * the best facts it earned across every attempt that cleared the inclusion
+ * floor — strongest bucket, best title rank, best score — so a product that
+ * matches all words never ranks below one matching a single word at the same
+ * title rank, and a query like "vansh product" still returns the per-word
+ * matches instead of an empty result set.
+ */
+function scoreCandidate(
+  entry: SearchCatalogEntry,
+  colorName: string,
+  plan: QueryPlan,
+): RankedMatch {
+  const phrase = scoreFields(entry, colorName, plan.phrase);
+  const phraseMatch: RankedMatch = {
+    ...phrase,
+    strength: MATCH_STRENGTH.phrase,
+    colorHit: phrase.field === "color" ? plan.phrase : "",
+  };
+  if (plan.tokens.length === 0) return phraseMatch; // single-word query: nothing to relax
+
+  const cleared: RankedMatch[] = [];
+  if (phraseMatch.score > MIN_RESULT_SCORE) cleared.push(phraseMatch);
+
+  // Per-word results power both the all-words AND attempt and the word fallback.
+  const wordResults = plan.tokens.map((tok) => ({ tok, ...scoreFields(entry, colorName, tok, 2) }));
+  const clearedWords = wordResults.filter((r) => r.score > MIN_RESULT_SCORE);
+
+  if (clearedWords.length === plan.tokens.length) {
+    let top = clearedWords[0]!;
+    let total = 0;
+    let worstRank = 0;
+    for (const r of clearedWords) {
+      total += r.score;
+      worstRank = Math.max(worstRank, r.titleRank);
+      if (r.score > top.score) top = r;
+    }
+    cleared.push({
+      score: total / clearedWords.length,
+      field: top.field,
+      titleRank: worstRank, // title bucket only when EVERY word hits the title
+      strength: MATCH_STRENGTH.allWords,
+      colorHit: clearedWords.find((r) => r.field === "color")?.tok ?? "",
+    });
+  }
+
+  for (const chunk of plan.chunks) {
+    const r = scoreFields(entry, colorName, chunk, Number.POSITIVE_INFINITY);
+    if (r.score > MIN_RESULT_SCORE)
+      cleared.push({ ...r, strength: MATCH_STRENGTH.chunk, colorHit: r.field === "color" ? chunk : "" });
+  }
+
+  // With exactly one meaningful word, matching it means matching ALL words —
+  // the AND bucket above already holds it; no weaker fallback exists.
+  if (plan.tokens.length > 1) {
+    for (const r of clearedWords)
+      cleared.push({
+        score: r.score,
+        field: r.field,
+        titleRank: r.titleRank,
+        strength: MATCH_STRENGTH.word,
+        colorHit: r.field === "color" ? r.tok : "",
+      });
+  }
+
+  if (cleared.length === 0) return phraseMatch; // no attempt matched — callers filter on the floor
+
+  // Fold: strongest bucket + best title rank + best score, wherever each was
+  // earned. colorHit keeps the first (strongest-attempt) colour association.
+  const out = { ...cleared[0]! };
+  for (let i = 1; i < cleared.length; i++) {
+    const c = cleared[i]!;
+    if (c.score > out.score) { out.score = c.score; out.field = c.field; }
+    if (c.titleRank < out.titleRank) out.titleRank = c.titleRank;
+    if (c.strength < out.strength) out.strength = c.strength;
+    if (!out.colorHit && c.colorHit) out.colorHit = c.colorHit;
+  }
+  return out;
+}
+
 /** Score ONE colour variant: product-level fields + its own colour name. */
 export function scoreVariant(
   entry: SearchCatalogEntry,
   v: SearchCatalogVariant,
   lower: string,
-): { score: number; field: string; titleRank: number } {
-  return scoreFields(entry, v.colorName, lower);
+  plan: QueryPlan = planQuery(lower),
+): RankedMatch {
+  return scoreCandidate(entry, v.colorName, plan);
 }
 
 /**
- * Product-level score = the best of its variants (colour is the only
- * per-variant signal, so this is the max variant score). Used where results
+ * Product-level score = the best of its variants by title bucket → match
+ * strength → score (colour is the only per-variant signal). Used where results
  * are one-per-product (the suggestions dropdown); the full results page ranks
  * each variant individually via scoreVariant.
  */
 export function scoreEntry(
   entry: SearchCatalogEntry,
   lower: string,
-): { score: number; field: string; titleRank: number } {
-  if (entry.variants.length === 0) return scoreFields(entry, "", lower);
-  let best = scoreFields(entry, entry.variants[0]!.colorName, lower);
+  plan: QueryPlan = planQuery(lower),
+): RankedMatch {
+  if (entry.variants.length === 0) return scoreCandidate(entry, "", plan);
+  let best = scoreCandidate(entry, entry.variants[0]!.colorName, plan);
   for (let i = 1; i < entry.variants.length; i++) {
-    const s = scoreFields(entry, entry.variants[i]!.colorName, lower);
-    if (s.score > best.score) best = s;
+    const s = scoreCandidate(entry, entry.variants[i]!.colorName, plan);
+    if (s.score <= MIN_RESULT_SCORE) continue;
+    if (best.score <= MIN_RESULT_SCORE || compareMatch(s, best) < 0) best = s;
   }
   return best;
 }
@@ -1074,13 +1232,15 @@ export function scoreEntry(
 // A colour match surfaces only the colourway(s) that actually matched — a
 // "maroon" search must not render the blue and green cards of the same
 // product. Every other match type keeps flattening to all colour variants.
+// `matched` is the attempted string that hit the colour (the full phrase for
+// single-word queries, an individual word for multi-word fallbacks).
 export function matchingVariants(
   entry: SearchCatalogEntry,
   field: string,
-  lower: string,
+  matched: string,
 ): SearchCatalogVariant[] {
   if (field !== "color") return entry.variants;
-  return entry.variants.filter((v) => v.colorName.toLowerCase().includes(lower));
+  return entry.variants.filter((v) => v.colorName.toLowerCase().includes(matched));
 }
 
 // In-stock variant count; a variant-less product renders one always-in-stock card.
@@ -1092,16 +1252,18 @@ function stockBreadth(entry: SearchCatalogEntry): number {
 /**
  * Shared ranking comparator for suggestions and full search results:
  *   1. title-match bucket + subtype (titleRank 0–3 before NO_TITLE_MATCH)
- *   2. point-ladder score (descending) within the bucket
- *   3. broader stock availability first
- *   4. alphabetical title
+ *   2. match-strength bucket (phrase → all-words → chunk → single-word)
+ *   3. point-ladder score (descending) within the bucket
+ *   4. broader stock availability first
+ *   5. alphabetical title
  */
 export function compareRanked(
-  a: { entry: SearchCatalogEntry; score: number; titleRank: number },
-  b: { entry: SearchCatalogEntry; score: number; titleRank: number },
+  a: { entry: SearchCatalogEntry; score: number; titleRank: number; strength: number },
+  b: { entry: SearchCatalogEntry; score: number; titleRank: number; strength: number },
 ): number {
   return (
     a.titleRank - b.titleRank ||
+    a.strength - b.strength ||
     b.score - a.score ||
     stockBreadth(b.entry) - stockBreadth(a.entry) ||
     a.entry.title.localeCompare(b.entry.title)
@@ -1117,13 +1279,14 @@ export function compareRanked(
  */
 export async function fetchSuggestions(q: string, log: OpLogger): Promise<SuggestionRow[]> {
   const lower = q.toLowerCase();
+  const plan = planQuery(lower);
   const catalog = await loadSearchCatalog(log);
 
   // Score every product in the catalog.
-  const scored: Array<{ entry: SearchCatalogEntry; score: number; field: string; titleRank: number }> = [];
+  const scored: Array<{ entry: SearchCatalogEntry } & RankedMatch> = [];
   for (const entry of catalog) {
-    const { score, field, titleRank } = scoreEntry(entry, lower);
-    if (score > MIN_RESULT_SCORE) scored.push({ entry, score, field, titleRank });
+    const m = scoreEntry(entry, lower, plan);
+    if (m.score > MIN_RESULT_SCORE) scored.push({ entry, ...m });
   }
   scored.sort(compareRanked);
   log.step(`Scoring - ${scored.length}/${catalog.length} products matched`);
@@ -1137,41 +1300,55 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
     if (prev === undefined || prev < score) { metaRows.set(key, row); metaScores.set(key, score); }
   }
 
+  // Chips match the full phrase first, then each meaningful word, so a
+  // multi-word query like "maroon kurta" still surfaces the Maroon colour chip
+  // AND the Kurta category chip. upsertMeta keeps the best score per chip;
+  // phrase-derived scores win ties because they're attempted first.
+  const chipQueries = [lower, ...plan.tokens];
+  function chipScore(text: string, startsScore: number, containsScore: number): number {
+    let best = 0;
+    for (const cq of chipQueries) {
+      if (!text.includes(cq)) continue;
+      best = Math.max(best, (text.startsWith(cq) ? startsScore : containsScore) + matchQuality(text, cq));
+    }
+    return best;
+  }
+
   for (const { entry } of scored) {
     const cat = entry.category.toLowerCase();
-    if (cat.includes(lower)) {
-      const s = (cat.startsWith(lower) ? FIELD_SCORES["category:starts"] : FIELD_SCORES["category"]) + matchQuality(cat, lower);
-      upsertMeta(`category:${entry.category_slug}`, { type: "category", id: `category:${entry.category_slug}`, label: entry.category, sublabel: "Category", image: "", slug: "", categorySlug: entry.category_slug, sku: "" }, s);
+    const catScore = chipScore(cat, FIELD_SCORES["category:starts"], FIELD_SCORES["category"]);
+    if (catScore > 0) {
+      upsertMeta(`category:${entry.category_slug}`, { type: "category", id: `category:${entry.category_slug}`, label: entry.category, sublabel: "Category", image: "", slug: "", categorySlug: entry.category_slug, sku: "" }, catScore);
     }
 
     if (entry.occasion) {
       const occ = entry.occasion.toLowerCase();
-      if (occ.includes(lower)) {
-        const s = (occ.startsWith(lower) ? FIELD_SCORES["occasion:starts"] : FIELD_SCORES["occasion"]) + matchQuality(occ, lower);
+      const s = chipScore(occ, FIELD_SCORES["occasion:starts"], FIELD_SCORES["occasion"]);
+      if (s > 0) {
         upsertMeta(`occasion:${occ}`, { type: "occasion", id: `occasion:${occ}`, label: entry.occasion, sublabel: "Occasion", image: "", slug: "", categorySlug: "", sku: "" }, s);
       }
     }
 
     for (const tag of entry.tags) {
       const tl = tag.toLowerCase();
-      if (tl.includes(lower)) {
-        const s = (tl.startsWith(lower) ? FIELD_SCORES["tag:starts"] : FIELD_SCORES["tag"]) + matchQuality(tl, lower);
+      const s = chipScore(tl, FIELD_SCORES["tag:starts"], FIELD_SCORES["tag"]);
+      if (s > 0) {
         upsertMeta(`tag:${tl}`, { type: "tag", id: `tag:${tl}`, label: tag, sublabel: "Tag", image: "", slug: "", categorySlug: "", sku: "" }, s);
       }
     }
 
     for (const badge of entry.badges) {
       const bl = badge.toLowerCase();
-      if (bl.includes(lower)) {
-        const s = (bl.startsWith(lower) ? FIELD_SCORES["badge:starts"] : FIELD_SCORES["badge"]) + matchQuality(bl, lower);
+      const s = chipScore(bl, FIELD_SCORES["badge:starts"], FIELD_SCORES["badge"]);
+      if (s > 0) {
         upsertMeta(`badge:${bl}`, { type: "badge", id: `badge:${bl}`, label: badge, sublabel: "Badge", image: "", slug: "", categorySlug: "", sku: "" }, s);
       }
     }
 
     if (entry.fabric) {
       const fab = entry.fabric.toLowerCase();
-      if (fab.includes(lower)) {
-        const s = (fab.startsWith(lower) ? FIELD_SCORES["fabric:starts"] : FIELD_SCORES["fabric"]) + matchQuality(fab, lower);
+      const s = chipScore(fab, FIELD_SCORES["fabric:starts"], FIELD_SCORES["fabric"]);
+      if (s > 0) {
         upsertMeta(`fabric:${fab}`, { type: "fabric", id: `fabric:${fab}`, label: entry.fabric, sublabel: "Material", image: "", slug: "", categorySlug: "", sku: "" }, s);
       }
     }
@@ -1179,16 +1356,16 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
     for (const v of entry.variants) {
       if (!v.colorName) continue;
       const cl = v.colorName.toLowerCase();
-      if (cl.includes(lower)) {
-        const s = (cl.startsWith(lower) ? FIELD_SCORES["color:starts"] : FIELD_SCORES["color"]) + matchQuality(cl, lower);
+      const s = chipScore(cl, FIELD_SCORES["color:starts"], FIELD_SCORES["color"]);
+      if (s > 0) {
         upsertMeta(`color:${cl}`, { type: "color", id: `color:${cl}`, label: v.colorName, sublabel: "Colour", image: "", slug: "", categorySlug: "", sku: "" }, s);
       }
     }
 
     if (entry.fit) {
       const fitl = entry.fit.toLowerCase();
-      if (fitl.includes(lower)) {
-        const s = (fitl.startsWith(lower) ? FIELD_SCORES["fit:starts"] : FIELD_SCORES["fit"]) + matchQuality(fitl, lower);
+      const s = chipScore(fitl, FIELD_SCORES["fit:starts"], FIELD_SCORES["fit"]);
+      if (s > 0) {
         upsertMeta(`fit:${fitl}`, { type: "fit", id: `fit:${fitl}`, label: entry.fit, sublabel: "Fit", image: "", slug: "", categorySlug: "", sku: "" }, s);
       }
     }
@@ -1196,8 +1373,9 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
 
   // ─── Curated lexicon suggestions — independent of the live catalog ──────────
   // These let the search box suggest terms ("Kurti", "Diwali", "Cotton", "Red")
-  // even when no matching products are currently in stock.
-  const lexiconMatches = matchLexicon(lower, 10);
+  // even when no matching products are currently in stock. Phrase first, then
+  // each meaningful word; mergeMeta below dedupes by label, higher score wins.
+  const lexiconMatches = chipQueries.flatMap((cq) => matchLexicon(cq, 10));
   log.step(`Lexicon - ${lexiconMatches.length} curated matches`);
 
   // Merge product-derived metadata with the curated lexicon, deduped by label.
@@ -1234,9 +1412,11 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
 
   // Products tab is inventory-bound (these navigate to real PDPs); cap at 8.
   // A colour match points at the matched colourway (variant image + sku, which
-  // the PDP resolves) instead of the base product's primary colour.
-  const productSuggestions: SuggestionRow[] = scored.slice(0, 8).map(({ entry, field }) => {
-    const matched = field === "color" ? matchingVariants(entry, field, lower)[0] : undefined;
+  // the PDP resolves) instead of the base product's primary colour — colorHit
+  // carries the string that hit the colour even when a multi-word query's best
+  // field was something else (e.g. "maroon kurta" matching title via "kurta").
+  const productSuggestions: SuggestionRow[] = scored.slice(0, 8).map(({ entry, colorHit }) => {
+    const matched = colorHit ? matchingVariants(entry, "color", colorHit)[0] : undefined;
     return {
       type: "product" as const,
       id: entry.id,
@@ -1291,10 +1471,12 @@ export async function searchProducts(q: string, log: OpLogger): Promise<SearchPr
  * scored and sorted as its own card (product-level fields + its own colour),
  * so a "maroon" search ranks the maroon colourway on its colour match while
  * the blue colourway of the same product only ranks if it matches some other
- * way. Ties: title bucket → score → in-stock first → alphabetical title.
+ * way. Ties: title bucket → match strength → score → in-stock first →
+ * alphabetical title.
  */
 export function rankVariantRows(catalog: SearchCatalogEntry[], lower: string): SearchProductRow[] {
-  const ranked: Array<{ row: SearchProductRow; score: number; titleRank: number }> = [];
+  const plan = planQuery(lower);
+  const ranked: Array<{ row: SearchProductRow; score: number; titleRank: number; strength: number }> = [];
   for (const entry of catalog) {
     const base = {
       id: entry.id,
@@ -1307,22 +1489,24 @@ export function rankVariantRows(catalog: SearchCatalogEntry[], lower: string): S
       badges: entry.badges,
     };
     if (entry.variants.length === 0) {
-      const { score, titleRank } = scoreEntry(entry, lower);
+      const { score, titleRank, strength } = scoreEntry(entry, lower, plan);
       if (score > MIN_RESULT_SCORE) {
         ranked.push({
           score,
           titleRank,
+          strength,
           row: { ...base, sku: entry.base_sku, image: entry.image, color: { name: "", hex: "#cccccc" }, inStock: true },
         });
       }
       continue;
     }
     for (const v of entry.variants) {
-      const { score, titleRank } = scoreVariant(entry, v, lower);
+      const { score, titleRank, strength } = scoreVariant(entry, v, lower, plan);
       if (score > MIN_RESULT_SCORE) {
         ranked.push({
           score,
           titleRank,
+          strength,
           row: { ...base, sku: v.sku, image: v.image, color: { name: v.colorName, hex: v.colorHex }, inStock: v.inStock },
         });
       }
@@ -1332,6 +1516,7 @@ export function rankVariantRows(catalog: SearchCatalogEntry[], lower: string): S
   ranked.sort(
     (a, b) =>
       a.titleRank - b.titleRank ||
+      a.strength - b.strength ||
       b.score - a.score ||
       Number(b.row.inStock) - Number(a.row.inStock) ||
       a.row.title.localeCompare(b.row.title),

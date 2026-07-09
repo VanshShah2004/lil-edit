@@ -7,6 +7,7 @@ import {
   ClipboardList,
   LayoutGrid,
   Plus,
+  Ruler,
   Settings,
   ShieldCheck,
   Shirt,
@@ -55,6 +56,7 @@ const groups: AdminSettingsGroup[] = [
     title: "Content Management",
     tiles: [
       { to: "/admin/spotlight", label: "The Spotlight", description: "Curate storefront sections and tiles", icon: LayoutGrid },
+      { to: "/admin/size-charts", label: "Sizing Chart Setup", description: "Create and edit sizing charts", icon: Ruler },
     ],
   },
   {
