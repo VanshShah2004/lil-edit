@@ -10,6 +10,7 @@ export const SECTION_KEYS = [
   "home_shop_the_look",
   "home_featured_categories",
   "home_collage",
+  "home_hero_plus",
   "collections_featured",
 ] as const;
 export type SectionKey = (typeof SECTION_KEYS)[number];

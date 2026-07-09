@@ -58,7 +58,7 @@ const SECTION_GROUPS: { label: string; icon: typeof LayoutGrid; keys: SectionKey
   {
     label: "Dashboard",
     icon: LayoutDashboard,
-    keys: ["home_trending", "home_recommended", "home_shop_the_look", "home_featured_categories", "home_collage"],
+    keys: ["home_trending", "home_recommended", "home_shop_the_look", "home_featured_categories", "home_collage", "home_hero_plus"],
   },
   {
     label: "Collections Page",
@@ -298,9 +298,9 @@ function EditorialTileModal({
   // Shop the Look cards never render a badge (label/title/link only), so don't
   // offer the field there — it would be a dead input.
   const showBadge = sectionKey !== "home_shop_the_look";
-  // Only the collage storefront component reads meta.desktop_image_url today —
+  // Only the collage carousel sections read meta.desktop_image_url today —
   // offering the field elsewhere would be a dead control.
-  const showDesktopImage = sectionKey === "home_collage";
+  const showDesktopImage = sectionKey === "home_collage" || sectionKey === "home_hero_plus";
 
   const handleUpload = async (file: File) => {
     setUploading(true);

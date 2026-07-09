@@ -10,7 +10,7 @@ import { redisGet, redisSet, redisDel, redisKey, CURATION_TTL_S } from "../lib/r
 const router = Router();
 const db = () => supabaseAdmin ?? supabaseAnon;
 
-// The eight storefront strips this engine drives. The frontend asks for these by key.
+// The nine storefront strips this engine drives. The frontend asks for these by key.
 const KNOWN_SECTION_KEYS = [
   "home_trending",
   "home_recommended",
@@ -19,8 +19,14 @@ const KNOWN_SECTION_KEYS = [
   "home_shop_the_look",
   "home_featured_categories",
   "home_collage",
+  "home_hero_plus",
   "collections_featured",
 ] as const;
+
+// Sections whose editorial tiles are pure per-breakpoint overrides: any missing
+// image (mobile, desktop, or both) falls back to the storefront's built-in
+// default, so an imageless tile is valid there.
+const IMAGE_OPTIONAL_SECTIONS = new Set<string>(["home_collage", "home_hero_plus"]);
 type SectionKey = (typeof KNOWN_SECTION_KEYS)[number];
 
 function isKnownKey(k: string): k is SectionKey {
@@ -582,11 +588,9 @@ router.put("/sections/:key/items", adminMutationLimiter, async (req: Request, re
         res.status(400).json({ error: `Item ${i + 1}: product items need a base SKU` });
         return;
       }
-      // Editorial tiles normally need an image. Home Collage is the exception: its
-      // slots are pure per-breakpoint overrides and any missing image (mobile,
-      // desktop, or both) falls back to the storefront's built-in default, so an
-      // imageless collage tile is valid.
-      if (it.kind === "editorial" && key !== "home_collage" && !it.custom_image_url) {
+      // Editorial tiles normally need an image — except the per-breakpoint
+      // override sections (see IMAGE_OPTIONAL_SECTIONS).
+      if (it.kind === "editorial" && !IMAGE_OPTIONAL_SECTIONS.has(key) && !it.custom_image_url) {
         log.warn(`item ${i} editorial without image`).end("CURATION SET ITEMS");
         res.status(400).json({ error: `Item ${i + 1}: editorial tiles need an image` });
         return;

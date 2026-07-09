@@ -34,6 +34,7 @@ const PREVIEW_BACKGROUNDS: Record<SectionKey, string> = {
   home_shop_the_look: "bg-[#E8DDF7]",
   home_featured_categories: "bg-[#E8DDF7]",
   home_collage: "bg-[#E8DDF7]",
+  home_hero_plus: "bg-[#E8DDF7]",
   collections_featured: "bg-white",
 };
 
@@ -48,6 +49,9 @@ const PREVIEW_RENDERERS: Record<SectionKey, (items: ResolvedItem[], title: strin
   home_shop_the_look: (items, title, subtitle) => <ShopTheLook previewItems={items} previewTitle={title} previewSubtitle={subtitle} />,
   home_featured_categories: (items) => <FeaturedCategories previewItems={items} />,
   home_collage: (items) => <HomeCollage previewItems={items} />,
+  // HeroSection+ previews only override the extra swipe slides — the grid page
+  // is still fetched live so the admin sees the whole carousel in context.
+  home_hero_plus: (items) => <HomeCollage previewExtraItems={items} />,
   collections_featured: (items, title, subtitle) => <FeaturedCollectionsGrid previewItems={items} previewTitle={title} previewSubtitle={subtitle} />,
 };
 
