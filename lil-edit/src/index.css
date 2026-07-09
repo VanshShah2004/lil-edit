@@ -101,6 +101,9 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    /* Match body's background so any sub-pixel gap next to a fixed overlay
+       (mobile vw-unit rounding, etc.) shows the page color, not white. */
+    background-color: hsl(var(--background));
   }
 
   html, body {

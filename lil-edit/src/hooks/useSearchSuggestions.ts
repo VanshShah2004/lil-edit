@@ -16,6 +16,10 @@ export function useSearchSuggestions(query: string) {
       return;
     }
 
+    // Flip to loading immediately so the debounce window itself never
+    // exposes stale or empty results as if they were final.
+    setLoading(true);
+
     const timer = setTimeout(async () => {
       // Cancel any in-flight request before starting a new one.
       if (abortRef.current) {
@@ -25,20 +29,21 @@ export function useSearchSuggestions(query: string) {
       abortRef.current = new AbortController();
 
       console.log("[useSearchSuggestions] fetching suggestions for:", trimmed);
-      setLoading(true);
       try {
         const results = await fetchSuggestions(trimmed, abortRef.current.signal);
         console.log("[useSearchSuggestions] received", results.length, "suggestions for:", trimmed);
         setSuggestions(results);
+        setLoading(false);
       } catch (err) {
         if ((err as Error).name === "AbortError") {
+          // A newer keystroke's request superseded this one and is still in
+          // flight — let it own `loading`, don't flip it false out from under it.
           console.log("[useSearchSuggestions] request aborted for:", trimmed);
         } else {
           console.error("[useSearchSuggestions] fetch failed:", err);
           setSuggestions([]);
+          setLoading(false);
         }
-      } finally {
-        setLoading(false);
       }
     }, 300);
 

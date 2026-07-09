@@ -301,7 +301,7 @@ function SearchField({ initial, onSubmit }: { initial: string; onSubmit: (term: 
             )}
             <button
               type="submit"
-              className="px-4 h-8 rounded-md bg-brand-teal hover:bg-[#0C5D53] text-white font-bold text-sm transition-colors"
+              className="px-4 h-8 rounded-sm bg-brand-teal hover:bg-[#0C5D53] text-white font-bold text-sm transition-colors"
             >
               Search
             </button>

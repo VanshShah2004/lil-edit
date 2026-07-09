@@ -263,7 +263,7 @@ const SizeChartsManager = () => {
 
       <div className="rounded-lg border border-gray-900 bg-white overflow-hidden shadow-sm">
 
-        <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-gray-400">
+        <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-gray-900">
           <p className="text-xs font-bold uppercase tracking-wider text-gray-700">
             All charts{!loading && !loadError ? ` (${charts.length})` : ""}
           </p>
