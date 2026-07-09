@@ -558,11 +558,11 @@ const SizeChartsManager = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Keep</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting} className="bg-black text-white hover:bg-gray-800 hover:text-white">Keep</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => { e.preventDefault(); void confirmDelete(); }}
               disabled={deleting}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              className="bg-white text-red-600 border border-red-600 hover:bg-red-50 focus:ring-red-600"
             >
               {deleting ? (
                 <span className="inline-flex items-center gap-2">
