@@ -1,0 +1,1923 @@
+ ▐▛███▜▌   Claude Code v2.1.204
+▝▜█████▛▘  Sonnet 5 · Claude Pro
+  ▘▘ ▝▝    ~\OneDrive\Desktop\new-ecomm\backend
+
+
+❯ read and understand the he search autosuggestions and the search results      
+  feature, point system and ranking system                                      
+
+● This is a read-and-understand request, not an implementation task — no plan or
+  code changes needed. Let me explore the search feature directly.
+
+● Explore(Explore search autosuggest and ranking)
+  ⎿  Backgrounded agent (↓ to manage · ctrl+o to expand)
+
+● I've launched an Explore agent to trace the search autosuggest and
+  search-results flow, including any scoring/ranking logic in the SQL/backend.
+  I'll report back with a clear breakdown once it finishes.
+
+✻ Worked for 9s
+
+● Agent "Explore search autosuggest and ranking" finished · 2m 49s
+
+● Updated plan
+  ⎿  /plan to preview
+
+● Since this was a research task, not an implementation task, I'll skip
+  ExitPlanMode and just give you the answer directly.
+
+  Search Autosuggestions & Results — How it Works
+
+  Autosuggest flow: SearchBar.tsx → SearchPanel.tsx → useSearchSuggestions.ts
+  (300ms debounce) → GET /api/products/suggestions → fetchSuggestions() in
+  backend/lib/persistCatalog.ts → rendered by SuggestionsDropdown.tsx.
+
+  Search results flow: SearchResults.tsx → GET /api/products/search →
+  searchProducts() in persistCatalog.ts. Client-side then applies filters
+  (category/badge/price/stock) and sort — "relevance" just passes through the
+  backend's order untouched; price-asc/desc re-sorts numerically.
+
+  Scoring ("point system") — all in-process TypeScript, no DB full-text search:
+
+  1. scoreEntry() (persistCatalog.ts) scores every catalog product against the
+  query with tiered FIELD_SCORES:
+    - title:exact=100, title:starts=90, title:word-starts=85, title:contains=80,
+  category:starts=78, category=75, tag:starts=72, tag=65, occasion:starts=63,
+  occasion=60, badge:starts=58, badge=55, fabric:starts=53, fabric=50,
+  fit:starts=50, fit=48, gender=45, fuzzy(Levenshtein)=30
+    - Fields checked in priority order (title wins over category wins over tag,
+  etc.)
+    - Within a tier, matchQuality() adds a 0–1.9 bonus (coverage×1.4 + 
+  position×0.5) — tighter/earlier matches rank higher without crossing into the
+  next tier
+  2. searchLexicon.ts — a curated ~140-term list (categories, occasions,
+  fabrics, fits, colors, trends, keywords) independent of live inventory, each
+  with a static admin-set weight (0–20, acts as a popularity boost). Match
+  types: exact=100, prefix=90, wordPrefix=84, contains=76, fuzzy=34, alias -4
+  penalty. Final score = matchScore + weight.
+  3. Merge: product-derived suggestions and lexicon matches are merged by label;
+  on collision, higher score wins. Suggestions capped at 8 products + 8
+  metadata chips. Full results page uses the same scorer but uncapped, one card
+  per color variant.
+  4. Tiebreak everywhere: descending score, then alphabetical.
+
+  Caching: Redis caches both endpoints by query string; the in-memory product
+  catalog itself is cached 10 minutes, invalidated on publish/delete.
+
+  No dynamic popularity/recency ranking — there's no click-through,
+  purchase-count, or recency signal feeding into scores. The only "popularity"
+  proxy is the hardcoded lexicon weight. Search queries are logged to the
+  activity feed for analytics, but that data doesn't loop back into ranking.
+
+  A full write-up (with more code excerpts) is saved at
+  C:\Users\Vansh\.claude\plans\read-and-understand-the-declarative-grove.md if
+  you want to reference it later.
+
+✻ Worked for 3m 27s
+
+❯ Update the search ranking system so title matches are prioritized outside the 
+  normal point ladder.                                                          
+                                                                                
+  Requirements:                                                                 
+  1. For any search query, products whose title matches the query should always 
+  appear first.                                                                 
+  2. Title matches should be grouped above all other point-based matches,       
+  regardless of the numeric score from                                          
+  badge/tag/fabric/fit/occasion/category/gender/fuzzy.                          
+  3. Within title matches, rank in this order:                                  
+     - exact title match                                                        
+     - title starts with query                                                  
+     - any title word starts with query                                         
+     - title contains query midway                                              
+  4. After all title matches, show all other matching products using the        
+  existing point system.                                                        
+  5. Do not suppress other results when an exact title match exists.            
+  6. Any non-title product with a score above 25 should still be included after 
+  the title-match group.                                                        
+  7. Keep the same behavior for autosuggestions and the full search results     
+  page, since both use the shared backend scoring engine.                       
+  8. Preserve existing tie-breakers where sensible: higher score first, then    
+  broader stock availability, then alphabetical title.                          
+  9. Keep fuzzy matching, metadata suggestions, lexicon aliases, and frontend   
+  filtering/sorting behavior intact unless directly required by this ranking    
+  change.                                                                       
+                                                                                
+  Implementation guidance:                                                      
+  - Make the change in `backend/lib/persistCatalog.ts`.                         
+  - Do not rely only on changing numeric constants if that makes title scores   
+  compete with the field score ladder.                                          
+  - Prefer returning a separate title-match rank/category from the scorer, then 
+  sort by:                                                                      
+    1. title match bucket first                                                 
+    2. title match subtype order                                                
+    3. score                                                                    
+    4. stock breadth                                                            
+    5. title                                                                    
+  - Ensure `/api/products/suggestions` and `/api/products/search` both use the  
+  updated ranking.                                                              
+  - Add or update focused tests if a local test pattern exists.                 
+
+  Searched for 1 pattern (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ Update the search ranking system so title matches are prioritized outside the 
+  normal point ladder.                                                          
+                                                                                
+  Requirements:                                                                 
+  1. For any search query, products whose title matches the query should always 
+  appear first.                                                                 
+  2. Title matches should be grouped above all other point-based matches,       
+  regardless of the numeric score from                                          
+  badge/tag/fabric/fit/occasion/category/gender/fuzzy.                          
+  3. Within title matches, rank in this order:                                  
+     - exact title match                                                        
+     - title starts with query                                                  
+     - any title word starts with query                                         
+     - title contains query midway                                              
+  4. After all title matches, show all other matching products using the        
+  existing point system.                                                        
+  5. Do not suppress other results when an exact title match exists.            
+  6. Any non-title product with a score above 25 should still be included after 
+  the title-match group.                                                        
+  7. Keep the same behavior for autosuggestions and the full search results     
+  page, since both use the shared backend scoring engine.                       
+  8. Preserve existing tie-breakers where sensible: higher score first, then    
+  broader stock availability, then alphabetical title.                          
+  9. Keep fuzzy matching, metadata suggestions, lexicon aliases, and frontend   
+  filtering/sorting behavior intact unless directly required by this ranking    
+  change.                                                                       
+                                                                                
+  Implementation guidance:                                                      
+  - Make the change in `backend/lib/persistCatalog.ts`.                         
+  - Do not rely only on changing numeric constants if that makes title scores   
+  compete with the field score ladder.                                          
+  - Prefer returning a separate title-match rank/category from the scorer, then 
+  sort by:                                                                      
+    1. title match bucket first                                                 
+    2. title match subtype order                                                
+    3. score                                                                    
+    4. stock breadth                                                            
+                                                                                
+  - Ensure `/api/products/suggestions` and `/api/products/search` both use the  
+  updated ranking.                                                              
+  - Add or update focused tests if a local test pattern exists.                 
+
+  Read 1 file (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ /model                                                                        
+  ⎿  Set model to Fable 5 and saved as your default for new sessions
+
+❯ /effort                                                                       
+  ⎿  Set effort level to high (saved as your default for new sessions):
+     Comprehensive implementation with extensive testing and documentation ·
+     burns fastest — medium handles most tasks
+
+❯ implement it                                                                  
+
+  Searched for 4 patterns, read 2 files (ctrl+o to expand)
+
+● I have everything I need. Writing the implementation plan now.
+
+● Updated plan
+  ⎿  /plan to preview
+
+● User approved Claude's plan
+  ⎿  Plan saved to: ~\.claude\plans\read-and-understand-the-declarative-grove.md
+     · /plan to edit
+     Title-First Search Ranking
+
+     Context
+
+     The search scoring engine (backend/lib/persistCatalog.ts) currently ranks
+     all matches on a single numeric point ladder (FIELD_SCORES: title:exact=100
+     … fuzzy=30). Title matches usually win because their scores are highest,
+     but they compete on the same axis as category/tag/badge/etc. The user wants
+     title matches structurally guaranteed to appear first — as a separate
+     bucket above the point ladder — not merely by having bigger numbers. Both
+     /api/products/suggestions and /api/products/search share this engine, so
+     one change covers the dropdown and the results page.
+
+     Approach
+
+     Return an explicit title rank from the scorer, then sort by (title rank →
+     score → stock breadth → title). No frontend changes — the frontend already
+     preserves backend order for "relevance".
+
+     1. scoreEntry() returns a title rank (persistCatalog.ts ~line 958)
+
+     Extend the return type to { score: number; field: string; titleRank: number
+     }:
+
+     ┌───────────────────────────────────────────────────────┬─────────────────┐
+     │                         Match                         │    titleRank    │
+     ├───────────────────────────────────────────────────────┼─────────────────┤
+     │ title exact                                           │ 0               │
+     ├───────────────────────────────────────────────────────┼─────────────────┤
+     │ title starts-with                                     │ 1               │
+     ├───────────────────────────────────────────────────────┼─────────────────┤
+     │ title word-starts-with                                │ 2               │
+     ├───────────────────────────────────────────────────────┼─────────────────┤
+     │ title contains                                        │ 3               │
+     ├───────────────────────────────────────────────────────┼─────────────────┤
+     │ everything else                                       │ 4               │
+     │ (category/tag/occasion/badge/fabric/fit/gender/fuzzy) │ (NO_TITLE_MATCH │
+     │                                                       │  constant)      │
+     └───────────────────────────────────────────────────────┴─────────────────┘
+
+     Fuzzy stays in the non-title bucket (requirement 2 lists it with the
+     point-based fields). Numeric FIELD_SCORES values stay untouched — they
+     still order results within each bucket, so metadata suggestion scoring
+     (lines 1042–1088), lexicon merging, and matchQuality are unaffected.
+
+     2. Shared comparator + stock breadth
+
+     Add near scoreEntry:
+
+     // In-stock variant count; a variant-less product renders one in-stock 
+     card.
+     function stockBreadth(entry: SearchCatalogEntry): number {
+       if (entry.variants.length === 0) return 1;
+       return entry.variants.filter(v => v.inStock).length;
+     }
+
+     function compareRanked(a, b) {
+       return a.titleRank - b.titleRank          // title bucket + subtype order
+     (0–3 before 4)
+         || b.score - a.score                    // point ladder within bucket
+         || stockBreadth(b.entry) - stockBreadth(a.entry) // broader 
+     availability first
+         || a.entry.title.localeCompare(b.entry.title);
+     }
+
+     titleRank ascending alone satisfies both "title bucket first" and "subtype
+     order" (0,1,2,3 all sort before 4).
+
+     3. Apply in both consumers
+
+     - fetchSuggestions() line ~1025–1030: store titleRank in scored, replace
+     the sort with scored.sort(compareRanked). Metadata derivation (upsertMeta)
+     is order-independent (keeps max score per key) — unchanged. Product cap of
+     8 and metadata cap of 8 unchanged.
+     - searchProducts() line ~1171–1176: same — store titleRank, sort with
+     compareRanked. Variant flattening unchanged.
+
+     4. Inclusion threshold (requirements 5 & 6)
+
+     Nothing is suppressed: all matches (title and non-title) stay in the result
+     set. Make requirement 6 explicit with a named constant MIN_RESULT_SCORE = 
+     25 and filter score > MIN_RESULT_SCORE instead of score > 0 — behaviorally
+     identical today (the lowest possible match score is fuzzy=30) but encodes
+     the contract.
+
+     5. Tests
+
+     Backend test pattern exists: node:test + assert/strict, run via tsx
+     (backend/test/mailer.test.ts, script "test" in backend/package.json).
+
+     - Export scoreEntry, compareRanked (and NO_TITLE_MATCH/MIN_RESULT_SCORE)
+     from persistCatalog.ts (module has no top-level side effects; requireAdmin
+     is lazy, so importing it in tests is safe).
+     - New backend/test/searchRanking.test.ts with synthetic SearchCatalogEntry
+     fixtures covering:
+       - a title:contains match (score ~80+q) outranks a category:starts match
+     (78+q) AND a hypothetical high-score non-title match — bucket beats points
+       - title subtype order: exact > starts > word-starts > contains
+       - non-title matches (incl. fuzzy) still present after the title group,
+     ordered by score
+       - stock-breadth tiebreak between equal-score entries, then alphabetical
+     - Add the new file to the test script in backend/package.json.
+
+     Files to modify
+
+     - backend/lib/persistCatalog.ts — scorer return type, comparator, two sort
+     sites, exports
+     - backend/test/searchRanking.test.ts — new
+     - backend/package.json — test script
+
+     Verification
+
+     1. cd backend && npm run build (tsc --noEmit) — type-check.
+     2. npm test — existing + new ranking tests.
+     3. Live check: hit GET /api/products/suggestions?q=... and
+     /api/products/search?q=... with a query that matches one product's title
+     mid-word and another product's category prefix — the title match must come
+     first even though category:starts (78) can beat title:contains (80) only
+     narrowly today. Note: Redis caches both endpoints by query — use a fresh
+     query string or flush the cache, or old rankings will be served until TTL
+     expiry.
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 2 lines, removed 2 lines
+      753  
+      754  // ─── In-memory search catalog (rebuilt from DB, 10 min TTL) 
+           ──────────────────
+      755  
+      756 -interface SearchCatalogVariant {                              
+      756 +export interface SearchCatalogVariant {                       
+      757    sku: string;
+      758    colorName: string;
+      759    colorHex: string;
+     ...
+      761    inStock: boolean;
+      762  }
+      763  
+      764 -interface SearchCatalogEntry {                                
+      764 +export interface SearchCatalogEntry {                         
+      765    id: string;
+      766    title: string;
+      767    slug: string;
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 17 lines, removed 6 lines
+      955    return coverage * 1.4 + position * 0.5;
+      956  }
+      957  
+      958 -function scoreEntry(                                          
+      958 +// Title matches rank in a bucket ABOVE the entire point ladde
+          +r: titleRank 0–3                                              
+      959 +// (exact / starts / word-starts / contains) always sorts befo
+          +re NO_TITLE_MATCH,                                            
+      960 +// regardless of numeric score. Fuzzy title matches stay in th
+          +e non-title bucket —                                          
+      961 +// they're a typo-tolerance fallback, not a real title hit.   
+      962 +export const NO_TITLE_MATCH = 4;                              
+      963 +                                                              
+      964 +// Inclusion floor for the result set. Every non-title field m
+          +atch scores above                                             
+      965 +// this (the lowest tier, fuzzy, is 30), so nothing that match
+          +es is suppressed —                                            
+      966 +// including when an exact title match exists.                
+      967 +export const MIN_RESULT_SCORE = 25;                           
+      968 +                                                              
+      969 +export function scoreEntry(                                   
+      970    entry: SearchCatalogEntry,
+      971    lower: string,
+      961 -): { score: number; field: string } {                         
+      972 +): { score: number; field: string; titleRank: number } {      
+      973    const t = entry.title.toLowerCase();
+      974  
+      964 -  if (t === lower) return { score: FIELD_SCORES["title:exact"]
+          -, field: "title" };                                           
+      965 -  if (t.startsWith(lower)) return { score: FIELD_SCORES["title
+          -:starts"] + matchQuality(t, lower), field: "title" };         
+      975 +  if (t === lower) return { score: FIELD_SCORES["title:exact"]
+          +, field: "title", titleRank: 0 };                             
+      976 +  if (t.startsWith(lower)) return { score: FIELD_SCORES["title
+          +:starts"] + matchQuality(t, lower), field: "title", titleRank:
+          + 1 };                                                         
+      977    if (t.split(/\s+/).some(w => w !== lower && w.startsWith(low
+           er)))
+      967 -    return { score: FIELD_SCORES["title:word-starts"] + matchQ
+          -uality(t, lower), field: "title" };                           
+      968 -  if (t.includes(lower)) return { score: FIELD_SCORES["title:c
+          -ontains"] + matchQuality(t, lower), field: "title" };         
+      978 +    return { score: FIELD_SCORES["title:word-starts"] + matchQ
+          +uality(t, lower), field: "title", titleRank: 2 };             
+      979 +  if (t.includes(lower)) return { score: FIELD_SCORES["title:c
+          +ontains"] + matchQuality(t, lower), field: "title", titleRank:
+          + 3 };                                                         
+      980  
+      981    const cat = entry.category.toLowerCase();
+      982    if (cat.startsWith(lower)) return { score: FIELD_SCORES["cat
+           egory:starts"] + matchQuality(cat, lower), field: "category" }
+           ;
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 2 lines, removed 2 lines
+      979    if (t.includes(lower)) return { score: FIELD_SCORES["title:c
+           ontains"] + matchQuality(t, lower), field: "title", titleRank:
+            3 };
+      980  
+      981    const cat = entry.category.toLowerCase();
+      982 -  if (cat.startsWith(lower)) return { score: FIELD_SCORES["cat
+          -egory:starts"] + matchQuality(cat, lower), field: "category" }
+          -;                                                             
+      983 -  if (cat.includes(lower)) return { score: FIELD_SCORES["categ
+          -ory"] + matchQuality(cat, lower), field: "category" };        
+      982 +  if (cat.startsWith(lower)) return { score: FIELD_SCORES["cat
+          +egory:starts"] + matchQuality(cat, lower), field: "category", 
+          +titleRank: NO_TITLE_MATCH };                                  
+      983 +  if (cat.includes(lower)) return { score: FIELD_SCORES["categ
+          +ory"] + matchQuality(cat, lower), field: "category", titleRank
+          +: NO_TITLE_MATCH };                                           
+      984  
+      985    // Tags/badges: scan ALL entries for the best-scoring match 
+           (an early
+      986    // weak "contains" must not shadow a later, stronger "starts
+           -with").
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 2 lines, removed 2 lines
+       993    if (bestTag > 0) return { score: bestTag, field: "tag" };
+       994  
+       995    const occ = entry.occasion.toLowerCase();
+       996 -  if (occ.startsWith(lower)) return { score: FIELD_SCORES["oc
+           -casion:starts"] + matchQuality(occ, lower), field: "occasion"
+           - };                                                          
+       997 -  if (occ.includes(lower)) return { score: FIELD_SCORES["occa
+           -sion"] + matchQuality(occ, lower), field: "occasion" };      
+       996 +  if (occ.startsWith(lower)) return { score: FIELD_SCORES["oc
+           +casion:starts"] + matchQuality(occ, lower), field: "occasion"
+           +, titleRank: NO_TITLE_MATCH };                               
+       997 +  if (occ.includes(lower)) return { score: FIELD_SCORES["occa
+           +sion"] + matchQuality(occ, lower), field: "occasion", titleRa
+           +nk: NO_TITLE_MATCH };                                        
+       998  
+       999    let bestBadge = 0;
+      1000    for (const badge of entry.badges) {
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 2 lines, removed 2 lines
+      1005    if (bestBadge > 0) return { score: bestBadge, field: "badge
+            " };
+      1006  
+      1007    const fab = entry.fabric.toLowerCase();
+      1008 -  if (fab.startsWith(lower)) return { score: FIELD_SCORES["fa
+           -bric:starts"] + matchQuality(fab, lower), field: "fabric" }; 
+      1009 -  if (fab.includes(lower)) return { score: FIELD_SCORES["fabr
+           -ic"] + matchQuality(fab, lower), field: "fabric" };          
+      1008 +  if (fab.startsWith(lower)) return { score: FIELD_SCORES["fa
+           +bric:starts"] + matchQuality(fab, lower), field: "fabric", ti
+           +tleRank: NO_TITLE_MATCH };                                   
+      1009 +  if (fab.includes(lower)) return { score: FIELD_SCORES["fabr
+           +ic"] + matchQuality(fab, lower), field: "fabric", titleRank: 
+           +NO_TITLE_MATCH };                                            
+      1010  
+      1011    const fit = entry.fit.toLowerCase();
+      1012    if (fit.startsWith(lower)) return { score: FIELD_SCORES["fi
+            t:starts"] + matchQuality(fit, lower), field: "fit" };
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 2 lines, removed 2 lines
+      1009    if (fab.includes(lower)) return { score: FIELD_SCORES["fabr
+            ic"] + matchQuality(fab, lower), field: "fabric", titleRank: 
+            NO_TITLE_MATCH };
+      1010  
+      1011    const fit = entry.fit.toLowerCase();
+      1012 -  if (fit.startsWith(lower)) return { score: FIELD_SCORES["fi
+           -t:starts"] + matchQuality(fit, lower), field: "fit" };       
+      1013 -  if (fit.includes(lower)) return { score: FIELD_SCORES["fit"
+           -] + matchQuality(fit, lower), field: "fit" };                
+      1012 +  if (fit.startsWith(lower)) return { score: FIELD_SCORES["fi
+           +t:starts"] + matchQuality(fit, lower), field: "fit", titleRan
+           +k: NO_TITLE_MATCH };                                         
+      1013 +  if (fit.includes(lower)) return { score: FIELD_SCORES["fit"
+           +] + matchQuality(fit, lower), field: "fit", titleRank: NO_TIT
+           +LE_MATCH };                                                  
+      1014  
+      1015    if (entry.gender.toLowerCase().includes(lower))
+      1016      return { score: FIELD_SCORES["gender"] + matchQuality(ent
+            ry.gender.toLowerCase(), lower), field: "gender" };
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 1 line, removed 1 line
+      990      if (tl.startsWith(lower)) bestTag = Math.max(bestTag, FIEL
+           D_SCORES["tag:starts"] + matchQuality(tl, lower));
+      991      else if (tl.includes(lower)) bestTag = Math.max(bestTag, F
+           IELD_SCORES["tag"] + matchQuality(tl, lower));
+      992    }
+      993 -  if (bestTag > 0) return { score: bestTag, field: "tag" };   
+      993 +  if (bestTag > 0) return { score: bestTag, field: "tag", titl
+          +eRank: NO_TITLE_MATCH };                                      
+      994  
+      995    const occ = entry.occasion.toLowerCase();
+      996    if (occ.startsWith(lower)) return { score: FIELD_SCORES["occ
+           asion:starts"] + matchQuality(occ, lower), field: "occasion", 
+           titleRank: NO_TITLE_MATCH };
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 1 line, removed 1 line
+      1002      if (bl.startsWith(lower)) bestBadge = Math.max(bestBadge,
+             FIELD_SCORES["badge:starts"] + matchQuality(bl, lower));
+      1003      else if (bl.includes(lower)) bestBadge = Math.max(bestBad
+            ge, FIELD_SCORES["badge"] + matchQuality(bl, lower));
+      1004    }
+      1005 -  if (bestBadge > 0) return { score: bestBadge, field: "badge
+           -" };                                                         
+      1005 +  if (bestBadge > 0) return { score: bestBadge, field: "badge
+           +", titleRank: NO_TITLE_MATCH };                              
+      1006  
+      1007    const fab = entry.fabric.toLowerCase();
+      1008    if (fab.startsWith(lower)) return { score: FIELD_SCORES["fa
+            bric:starts"] + matchQuality(fab, lower), field: "fabric", ti
+            tleRank: NO_TITLE_MATCH };
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 1 line, removed 1 line
+      1013    if (fit.includes(lower)) return { score: FIELD_SCORES["fit"
+            ] + matchQuality(fit, lower), field: "fit", titleRank: NO_TIT
+            LE_MATCH };
+      1014  
+      1015    if (entry.gender.toLowerCase().includes(lower))
+      1016 -    return { score: FIELD_SCORES["gender"] + matchQuality(ent
+           -ry.gender.toLowerCase(), lower), field: "gender" };          
+      1016 +    return { score: FIELD_SCORES["gender"] + matchQuality(ent
+           +ry.gender.toLowerCase(), lower), field: "gender", titleRank: 
+           +NO_TITLE_MATCH };                                            
+      1017  
+      1018    if (lower.length >= 3 && fuzzyMatchesTitle(entry.title, low
+            er))
+      1019      return { score: FIELD_SCORES["fuzzy"], field: "fuzzy" };
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 27 lines, removed 2 lines
+      1016      return { score: FIELD_SCORES["gender"] + matchQuality(ent
+            ry.gender.toLowerCase(), lower), field: "gender", titleRank: 
+            NO_TITLE_MATCH };
+      1017  
+      1018    if (lower.length >= 3 && fuzzyMatchesTitle(entry.title, low
+            er))
+      1019 -    return { score: FIELD_SCORES["fuzzy"], field: "fuzzy" }; 
+      1019 +    return { score: FIELD_SCORES["fuzzy"], field: "fuzzy", ti
+           +tleRank: NO_TITLE_MATCH };                                   
+      1020  
+      1021 -  return { score: 0, field: "" };                            
+      1021 +  return { score: 0, field: "", titleRank: NO_TITLE_MATCH }; 
+      1022  }
+      1023  
+      1024 +// In-stock variant count; a variant-less product renders one
+           + always-in-stock card.                                       
+      1025 +function stockBreadth(entry: SearchCatalogEntry): number {   
+      1026 +  if (entry.variants.length === 0) return 1;                 
+      1027 +  return entry.variants.filter((v) => v.inStock).length;     
+      1028 +}                                                            
+      1029 +                                                             
+      1030 +/**                                                          
+      1031 + * Shared ranking comparator for suggestions and full search 
+           +results:                                                     
+      1032 + *   1. title-match bucket + subtype (titleRank 0–3 before NO
+           +_TITLE_MATCH)                                                
+      1033 + *   2. point-ladder score (descending) within the bucket    
+      1034 + *   3. broader stock availability first                     
+      1035 + *   4. alphabetical title                                   
+      1036 + */                                                          
+      1037 +export function compareRanked(                               
+      1038 +  a: { entry: SearchCatalogEntry; score: number; titleRank: n
+           +umber },                                                     
+      1039 +  b: { entry: SearchCatalogEntry; score: number; titleRank: n
+           +umber },                                                     
+      1040 +): number {                                                  
+      1041 +  return (                                                   
+      1042 +    a.titleRank - b.titleRank ||                             
+      1043 +    b.score - a.score ||                                     
+      1044 +    stockBreadth(b.entry) - stockBreadth(a.entry) ||         
+      1045 +    a.entry.title.localeCompare(b.entry.title)               
+      1046 +  );                                                         
+      1047 +}                                                            
+      1048 +                                                             
+      1049  // ─── fetchSuggestions ─────────────────────────────────────
+            ────────────────────
+      1050  
+      1051  /**
+
+● Now update the two consumers — fetchSuggestions and searchProducts:
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 4 lines, removed 4 lines
+      1058    const catalog = await loadSearchCatalog(log);
+      1059  
+      1060    // Score every product in the catalog.
+      1061 -  const scored: Array<{ entry: SearchCatalogEntry; score: num
+           -ber; field: string }> = [];                                  
+      1061 +  const scored: Array<{ entry: SearchCatalogEntry; score: num
+           +ber; field: string; titleRank: number }> = [];               
+      1062    for (const entry of catalog) {
+      1063 -    const { score, field } = scoreEntry(entry, lower);       
+      1064 -    if (score > 0) scored.push({ entry, score, field });     
+      1063 +    const { score, field, titleRank } = scoreEntry(entry, low
+           +er);                                                         
+      1064 +    if (score > MIN_RESULT_SCORE) scored.push({ entry, score,
+           + field, titleRank });                                        
+      1065    }
+      1066 -  scored.sort((a, b) => b.score - a.score || a.entry.title.lo
+           -caleCompare(b.entry.title));                                 
+      1066 +  scored.sort(compareRanked);                                
+      1067    log.step(`Scoring - ${scored.length}/${catalog.length} prod
+            ucts matched`);
+      1068  
+      1069    // ─── Collect unique metadata suggestions from all matched
+             products ──────────
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 4 lines, removed 4 lines
+      1204    const lower = q.toLowerCase();
+      1205    const catalog = await loadSearchCatalog(log);
+      1206  
+      1207 -  const scored: Array<{ entry: SearchCatalogEntry; score: num
+           -ber }> = [];                                                 
+      1207 +  const scored: Array<{ entry: SearchCatalogEntry; score: num
+           +ber; titleRank: number }> = [];                              
+      1208    for (const entry of catalog) {
+      1209 -    const { score } = scoreEntry(entry, lower);              
+      1210 -    if (score > 0) scored.push({ entry, score });            
+      1209 +    const { score, titleRank } = scoreEntry(entry, lower);   
+      1210 +    if (score > MIN_RESULT_SCORE) scored.push({ entry, score,
+           + titleRank });                                               
+      1211    }
+      1212 -  scored.sort((a, b) => b.score - a.score || a.entry.title.lo
+           -caleCompare(b.entry.title));                                 
+      1212 +  scored.sort(compareRanked);                                
+      1213    log.step(`Search - ${scored.length}/${catalog.length} produ
+            cts matched "${q}"`);
+      1214  
+      1215    // Flatten to one row per variant (colour) — each becomes i
+            ts own results card.
+
+  Read 2 files (ctrl+o to expand)
+
+● Write(test\searchRanking.test.ts)
+  ⎿  Wrote 125 lines to test\searchRanking.test.ts
+       1 import { test } from "node:test";
+       2 import assert from "node:assert/strict";
+       3 import {
+       4   scoreEntry,
+       5   compareRanked,
+       6   NO_TITLE_MATCH,
+       7   MIN_RESULT_SCORE,
+       8   type SearchCatalogEntry,
+       9   type SearchCatalogVariant,
+      10 } from "../lib/persistCatalog.js";
+     … +150 lines (ctrl+o to expand)
+
+● Update(test\searchRanking.test.ts)
+  ⎿  Added 5 lines, removed 5 lines
+      52  
+      53  test("title subtypes rank exact > starts > word-starts > contai
+          ns", () => {
+      54    const entries = [
+      55 -    entry({ title: "Fredrick Tee" }),      // "fredrick" contai
+         -ns "red" mid-word                                              
+      56 -    entry({ title: "Bright Red Gown" }),   // word starts with 
+         -"red"                                                          
+      57 -    entry({ title: "Red Dress" }),         // title starts with
+         - "red"                                                         
+      58 -    entry({ title: "Red" }),               // exact            
+      55 +    entry({ title: "Fredrick Tee" }),        // "fredrick" cont
+         +ains "red" mid-word                                            
+      56 +    entry({ title: "Bright Reddish Gown" }), // word "reddish" 
+         +starts with "red"                                              
+      57 +    entry({ title: "Red Dress" }),           // title starts wi
+         +th "red"                                                       
+      58 +    entry({ title: "Red" }),                 // exact          
+      59    ];
+      60    const ranked = rank(entries, "red");
+      61    assert.deepEqual(
+      62      ranked.map((r) => r.title),
+      63 -    ["Red", "Red Dress", "Bright Red Gown", "Fredrick Tee"],   
+      63 +    ["Red", "Red Dress", "Bright Reddish Gown", "Fredrick Tee"]
+         +,                                                              
+      64    );
+      65    assert.deepEqual(ranked.map((r) => r.titleRank), [0, 1, 2, 3]
+          );
+      66  });
+● Update(test\searchRanking.test.ts)
+  ⎿  Added 8 lines, removed 9 lines
+      83  });
+      84  
+      85  test("equal-score ties break on broader stock availability", ()
+           => {
+      86 -  const wideStock = entry({ title: "Kurta", variants: [variant(
+         -true), variant(true), variant(false)] });                      
+      87 -  const slimStock = entry({ title: "Kurta", variants: [variant(
+         -true), variant(false), variant(false)] });                     
+      88 -  const ranked = rank([slimStock, wideStock], "kurta");        
+      89 -  assert.equal(ranked.length, 2);                              
+      90 -  // Both are exact title matches (flat score) with identical t
+         -itles — stock decides.                                         
+      91 -  const first = [wideStock, slimStock].sort((a, b) =>          
+      92 -    compareRanked({ entry: a, score: 100, titleRank: 0 }, { ent
+         -ry: b, score: 100, titleRank: 0 }),                            
+      93 -  )[0];                                                        
+      94 -  assert.equal(first, wideStock);                              
+      86 +  // Both exact title matches (flat score, identical titles) — 
+         +stock breadth decides.                                         
+      87 +  const wideStock = { entry: entry({ title: "Kurta", variants: 
+         +[variant(true), variant(true), variant(false)] }), score: 100, 
+         +titleRank: 0 };                                                
+      88 +  const slimStock = { entry: entry({ title: "Kurta", variants: 
+         +[variant(true), variant(false), variant(false)] }), score: 100,
+         + titleRank: 0 };                                               
+      89 +  assert.ok(compareRanked(wideStock, slimStock) < 0);          
+      90 +  assert.ok(compareRanked(slimStock, wideStock) > 0);          
+      91 +  // A variant-less product counts as one in-stock card.       
+      92 +  const noVariants = { entry: entry({ title: "Kurta" }), score:
+         + 100, titleRank: 0 };                                          
+      93 +  assert.ok(compareRanked(wideStock, noVariants) < 0);         
+      94  });
+      95  
+      96  test("final tiebreak is alphabetical title", () => {
+
+● Now register the test file in package.json and run typecheck + tests:
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(package.json)
+  ⎿  Added 1 line, removed 1 line
+       8      "dev": "tsx watch server.ts",
+       9      "build": "tsc --noEmit",
+      10      "lint": "eslint .",
+      11 -    "test": "node --import tsx --test test/mailer.test.ts test/
+         -orderEmail.test.ts"                                            
+      11 +    "test": "node --import tsx --test test/mailer.test.ts test/
+         +orderEmail.test.ts test/searchRanking.test.ts"                 
+      12    },
+      13    "keywords": [],
+      14    "author": "",
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Confirmed pre-existing — the orderEmail test fails on the clean tree too.
+  Restoring my changes:
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Done. Title matches now rank in a structural bucket above the entire point
+  ladder, for both autosuggestions and the full search results page.
+
+  What changed (branch checkout-page, all in backend):
+
+  - lib/persistCatalog.ts:
+    - scoreEntry() now returns a titleRank alongside the score: 0 = exact title,
+  1 = starts-with, 2 = word-starts-with, 3 = contains, and NO_TITLE_MATCH (4)
+  for everything else — including fuzzy, which stays in the non-title group as a
+  typo-tolerance fallback. The numeric FIELD_SCORES ladder is untouched, so
+  metadata suggestions, lexicon merging, and matchQuality behave exactly as
+  before.
+    - New shared compareRanked() comparator sorts by: title bucket/subtype →
+  score (desc) → stock breadth (in-stock variant count; variant-less products
+  count as 1) → alphabetical title.
+    - Both fetchSuggestions() and searchProducts() now sort with this
+  comparator, so /api/products/suggestions and /api/products/search both get the
+  new ranking. Nothing is suppressed when an exact match exists — the inclusion
+  floor is now an explicit MIN_RESULT_SCORE = 25 constant (behaviorally
+  identical to the old > 0 check, since the lowest match tier scores 30).
+  - test/searchRanking.test.ts (new): 8 tests covering bucket-beats-points,
+  subtype ordering, no-suppression, fuzzy staying non-title, stock-breadth and
+  alphabetical tiebreaks, and the inclusion floor. All pass.
+  - package.json: added the new test file to the test script.
+
+  Verification: tsc --noEmit passes; npm test runs 15 tests — the 8 new ones all
+  pass. One pre-existing failure in orderEmail.test.ts (a subject-line regex
+  expecting "LE42 confirmed" against the current "Your Order LE42 Is Confirmed"
+  copy) fails on the clean tree too, so it's unrelated — I left it alone, but
+  it's an easy fix if you want it.
+
+  One thing found while writing tests: the existing word-starts check (w !== 
+  lower && w.startsWith(lower)) deliberately skips title words exactly equal to
+  the query — so "Bright Red Gown" for query "red" ranks as title:contains (rank
+  3), not word-starts. I preserved that behavior.
+
+  To see it live, restart the backend and query the endpoints — note Redis
+  caches both by query string, so use a fresh query or flush the cache, or
+  you'll get pre-change rankings until the TTL expires.
+
+✻ Worked for 10m 42s
+
+❯ how many points have you given for color?                                     
+
+  Searched for 1 pattern (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ /model                                                                        
+  ⎿  Set model to Sonnet 5 and saved as your default for new sessions
+
+❯ add color also in the ranking - same as fabric                                
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 2 lines
+      934    "badge": 55,
+      935    "fabric:starts": 53,
+      936    "fabric": 50,
+      937 +  "color:starts": 53,                                         
+      938 +  "color": 50,                                                
+      939    "fit:starts": 50,
+      940    "fit": 48,
+      941    "gender": 45,
+
+● Now add the color check in scoreEntry(), right after fabric (same tier,
+  scanning all variants like tag/badge):
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 11 lines
+      1010    if (fab.startsWith(lower)) return { score: FIELD_SCORES["fa
+            bric:starts"] + matchQuality(fab, lower), field: "fabric", ti
+            tleRank: NO_TITLE_MATCH };
+      1011    if (fab.includes(lower)) return { score: FIELD_SCORES["fabr
+            ic"] + matchQuality(fab, lower), field: "fabric", titleRank: 
+            NO_TITLE_MATCH };
+      1012  
+      1013 +  // Colors live per-variant, not as a single scalar — scan A
+           +LL variant colour                                            
+      1014 +  // names for the best-scoring match, same tier as fabric.  
+      1015 +  let bestColor = 0;                                         
+      1016 +  for (const v of entry.variants) {                          
+      1017 +    const cl = v.colorName.toLowerCase();                    
+      1018 +    if (!cl) continue;                                       
+      1019 +    if (cl.startsWith(lower)) bestColor = Math.max(bestColor,
+           + FIELD_SCORES["color:starts"] + matchQuality(cl, lower));    
+      1020 +    else if (cl.includes(lower)) bestColor = Math.max(bestCol
+           +or, FIELD_SCORES["color"] + matchQuality(cl, lower));        
+      1021 +  }                                                          
+      1022 +  if (bestColor > 0) return { score: bestColor, field: "color
+           +", titleRank: NO_TITLE_MATCH };                              
+      1023 +                                                             
+      1024    const fit = entry.fit.toLowerCase();
+      1025    if (fit.startsWith(lower)) return { score: FIELD_SCORES["fi
+            t:starts"] + matchQuality(fit, lower), field: "fit", titleRan
+            k: NO_TITLE_MATCH };
+      1026    if (fit.includes(lower)) return { score: FIELD_SCORES["fit"
+            ] + matchQuality(fit, lower), field: "fit", titleRank: NO_TIT
+            LE_MATCH };
+
+❯ and also 10 points for product details                                        
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Now I'll wire description_points ("product details") into the catalog and add
+  it as a flat 10-point fallback tier:
+
+● Update(lib\persistCatalog.ts)  ⎿  Added 1 line
+      774    fabric: string;
+      775    fit: string;
+      776    gender: string;
+      777 +  details: string;                                            
+      778    image: string;
+      779    price: number;
+      780    original_price: number;
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 1 line
+      804    fabric: string | null;
+      805    fit: string | null;
+      806    gender: string | null;
+      807 +  description_points: string[] | null;                        
+      808    price: number | null;
+      809    original_price: number | null;
+      810    product_images: Array<{ image_url: string; is_primary: boole
+           an; variant_id: string | null; sort_order: number | null }> | 
+           null;
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 1 line, removed 1 line
+      821  
+      822  const SEARCH_CATALOG_SELECT = `
+      823    id, title, slug, base_sku, category, category_slug,
+      824 -  tags, badges, occasion, fabric, fit, gender, price, original
+          -_price,                                                       
+      824 +  tags, badges, occasion, fabric, fit, gender, description_poi
+          +nts, price, original_price,                                   
+      825    product_images(image_url, is_primary, variant_id, sort_order
+           ),
+      826    product_variants(id, color_name, color_hex, variant_sku, sto
+           ck, is_unlimited, sort_order)
+      827  `.trim();
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 1 line
+      880        fabric: p.fabric ?? "",
+      881        fit: p.fit ?? "",
+      882        gender: p.gender ?? "",
+      883 +      details: (p.description_points ?? []).join(" "),        
+      884        image: productImage,
+      885        price: p.price ?? 0,
+      886        original_price: p.original_price ?? p.price ?? 0,
+
+● Now add the details tier to FIELD_SCORES and the fallback check after fuzzy,
+  plus adjust MIN_RESULT_SCORE:
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 1 line
+      943    "fit": 48,
+      944    "gender": 45,
+      945    "fuzzy": 30,
+      946 +  "details": 10,                                              
+      947  };
+      948  
+      949  // Fractional match-quality bonus in [0, 1.9] — strictly small
+           er than the
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 3 lines, removed 3 lines
+      968  export const NO_TITLE_MATCH = 4;
+      969  
+      970  // Inclusion floor for the result set. Every non-title field m
+           atch scores above
+      971 -// this (the lowest tier, fuzzy, is 30), so nothing that match
+          -es is suppressed —                                            
+      972 -// including when an exact title match exists.                
+      973 -export const MIN_RESULT_SCORE = 25;                           
+      971 +// this (the lowest tier, product-details, is 10), so nothing 
+          +that matches is                                               
+      972 +// suppressed — including when an exact title match exists.   
+      973 +export const MIN_RESULT_SCORE = 5;                            
+      974  
+      975  export function scoreEntry(
+      976    entry: SearchCatalogEntry,
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 5 lines
+      1035    if (lower.length >= 3 && fuzzyMatchesTitle(entry.title, low
+            er))
+      1036      return { score: FIELD_SCORES["fuzzy"], field: "fuzzy", ti
+            tleRank: NO_TITLE_MATCH };
+      1037  
+      1038 +  // Weakest signal: a flat 10 points if the query only shows
+           + up in the                                                   
+      1039 +  // product's description bullet points, nowhere else.      
+      1040 +  if (entry.details.toLowerCase().includes(lower))           
+      1041 +    return { score: FIELD_SCORES["details"], field: "details"
+           +, titleRank: NO_TITLE_MATCH };                               
+      1042 +                                                             
+      1043    return { score: 0, field: "", titleRank: NO_TITLE_MATCH };
+      1044  }
+      1045  
+
+● Now update the test fixtures/helper to include details, and add coverage for
+  color and product-details tiers:
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(test\searchRanking.test.ts)
+  ⎿  Added 1 line
+      22      fabric: "",
+      23      fit: "",
+      24      gender: "",
+      25 +    details: "",                                               
+      26      image: "",
+      27      price: 0,
+      28      original_price: 0,
+
+● Now update the "floor" test (25 → new value) and add color/details-specific
+  tests:
+
+● Update(test\searchRanking.test.ts)
+  ⎿  Added 49 lines, removed 2 lines
+      108    assert.deepEqual(rank([entry({ title: "Plain Tee" })], "lehe
+           nga"), []);
+      109  });
+      110  
+      111 -test("every real field match clears the inclusion floor (score
+          - > 25)", () => {                                              
+      111 +test(`every real field match clears the inclusion floor (score
+          + > ${MIN_RESULT_SCORE})`, () => {                             
+      112    const cases: Array<[SearchCatalogEntry, string]> = [
+      113      [entry({ title: "Silk Kurta" }), "kurta"],           // ti
+           tle
+      114      [entry({ title: "Tee", category: "Lehenga" }), "lehenga"],
+            // category
+      115      [entry({ title: "Tee", tags: ["festive"] }), "festive"],  
+            // tag
+      116      [entry({ title: "Tee", badges: ["Sale"] }), "sale"],      
+             // badge
+      117      [entry({ title: "Tee", fabric: "Cotton" }), "cotton"],    
+             // fabric
+      118 +    [entry({ title: "Tee", variants: [variant(true, "Maroon")]
+          + }), "maroon"], // color                                      
+      119      [entry({ title: "Tee", gender: "girls" }), "girls"],      
+             // gender
+      119 -    [entry({ title: "Krta Top" }), "kurta"],                  
+          -  // fuzzy = 30, the floor tier                               
+      120 +    [entry({ title: "Krta Top" }), "kurta"],                  
+          +  // fuzzy = 30                                               
+      121 +    [entry({ title: "Tee", details: "breathable cotton lining"
+          + }), "breathable"], // details = 10, the floor tier           
+      122    ];
+      123    for (const [e, q] of cases) {
+      124      const { score } = scoreEntry(e, q.toLowerCase());
+      125      assert.ok(score > MIN_RESULT_SCORE, `"${q}" against "${e.t
+           itle}" scored ${score}, expected > ${MIN_RESULT_SCORE}`);
+      126    }
+      127  });
+      128 +                                                              
+      129 +test("color matches score in the same tier as fabric", () => {
+      130 +  const colorStarts = scoreEntry(entry({ title: "Tee", variant
+          +s: [variant(true, "Maroon Set")] }), "maroon");               
+      131 +  const colorContains = scoreEntry(entry({ title: "Tee", varia
+          +nts: [variant(true, "Dark Maroon")] }), "maroon");            
+      132 +  const fabricStarts = scoreEntry(entry({ title: "Tee", fabric
+          +: "Maroon Silk" }), "maroon");                                
+      133 +  const fabricContains = scoreEntry(entry({ title: "Tee", fabr
+          +ic: "Dark Maroon Silk" }), "maroon");                         
+      134 +                                                              
+      135 +  assert.equal(colorStarts.field, "color");                   
+      136 +  assert.equal(colorContains.field, "color");                 
+      137 +  // Same base tier (53 for a starts-with hit, 50 for contains
+          +) before the fractional match-quality bonus.                  
+      138 +  assert.ok(Math.abs(colorStarts.score - fabricStarts.score) <
+          + 2);                                                          
+      139 +  assert.ok(Math.abs(colorContains.score - fabricContains.scor
+          +e) < 2);                                                      
+      140 +  assert.ok(colorStarts.score > colorContains.score);         
+      141 +});                                                           
+      142 +                                                              
+      143 +test("color scans all variants for the best-scoring match", ()
+          + => {                                                         
+      144 +  const e = entry({                                           
+      145 +    title: "Tee",                                             
+      146 +    variants: [variant(true, "Dark Navy Contains"), variant(tr
+          +ue, "Navy")],                                                 
+      147 +  });                                                         
+      148 +  const { score, field } = scoreEntry(e, "navy");             
+      149 +  const exactVariant = scoreEntry(entry({ title: "Tee", varian
+          +ts: [variant(true, "Navy")] }), "navy");                      
+      150 +  assert.equal(field, "color");                               
+      151 +  assert.equal(score, exactVariant.score, "the starts-with var
+          +iant should win over the weaker contains variant");           
+      152 +});                                                           
+      153 +                                                              
+      154 +test("product-details matches are the weakest tier, below fuzz
+          +y", () => {                                                   
+      155 +  const details = scoreEntry(entry({ title: "Tee", details: "h
+          +and-embroidered mirror work" }), "embroidered");              
+      156 +  const fuzzy = scoreEntry(entry({ title: "Krta Top" }), "kurt
+          +a");                                                          
+      157 +  assert.equal(details.field, "details");                     
+      158 +  assert.equal(details.titleRank, NO_TITLE_MATCH);            
+      159 +  assert.ok(details.score < fuzzy.score);                     
+      160 +});                                                           
+      161 +                                                              
+      162 +test("details matches rank below every other non-title tier", 
+          +() => {                                                       
+      163 +  const entries = [                                           
+      164 +    entry({ title: "Tee A", details: "soft breathable cotton f
+          +eel" }),                                                      
+      165 +    entry({ title: "Tee B", gender: "girls" }),               
+      166 +  ];                                                          
+      167 +  const ranked = rank(entries, "girls".length ? "girls" : "gir
+          +ls"); // placeholder query below is overridden per-case       
+      168 +  void ranked;                                                
+      169 +  const detailsOnly = scoreEntry(entries[0]!, "breathable");  
+      170 +  const genderOnly = scoreEntry(entries[1]!, "girls");        
+      171 +  assert.ok(detailsOnly.score < genderOnly.score);            
+      172 +});                                                           
+
+● Let me clean up that last test and fix the variant() helper to accept a color
+  name:
+
+● Update(test\searchRanking.test.ts)
+  ⎿  Added 3 lines, removed 9 lines
+      159    assert.ok(details.score < fuzzy.score);
+      160  });
+      161  
+      162 -test("details matches rank below every other non-title tier", 
+          -() => {                                                       
+      163 -  const entries = [                                           
+      164 -    entry({ title: "Tee A", details: "soft breathable cotton f
+          -eel" }),                                                      
+      165 -    entry({ title: "Tee B", gender: "girls" }),               
+      166 -  ];                                                          
+      167 -  const ranked = rank(entries, "girls".length ? "girls" : "gir
+          -ls"); // placeholder query below is overridden per-case       
+      168 -  void ranked;                                                
+      169 -  const detailsOnly = scoreEntry(entries[0]!, "breathable");  
+      170 -  const genderOnly = scoreEntry(entries[1]!, "girls");        
+      162 +test("details matches rank below every other non-title tier (g
+          +ender, the next-weakest tier)", () => {                       
+      163 +  const detailsOnly = scoreEntry(entry({ title: "Tee A", detai
+          +ls: "soft breathable cotton feel" }), "breathable");          
+      164 +  const genderOnly = scoreEntry(entry({ title: "Tee B", gender
+          +: "girls" }), "girls");                                       
+      165    assert.ok(detailsOnly.score < genderOnly.score);
+      166  });
+
+● Update(test\searchRanking.test.ts)
+  ⎿  Added 2 lines, removed 2 lines
+      31    };
+      32  }
+      33  
+      34 -function variant(inStock: boolean): SearchCatalogVariant {     
+      35 -  return { sku: "", colorName: "", colorHex: "", image: "", inS
+         -tock };                                                        
+      34 +function variant(inStock: boolean, colorName = ""): SearchCatal
+         +ogVariant {                                                    
+      35 +  return { sku: "", colorName, colorHex: "", image: "", inStock
+         + };                                                            
+      36  }
+      37  
+      38  // Mirrors the fetchSuggestions/searchProducts pipeline: score 
+          → floor → rank.
+
+● Let me also mirror fabric's metadata-suggestion chip behavior for color, since
+  "same as fabric" should extend to suggestion chips too:
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 9 lines
+      1136        }
+      1137      }
+      1138  
+      1139 +    for (const v of entry.variants) {                        
+      1140 +      if (!v.colorName) continue;                            
+      1141 +      const cl = v.colorName.toLowerCase();                  
+      1142 +      if (cl.includes(lower)) {                              
+      1143 +        const s = (cl.startsWith(lower) ? FIELD_SCORES["color
+           +:starts"] : FIELD_SCORES["color"]) + matchQuality(cl, lower);
+      1144 +        upsertMeta(`color:${cl}`, { type: "color", id: `color
+           +:${cl}`, label: v.colorName, sublabel: "Colour", image: "", s
+           +lug: "", categorySlug: "", sku: "" }, s);                    
+      1145 +      }                                                      
+      1146 +    }                                                        
+      1147 +                                                             
+      1148      if (entry.fit) {
+      1149        const fitl = entry.fit.toLowerCase();
+      1150        if (fitl.includes(lower)) {
+
+● Now let's typecheck and run the full test suite:
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+❯ /model                                                                        
+  ⎿  Set model to Fable 5 and saved as your default for new sessions
+
+❯ continue                                                                      
+
+  Ran 1 shell command (ctrl+o to expand)
+● Done — color and product-details are now part of the ranking. All 12
+  search-ranking tests pass (typecheck clean); the only failure in the suite is
+  the pre-existing orderEmail subject-line test we already confirmed fails on
+  the clean tree.
+
+  Color — same tier as fabric (53 / 50 points):
+  - Colors live per-variant, not as a single product field, so scoreEntry()
+  scans all variant color names and keeps the best match — same pattern as
+  tags/badges. Starts-with scores 53, contains scores 50, identical to fabric,
+  checked right after fabric in the priority order.
+  - Color also produces metadata suggestion chips now (type "color", sublabel
+  "Colour"), mirroring how fabric chips work — these merge with the curated
+  lexicon's color entries by label, higher score winning, so a real in-catalog
+  color beats the generic lexicon term.
+
+  Product details — flat 10 points:
+  - Added description_points to the search catalog (joined into a single details
+  string at load time — this required adding the column to
+  SEARCH_CATALOG_SELECT, so the catalog query now fetches it).
+  - It's the weakest signal, checked dead last — after fuzzy: if the query
+  appears nowhere else but in the description bullets, the product scores a flat
+  10 and shows up at the bottom of results.
+  - Because 10 is below the old inclusion floor of 25, I lowered
+  MIN_RESULT_SCORE to 5 so details-only matches aren't filtered out.
+
+  Tests added (backend/test/searchRanking.test.ts): color scores match fabric's
+  tier, best-variant-wins scanning, details being the weakest tier (below fuzzy
+  and gender), and the floor test now covers color and details.
+
+  One note: since the in-memory search catalog caches for 10 minutes and Redis
+  caches per-query, restart the backend (or wait out the TTLs) to see
+  color/details matches live.
+
+✻ Churned for 1m 20s
+
+❯ in this for color, show ONLY the variant with that color and not all colors   
+
+  Read 1 file (ctrl+o to expand)
+
+● I'll track the matched field through searchProducts and filter the variant
+  flattening for color matches:
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 7 lines, removed 6 lines
+      1235    const lower = q.toLowerCase();
+      1236    const catalog = await loadSearchCatalog(log);
+      1237  
+      1238 -  const scored: Array<{ entry: SearchCatalogEntry; score: num
+           -ber; titleRank: number }> = [];                              
+      1238 +  const scored: Array<{ entry: SearchCatalogEntry; score: num
+           +ber; titleRank: number; field: string }> = [];               
+      1239    for (const entry of catalog) {
+      1240 -    const { score, titleRank } = scoreEntry(entry, lower);   
+      1241 -    if (score > MIN_RESULT_SCORE) scored.push({ entry, score,
+           - titleRank });                                               
+      1240 +    const { score, titleRank, field } = scoreEntry(entry, low
+           +er);                                                         
+      1241 +    if (score > MIN_RESULT_SCORE) scored.push({ entry, score,
+           + titleRank, field });                                        
+      1242    }
+      1243    scored.sort(compareRanked);
+      1244    log.step(`Search - ${scored.length}/${catalog.length} produ
+            cts matched "${q}"`);
+     ...
+      1246    // Flatten to one row per variant (colour) — each becomes i
+            ts own results card.
+      1247    // Products with no variants fall back to a single base-sku
+             row.
+      1248    const rows: SearchProductRow[] = [];
+      1249 -  for (const { entry } of scored) {                          
+      1249 +  for (const { entry, field } of scored) {                   
+      1250      const base = {
+      1251        id: entry.id,
+      1252        title: entry.title,
+     ...
+      1257        originalPrice: entry.original_price,
+      1258        badges: entry.badges,
+      1259      };
+      1260 -    if (entry.variants.length === 0) {                       
+      1260 +    const variants = matchingVariants(entry, field, lower);  
+      1261 +    if (variants.length === 0) {                             
+      1262        rows.push({
+      1263          ...base,
+      1264          sku: entry.base_sku,
+     ...
+      1268        });
+      1269        continue;
+      1270      }
+      1270 -    for (const v of entry.variants) {                        
+      1271 +    for (const v of variants) {                              
+      1272        rows.push({
+      1273          ...base,
+      1274          sku: v.sku,
+
+● Now add the matchingVariants helper next to the comparator:
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 12 lines
+      1043    return { score: 0, field: "", titleRank: NO_TITLE_MATCH };
+      1044  }
+      1045  
+      1046 +// A colour match surfaces only the colourway(s) that actuall
+           +y matched — a                                                
+      1047 +// "maroon" search must not render the blue and green cards o
+           +f the same                                                   
+      1048 +// product. Every other match type keeps flattening to all co
+           +lour variants.                                               
+      1049 +export function matchingVariants(                            
+      1050 +  entry: SearchCatalogEntry,                                 
+      1051 +  field: string,                                             
+      1052 +  lower: string,                                             
+      1053 +): SearchCatalogVariant[] {                                  
+      1054 +  if (field !== "color") return entry.variants;              
+      1055 +  return entry.variants.filter((v) => v.colorName.toLowerCase
+           +().includes(lower));                                         
+      1056 +}                                                            
+      1057 +                                                             
+      1058  // In-stock variant count; a variant-less product renders one
+             always-in-stock card.
+      1059  function stockBreadth(entry: SearchCatalogEntry): number {
+      1060    if (entry.variants.length === 0) return 1;
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 15 lines, removed 10 lines
+      1205      .map((m) => m.row);
+      1206  
+      1207    // Products tab is inventory-bound (these navigate to real 
+            PDPs); cap at 8.
+      1208 -  const productSuggestions: SuggestionRow[] = scored.slice(0,
+           - 8).map(({ entry }) => ({                                    
+      1209 -    type: "product" as const,                                
+      1210 -    id: entry.id,                                            
+      1211 -    label: entry.title,                                      
+      1212 -    sublabel: entry.category,                                
+      1213 -    image: entry.image,                                      
+      1214 -    slug: entry.slug,                                        
+      1215 -    categorySlug: entry.category_slug,                       
+      1216 -    sku: entry.base_sku,                                     
+      1217 -  }));                                                       
+      1208 +  // A colour match points at the matched colourway (variant 
+           +image + sku, which                                           
+      1209 +  // the PDP resolves) instead of the base product's primary 
+           +colour.                                                      
+      1210 +  const productSuggestions: SuggestionRow[] = scored.slice(0,
+           + 8).map(({ entry, field }) => {                              
+      1211 +    const matched = field === "color" ? matchingVariants(entr
+           +y, field, lower)[0] : undefined;                             
+      1212 +    return {                                                 
+      1213 +      type: "product" as const,                              
+      1214 +      id: entry.id,                                          
+      1215 +      label: entry.title,                                    
+      1216 +      sublabel: entry.category,                              
+      1217 +      image: matched?.image || entry.image,                  
+      1218 +      slug: entry.slug,                                      
+      1219 +      categorySlug: entry.category_slug,                     
+      1220 +      sku: matched?.sku || entry.base_sku,                   
+      1221 +    };                                                       
+      1222 +  });                                                        
+      1223  
+      1224    log.step(`Suggestions - ${metaSuggestions.length} metadata 
+            + ${productSuggestions.length} products`);
+      1225    return [...metaSuggestions, ...productSuggestions];
+
+● Now add tests for matchingVariants:
+
+● Update(test\searchRanking.test.ts)
+  ⎿  Added 1 line
+      3  import {
+      4    scoreEntry,
+      5    compareRanked,
+      6 +  matchingVariants,                                             
+      7    NO_TITLE_MATCH,
+      8    MIN_RESULT_SCORE,
+      9    type SearchCatalogEntry,
+
+● Update(test\searchRanking.test.ts)
+  ⎿  Added 21 lines
+      160    assert.ok(details.score < fuzzy.score);
+      161  });
+      162  
+      163 +test("a colour match flattens to ONLY the matching colourway(s
+          +), not all colours", () => {                                  
+      164 +  const e = entry({                                           
+      165 +    title: "Festive Kurta Set",                               
+      166 +    variants: [variant(true, "Maroon"), variant(true, "Blue"),
+          + variant(false, "Dark Maroon")],                              
+      167 +  });                                                         
+      168 +  const { field } = scoreEntry(e, "maroon");                  
+      169 +  assert.equal(field, "color");                               
+      170 +  const kept = matchingVariants(e, field, "maroon").map((v) =>
+          + v.colorName);                                                
+      171 +  assert.deepEqual(kept, ["Maroon", "Dark Maroon"]);          
+      172 +});                                                           
+      173 +                                                              
+      174 +test("non-colour matches keep flattening to all colour variant
+          +s", () => {                                                   
+      175 +  const e = entry({                                           
+      176 +    title: "Maroon-free Kurta", // title match — colours must 
+          +all survive                                                   
+      177 +    variants: [variant(true, "Maroon"), variant(true, "Blue")]
+          +,                                                             
+      178 +  });                                                         
+      179 +  const { field } = scoreEntry(e, "kurta");                   
+      180 +  assert.equal(field, "title");                               
+      181 +  assert.equal(matchingVariants(e, field, "kurta").length, 2);
+      182 +});                                                           
+      183 +                                                              
+      184  test("details matches rank below every other non-title tier (g
+           ender, the next-weakest tier)", () => {
+      185    const detailsOnly = scoreEntry(entry({ title: "Tee A", detai
+           ls: "soft breathable cotton feel" }), "breathable");
+      186    const genderOnly = scoreEntry(entry({ title: "Tee B", gender
+           : "girls" }), "girls");
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Done — a color-matched product now surfaces only its matching colorway(s), not
+  every color. Typecheck is clean and all 14 search-ranking tests pass.
+
+  What changed in backend/lib/persistCatalog.ts:
+
+  - New exported helper matchingVariants(entry, field, lower): when the product
+  matched via color, it returns only the variants whose color name contains the
+  query (so "maroon" keeps both "Maroon" and "Dark Maroon"); for every other
+  match type (title, category, tag, etc.) it returns all variants unchanged.
+  - Search results page: searchProducts() now threads the matched field through
+  and flattens through matchingVariants — a "maroon" search renders only the
+  maroon card(s) of a product, not its blue and green siblings.
+  - Suggestions dropdown: for a color match, the product suggestion now uses the
+  matched variant's image and variant SKU instead of the base product's primary
+  image/base SKU — so searching "maroon" shows the maroon thumbnail and tapping
+  it lands the PDP on that colorway (variant SKUs are already the normal PDP
+  resolution path).
+
+  Tests added: color match flattens to only matching colorways; non-color
+  matches (e.g. title) still show all colors.
+
+  Ranking itself is untouched — this only filters which variant cards render for
+  color-matched products. Same caveat as before for seeing it live: in-memory
+  catalog caches 10 minutes and Redis caches per query, so restart the backend
+  or use a fresh query.
+
+✻ Brewed for 3m 16s
+
+❯ see man calculate these scores per variants - instead of per products         
+
+● Per-variant scoring it is — each colorway card gets its own score and rank,
+  instead of inheriting the product's. Product-level fields (title, category,
+  tags…) apply to every variant; the color check now uses only that variant's
+  own color. The suggestions dropdown stays product-level (one suggestion per
+  product, best variant's score).
+
+  First, refactor the scorer into a field-scorer parameterized by color, with
+  per-variant and per-product wrappers:
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 5 lines, removed 1 line
+      972  // suppressed — including when an exact title match exists.
+      973  export const MIN_RESULT_SCORE = 5;
+      974  
+      975 -export function scoreEntry(                                   
+      975 +// Core field scorer. Product-level fields (title, category, t
+          +ags, …) come from                                             
+      976 +// the entry; the colour signal is the single colour name pass
+          +ed in, so the same                                            
+      977 +// engine scores one variant (its own colour) or a variant-les
+          +s product ("").                                               
+      978 +function scoreFields(                                         
+      979    entry: SearchCatalogEntry,
+      980 +  colorName: string,                                          
+      981    lower: string,
+      982  ): { score: number; field: string; titleRank: number } {
+      983    const t = entry.title.toLowerCase();
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 5 lines, removed 9 lines
+      1018    if (fab.startsWith(lower)) return { score: FIELD_SCORES["fa
+            bric:starts"] + matchQuality(fab, lower), field: "fabric", ti
+            tleRank: NO_TITLE_MATCH };
+      1019    if (fab.includes(lower)) return { score: FIELD_SCORES["fabr
+            ic"] + matchQuality(fab, lower), field: "fabric", titleRank: 
+            NO_TITLE_MATCH };
+      1020  
+      1021 -  // Colors live per-variant, not as a single scalar — scan A
+           -LL variant colour                                            
+      1022 -  // names for the best-scoring match, same tier as fabric.  
+      1023 -  let bestColor = 0;                                         
+      1024 -  for (const v of entry.variants) {                          
+      1025 -    const cl = v.colorName.toLowerCase();                    
+      1026 -    if (!cl) continue;                                       
+      1027 -    if (cl.startsWith(lower)) bestColor = Math.max(bestColor,
+           - FIELD_SCORES["color:starts"] + matchQuality(cl, lower));    
+      1028 -    else if (cl.includes(lower)) bestColor = Math.max(bestCol
+           -or, FIELD_SCORES["color"] + matchQuality(cl, lower));        
+      1021 +  // Colour — same tier as fabric, scored against THIS varian
+           +t's colour only.                                             
+      1022 +  const cl = colorName.toLowerCase();                        
+      1023 +  if (cl) {                                                  
+      1024 +    if (cl.startsWith(lower)) return { score: FIELD_SCORES["c
+           +olor:starts"] + matchQuality(cl, lower), field: "color", titl
+           +eRank: NO_TITLE_MATCH };                                     
+      1025 +    if (cl.includes(lower)) return { score: FIELD_SCORES["col
+           +or"] + matchQuality(cl, lower), field: "color", titleRank: NO
+           +_TITLE_MATCH };                                              
+      1026    }
+      1030 -  if (bestColor > 0) return { score: bestColor, field: "color
+           -", titleRank: NO_TITLE_MATCH };                              
+      1027  
+      1028    const fit = entry.fit.toLowerCase();
+      1029    if (fit.startsWith(lower)) return { score: FIELD_SCORES["fi
+            t:starts"] + matchQuality(fit, lower), field: "fit", titleRan
+            k: NO_TITLE_MATCH };
+
+● Now add the two wrappers right after scoreFields ends:
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 28 lines
+      1043    return { score: 0, field: "", titleRank: NO_TITLE_MATCH };
+      1044  }
+      1045  
+      1046 +/** Score ONE colour variant: product-level fields + its own 
+           +colour name. */                                              
+      1047 +export function scoreVariant(                                
+      1048 +  entry: SearchCatalogEntry,                                 
+      1049 +  v: SearchCatalogVariant,                                   
+      1050 +  lower: string,                                             
+      1051 +): { score: number; field: string; titleRank: number } {     
+      1052 +  return scoreFields(entry, v.colorName, lower);             
+      1053 +}                                                            
+      1054 +                                                             
+      1055 +/**                                                          
+      1056 + * Product-level score = the best of its variants (colour is 
+           +the only                                                     
+      1057 + * per-variant signal, so this is the max variant score). Use
+           +d where results                                              
+      1058 + * are one-per-product (the suggestions dropdown); the full r
+           +esults page ranks                                            
+      1059 + * each variant individually via scoreVariant.               
+      1060 + */                                                          
+      1061 +export function scoreEntry(                                  
+      1062 +  entry: SearchCatalogEntry,                                 
+      1063 +  lower: string,                                             
+      1064 +): { score: number; field: string; titleRank: number } {     
+      1065 +  if (entry.variants.length === 0) return scoreFields(entry, 
+           +"", lower);                                                  
+      1066 +  let best = scoreFields(entry, entry.variants[0]!.colorName,
+           + lower);                                                     
+      1067 +  for (let i = 1; i < entry.variants.length; i++) {          
+      1068 +    const s = scoreFields(entry, entry.variants[i]!.colorName
+           +, lower);                                                    
+      1069 +    if (s.score > best.score) best = s;                      
+      1070 +  }                                                          
+      1071 +  return best;                                               
+      1072 +}                                                            
+      1073 +                                                             
+      1074  // A colour match surfaces only the colourway(s) that actuall
+            y matched — a
+      1075  // "maroon" search must not render the blue and green cards o
+            f the same
+      1076  // product. Every other match type keeps flattening to all co
+            lour variants.
+
+● Now rewrite searchProducts to rank each variant row individually, as a pure
+  testable function:
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 41 lines, removed 29 lines
+      1280    const lower = q.toLowerCase();
+      1281    const catalog = await loadSearchCatalog(log);
+      1282  
+      1283 -  const scored: Array<{ entry: SearchCatalogEntry; score: num
+           -ber; titleRank: number; field: string }> = [];               
+      1284 -  for (const entry of catalog) {                             
+      1285 -    const { score, titleRank, field } = scoreEntry(entry, low
+           -er);                                                         
+      1286 -    if (score > MIN_RESULT_SCORE) scored.push({ entry, score,
+           - titleRank, field });                                        
+      1287 -  }                                                          
+      1288 -  scored.sort(compareRanked);                                
+      1289 -  log.step(`Search - ${scored.length}/${catalog.length} produ
+           -cts matched "${q}"`);                                        
+      1283 +  const rows = rankVariantRows(catalog, lower);              
+      1284 +  log.step(`Search - ${rows.length} variant cards matched "${
+           +q}" across ${catalog.length} products`);                     
+      1285 +  return rows;                                               
+      1286 +}                                                            
+      1287  
+      1291 -  // Flatten to one row per variant (colour) — each becomes i
+           -ts own results card.                                         
+      1292 -  // Products with no variants fall back to a single base-sku
+           - row.                                                        
+      1293 -  const rows: SearchProductRow[] = [];                       
+      1294 -  for (const { entry, field } of scored) {                   
+      1288 +/**                                                          
+      1289 + * Per-VARIANT ranking for the full results page: every colou
+           +r variant is                                                 
+      1290 + * scored and sorted as its own card (product-level fields + 
+           +its own colour),                                             
+      1291 + * so a "maroon" search ranks the maroon colourway on its col
+           +our match while                                              
+      1292 + * the blue colourway of the same product only ranks if it ma
+           +tches some other                                             
+      1293 + * way. Ties: title bucket → score → in-stock first → alphabe
+           +tical title.                                                 
+      1294 + */                                                          
+      1295 +export function rankVariantRows(catalog: SearchCatalogEntry[]
+           +, lower: string): SearchProductRow[] {                       
+      1296 +  const ranked: Array<{ row: SearchProductRow; score: number;
+           + titleRank: number }> = [];                                  
+      1297 +  for (const entry of catalog) {                             
+      1298      const base = {
+      1299        id: entry.id,
+      1300        title: entry.title,
+     ...
+      1305        originalPrice: entry.original_price,
+      1306        badges: entry.badges,
+      1307      };
+      1305 -    const variants = matchingVariants(entry, field, lower);  
+      1306 -    if (variants.length === 0) {                             
+      1307 -      rows.push({                                            
+      1308 -        ...base,                                             
+      1309 -        sku: entry.base_sku,                                 
+      1310 -        image: entry.image,                                  
+      1311 -        color: { name: "", hex: "#cccccc" },                 
+      1312 -        inStock: true,                                       
+      1313 -      });                                                    
+      1308 +    if (entry.variants.length === 0) {                       
+      1309 +      const { score, titleRank } = scoreEntry(entry, lower); 
+      1310 +      if (score > MIN_RESULT_SCORE) {                        
+      1311 +        ranked.push({                                        
+      1312 +          score,                                             
+      1313 +          titleRank,                                         
+      1314 +          row: { ...base, sku: entry.base_sku, image: entry.i
+           +mage, color: { name: "", hex: "#cccccc" }, inStock: true },  
+      1315 +        });                                                  
+      1316 +      }                                                      
+      1317        continue;
+      1318      }
+      1316 -    for (const v of variants) {                              
+      1317 -      rows.push({                                            
+      1318 -        ...base,                                             
+      1319 -        sku: v.sku,                                          
+      1320 -        image: v.image,                                      
+      1321 -        color: { name: v.colorName, hex: v.colorHex },       
+      1322 -        inStock: v.inStock,                                  
+      1323 -      });                                                    
+      1319 +    for (const v of entry.variants) {                        
+      1320 +      const { score, titleRank } = scoreVariant(entry, v, low
+           +er);                                                         
+      1321 +      if (score > MIN_RESULT_SCORE) {                        
+      1322 +        ranked.push({                                        
+      1323 +          score,                                             
+      1324 +          titleRank,                                         
+      1325 +          row: { ...base, sku: v.sku, image: v.image, color: 
+           +{ name: v.colorName, hex: v.colorHex }, inStock: v.inStock },
+      1326 +        });                                                  
+      1327 +      }                                                      
+      1328      }
+      1329    }
+      1326 -  return rows;                                               
+      1330 +  // Stable sort keeps a product's equal-scoring colourways i
+           +n catalog order.                                             
+      1331 +  ranked.sort(                                               
+      1332 +    (a, b) =>                                                
+      1333 +      a.titleRank - b.titleRank ||                           
+      1334 +      b.score - a.score ||                                   
+      1335 +      Number(b.row.inStock) - Number(a.row.inStock) ||       
+      1336 +      a.row.title.localeCompare(b.row.title),                
+      1337 +  );                                                         
+      1338 +  return ranked.map((r) => r.row);                           
+      1339  }
+      1340  
+      1341  /** Minimal lookup for lazy-loaded reviews (title only). */
+● Update the now-stale searchProducts doc comment:
+
+● Update(lib\persistCatalog.ts)
+  ⎿  Added 5 lines, removed 4 lines
+      1271  }
+      1272  
+      1273  /**
+      1274 - * Returns every catalog product matching `q`, ranked highest
+           --relevance first —                                           
+      1275 - * the data behind the full search results page. Same scoring
+           - engine as                                                   
+      1276 - * fetchSuggestions, but uncapped (the suggestions dropdown s
+           -hows the top 8;                                              
+      1277 - * the results page shows them all).                         
+      1274 + * Returns every matching variant card ranked highest-relevan
+           +ce first — the                                               
+      1275 + * data behind the full search results page. Same field-scori
+           +ng engine as                                                 
+      1276 + * fetchSuggestions, but scored and ranked PER VARIANT and un
+           +capped (the                                                  
+      1277 + * suggestions dropdown shows the top 8 products; the results
+           + page shows all                                              
+      1278 + * matching colourways).                                     
+      1279   */
+      1280  export async function searchProducts(q: string, log: OpLogger
+            ): Promise<SearchProductRow[]> {
+      1281    const lower = q.toLowerCase();
+
+● Update(test\searchRanking.test.ts)
+  ⎿  Added 2 lines, removed 1 line
+       2  import assert from "node:assert/strict";
+       3  import {
+       4    scoreEntry,
+       5 +  scoreVariant,                                                
+       6    compareRanked,
+       6 -  matchingVariants,                                            
+       7 +  rankVariantRows,                                             
+       8    NO_TITLE_MATCH,
+       9    MIN_RESULT_SCORE,
+      10    type SearchCatalogEntry,
+
+● Update(test\searchRanking.test.ts)
+  ⎿  Added 1 line, removed 1 line
+      34  }
+      35  
+      36  function variant(inStock: boolean, colorName = ""): SearchCatal
+          ogVariant {
+      37 -  return { sku: "", colorName, colorHex: "", image: "", inStock
+         - };                                                            
+      37 +  return { sku: colorName, colorName, colorHex: "", image: "", 
+         +inStock };                                                     
+      38  }
+      39  
+      40  // Mirrors the fetchSuggestions/searchProducts pipeline: score 
+          → floor → rank.
+
+● Update(test\searchRanking.test.ts)
+  ⎿  Added 36 lines, removed 9 lines
+      161    assert.ok(details.score < fuzzy.score);
+      162  });
+      163  
+      164 -test("a colour match flattens to ONLY the matching colourway(s
+          -), not all colours", () => {                                  
+      164 +test("a colour search ranks ONLY the matching colourway cards,
+          + not all colours", () => {                                    
+      165    const e = entry({
+      166      title: "Festive Kurta Set",
+      167      variants: [variant(true, "Maroon"), variant(true, "Blue"),
+            variant(false, "Dark Maroon")],
+      168    });
+      169 -  const { field } = scoreEntry(e, "maroon");                  
+      170 -  assert.equal(field, "color");                               
+      171 -  const kept = matchingVariants(e, field, "maroon").map((v) =>
+          - v.colorName);                                                
+      169 +  const kept = rankVariantRows([e], "maroon").map((r) => r.col
+          +or.name);                                                     
+      170 +  // Blue matches nothing on its own, so its card is excluded 
+          +entirely.                                                     
+      171    assert.deepEqual(kept, ["Maroon", "Dark Maroon"]);
+      172  });
+      173  
+      175 -test("non-colour matches keep flattening to all colour variant
+          -s", () => {                                                   
+      174 +test("non-colour matches keep every colour variant as its own 
+          +card", () => {                                                
+      175    const e = entry({
+      177 -    title: "Maroon-free Kurta", // title match — colours must 
+          -all survive                                                   
+      176 +    title: "Maroon-free Kurta", // title match — every colourw
+          +ay ranks on it                                                
+      177      variants: [variant(true, "Maroon"), variant(true, "Blue")]
+           ,
+      178    });
+      180 -  const { field } = scoreEntry(e, "kurta");                   
+      181 -  assert.equal(field, "title");                               
+      182 -  assert.equal(matchingVariants(e, field, "kurta").length, 2);
+      179 +  const rows = rankVariantRows([e], "kurta");                 
+      180 +  assert.deepEqual(rows.map((r) => r.color.name), ["Maroon", "
+          +Blue"]);                                                      
+      181  });
+      182  
+      183 +test("variants are scored individually: colour variant outrank
+          +s its non-matching sibling", () => {                          
+      184 +  const e = entry({                                           
+      185 +    title: "Tee",                                             
+      186 +    details: "pairs well with maroon accessories", // sibling'
+          +s only signal (10 pts)                                        
+      187 +    variants: [variant(true, "Blue"), variant(true, "Maroon")]
+          +,                                                             
+      188 +  });                                                         
+      189 +  const maroon = scoreVariant(e, e.variants[1]!, "maroon");   
+      190 +  const blue = scoreVariant(e, e.variants[0]!, "maroon");     
+      191 +  assert.equal(maroon.field, "color");                        
+      192 +  assert.equal(blue.field, "details");                        
+      193 +  assert.ok(maroon.score > blue.score);                       
+      194 +  // Full pipeline: maroon card first, blue card last (details
+          + tier).                                                       
+      195 +  assert.deepEqual(rankVariantRows([e], "maroon").map((r) => r
+          +.color.name), ["Maroon", "Blue"]);                            
+      196 +});                                                           
+      197 +                                                              
+      198 +test("equal-score variant cards rank in-stock before out-of-st
+          +ock", () => {                                                 
+      199 +  const e = entry({                                           
+      200 +    title: "Kurta", // exact title — both variants score a fla
+          +t 100                                                         
+      201 +    variants: [variant(false, "Maroon"), variant(true, "Blue")
+          +],                                                            
+      202 +  });                                                         
+      203 +  assert.deepEqual(rankVariantRows([e], "kurta").map((r) => r.
+          +color.name), ["Blue", "Maroon"]);                             
+      204 +});                                                           
+      205 +                                                              
+      206 +test("a variant-less product still ranks as a single base card
+          +", () => {                                                    
+      207 +  const rows = rankVariantRows([entry({ title: "Kurta" })], "k
+          +urta");                                                       
+      208 +  assert.equal(rows.length, 1);                               
+      209 +  assert.equal(rows[0]!.inStock, true);                       
+      210 +});                                                           
+      211 +                                                              
+      212  test("details matches rank below every other non-title tier (g
+           ender, the next-weakest tier)", () => {
+      213    const detailsOnly = scoreEntry(entry({ title: "Tee A", detai
+           ls: "soft breathable cotton feel" }), "breathable");
+      214    const genderOnly = scoreEntry(entry({ title: "Tee B", gender
+           : "girls" }), "girls");
+
+  Ran 1 shell command (ctrl+o to expand)
+
+❯ /effort                                                                       
+  ⎿  Set effort level to ultracode (this session only): xhigh + dynamic workflow
+     orchestration
+
+❯ as a result of this different scoring per variant - the rankings would also   
+  be as per the score , so for example-  a variant might be the first and the   
+  other might be 6th or later also - all depening on scoring                    
+
+● Update(test\searchRanking.test.ts)
+  ⎿  Added 24 lines
+      203    assert.deepEqual(rankVariantRows([e], "kurta").map((r) => r.
+           color.name), ["Blue", "Maroon"]);
+      204  });
+      205  
+      206 +test("sibling variants can land far apart — each card ranks pu
+          +rely on its own score", () => {                               
+      207 +  // Query "maroon". P1's two colourways score very differentl
+          +y:                                                            
+      208 +  //   Maroon → color:starts (~54.9) — first                  
+      209 +  //   Blue   → details only (10)    — dead last, with four ot
+          +her products in between                                       
+      210 +  const p1 = entry({                                          
+      211 +    title: "Zari Anarkali",                                   
+      212 +    details: "maroon dupatta included",                       
+      213 +    variants: [variant(true, "Maroon"), variant(true, "Blue")]
+          +,                                                             
+      214 +  });                                                         
+      215 +  const p2 = entry({ title: "Silk Tee", fabric: "Maroon Silk" 
+          +});        // fabric:starts ~54.3                             
+      216 +  const p3 = entry({ title: "Cotton Tee", fit: "Maroon Fit" })
+          +;          // fit:starts    ~51.3                             
+      217 +  const p4 = entry({ title: "Linen Tee", fit: "Dark Maroon Fit
+          +" });      // fit:contains  ~48.9                             
+      218 +  const p5 = entry({ title: "Marron Frock" });                
+          +           // fuzzy title    30                               
+      219 +                                                              
+      220 +  const rows = rankVariantRows([p1, p2, p3, p4, p5], "maroon")
+          +;                                                             
+      221 +  assert.deepEqual(                                           
+      222 +    rows.map((r) => r.color.name || r.title),                 
+      223 +    ["Maroon", "Silk Tee", "Cotton Tee", "Linen Tee", "Marron 
+          +Frock", "Blue"],                                              
+      224 +  );                                                          
+      225 +  // Same product, positions 1 and 6.                         
+      226 +  assert.equal(rows.findIndex((r) => r.color.name === "Maroon"
+          +), 0);                                                        
+      227 +  assert.equal(rows.findIndex((r) => r.color.name === "Blue"),
+          + 5);                                                          
+      228 +});                                                           
+      229 +                                                              
+      230  test("a variant-less product still ranks as a single base card
+           ", () => {
+      231    const rows = rankVariantRows([entry({ title: "Kurta" })], "k
+           urta");
+      232    assert.equal(rows.length, 1);
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Workflow(Multi-lens review of the per-variant search ranking changes, with
+          adversarial verification)
+  ⎿  /workflows to view dynamic workflow runs
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Full suite: 24 of 25 pass — the only failure is the pre-existing orderEmail
+  subject-line test (confirmed earlier to fail on the clean tree too, unrelated
+  to this work).
+
+  So, confirming your point: that's exactly how it behaves now. Each colorway
+  card ranks purely on its own score — nothing ties siblings together. The new
+  test encodes your example literally: a product's Maroon variant lands at
+  position 1 (color match, ~55 points) while its Blue variant lands at position
+  6 (details-only match, 10 points), with four other products' cards ranked in
+  between. The only grouping that ever happens is incidental: when siblings
+  score identically (e.g. both match via the product's title), the stable sort
+  keeps them adjacent in catalog order, with in-stock cards ahead of
+  out-of-stock ones at equal score.
+
+  Current state of the ranking engine:
+
+  - Suggestions dropdown (fetchSuggestions): still one row per product — a
+  product's score is its best variant's score, and color matches point the
+  suggestion at the matched variant's image and SKU.
+  - Results page (searchProducts → new rankVariantRows): fully per-variant —
+  every colorway is scored independently (product-level fields + its own color
+  name) and sorted by title bucket → score → in-stock → alphabetical. Variants
+  that match nothing on their own are excluded entirely.
+
+  All 18 search-ranking tests pass and the typecheck is clean. I've also kicked
+  off a multi-agent adversarial review of the full accumulated diff (title
+  buckets, color tier, details tier, per-variant ranking) — it's running in the
+  background and I'll report anything it confirms as a real defect.
+
+✻ Churned for 4m 11s
+
+❯ Update multi-word search matching so queries are progressively relaxed        
+  instead of failing too early.                                                 
+                                                                                
+  Current problem:                                                              
+  For a query like "vansh product", if no product matches both words together   
+  or via the current per-word AND logic, search may return nothing. I want the  
+  system to still try useful fallback matches.                                  
+                                                                                
+  Desired behavior:                                                             
+  For any multi-word query:                                                     
+  1. First try the full phrase exactly/as a phrase, e.g. "vansh product".       
+  2. Then try word combinations/sub-combinations, preserving useful phrase      
+  chunks where possible.                                                        
+  3. Then try each individual word separately.                                  
+  4. If no product matches all words together, still show products matching     
+  "vansh", then products matching "product".                                    
+  5. Results from stronger matches should rank above weaker fallback matches.   
+                                                                                
+  Example:                                                                      
+  Query: "vansh product"                                                        
+                                                                                
+  Ranking should try:                                                           
+  1. "vansh product"                                                            
+  2. meaningful combinations/sub-combos if query has 3+ words                   
+  3. "vansh"                                                                    
+  4. "product"                                                                  
+                                                                                
+  If there are no matches for "vansh product", show matches for "vansh" and     
+  matches for "product" instead of an empty result set.                         
+                                                                                
+  Implementation guidance:                                                      
+  - Make this in the shared backend search scorer in                            
+  `backend/lib/persistCatalog.ts`, so both autosuggestions and full search      
+  results benefit.                                                              
+  - Preserve the existing field scoring system for each attempted phrase/word.  
+  - Add a match-strength layer above score:                                     
+    - strongest: full phrase match                                              
+    - next: all-word AND match                                                  
+    - next: sub-combination match                                               
+    - weakest: individual word fallback                                         
+  - Sort by:                                                                    
+    1. title-match priority, if implementing the title-priority change          
+    2. match-strength bucket                                                    
+    3. score                                                                    
+    4. stock breadth                                                            
+    5. title                                                                    
+  - Do not dedupe poorly: if the same product matches multiple attempts, keep   
+  it once using its strongest match bucket and best score.                      
+  - Avoid noisy results for tiny words. Ignore or heavily down-rank very short  
+  tokens like "a", "of", "to", "in", unless they are part of the full phrase.   
+  - Keep fuzzy matching conservative; do not run fuzzy matching on every        
+  individual word if it creates noisy results.                                  
+  - Keep the existing lexicon aliases, metadata suggestions, caching, and       
+  frontend filtering/sorting behavior intact.                                   
+
+● Progressive relaxation for multi-word queries — I'll build it as a
+  match-strength layer in the shared scorer. First, let me check what the
+  background review workflow from earlier found, since I'm about to extend that
+  same code:
+
+  Read 1 file (ctrl+o to expand)
+
+● Dynamic workflow "Multi-lens review of the per-variant search ranking changes,
+with adversarial verification" completed · 7m 43s
+  ⎿  You've hit your session limit · resets 4:10am (Asia/Calcutta)
+     /upgrade to increase your usage limit.
+
+✻ Churned for 5m 44s
