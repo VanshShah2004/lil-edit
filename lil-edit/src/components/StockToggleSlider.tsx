@@ -16,6 +16,8 @@ interface StockToggleSliderProps {
   unlimitedLabelMobile?: string;
   /** Optional accent color for the thumb background (active label turns white to contrast; defaults to neutral gray/white). */
   accentColor?: string;
+  /** Overrides the active label's text color (defaults to white when accentColor is set). */
+  activeTextColor?: string;
 }
 
 /**
@@ -37,6 +39,7 @@ export default function StockToggleSlider({
   limitedLabelMobile,
   unlimitedLabelMobile,
   accentColor,
+  activeTextColor,
 }: StockToggleSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [travel, setTravel] = useState(0);
@@ -90,12 +93,15 @@ export default function StockToggleSlider({
         style={{ width: "calc(50% - 4px)", ...(accentColor ? { backgroundColor: accentColor } : {}) }}
       />
 
-      {/* Top layer: labels (non-interactive so they never block the drag) */}
-      <div className="absolute inset-0 z-30 flex pointer-events-none">
+      {/* Top layer: labels (non-interactive so they never block the drag).
+          The p-1 matches the container padding so each label half lines up with
+          the thumb's travel area — keeping the active label centered on the thumb. */}
+      <div className="absolute inset-0 z-30 flex pointer-events-none p-1">
         <span
           className={`flex-1 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 ${
-            !isUnlimited ? (accentColor ? "text-white" : "text-gray-900") : "text-gray-500"
+            !isUnlimited ? (accentColor && !activeTextColor ? "text-white" : !accentColor ? "text-gray-900" : "") : "text-gray-500"
           }`}
+          style={!isUnlimited && accentColor && activeTextColor ? { color: activeTextColor } : undefined}
         >
           {limitedLabelMobile ? (
             <>
@@ -108,8 +114,9 @@ export default function StockToggleSlider({
         </span>
         <span
           className={`flex-1 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 ${
-            isUnlimited ? (accentColor ? "text-white" : "text-gray-900") : "text-gray-500"
+            isUnlimited ? (accentColor && !activeTextColor ? "text-white" : !accentColor ? "text-gray-900" : "") : "text-gray-500"
           }`}
+          style={isUnlimited && accentColor && activeTextColor ? { color: activeTextColor } : undefined}
         >
           {unlimitedLabelMobile ? (
             <>
