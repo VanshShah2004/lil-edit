@@ -103,31 +103,36 @@
     text-size-adjust: 100%;
   }
 
-  /* Reserve the viewport scrollbar's gutter permanently so opening an overlay (which
-     hides the scrollbar) never changes the layout width — keeps the page and the
-     fixed navbar perfectly still.
-     Scoped to `pointer: fine` (mouse/trackpad) devices only: touch devices have no
-     space-taking scrollbar to reserve for, so on mobile this rule only ever created
-     dead gutter space — visible as a thin white strip at the screen edges wherever a
-     `position: fixed; inset: 0` overlay (e.g. AlertDialog) stops short of it.
-     NOTE: `overflow-x: hidden` is deliberately NOT here. On <html> it makes <html>
-     the scroll container, which breaks react-remove-scroll (used by every Radix
-     dropdown/dialog): it locks <body> and can't remove <html>'s scrollbar, so its
-     margin compensation shoves the page sideways on open. We clip horizontal overflow
-     on <body> instead (below), leaving normal scroll propagation intact. */
-  @media (pointer: fine) {
-    html {
-      scrollbar-gutter: stable;
+  html, body {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;    /* Firefox */
+  }
+
+  html::-webkit-scrollbar, body::-webkit-scrollbar {
+    display: none;            /* Chrome, Safari and Opera */
+  }
+
+  /* Hide ALL scrollbars on mobile (touch devices) — scrolling still works normally */
+  @media (pointer: coarse) {
+    * {
+      -ms-overflow-style: none !important;
+      scrollbar-width: none !important;
+    }
+    *::-webkit-scrollbar {
+      display: none !important;
     }
   }
 
-  /* react-remove-scroll still adds a compensating margin/padding to <body> when it
-     locks scroll. With the gutter above already reserving the scrollbar's space, that
-     compensation is redundant and would shift the page — neutralize it. Higher
-     specificity + !important beats react-remove-scroll's own injected !important rule. */
+  /* react-remove-scroll adds a compensating padding to <body> when it
+     locks scroll. Because we hide scrollbars entirely, that
+     compensation is redundant and would shift the page — neutralize it.
+     Also set the background to black so any edge gaps behind overlays
+     are invisible (no white strips). */
   html body[data-scroll-locked] {
     margin-right: 0 !important;
     padding-right: 0 !important;
+    background-color: #000 !important;
+    background-image: none !important;
   }
 
   body {

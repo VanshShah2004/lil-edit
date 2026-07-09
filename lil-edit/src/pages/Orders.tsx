@@ -319,7 +319,7 @@ const OrdersPage = () => {
   const showSidebar = !!user && !loading && !error && orders.length > 0;
 
   return (
-    <div className="min-h-screen bg-[#FAF9F7] flex flex-col text-gray-900 overflow-x-hidden">
+    <div className="min-h-screen bg-white flex flex-col text-gray-900 overflow-x-hidden">
       {user ? <UserNavbar /> : <Navbar />}
 
       <main className="flex-1 flex flex-col w-full pt-[calc(var(--navbar-height)+5px)] sm:pt-[calc(var(--navbar-height)+15px)]">

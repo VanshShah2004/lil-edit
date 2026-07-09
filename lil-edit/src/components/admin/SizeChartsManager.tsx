@@ -557,8 +557,8 @@ const SizeChartsManager = () => {
               Permanently delete <span className="font-semibold">{deleteTarget?.name}</span>? This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting} className="bg-black text-white hover:bg-gray-800 hover:text-white">Keep</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col sm:flex-row-reverse sm:space-x-reverse gap-2 sm:gap-0">
+            <AlertDialogCancel disabled={deleting} className="bg-black text-white hover:bg-gray-800 hover:text-white mt-0">Keep</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => { e.preventDefault(); void confirmDelete(); }}
               disabled={deleting}
