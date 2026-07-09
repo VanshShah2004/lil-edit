@@ -550,7 +550,7 @@ const SizeChartsManager = () => {
         open={!!deleteTarget}
         onOpenChange={(open) => { if (!open && !deleting) setDeleteTarget(null); }}
       >
-        <AlertDialogContent className="w-[calc(100%-2rem)] max-w-sm p-4 sm:max-w-lg sm:p-6">
+        <AlertDialogContent className="w-[calc(100%-2rem)] max-w-[320px] rounded-lg p-6 sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete sizing chart?</AlertDialogTitle>
             <AlertDialogDescription>
