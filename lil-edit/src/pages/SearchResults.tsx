@@ -175,7 +175,7 @@ function RecommendationsSection({ recs, loading }: { recs: RecommendedProduct[];
       <div className="page-container px-3 sm:px-6">
         <div className="flex items-end justify-between mb-6 sm:mb-8">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900">You May Also Like</h2>
+            <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900">You May Like</h2>
             <p className="text-sm text-gray-500 mt-1">Similar styles you'll love</p>
           </div>
           <Link to="/collections" className="hidden sm:block text-sm font-semibold text-brand-teal hover:underline">
