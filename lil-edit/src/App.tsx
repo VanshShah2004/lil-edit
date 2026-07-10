@@ -57,6 +57,8 @@ const Cart           = lazyWithLog("Cart",            () => import("./pages/Cart
 const Wishlist       = lazyWithLog("Wishlist",        () => import("./pages/Wishlist"));
 const Collections    = lazyWithLog("Collections",     () => import("./pages/Collections"));
 const NewArrivals    = lazyWithLog("NewArrivals",     () => import("./pages/NewArrivals"));
+const GirlsCollection = lazyWithLog("GirlsCollection", () => import("./pages/GirlsCollection"));
+const BoysCollection  = lazyWithLog("BoysCollection",  () => import("./pages/BoysCollection"));
 const SearchResults  = lazyWithLog("SearchResults",   () => import("./pages/SearchResults"));
 const Orders         = lazyWithLog("Orders",          () => import("./pages/Orders"));
 const AllOrders      = lazyWithLog("AllOrders",       () => import("./pages/AllOrders"));
@@ -126,6 +128,8 @@ const App = () => (
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/collections" element={<Collections />} />
             <Route path="/collections/new-arrivals" element={<NewArrivals />} />
+            <Route path="/collections/girls" element={<GirlsCollection />} />
+            <Route path="/collections/boys" element={<BoysCollection />} />
             <Route path="/search" element={<SearchResults />} />
             <Route path="/about" element={<About />} />
             <Route path="/faq" element={<Faq />} />

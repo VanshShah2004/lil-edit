@@ -26,6 +26,8 @@ const ROUTE_TITLES: Array<{ pattern: string; label: string }> = [
   { pattern: "/forgot-password",      label: "Reset Password" },
   { pattern: "/collections",          label: "Collections" },
   { pattern: "/collections/new-arrivals", label: "New Arrivals" },
+  { pattern: "/collections/girls",    label: "Girls" },
+  { pattern: "/collections/boys",     label: "Boys" },
   { pattern: "/search",               label: "Search Results" },
   { pattern: "/collections/:category/product/:productPath/*", label: "Product" },
   { pattern: "/cart",                 label: "Cart" },

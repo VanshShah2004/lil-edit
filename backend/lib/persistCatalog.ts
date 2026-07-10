@@ -1574,10 +1574,14 @@ export interface NewArrivalRow extends SearchProductRow {
  * sku/image, same convention as Spotlight placards). Served from the same
  * in-memory search catalog, so it inherits its 10-min TTL + invalidation.
  */
-export async function fetchNewArrivals(limit: number, log: OpLogger): Promise<NewArrivalRow[]> {
+export async function fetchNewArrivals(limit: number, log: OpLogger, gender?: string): Promise<NewArrivalRow[]> {
   const catalog = await loadSearchCatalog(log);
 
-  const rows: NewArrivalRow[] = [...catalog]
+  const pool = gender
+    ? catalog.filter((entry) => entry.gender.toLowerCase() === gender.toLowerCase())
+    : [...catalog];
+
+  const rows: NewArrivalRow[] = pool
     .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0))
     .slice(0, limit)
     .map((entry) => {
@@ -1601,7 +1605,7 @@ export async function fetchNewArrivals(limit: number, log: OpLogger): Promise<Ne
       };
     });
 
-  log.step(`New arrivals - ${rows.length} products (limit=${limit}) from ${catalog.length} in catalog`);
+  log.step(`New arrivals - ${rows.length} products (limit=${limit}${gender ? `, gender=${gender}` : ""}) from ${catalog.length} in catalog`);
   return rows;
 }
 
