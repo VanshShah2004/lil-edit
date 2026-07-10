@@ -111,9 +111,9 @@ const App = () => (
         <MaintenanceGate>
         <Suspense fallback={<RouteFallback />}>
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Home />} />
-            <Route path="/home" element={<Navigate to="/" replace />} />
+            <Route path="/home" element={<Navigate to="/dashboard" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
