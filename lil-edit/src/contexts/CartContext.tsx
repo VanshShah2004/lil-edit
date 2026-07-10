@@ -39,7 +39,7 @@ interface CartContextType {
   cartItems: CartItem[];
   cartCount: number;
   loading: boolean;
-  addToCart: (payload: AddToCartPayload) => Promise<void>;
+  addToCart: (payload: AddToCartPayload, opts?: { outOfStock?: boolean }) => Promise<void>;
   reorder: (items: AddToCartPayload[]) => Promise<{ added: number; failed: number }>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   updateSize: (cartItemId: string, size: string) => Promise<void>;
@@ -223,7 +223,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   const addToCart = useCallback(
-    async (payload: AddToCartPayload) => {
+    async (payload: AddToCartPayload, opts?: { outOfStock?: boolean }) => {
       const addedQty = payload.quantity ?? 1;
       // Guest: persist to localStorage and re-hydrate. No login wall — the sign-in
       // prompt happens later, at checkout (see Cart.tsx).
@@ -237,6 +237,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         console.log("[CartContext] guest addToCart", payload.sku, payload.size, `×${addedQty}`);
         refetchCart();
         toast.success("Added to cart!", {
+          description: opts?.outOfStock ? "This product is currently out of stock." : undefined,
+          descriptionClassName: "text-red-600",
           duration: 6000,
           action: {
             label: "Undo",
@@ -246,8 +248,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        await apiAdd(payload);
+        const { outOfStock } = await apiAdd(payload);
         toast.success("Added to cart!", {
+          description: outOfStock ? "This product is currently out of stock." : undefined,
+          descriptionClassName: "text-red-600",
           duration: 6000,
           action: {
             label: "Undo",

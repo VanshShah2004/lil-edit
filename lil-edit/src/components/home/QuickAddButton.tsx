@@ -19,6 +19,7 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
   const [sizes, setSizes] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [outOfStock, setOutOfStock] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,10 +31,13 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
     return () => document.removeEventListener("mousedown", onOutside);
   }, [open]);
 
-  const doAdd = async (size: string) => {
+  const doAdd = async (size: string, oos: boolean = outOfStock) => {
     setAdding(true);
     try {
-      await addToCart({ product_slug: product.slug, sku: product.sku, size, quantity: 1 });
+      await addToCart(
+        { product_slug: product.slug, sku: product.sku, size, quantity: 1 },
+        { outOfStock: oos }
+      );
       setOpen(false);
     } finally {
       setAdding(false);
@@ -49,9 +53,12 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
     setLoading(true);
     try {
       const map = await hydrateSkus([product.sku]);
-      const resolvedSizes = map.get(product.sku)?.sizes ?? [];
+      const view = map.get(product.sku);
+      const isOOS = !!view && !view.isUnlimited && (view.stock ?? 0) <= 0;
+      setOutOfStock(isOOS);
+      const resolvedSizes = view?.sizes ?? [];
       if (resolvedSizes.length <= 1) {
-        await doAdd(resolvedSizes[0] ?? "");
+        await doAdd(resolvedSizes[0] ?? "", isOOS);
         return;
       }
       setSizes(resolvedSizes);

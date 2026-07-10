@@ -64,18 +64,19 @@ export async function fetchCart(): Promise<CartItem[]> {
   return (data.items ?? []) as CartItem[];
 }
 
-export async function addToCart(payload: AddToCartPayload): Promise<void> {
+export async function addToCart(payload: AddToCartPayload): Promise<{ outOfStock: boolean }> {
   console.log("[cartApi] addToCart payload:", payload);
   const res = await authFetch("/api/cart/add", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+  const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
     console.error("[cartApi] addToCart error:", body);
     throw new Error((body as { error?: string }).error ?? `Add to cart failed (${res.status})`);
   }
   console.log("[cartApi] addToCart success");
+  return { outOfStock: !!(body as { outOfStock?: boolean }).outOfStock };
 }
 
 export async function updateCartItemColor(

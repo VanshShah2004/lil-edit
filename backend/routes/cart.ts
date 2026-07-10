@@ -297,14 +297,13 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       log.warn(`client slug mismatch  client=${product_slug}  server=${serverSlug} — using server slug`);
     }
 
-    const maxAllowed = isUnlimited ? MAX_QTY : Math.min(MAX_QTY, stock ?? 0);
+    // Out-of-stock never blocks the add — mirrors place_order's never-reject stance
+    // (stock clamps, it doesn't turn away a sale). The frontend surfaces outOfStock
+    // as a note on the same "Added to cart" toast instead of rejecting the action.
+    const outOfStock = !isUnlimited && (stock ?? 0) <= 0;
+    const maxAllowed = isUnlimited || outOfStock ? MAX_QTY : Math.min(MAX_QTY, stock ?? 0);
     const clampedQty = Math.min(maxAllowed, qty);
-
-    if (clampedQty <= 0) {
-      log.warn(`out of stock  sku=${sku}`).end("CART ADD");
-      res.status(409).json({ error: "Product is out of stock" });
-      return;
-    }
+    if (outOfStock) log.warn(`adding out-of-stock item  sku=${sku}`);
 
     const t0Conflict = performance.now();
     const { data: existing, error: existErr } = await db()
@@ -354,7 +353,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       }
 
       log.success(`incremented  id=${existing.id}  qty=${existing.quantity}→${newQty}  total=${fms(log.elapsed())}`).end("CART ADD");
-      res.json({ ok: true, action: "incremented", cartItemId: existing.id, quantity: newQty });
+      res.json({ ok: true, action: "incremented", cartItemId: existing.id, quantity: newQty, outOfStock });
     } else {
       const t0Write = performance.now();
       const { data: inserted, error: insertErr } = await db()
@@ -372,7 +371,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
 
       await redisDel(log, cartKey(userId));
       log.success(`inserted  id=${inserted.id}  total=${fms(log.elapsed())}`).end("CART ADD");
-      res.status(201).json({ ok: true, action: "added", cartItemId: inserted.id, quantity: clampedQty });
+      res.status(201).json({ ok: true, action: "added", cartItemId: inserted.id, quantity: clampedQty, outOfStock });
     }
   } catch (err) {
     log.error("unhandled error", err).end("CART ADD");
