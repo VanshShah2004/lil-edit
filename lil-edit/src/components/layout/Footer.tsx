@@ -43,7 +43,7 @@ const Footer = () => {
 
   return (
   <footer className="bg-card border-t border-gray-400">
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 md:py-16">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-12 md:pt-16 pb-4 sm:pb-5 md:pb-6">
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8 sm:gap-8 md:gap-10 text-center sm:text-left">
         {/* Brand */}
         <div className="col-span-2 sm:col-span-2 lg:col-span-1">
@@ -55,7 +55,7 @@ const Footer = () => {
         <div>
           <h4 className="font-display text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">Shop</h4>
           <ul className="space-y-3 text-sm font-body text-muted-foreground">
-            <li><Link to="/collections" className="hover:text-primary transition-colors">New Arrivals</Link></li>
+            <li><Link to="/new-arrivals" className="hover:text-primary transition-colors">New Arrivals</Link></li>
             <li><Link to="/collections" className="hover:text-primary transition-colors">Ethnic Wear</Link></li>
             <li><Link to="/collections" className="hover:text-primary transition-colors">Party Wear</Link></li>
             <li><Link to="/collections" className="hover:text-primary transition-colors">Accessories</Link></li>
@@ -101,7 +101,7 @@ const Footer = () => {
       </div>
 
       <div className="mt-10 sm:mt-12 pt-6 sm:pt-8 border-t border-border flex flex-col-reverse sm:flex-row items-center justify-center sm:justify-between gap-3 sm:gap-4 text-center">
-        <p className="text-base text-muted-foreground font-display font-semibold">
+        <p className="text-base text-muted-foreground font-display">
           &copy; 2026 The Lil Edit. All rights reserved.
         </p>
         <p className="text-base text-muted-foreground font-display flex items-center gap-1">
