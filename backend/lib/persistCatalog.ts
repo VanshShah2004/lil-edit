@@ -1037,15 +1037,35 @@ function scoreFields(
   entry: SearchCatalogEntry,
   colorName: string,
   lower: string,
+  sku = "",
   fuzzyMinLen = 3,
 ): { score: number; field: string; titleRank: number } {
   const t = entry.title.toLowerCase();
+  // SKU is as strong an identifier as the title — a shopper pasting/typing a
+  // SKU (variant SKU when scoring one colourway, else the base SKU) should
+  // surface that exact product at the top, tied into the title's titleRank
+  // bucket so it isn't outranked by an unrelated tag/category hit. Contains
+  // is scored the same as starts-with (90) since a partial SKU is still a
+  // near-exact, low-noise signal — unlike a partial title/tag substring.
+  const skuLower = (sku || entry.base_sku || "").toLowerCase();
+  let best: { score: number; field: string; titleRank: number } | null = null;
+  const consider = (cand: { score: number; field: string; titleRank: number }) => {
+    if (!best || cand.titleRank < best.titleRank || (cand.titleRank === best.titleRank && cand.score > best.score)) best = cand;
+  };
 
-  if (t === lower) return { score: FIELD_SCORES["title:exact"], field: "title", titleRank: 0 };
-  if (t.startsWith(lower)) return { score: FIELD_SCORES["title:starts"] + matchQuality(t, lower), field: "title", titleRank: 1 };
-  if (t.split(/\s+/).some(w => w !== lower && w.startsWith(lower)))
-    return { score: FIELD_SCORES["title:word-starts"] + matchQuality(t, lower), field: "title", titleRank: 2 };
-  if (t.includes(lower)) return { score: FIELD_SCORES["title:contains"] + matchQuality(t, lower), field: "title", titleRank: 3 };
+  if (t === lower) consider({ score: FIELD_SCORES["title:exact"], field: "title", titleRank: 0 });
+  else if (t.startsWith(lower)) consider({ score: FIELD_SCORES["title:starts"] + matchQuality(t, lower), field: "title", titleRank: 1 });
+  else if (t.split(/\s+/).some(w => w !== lower && w.startsWith(lower)))
+    consider({ score: FIELD_SCORES["title:word-starts"] + matchQuality(t, lower), field: "title", titleRank: 2 });
+  else if (t.includes(lower)) consider({ score: FIELD_SCORES["title:contains"] + matchQuality(t, lower), field: "title", titleRank: 3 });
+
+  if (skuLower) {
+    if (skuLower === lower) consider({ score: FIELD_SCORES["title:exact"], field: "sku", titleRank: 0 });
+    else if (skuLower.startsWith(lower)) consider({ score: FIELD_SCORES["title:starts"] + matchQuality(skuLower, lower), field: "sku", titleRank: 1 });
+    else if (skuLower.includes(lower)) consider({ score: FIELD_SCORES["title:starts"] + matchQuality(skuLower, lower), field: "sku", titleRank: 3 });
+  }
+
+  if (best) return best;
 
   const cat = entry.category.toLowerCase();
   if (cat.startsWith(lower)) return { score: FIELD_SCORES["category:starts"] + matchQuality(cat, lower), field: "category", titleRank: NO_TITLE_MATCH };
@@ -1133,8 +1153,9 @@ function scoreCandidate(
   entry: SearchCatalogEntry,
   colorName: string,
   plan: QueryPlan,
+  sku = "",
 ): RankedMatch {
-  const phrase = scoreFields(entry, colorName, plan.phrase);
+  const phrase = scoreFields(entry, colorName, plan.phrase, sku);
   const phraseMatch: RankedMatch = {
     ...phrase,
     strength: MATCH_STRENGTH.phrase,
@@ -1146,7 +1167,7 @@ function scoreCandidate(
   if (phraseMatch.score > MIN_RESULT_SCORE) cleared.push(phraseMatch);
 
   // Per-word results power both the all-words AND attempt and the word fallback.
-  const wordResults = plan.tokens.map((tok) => ({ tok, ...scoreFields(entry, colorName, tok, 2) }));
+  const wordResults = plan.tokens.map((tok) => ({ tok, ...scoreFields(entry, colorName, tok, sku, 2) }));
   const clearedWords = wordResults.filter((r) => r.score > MIN_RESULT_SCORE);
 
   if (clearedWords.length === plan.tokens.length) {
@@ -1168,7 +1189,7 @@ function scoreCandidate(
   }
 
   for (const chunk of plan.chunks) {
-    const r = scoreFields(entry, colorName, chunk, Number.POSITIVE_INFINITY);
+    const r = scoreFields(entry, colorName, chunk, sku, Number.POSITIVE_INFINITY);
     if (r.score > MIN_RESULT_SCORE)
       cleared.push({ ...r, strength: MATCH_STRENGTH.chunk, colorHit: r.field === "color" ? chunk : "" });
   }
@@ -1208,7 +1229,7 @@ export function scoreVariant(
   lower: string,
   plan: QueryPlan = planQuery(lower),
 ): RankedMatch {
-  return scoreCandidate(entry, v.colorName, plan);
+  return scoreCandidate(entry, v.colorName, plan, v.sku);
 }
 
 /**
@@ -1223,9 +1244,9 @@ export function scoreEntry(
   plan: QueryPlan = planQuery(lower),
 ): RankedMatch {
   if (entry.variants.length === 0) return scoreCandidate(entry, "", plan);
-  let best = scoreCandidate(entry, entry.variants[0]!.colorName, plan);
+  let best = scoreCandidate(entry, entry.variants[0]!.colorName, plan, entry.variants[0]!.sku);
   for (let i = 1; i < entry.variants.length; i++) {
-    const s = scoreCandidate(entry, entry.variants[i]!.colorName, plan);
+    const s = scoreCandidate(entry, entry.variants[i]!.colorName, plan, entry.variants[i]!.sku);
     if (s.score <= MIN_RESULT_SCORE) continue;
     if (best.score <= MIN_RESULT_SCORE || compareMatch(s, best) < 0) best = s;
   }

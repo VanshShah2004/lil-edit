@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ChevronRight, Lock, MapPin, Tag, Loader2, Check, ShieldCheck, Plus, Package, Sparkles, Award, Banknote, Phone } from "lucide-react";
+import { ChevronRight, Lock, MapPin, Tag, Loader2, Check, ShieldCheck, Plus, Package, Sparkles, Award, Banknote, Phone, Gift } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -430,6 +430,12 @@ export default function Checkout() {
   );
   const discount = coupon?.discount ?? 0;
   const totals = computeCartTotals(lineInputs, discount);
+
+  const [giftWrap, setGiftWrap] = useState(false);
+  const GIFT_WRAP_PER_ITEM = 100;
+  const giftWrapItemCount = summaryLines.reduce((sum, l) => sum + l.quantity, 0);
+  const giftWrapFee = giftWrap ? giftWrapItemCount * GIFT_WRAP_PER_ITEM : 0;
+  const grandTotal = totals.total + giftWrapFee;
 
   const applyCoupon = async (codeToApply?: string) => {
     const code = (codeToApply ?? couponInput).trim().toUpperCase();
@@ -866,10 +872,9 @@ export default function Checkout() {
                   )}
                 </>
               )}
-            </div>
 
-            {/* Contact number — a verified phone is required to place the order */}
-            <div className="bg-white border border-gray-400 rounded-lg p-4 sm:p-5 shadow-sm">
+              {/* Contact number — a verified phone is required to place the order */}
+              <div className="border-t border-gray-400 mt-4 pt-4">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2">
                   <Phone className="w-4 h-4 text-brand-teal" /> Contact Number
@@ -910,7 +915,26 @@ export default function Checkout() {
                   />
                 </>
               )}
+              </div>
             </div>
+
+            {/* Gift wrapping */}
+            <label className="relative flex items-center gap-3 p-5 rounded-xl cursor-pointer bg-gradient-to-br from-brand-teal via-[#B19CD9] to-emerald-400 text-white shadow-md">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={giftWrap}
+                    onChange={(e) => setGiftWrap(e.target.checked)}
+                    className="w-5 h-5 rounded accent-white shrink-0"
+                  />
+                  <p className="text-base sm:text-lg font-semibold flex items-center gap-1.5">
+                    Gift Wrapping <Gift className="w-5 h-5 shrink-0 text-red-500 fill-yellow-300" />
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-medium text-white/85 shrink-0">₹{GIFT_WRAP_PER_ITEM} per item</span>
+            </label>
 
             {/* Items */}
             <div className="bg-white border border-gray-400 rounded-lg p-4 sm:p-5 shadow-sm">
@@ -1157,11 +1181,17 @@ export default function Checkout() {
                     <span>-{inr(totals.discount)}</span>
                   </div>
                 )}
+                {giftWrap && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Gift Wrapping</span>
+                    <span className="font-medium">{inr(giftWrapFee)}</span>
+                  </div>
+                )}
               </div>
 
               <div className="order-2 border-t border-gray-400 pt-4 flex justify-between items-center">
                 <span className="text-base sm:text-lg font-semibold">Total</span>
-                <span className="text-xl sm:text-2xl font-bold text-brand-teal">{inr(totals.total)}</span>
+                <span className="text-xl sm:text-2xl font-bold text-brand-teal">{inr(grandTotal)}</span>
               </div>
 
               {/* Payment method selector */}
@@ -1195,7 +1225,7 @@ export default function Checkout() {
                 className="order-5 w-full bg-brand-teal hover:bg-[#0C5D53] text-white py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base flex items-center justify-center gap-2 transition-colors"
               >
                 {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock size={14} />}
-                {paying ? "Processing…" : `Pay ${inr(totals.total)}`}
+                {paying ? "Processing…" : `Pay ${inr(grandTotal)}`}
               </Button>
 
               {!selectedAddressId && addresses.length > 0 && (

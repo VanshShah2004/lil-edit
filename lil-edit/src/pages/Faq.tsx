@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Truck,
-  RefreshCw,
   Ruler,
   CreditCard,
   Sparkles,
@@ -77,36 +76,6 @@ const SECTIONS: FaqSection[] = [
       {
         q: "Will I have to pay customs or duties?",
         a: "International orders may be subject to import duties or taxes set by your country. These aren't included in your order total and are collected by your local customs — they're the responsibility of the recipient.",
-      },
-    ],
-  },
-  {
-    id: "returns",
-    title: "Returns & Exchanges",
-    icon: RefreshCw,
-    blurb: "Little ones grow fast — we make swaps easy.",
-    items: [
-      {
-        q: "What is your returns policy?",
-        a: "If something isn't quite right, we're happy to arrange an exchange or store credit within 14 days of delivery — as long as items are unworn, unwashed, and still have their original tags.",
-      },
-      {
-        q: "Do you offer refunds?",
-        a: "We keep things simple with easy size swaps, exchanges, and store credit so you can always find the perfect piece, rather than card refunds. Store credit never expires and can be used across the whole store.",
-      },
-      {
-        q: "How do I start an exchange?",
-        a: "Email us your order number and let us know what you'd like to swap it for. We'll reply with the next steps and help you lock in the new size or style.",
-        link: { to: `mailto:${SUPPORT_EMAIL}`, label: "Start an exchange", external: true },
-      },
-      {
-        q: "The size didn't fit — can I swap it?",
-        a: "Absolutely. Kids grow in the blink of an eye! We'll help you exchange for a different size, subject to availability. If your size has sold out, we'll sort you out with store credit.",
-      },
-      {
-        q: "My item arrived damaged or faulty — what should I do?",
-        a: "We're so sorry! Send us a photo within 48 hours of delivery and we'll make it right straight away with a replacement or store credit.",
-        link: { to: `mailto:${SUPPORT_EMAIL}`, label: "Report an issue", external: true },
       },
     ],
   },
