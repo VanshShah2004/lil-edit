@@ -59,6 +59,8 @@ const Collections    = lazyWithLog("Collections",     () => import("./pages/Coll
 const NewArrivals    = lazyWithLog("NewArrivals",     () => import("./pages/NewArrivals"));
 const GirlsCollection = lazyWithLog("GirlsCollection", () => import("./pages/GirlsCollection"));
 const BoysCollection  = lazyWithLog("BoysCollection",  () => import("./pages/BoysCollection"));
+const TrendingCollection = lazyWithLog("TrendingCollection", () => import("./pages/TrendingCollection"));
+const OccasionCollection = lazyWithLog("OccasionCollection", () => import("./pages/OccasionCollection"));
 const SearchResults  = lazyWithLog("SearchResults",   () => import("./pages/SearchResults"));
 const Orders         = lazyWithLog("Orders",          () => import("./pages/Orders"));
 const AllOrders      = lazyWithLog("AllOrders",       () => import("./pages/AllOrders"));
@@ -130,6 +132,8 @@ const App = () => (
             <Route path="/collections/new-arrivals" element={<NewArrivals />} />
             <Route path="/collections/girls" element={<GirlsCollection />} />
             <Route path="/collections/boys" element={<BoysCollection />} />
+            <Route path="/collections/trending" element={<TrendingCollection />} />
+            <Route path="/collections/occasion" element={<OccasionCollection />} />
             <Route path="/search" element={<SearchResults />} />
             <Route path="/about" element={<About />} />
             <Route path="/faq" element={<Faq />} />

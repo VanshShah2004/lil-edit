@@ -396,8 +396,8 @@ const UserNavbar = () => {
                 <SideSubLink to="/collections/new-arrivals" icon={Sparkles} label="New Arrivals" onClick={() => setIsLeftMenuOpen(false)} />
                 <SideSubLink to="/collections/girls" icon={Heart} label="Girls" onClick={() => setIsLeftMenuOpen(false)} />
                 <SideSubLink to="/collections/boys" icon={Star} label="Boys" onClick={() => setIsLeftMenuOpen(false)} />
-                <SideSubLink to="/collections?c=trending" icon={TrendingUp} label="Trending" onClick={() => setIsLeftMenuOpen(false)} />
-                <SideSubLink to="/collections?c=occasion" icon={PartyPopper} label="By Occasion" onClick={() => setIsLeftMenuOpen(false)} />
+                <SideSubLink to="/collections/trending" icon={TrendingUp} label="Trending" onClick={() => setIsLeftMenuOpen(false)} />
+                <SideSubLink to="/collections/occasion" icon={PartyPopper} label="By Occasion" onClick={() => setIsLeftMenuOpen(false)} />
               </SideCollapse>
             )}
             <SideLink to="/profile" icon={User} label="Profile" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />

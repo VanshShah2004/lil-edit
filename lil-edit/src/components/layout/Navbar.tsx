@@ -250,8 +250,8 @@ const Navbar = () => {
               <SideSubLink to="/collections/new-arrivals" icon={Sparkles} label="New Arrivals" onClick={() => setMobileOpen(false)} />
               <SideSubLink to="/collections/girls" icon={Heart} label="Girls" onClick={() => setMobileOpen(false)} />
               <SideSubLink to="/collections/boys" icon={Star} label="Boys" onClick={() => setMobileOpen(false)} />
-              <SideSubLink to="/collections?c=trending" icon={TrendingUp} label="Trending" onClick={() => setMobileOpen(false)} />
-              <SideSubLink to="/collections?c=occasion" icon={PartyPopper} label="By Occasion" onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections/trending" icon={TrendingUp} label="Trending" onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections/occasion" icon={PartyPopper} label="By Occasion" onClick={() => setMobileOpen(false)} />
             </SideCollapse>
             <SideLink to="/about" icon={Info} label="About Us" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
           </SideSection>

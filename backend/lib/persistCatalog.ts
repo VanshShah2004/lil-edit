@@ -777,6 +777,7 @@ export interface SearchCatalogEntry {
   fabric: string;
   fit: string;
   gender: string;
+  is_trending?: boolean;
   details: string;
   image: string;
   price: number;
@@ -808,6 +809,7 @@ interface SearchCatalogDbRow {
   fabric: string | null;
   fit: string | null;
   gender: string | null;
+  is_trending: boolean | null;
   description_points: string[] | null;
   price: number | null;
   original_price: number | null;
@@ -826,7 +828,7 @@ interface SearchCatalogDbRow {
 
 const SEARCH_CATALOG_SELECT = `
   id, title, slug, base_sku, category, category_slug,
-  tags, badges, occasion, fabric, fit, gender, description_points, price, original_price, created_at,
+  tags, badges, occasion, fabric, fit, gender, is_trending, description_points, price, original_price, created_at,
   product_images(image_url, is_primary, variant_id, sort_order),
   product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
 `.trim();
@@ -885,6 +887,7 @@ async function loadSearchCatalog(log: OpLogger): Promise<SearchCatalogEntry[]> {
       fabric: p.fabric ?? "",
       fit: p.fit ?? "",
       gender: p.gender ?? "",
+      is_trending: p.is_trending ?? false,
       details: (p.description_points ?? []).join(" "),
       image: productImage,
       price: p.price ?? 0,
@@ -1567,6 +1570,8 @@ export async function searchProducts(q: string, log: OpLogger): Promise<SearchPr
 
 export interface NewArrivalRow extends SearchProductRow {
   createdAt: string;
+  occasion: string;
+  isTrending: boolean;
 }
 
 /**
@@ -1574,12 +1579,25 @@ export interface NewArrivalRow extends SearchProductRow {
  * sku/image, same convention as Spotlight placards). Served from the same
  * in-memory search catalog, so it inherits its 10-min TTL + invalidation.
  */
-export async function fetchNewArrivals(limit: number, log: OpLogger, gender?: string): Promise<NewArrivalRow[]> {
+export async function fetchNewArrivals(
+  limit: number,
+  log: OpLogger,
+  gender?: string,
+  trendingOnly?: boolean,
+): Promise<NewArrivalRow[]> {
   const catalog = await loadSearchCatalog(log);
 
-  const pool = gender
-    ? catalog.filter((entry) => entry.gender.toLowerCase() === gender.toLowerCase())
-    : [...catalog];
+  let pool = [...catalog];
+  if (gender) {
+    const want = gender.toLowerCase();
+    pool = pool.filter((entry) => {
+      const g = entry.gender.trim().toLowerCase();
+      // Unisex / empty / unrecognized values show on both gendered pages;
+      // only an explicit opposite-gender tag excludes a product.
+      return g === want || (g !== "girls" && g !== "boys");
+    });
+  }
+  if (trendingOnly) pool = pool.filter((entry) => entry.is_trending);
 
   const rows: NewArrivalRow[] = pool
     .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0))
@@ -1602,10 +1620,12 @@ export async function fetchNewArrivals(limit: number, log: OpLogger, gender?: st
           : { name: "", hex: "#cccccc" },
         inStock: entry.variants.length === 0 ? true : entry.variants.some((v) => v.inStock),
         createdAt: entry.created_at,
+        occasion: entry.occasion,
+        isTrending: entry.is_trending ?? false,
       };
     });
 
-  log.step(`New arrivals - ${rows.length} products (limit=${limit}${gender ? `, gender=${gender}` : ""}) from ${catalog.length} in catalog`);
+  log.step(`New arrivals - ${rows.length} products (limit=${limit}${gender ? `, gender=${gender}` : ""}${trendingOnly ? ", trending" : ""}) from ${catalog.length} in catalog`);
   return rows;
 }
 

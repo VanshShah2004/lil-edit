@@ -81,14 +81,17 @@ export async function searchProducts(q: string, signal?: AbortSignal): Promise<S
 
 export interface NewArrivalProduct extends SearchProduct {
   createdAt: string;
+  occasion?: string;
+  isTrending?: boolean;
 }
 
 export async function fetchNewArrivals(
   limit = 48,
   signal?: AbortSignal,
   gender?: "girls" | "boys",
+  trending?: boolean,
 ): Promise<NewArrivalProduct[]> {
-  const url = `${getBackendBaseUrl()}/api/products/new-arrivals?limit=${limit}${gender ? `&gender=${gender}` : ""}`;
+  const url = `${getBackendBaseUrl()}/api/products/new-arrivals?limit=${limit}${gender ? `&gender=${gender}` : ""}${trending ? "&trending=1" : ""}`;
   console.log("[searchService] GET", url);
 
   const res = await fetch(url, { signal });

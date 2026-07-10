@@ -19,6 +19,8 @@ import {
 // and Boys. Layout, motion and behaviour are identical across the three pages.
 export interface ArrivalsTheme {
   gender?: "girls" | "boys";         // undefined = all products (New Arrivals)
+  trending?: boolean;                // only is_trending products (Trending page)
+  sectionMode?: "drops" | "occasions" | "flat"; // default "drops" = drop timeline
   heroBadge: string;
   headingLead: string;
   headingAccent: string;
@@ -69,6 +71,8 @@ export default function ArrivalsPage({ theme }: { theme: ArrivalsTheme }) {
     abortRef.current = ctrl;
     console.log("[ArrivalsPage] fetching arrivals", theme.gender ?? "all");
 
+    // Trending pages fetch the FULL list and split client-side: flagged
+    // products fill the page, everything else becomes the bento tail.
     fetchNewArrivals(48, ctrl.signal, theme.gender)
       .then((rows) => {
         console.log("[ArrivalsPage] received", rows.length, "products");
@@ -84,7 +88,7 @@ export default function ArrivalsPage({ theme }: { theme: ArrivalsTheme }) {
       });
 
     return () => ctrl.abort();
-  }, [theme.gender]);
+  }, [theme.gender, theme.trending]);
 
   const loading = products === null;
 
@@ -178,10 +182,24 @@ function ArrivalsView({ products, theme }: { products: NewArrivalProduct[]; them
   const [sort, setSort] = useState<SortKey>("newest");
   const now = Date.now();
 
+  // Trending pages split the full list: the top flagged products fill the
+  // spotlight, the OVERFLOW trending pieces lead the "From the Collection"
+  // bento, and non-trending products from the catalog pad it up to 12.
+  const main = theme.trending ? products.filter((p) => p.isTrending) : products;
+
   // Newest product gets the full-width spotlight; only in "newest" order,
   // where "the latest piece" is actually the story being told.
-  const spotlightItems = sort === "newest" ? products.slice(0, 5) : [];
-  const rest = spotlightItems.length ? products.slice(spotlightItems.length) : products;
+  const spotlightItems = sort === "newest" ? main.slice(0, 5) : [];
+  const rest = spotlightItems.length
+    ? (theme.trending ? [] : main.slice(spotlightItems.length))
+    : main;
+
+  const tail = theme.trending
+    ? [
+        ...(spotlightItems.length ? main.slice(spotlightItems.length) : []),
+        ...products.filter((p) => !p.isTrending),
+      ].slice(0, 12)
+    : [];
 
   const sorted = useMemo(() => {
     switch (sort) {
@@ -191,10 +209,43 @@ function ArrivalsView({ products, theme }: { products: NewArrivalProduct[]; them
     }
   }, [rest, sort]);
 
-  // Group into drop-timeline sections (newest order only — a price sort is a
-  // flat grid, timeline headings would just be noise there).
+  // Group into sections (newest order only — a price sort is a flat grid,
+  // section headings would just be noise there). "drops" buckets by drop age,
+  // "occasions" buckets by the product's occasion, "flat" skips sections.
+  const mode = theme.sectionMode ?? "drops";
   const sections = useMemo(() => {
-    if (sort !== "newest") return null;
+    if (sort !== "newest" || mode === "flat") return null;
+
+    if (mode === "occasions") {
+      // Occasion is free text, possibly comma-separated ("Festive, Wedding") —
+      // a product files under its first occasion so no card renders twice.
+      // Blank / "General wear" products fold into the same "From the
+      // Collection" bento tail the New Arrivals page ends with.
+      const map = new Map<string, { key: string; label: string; blurb: string; order: number; items: NewArrivalProduct[] }>();
+      for (const p of sorted) {
+        const raw = (p.occasion ?? "").split(",")[0].trim();
+        const isGeneral = !raw || raw.toLowerCase() === "general wear";
+        const key = isGeneral ? "catalog" : raw.toLowerCase();
+        const existing = map.get(key);
+        if (existing) { existing.items.push(p); continue; }
+        map.set(key, isGeneral
+          ? { key, label: "From the Collection", blurb: "The rest of the latest line-up.", order: 1, items: [p] }
+          : { key, label: raw, blurb: `Styles made for ${raw.toLowerCase()} moments.`, order: 0, items: [p] });
+      }
+      // Biggest occasions first; only the top 2 get their own section — every
+      // other product folds into the "From the Collection" bento at the end.
+      const occasionSections = [...map.values()]
+        .filter((s) => s.key !== "catalog")
+        .sort((a, b) => b.items.length - a.items.length || a.label.localeCompare(b.label));
+      const top = occasionSections.slice(0, 2);
+      const overflow = occasionSections.slice(2).flatMap((s) => s.items);
+      const catalog = map.get("catalog") ?? {
+        key: "catalog", label: "From the Collection", blurb: "The rest of the latest line-up.", order: 1, items: [],
+      };
+      catalog.items = [...overflow, ...catalog.items].slice(0, 12);
+      return catalog.items.length ? [...top, catalog] : top;
+    }
+
     const map = new Map<string, { key: string; label: string; blurb: string; order: number; items: NewArrivalProduct[] }>();
     for (const p of sorted) {
       const b = dropBucket(p.createdAt, now);
@@ -206,14 +257,14 @@ function ArrivalsView({ products, theme }: { products: NewArrivalProduct[]; them
     const catalog = map.get("catalog");
     if (catalog) catalog.items = catalog.items.slice(0, 12);
     return [...map.values()].sort((a, b) => a.order - b.order);
-  }, [sorted, sort, now]);
+  }, [sorted, sort, now, mode]);
 
   return (
     <>
       {/* TOOLBAR: count · sort */}
       <div className="flex items-center justify-between gap-2 mb-6">
         <p className="text-sm sm:text-base text-gray-700 truncate">
-          {products.length} {products.length === 1 ? "new style" : "new styles"}
+          {main.length} {main.length === 1 ? "new style" : "new styles"}
         </p>
 
         <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
@@ -269,8 +320,30 @@ function ArrivalsView({ products, theme }: { products: NewArrivalProduct[]; them
             </section>
           ),
         )
-      ) : (
+      ) : sorted.length > 0 ? (
         <DropGrid products={sorted} now={now} theme={theme} />
+      ) : null}
+
+      {/* Trending's long tail — everything not flagged renders as the same
+          "From the Collection" bento the New Arrivals page ends with. */}
+      {tail.length > 0 && (
+        <section className="mt-10 sm:mt-14">
+          <div className="flex items-end justify-between gap-3 mb-1">
+            <div className="flex items-baseline gap-3">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">From the Collection</h2>
+              <span className="text-xs font-semibold text-gray-400">{tail.length}</span>
+            </div>
+            <Link
+              to="/collections"
+              className={`inline-flex items-center gap-1 text-xs sm:text-sm font-semibold ${theme.accentText} hover:underline shrink-0`}
+            >
+              View All
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          <p className="text-xs sm:text-sm text-gray-500 mb-5">The rest of the latest line-up.</p>
+          <CollageBento products={tail} theme={theme} />
+        </section>
       )}
     </>
   );

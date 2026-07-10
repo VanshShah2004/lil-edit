@@ -28,6 +28,8 @@ const ROUTE_TITLES: Array<{ pattern: string; label: string }> = [
   { pattern: "/collections/new-arrivals", label: "New Arrivals" },
   { pattern: "/collections/girls",    label: "Girls" },
   { pattern: "/collections/boys",     label: "Boys" },
+  { pattern: "/collections/trending", label: "Trending" },
+  { pattern: "/collections/occasion", label: "By Occasion" },
   { pattern: "/search",               label: "Search Results" },
   { pattern: "/collections/:category/product/:productPath/*", label: "Product" },
   { pattern: "/cart",                 label: "Cart" },

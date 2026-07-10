@@ -770,10 +770,11 @@ router.get("/new-arrivals", async (req: Request, res: Response) => {
   const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 100) : 48;
   const rawGender = String(req.query.gender ?? "").toLowerCase();
   const gender = rawGender === "girls" || rawGender === "boys" ? rawGender : undefined;
+  const trending = req.query.trending === "1" || req.query.trending === "true";
 
   try {
-    const products = await fetchNewArrivals(limit, log, gender);
-    log.success(`${products.length} new arrivals returned (limit=${limit}${gender ? `, gender=${gender}` : ""})`).end("NEW ARRIVALS");
+    const products = await fetchNewArrivals(limit, log, gender, trending);
+    log.success(`${products.length} new arrivals returned (limit=${limit}${gender ? `, gender=${gender}` : ""}${trending ? ", trending" : ""})`).end("NEW ARRIVALS");
     res.json({ count: products.length, products });
   } catch (err) {
     log.error("failed — returning empty list", err);
