@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Heart, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Navbar from "@/components/layout/Navbar";
@@ -7,6 +9,8 @@ import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
 import FeaturedCollectionsGrid from "@/components/collections/FeaturedCollectionsGrid";
 import Footer from "@/components/layout/Footer";
+import { getBackendBaseUrl } from "@/lib/backend";
+import { authHeader } from "@/lib/apiAuth";
 
 import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
 import img2 from "@/assets/searchbar-frequent_searches/le-2.png";
@@ -37,6 +41,40 @@ const galleryImages = [
 
 export default function Collections() {
   const { user, loading: authLoading } = useAuth();
+  const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = email.trim();
+    if (!trimmed) return;
+
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${getBackendBaseUrl()}/api/newsletter/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(await authHeader()) },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Something went wrong. Please try again.");
+        return;
+      }
+
+      toast.success(
+        data.action === "already_subscribed"
+          ? "You're already on the list!"
+          : "You're in! Watch your inbox for cute updates."
+      );
+      setEmail("");
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (authLoading) {
     return <RouteFallback />;
@@ -191,16 +229,26 @@ export default function Collections() {
                     Get exclusive access to new collections, special offers, and style tips delivered to your inbox.
                   </p>
 
-                  <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 max-w-md mx-auto">
+                  <form
+                    onSubmit={handleSubscribe}
+                    className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 max-w-md mx-auto"
+                  >
                     <Input
                       type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       placeholder="Enter your email"
                       className="px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg sm:rounded-full bg-white/20 border border-white/30 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white transition-all duration-200"
                     />
-                    <Button className="bg-white text-gray-900 hover:bg-gray-100 px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-full font-semibold text-xs sm:text-sm flex-shrink-0 transition-colors duration-200">
-                      Subscribe
+                    <Button
+                      type="submit"
+                      disabled={submitting}
+                      className="bg-white text-gray-900 hover:bg-gray-100 px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-full font-semibold text-xs sm:text-sm flex-shrink-0 transition-colors duration-200 disabled:opacity-60"
+                    >
+                      {submitting ? "Joining..." : "Subscribe"}
                     </Button>
-                  </div>
+                  </form>
 
                   <p className="text-[10px] sm:text-xs opacity-75 mt-3 sm:mt-4">
                     We respect your privacy. Unsubscribe anytime.
