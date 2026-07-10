@@ -39,7 +39,7 @@ interface CartContextType {
   cartItems: CartItem[];
   cartCount: number;
   loading: boolean;
-  addToCart: (payload: AddToCartPayload, opts?: { outOfStock?: boolean }) => Promise<void>;
+  addToCart: (payload: AddToCartPayload, opts?: AddToCartOpts) => Promise<void>;
   reorder: (items: AddToCartPayload[]) => Promise<{ added: number; failed: number }>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   updateSize: (cartItemId: string, size: string) => Promise<void>;
@@ -47,6 +47,13 @@ interface CartContextType {
   removeItem: (cartItemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
   refetchCart: () => void;
+}
+
+export interface AddToCartOpts {
+  outOfStock?: boolean;
+  /** Live stock the caller already holds for payload.sku (an EXACT variant sku).
+      Lets the guest branch skip its pre-write hydration round-trip. */
+  stockHint?: { stock: number | null; isUnlimited: boolean };
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -223,7 +230,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   const addToCart = useCallback(
-    async (payload: AddToCartPayload, opts?: { outOfStock?: boolean }) => {
+    async (payload: AddToCartPayload, opts?: AddToCartOpts) => {
       const requestedQty = payload.quantity ?? 1;
 
       // One toast for both branches, keyed on the delta actually applied:
@@ -265,23 +272,39 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // Guest: persist to localStorage and re-hydrate. No login wall — the sign-in
       // prompt happens later, at checkout (see Cart.tsx).
       if (!user) {
-        // Resolve the exact colour variant + live stock in one pass: a stray base_sku
-        // maps to the primary variant (the one the placard shows), and the guest cap
-        // matches the DB cart's per-line clamp. Never throws; an unresolved view falls
-        // back to the raw sku + 99-only clamp (old behavior) — never block the add.
-        const { sku: resolvedSku, view } = await resolveVariantSku(payload.sku);
-        const outOfStock = view
-          ? !view.isUnlimited && (view.stock ?? 0) <= 0
-          : (opts?.outOfStock ?? false);
-        // OOS → cap 1, mirroring the backend's /add rule.
-        const maxAllowed = !view || view.isUnlimited
-          ? 99
-          : outOfStock
-            ? 1
-            : Math.min(99, view.stock ?? 0);
+        let resolvedSku = payload.sku;
+        let productSlug = payload.product_slug;
+        let outOfStock: boolean;
+        let maxAllowed: number;
+        if (opts?.stockHint) {
+          // ⚡ Caller already holds live stock for this exact variant (PDP, placards
+          // with embedded data) — no pre-write round-trip needed.
+          const { stock, isUnlimited } = opts.stockHint;
+          outOfStock = !isUnlimited && (stock ?? 0) <= 0;
+          maxAllowed = isUnlimited ? 99 : outOfStock ? 1 : Math.min(99, stock ?? 0);
+          console.log(`[CartContext] guest add via stockHint  sku=${resolvedSku}  stock=${stock ?? "∞"}`);
+        } else {
+          // Resolve the exact colour variant + live stock in one pass: a stray base_sku
+          // maps to the primary variant (the one the placard shows), and the guest cap
+          // matches the DB cart's per-line clamp. Never throws; an unresolved view falls
+          // back to the raw sku + 99-only clamp (old behavior) — never block the add.
+          const resolved = await resolveVariantSku(payload.sku);
+          resolvedSku = resolved.sku;
+          const view = resolved.view;
+          productSlug = view?.slug ?? payload.product_slug;
+          outOfStock = view
+            ? !view.isUnlimited && (view.stock ?? 0) <= 0
+            : (opts?.outOfStock ?? false);
+          // OOS → cap 1, mirroring the backend's /add rule.
+          maxAllowed = !view || view.isUnlimited
+            ? 99
+            : outOfStock
+              ? 1
+              : Math.min(99, view.stock ?? 0);
+        }
         const applied = addGuestCartLine(
           {
-            product_slug: view?.slug ?? payload.product_slug,
+            product_slug: productSlug,
             sku: resolvedSku,
             size: payload.size,
             quantity: requestedQty,

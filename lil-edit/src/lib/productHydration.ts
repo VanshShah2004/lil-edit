@@ -55,24 +55,47 @@ export async function resolveVariantSku(
   return { sku: view?.sku ?? sku, view };
 }
 
+// Short-lived per-sku cache: repeat interactions (hover → click, heart after quick
+// add, guest re-adds) skip the by-skus round-trip entirely. 30s keeps stock views
+// reasonably fresh — the backend re-clamps authoritatively on every write anyway.
+const VIEW_TTL_MS = 30_000;
+const viewCache = new Map<string, { view: ResolvedSkuView; at: number }>();
+
 export async function hydrateSkus(skus: string[]): Promise<Map<string, ResolvedSkuView>> {
   const unique = [...new Set(skus.filter(Boolean))];
   if (unique.length === 0) return new Map();
+
+  const now = Date.now();
+  const map = new Map<string, ResolvedSkuView>();
+  const misses: string[] = [];
+  for (const sku of unique) {
+    const cached = viewCache.get(sku);
+    if (cached && now - cached.at < VIEW_TTL_MS) map.set(sku, cached.view);
+    else misses.push(sku);
+  }
+  if (misses.length === 0) {
+    console.log(`[productHydration] cache HIT all ${unique.length} sku(s)`);
+    return map;
+  }
+  if (map.size > 0) console.log(`[productHydration] cache HIT ${map.size}/${unique.length}, fetching ${misses.length}`);
+
   try {
-    const url = `${getBackendBaseUrl()}/api/products/by-skus?skus=${encodeURIComponent(unique.join(","))}`;
+    const url = `${getBackendBaseUrl()}/api/products/by-skus?skus=${encodeURIComponent(misses.join(","))}`;
     console.log(`[productHydration] GET ${url}`);
     const res = await fetch(url);
     if (!res.ok) {
       console.error(`[productHydration] by-skus failed (${res.status})`);
-      return new Map();
+      return map;
     }
     const data = (await res.json()) as { items?: ResolvedSkuView[] };
-    const map = new Map<string, ResolvedSkuView>();
-    for (const item of data.items ?? []) map.set(item.sku, item);
+    for (const item of data.items ?? []) {
+      map.set(item.sku, item);
+      viewCache.set(item.sku, { view: item, at: now });
+    }
     console.log(`[productHydration] resolved ${map.size}/${unique.length} skus`);
     return map;
   } catch (err) {
     console.error("[productHydration] by-skus error", err);
-    return new Map();
+    return map;
   }
 }

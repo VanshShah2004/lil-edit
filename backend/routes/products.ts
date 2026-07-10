@@ -246,6 +246,9 @@ function mapDatabaseToRecommended(dbProd: ProductRow) {
   const primaryVariant = [...(dbProd.product_variants ?? [])].sort(
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
   )[0];
+  // Sizes + the emitted variant's stock ride along so QuickAddButton can open its
+  // size picker / add straight away — no hydration round-trip before the add.
+  const isUnlimited = primaryVariant ? (!!primaryVariant.is_unlimited || !!dbProd.is_unlimited) : !!dbProd.is_unlimited;
   return {
     title: dbProd.title,
     slug: dbProd.slug,
@@ -254,6 +257,9 @@ function mapDatabaseToRecommended(dbProd: ProductRow) {
     originalPrice: dbProd.original_price || dbProd.price,
     image: primaryImg,
     sku: primaryVariant?.variant_sku ?? dbProd.base_sku,
+    sizes: (dbProd.sizes ?? []) as string[],
+    stock: isUnlimited ? null : (primaryVariant?.stock ?? 0),
+    isUnlimited,
     tags: dbProd.tags || [],
     // Custom badges plus the merchandising flags rendered as labels — same composition
     // the cart and wishlist endpoints use, so the sidebar shows "New Arrival" etc.

@@ -221,9 +221,13 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     // slug+sku pair can't be persisted (it would later leak into cart_items on move).
     const t0Validate = performance.now();
     let serverSlug: string | null = null;
+    // The sku the row is stored under. A base_sku add is rewritten to the product's
+    // primary colour variant so the saved line carries a real colour — same rule as
+    // the cart /add and the placards.
+    let skuToStore = sku;
     const { data: baseRow, error: bErr } = await db()
       .from("products")
-      .select("slug")
+      .select("slug, product_variants(variant_sku, sort_order)")
       .eq("base_sku", sku)
       .maybeSingle();
     if (bErr) {
@@ -232,6 +236,14 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       return;
     }
     serverSlug = (baseRow?.slug as string | undefined) ?? null;
+    if (serverSlug) {
+      const primary = [...((baseRow?.product_variants as Array<{ variant_sku: string; sort_order: number | null }> | null) ?? [])]
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))[0];
+      if (primary) {
+        skuToStore = primary.variant_sku;
+        log.step(`base sku resolved to primary variant  ${sku} → ${skuToStore}`);
+      }
+    }
     if (!serverSlug) {
       const { data: variantRows, error: vErr } = await db()
         .from("products")
@@ -260,7 +272,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     const t0Insert = performance.now();
     const { data: inserted, error: insertErr } = await db()
       .from("wishlist_items")
-      .insert({ user_id: userId, product_slug: serverSlug, sku })
+      .insert({ user_id: userId, product_slug: serverSlug, sku: skuToStore })
       .select("id")
       .maybeSingle();
     log.step(`DB insert: ${fms(performance.now() - t0Insert)}`);
@@ -269,7 +281,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       // Unique constraint violation = already wishlisted
       if (insertErr.code === "23505") {
         log.step("already wishlisted — returning 200").end("WISHLIST ADD");
-        res.json({ ok: true, action: "already_exists" });
+        res.json({ ok: true, action: "already_exists", sku: skuToStore });
         return;
       }
       log.error(`insert failed  code=${insertErr.code}  msg=${insertErr.message}`, insertErr).end("WISHLIST ADD");
@@ -278,8 +290,10 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     }
 
     await redisDel(log, wishlistKey(userId));
-    log.success(`inserted  id=${inserted?.id}  total=${fms(log.elapsed())}`).end("WISHLIST ADD");
-    res.status(201).json({ ok: true, action: "added", wishlistItemId: inserted?.id });
+    log.success(`inserted  id=${inserted?.id}  sku=${skuToStore}  total=${fms(log.elapsed())}`).end("WISHLIST ADD");
+    // `sku` = the sku the row was STORED under (base_sku adds resolve to the primary
+    // variant) so the client's Undo can find the row.
+    res.status(201).json({ ok: true, action: "added", wishlistItemId: inserted?.id, sku: skuToStore });
   } catch (err) {
     log.error("unhandled error", err).end("WISHLIST ADD");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });

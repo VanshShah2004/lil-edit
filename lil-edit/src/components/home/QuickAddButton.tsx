@@ -2,12 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCart } from "@/contexts/CartContext";
-import { resolveVariantSku } from "@/lib/productHydration";
+import { hydrateSkus, resolveVariantSku } from "@/lib/productHydration";
 
-// Only slug + sku are needed to add a line; sizes are fetched on demand. Kept as
-// a narrow shape so any card (curated homepage items, PDP recommendations, …)
-// can pass its product without conforming to a heavier type.
-type QuickAddProduct = { slug: string; sku: string };
+// Only slug + sku are strictly needed to add a line. Placards that also carry
+// sizes/stock (recommendations + curated sections embed them server-side) get the
+// fast path: the size picker / add fires instantly, no hydration round-trip first.
+type QuickAddProduct = {
+  slug: string;
+  sku: string;
+  sizes?: string[];
+  stock?: number | null;
+  isUnlimited?: boolean;
+};
 
 // Desktop-only quick add: hover reveals this button (parent wrapper is hidden on
 // mobile). Clicking fetches sizes for the SKU on demand — the card only carries
@@ -43,12 +49,29 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
     try {
       await addToCart(
         { product_slug: product.slug, sku, size, quantity: 1 },
-        { outOfStock: oos }
+        {
+          outOfStock: oos,
+          // Embedded stock belongs to product.sku — pass it through so the guest
+          // branch skips its own pre-write hydration round-trip.
+          stockHint:
+            hasEmbeddedData && sku === product.sku
+              ? { stock: product.stock ?? 0, isUnlimited: !!product.isUnlimited }
+              : undefined,
+        }
       );
       setOpen(false);
     } finally {
       setAddingSize(null);
     }
+  };
+
+  // Sizes/stock embedded in the placard payload → skip hydration entirely.
+  const hasEmbeddedData = Array.isArray(product.sizes);
+
+  // Legacy payloads (no embedded sizes) prefetch on hover so the click-time
+  // hydration is usually a warm cache hit.
+  const handleMouseEnter = () => {
+    if (!hasEmbeddedData) void hydrateSkus([product.sku]);
   };
 
   const handleClick = async (e: React.MouseEvent) => {
@@ -57,10 +80,31 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
       setOpen(false);
       return;
     }
+
+    // ⚡ Fast path: the placard already carries sizes + stock for its exact variant —
+    // open the picker / fire the add immediately, zero round-trips before the POST.
+    // Stock here may be a few minutes stale (cached payloads); the backend re-clamps
+    // authoritatively on the add and its response drives the final toast.
+    if (hasEmbeddedData) {
+      const embeddedSizes = product.sizes ?? [];
+      const isOOS = !product.isUnlimited && (product.stock ?? 0) <= 0;
+      setOutOfStock(isOOS);
+      setResolvedSku(product.sku);
+      console.log(`[QuickAdd] fast path  sku=${product.sku}  sizes=${embeddedSizes.length}  oos=${isOOS}`);
+      if (embeddedSizes.length <= 1) {
+        await doAdd(embeddedSizes[0] ?? "", product.sku, isOOS);
+        return;
+      }
+      setSizes(embeddedSizes);
+      setOpen(true);
+      return;
+    }
+
     setLoading(true);
     try {
-      // Placards now carry the exact variant sku; resolveVariantSku is a defensive
-      // no-op for those, and still maps a stray base_sku to its primary variant.
+      // Fallback (payload without sizes): resolve + fetch sizes. resolveVariantSku
+      // still maps a stray base_sku to its primary variant; usually a warm cache hit
+      // thanks to the hover prefetch above.
       const { sku: skuToAdd, view } = await resolveVariantSku(product.sku);
       setResolvedSku(skuToAdd);
       const isOOS = !!view && !view.isUnlimited && (view.stock ?? 0) <= 0;
@@ -84,7 +128,7 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
   };
 
   return (
-    <div ref={wrapperRef} className="relative" onClick={(e) => e.stopPropagation()}>
+    <div ref={wrapperRef} className="relative" onClick={(e) => e.stopPropagation()} onMouseEnter={handleMouseEnter}>
       <button
         onClick={(e) => void handleClick(e)}
         disabled={loading || adding}

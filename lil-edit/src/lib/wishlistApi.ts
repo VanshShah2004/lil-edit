@@ -54,23 +54,27 @@ export async function fetchWishlist(): Promise<WishlistItem[]> {
   return (data.items ?? []) as WishlistItem[];
 }
 
-export async function addToWishlist(product_slug: string, sku: string): Promise<void> {
+/** Returns the sku the row was STORED under — a base_sku add resolves server-side
+    to the primary colour variant, so Undo must target the returned sku. */
+export async function addToWishlist(product_slug: string, sku: string): Promise<{ sku: string }> {
   console.log("[wishlistApi] addToWishlist payload:", { product_slug, sku });
   const res = await authFetch("/api/wishlist/add", {
     method: "POST",
     body: JSON.stringify({ product_slug, sku }),
   });
+  const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
     // 409 means already in wishlist — not an error worth throwing
     if (res.status === 409) {
       console.log("[wishlistApi] addToWishlist: already in wishlist");
-      return;
+      return { sku };
     }
     console.error("[wishlistApi] addToWishlist error:", body);
     throw new Error((body as { error?: string }).error ?? `Add to wishlist failed (${res.status})`);
   }
-  console.log("[wishlistApi] addToWishlist success");
+  const storedSku = (body as { sku?: string }).sku;
+  console.log("[wishlistApi] addToWishlist success", { sku: storedSku ?? sku });
+  return { sku: typeof storedSku === "string" && storedSku ? storedSku : sku };
 }
 
 export async function removeWishlistItem(wishlistItemId: string): Promise<void> {

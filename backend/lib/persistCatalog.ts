@@ -1642,10 +1642,10 @@ export async function fetchRecommendedProducts(
   const sb = requireAdmin();
 
   const REC_SELECT = `
-    title, slug, category_slug, price, original_price, base_sku, tags, badges, gender,
+    title, slug, category_slug, price, original_price, base_sku, tags, badges, gender, sizes, is_unlimited,
     is_featured, is_new_arrival, is_trending, is_bestseller,
     product_images(image_url, is_primary),
-    product_variants(variant_sku, sort_order)
+    product_variants(variant_sku, stock, is_unlimited, sort_order)
   `;
 
   // Anchor product's gender + price drive ranking for BOTH the same-category

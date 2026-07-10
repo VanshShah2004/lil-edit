@@ -74,7 +74,9 @@ interface ProductRow {
   is_new_arrival: boolean;
   is_bestseller: boolean;
   is_trending: boolean;
-  product_variants?: Array<{ variant_sku: string; sort_order: number | null }> | null;
+  sizes?: string[] | null;
+  is_unlimited?: boolean | null;
+  product_variants?: Array<{ variant_sku: string; stock: number | null; is_unlimited: boolean | null; sort_order: number | null }> | null;
 }
 
 // ─── Resolved (frontend) shapes ──────────────────────────────────────────────
@@ -94,6 +96,11 @@ interface ResolvedProduct {
   originalPrice: number;
   image: string | null;
   badges: string[];
+  // Ride-along data for QuickAddButton: lets the placard open its size picker /
+  // add to cart without a hydration round-trip first.
+  sizes: string[];
+  stock: number | null;
+  isUnlimited: boolean;
 }
 
 interface ResolvedEditorial {
@@ -119,7 +126,7 @@ interface ResolvedSection {
 }
 
 const PRODUCT_SELECT =
-  "id, base_sku, slug, category_slug, title, price, original_price, badges, is_featured, is_new_arrival, is_bestseller, is_trending, product_variants(variant_sku, sort_order)";
+  "id, base_sku, slug, category_slug, title, price, original_price, badges, is_featured, is_new_arrival, is_bestseller, is_trending, sizes, is_unlimited, product_variants(variant_sku, stock, is_unlimited, sort_order)";
 
 // Compose the badge labels shown on a product card: the product's own custom badges
 // plus its merchandising flags rendered as labels (same composition the PDP rec list uses).
@@ -161,6 +168,7 @@ function toResolvedProduct(p: ProductRow, image: string | null, extraBadges: str
   const primaryVariant = [...(p.product_variants ?? [])].sort(
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
   )[0];
+  const isUnlimited = primaryVariant ? (!!primaryVariant.is_unlimited || !!p.is_unlimited) : !!p.is_unlimited;
   return {
     kind: "product",
     id: p.id,
@@ -173,6 +181,9 @@ function toResolvedProduct(p: ProductRow, image: string | null, extraBadges: str
     originalPrice: Number(p.original_price ?? p.price) || 0,
     image,
     badges,
+    sizes: p.sizes ?? [],
+    stock: isUnlimited ? null : (primaryVariant?.stock ?? 0),
+    isUnlimited,
   };
 }
 

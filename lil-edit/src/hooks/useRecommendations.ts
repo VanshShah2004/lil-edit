@@ -13,6 +13,11 @@ export interface RecommendedProduct {
   image: string;
   sku: string;
   badges?: string[];
+  /** Ride-along data so QuickAddButton can add without a hydration round-trip.
+      Optional: older cached payloads may not carry them. */
+  sizes?: string[];
+  stock?: number | null;
+  isUnlimited?: boolean;
 }
 
 export interface RecommendationAnchor {

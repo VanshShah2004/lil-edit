@@ -187,12 +187,17 @@ const ProductPreviewView = ({
     }
     setCartBusy(true);
     try {
-      await addToCart({
-        product_slug: product.slug,
-        sku: currentSku,
-        size: selectedSize ?? "",
-        quantity,
-      });
+      await addToCart(
+        {
+          product_slug: product.slug,
+          sku: currentSku,
+          size: selectedSize ?? "",
+          quantity,
+        },
+        // The PDP already holds this variant's live stock — the guest branch can
+        // clamp locally without a pre-write hydration round-trip.
+        { stockHint: { stock: isCurrentUnlimited ? null : currentStock, isUnlimited: isCurrentUnlimited } }
+      );
     } finally {
       setCartBusy(false);
     }

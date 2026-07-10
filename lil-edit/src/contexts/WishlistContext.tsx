@@ -206,29 +206,27 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   );
 
   const addToWishlist = useCallback(
-    async (rawProductSlug: string, rawSku: string) => {
-      // Placards emit the exact variant sku they display; resolveVariantSku is a
-      // defensive no-op for those, and still maps a stray base_sku (e.g. a stale
-      // cached placard) to its primary colour variant so the saved line carries a
-      // real colour instead of a gray empty swatch.
-      const { sku, view } = await resolveVariantSku(rawSku);
-      const productSlug = view?.slug ?? rawProductSlug;
-      if (sku !== rawSku) console.log(`[WishlistContext] resolved sku  ${rawSku} → ${sku}`);
-
-      // Guest: persist to localStorage and re-hydrate. No login wall — saving is free;
-      // the sign-in prompt happens only when moving an item into the real cart.
+    async (productSlug: string, sku: string) => {
+      // Guest: persist to localStorage and re-hydrate. The variant is resolved
+      // client-side (localStorage is ours to write) — placards emit exact variant
+      // skus so this is usually a no-op, and the hydration cache makes it cheap.
       if (!user) {
-        if (getGuestWishlist().some((l) => l.sku === sku)) return; // already saved
-        addGuestWishlistLine({ product_slug: productSlug, sku });
-        console.log("[WishlistContext] guest addToWishlist", productSlug, sku);
+        const { sku: resolvedSku, view } = await resolveVariantSku(sku);
+        const slug = view?.slug ?? productSlug;
+        if (resolvedSku !== sku) console.log(`[WishlistContext] resolved sku  ${sku} → ${resolvedSku}`);
+        if (getGuestWishlist().some((l) => l.sku === resolvedSku)) return; // already saved
+        addGuestWishlistLine({ product_slug: slug, sku: resolvedSku });
+        console.log("[WishlistContext] guest addToWishlist", slug, resolvedSku);
         refetchWishlist();
         toast.success("Added to wishlist!", {
           duration: 6000,
-          action: { label: "Undo", onClick: () => undoAddGuestWishlist(sku) },
+          action: { label: "Undo", onClick: () => undoAddGuestWishlist(resolvedSku) },
         });
         return;
       }
-      // Optimistic: add a placeholder so heart fills instantly
+      // Optimistic: add a placeholder so heart fills instantly — no network before
+      // the fill. The backend resolves a stray base_sku to the primary variant and
+      // returns the stored sku, which Undo targets.
       const tempId = `temp-${productSlug}-${sku}`;
       setWishlistItems((prev) => {
         if (prev.some((i) => i.productSlug === productSlug && i.sku === sku)) return prev;
@@ -255,12 +253,12 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         ];
       });
       try {
-        await apiAdd(productSlug, sku);
+        const { sku: storedSku } = await apiAdd(productSlug, sku);
         toast.success("Added to wishlist!", {
           duration: 6000,
           action: {
             label: "Undo",
-            onClick: () => void undoAddToWishlist(productSlug, sku),
+            onClick: () => void undoAddToWishlist(productSlug, storedSku),
           },
         });
         refetchWishlist();
