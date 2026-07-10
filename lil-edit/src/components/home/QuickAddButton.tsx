@@ -18,7 +18,10 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
   const [open, setOpen] = useState(false);
   const [sizes, setSizes] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [adding, setAdding] = useState(false);
+  // Track WHICH size is being added (not just a global boolean) so the size picker
+  // only spins the clicked chip, never all of them. null = nothing adding.
+  const [addingSize, setAddingSize] = useState<string | null>(null);
+  const adding = addingSize !== null;
   const [outOfStock, setOutOfStock] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -32,7 +35,7 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
   }, [open]);
 
   const doAdd = async (size: string, oos: boolean = outOfStock) => {
-    setAdding(true);
+    setAddingSize(size);
     try {
       await addToCart(
         { product_slug: product.slug, sku: product.sku, size, quantity: 1 },
@@ -40,7 +43,7 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
       );
       setOpen(false);
     } finally {
-      setAdding(false);
+      setAddingSize(null);
     }
   };
 
@@ -58,6 +61,10 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
       setOutOfStock(isOOS);
       const resolvedSizes = view?.sizes ?? [];
       if (resolvedSizes.length <= 1) {
+        // Sizes resolved — hand off to the add. Clear `loading` first so the button
+        // label transitions Loading… → Adding… (both set in the same tick, so React
+        // batches them into one render — no flash of the default "Add to Cart").
+        setLoading(false);
         await doAdd(resolvedSizes[0] ?? "", isOOS);
         return;
       }
@@ -89,19 +96,26 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
         <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-xl shadow-lg border border-border p-2 z-20">
           <p className="text-[10px] font-semibold text-muted-foreground mb-1.5 px-1">Select Size</p>
           <div className="flex flex-wrap gap-1.5">
-            {sizes.map((size) => (
-              <button
-                key={size}
-                onClick={() => void doAdd(size)}
-                disabled={adding}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors flex items-center gap-1 ${
-                  adding ? "bg-[#0F766E] text-white cursor-not-allowed" : "bg-gray-100 hover:bg-[#0F766E] hover:text-white"
-                }`}
-              >
-                {adding && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
-                {size}
-              </button>
-            ))}
+            {sizes.map((size) => {
+              const isAddingThis = addingSize === size;
+              return (
+                <button
+                  key={size}
+                  onClick={() => void doAdd(size)}
+                  disabled={adding}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors flex items-center gap-1 ${
+                    isAddingThis
+                      ? "bg-[#0F766E] text-white cursor-not-allowed"
+                      : adding
+                        ? "bg-gray-100 opacity-50 cursor-not-allowed"
+                        : "bg-gray-100 hover:bg-[#0F766E] hover:text-white"
+                  }`}
+                >
+                  {isAddingThis && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
+                  {size}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

@@ -87,6 +87,7 @@ interface RecommendedProduct {
   title: string;
   price: number;
   originalPrice: number;
+  badges: string[];
 }
 
 // ⚡ Module-level caches — persist across route changes within the session, capped at
@@ -892,6 +893,11 @@ export default function ProductDetail() {
                       }
                     }}
                   />
+                  )}
+                  {item.badges[0] && (
+                    <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/90 text-[#0F766E] shadow-sm">
+                      {item.badges[0]}
+                    </span>
                   )}
                   <button
                     type="button"
