@@ -1306,6 +1306,26 @@ export async function fetchSuggestions(q: string, log: OpLogger): Promise<Sugges
   const plan = planQuery(lower);
   const catalog = await loadSearchCatalog(log);
 
+  // "all" / "everything" etc. — suggest the whole catalog (dropdown caps at 8;
+  // pressing Enter routes to the results page, which returns every product).
+  if (isShowAllQuery(lower)) {
+    const rows: SuggestionRow[] = [...catalog]
+      .sort((a, b) => a.title.localeCompare(b.title))
+      .slice(0, 8)
+      .map((entry) => ({
+        type: "product" as const,
+        id: entry.id,
+        label: entry.title,
+        sublabel: entry.category,
+        image: entry.image,
+        slug: entry.slug,
+        categorySlug: entry.category_slug,
+        sku: entry.base_sku,
+      }));
+    log.step(`Suggestions - "${q}" is a show-all query, returning ${rows.length} products`);
+    return rows;
+  }
+
   // Score every product in the catalog.
   const scored: Array<{ entry: SearchCatalogEntry } & RankedMatch> = [];
   for (const entry of catalog) {
@@ -1481,9 +1501,59 @@ export interface SearchProductRow {
  * suggestions dropdown shows the top 8 products; the results page shows all
  * matching colourways).
  */
+/** Exact-match trigger phrases that mean "show me the whole catalog" rather than a real search term. */
+const ALL_PRODUCTS_QUERIES = new Set([
+  "all",
+  "all products",
+  "everything",
+  "show all",
+  "show everything",
+  "show me everything",
+  "show me all",
+  "all items",
+  "everything else",
+]);
+
+function isShowAllQuery(lower: string): boolean {
+  return ALL_PRODUCTS_QUERIES.has(lower.trim());
+}
+
+/** Product+variant → SearchProductRow expansion, unscored (show-all queries). */
+function expandVariantRows(catalog: SearchCatalogEntry[]): SearchProductRow[] {
+  const rows: SearchProductRow[] = [];
+  for (const entry of catalog) {
+    const base = {
+      id: entry.id,
+      title: entry.title,
+      slug: entry.slug,
+      category: entry.category,
+      categorySlug: entry.category_slug,
+      price: entry.price,
+      originalPrice: entry.original_price,
+      badges: entry.badges,
+    };
+    if (entry.variants.length === 0) {
+      rows.push({ ...base, sku: entry.base_sku, image: entry.image, color: { name: "", hex: "#cccccc" }, inStock: true });
+      continue;
+    }
+    for (const v of entry.variants) {
+      rows.push({ ...base, sku: v.sku, image: v.image, color: { name: v.colorName, hex: v.colorHex }, inStock: v.inStock });
+    }
+  }
+  return rows;
+}
+
 export async function searchProducts(q: string, log: OpLogger): Promise<SearchProductRow[]> {
   const lower = q.toLowerCase();
   const catalog = await loadSearchCatalog(log);
+
+  if (isShowAllQuery(lower)) {
+    const rows = expandVariantRows(catalog).sort(
+      (a, b) => Number(b.inStock) - Number(a.inStock) || a.title.localeCompare(b.title),
+    );
+    log.step(`Search - "${q}" is a show-all query, returning full catalog (${rows.length} rows)`);
+    return rows;
+  }
 
   const rows = rankVariantRows(catalog, lower);
   log.step(`Search - ${rows.length} variant cards matched "${q}" across ${catalog.length} products`);
