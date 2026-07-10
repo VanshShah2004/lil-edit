@@ -37,7 +37,10 @@ function enrichWishlistRow(row: WishlistItemRow, product: ProductRow) {
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
   );
 
-  const variant = variants.find((v) => v.variant_sku === row.sku) ?? null;
+  // Legacy rows saved with a base_sku (old placard hearts) match no variant — fall
+  // back to the primary colour variant so they display its colour/stock instead of a
+  // gray empty swatch. New writes always carry real variant skus.
+  const variant = variants.find((v) => v.variant_sku === row.sku) ?? variants[0] ?? null;
   const variantImages = variant
     ? images.filter((img) => img.variant_id === variant.id)
     : [];

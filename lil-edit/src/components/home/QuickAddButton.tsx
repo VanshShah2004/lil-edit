@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCart } from "@/contexts/CartContext";
-import { hydrateSkus } from "@/lib/productHydration";
+import { resolveVariantSku } from "@/lib/productHydration";
 
 // Only slug + sku are needed to add a line; sizes are fetched on demand. Kept as
 // a narrow shape so any card (curated homepage items, PDP recommendations, …)
@@ -59,16 +59,9 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
     }
     setLoading(true);
     try {
-      let view = (await hydrateSkus([product.sku])).get(product.sku);
-      // An empty colour name means we were handed a base_sku (it matched no variant) —
-      // resolve to the primary colour variant (colors[0], the same one the PDP
-      // canonicalises to) so the added line carries that variant's colour + stock,
-      // matching the image shown on the placard.
-      if (view && view.color.name === "" && view.colors.length > 0) {
-        const primarySku = view.colors[0].sku;
-        view = (await hydrateSkus([primarySku])).get(primarySku) ?? view;
-      }
-      const skuToAdd = view?.sku ?? product.sku;
+      // Placards now carry the exact variant sku; resolveVariantSku is a defensive
+      // no-op for those, and still maps a stray base_sku to its primary variant.
+      const { sku: skuToAdd, view } = await resolveVariantSku(product.sku);
       setResolvedSku(skuToAdd);
       const isOOS = !!view && !view.isUnlimited && (view.stock ?? 0) <= 0;
       setOutOfStock(isOOS);

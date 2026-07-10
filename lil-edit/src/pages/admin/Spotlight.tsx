@@ -234,9 +234,11 @@ function ProductPickerModal({
           ) : (
             <ul className="space-y-1.5">
               {results.map((p) => {
-                const added = alreadyAdded.has(p.sku);
+                // Curated items are stored under the product's base_sku (p.sku now
+                // carries the primary variant for storefront actions).
+                const added = alreadyAdded.has(p.baseSku);
                 return (
-                  <li key={p.sku} className="flex items-center gap-2 rounded-lg border border-gray-100 hover:border-gray-300 transition-colors pl-1 pr-2">
+                  <li key={p.baseSku} className="flex items-center gap-2 rounded-lg border border-gray-100 hover:border-gray-300 transition-colors pl-1 pr-2">
                     <button
                       onClick={() => onQuickView(p)}
                       title="Quick view"
@@ -255,7 +257,7 @@ function ProductPickerModal({
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">{p.title}</p>
-                        <p className="text-xs text-gray-500">{p.sku} · ₹{p.price}</p>
+                        <p className="text-xs text-gray-500">{p.baseSku} · ₹{p.price}</p>
                       </div>
                       {added ? <Check className="w-4 h-4 text-green-600 shrink-0" /> : <Plus className="w-4 h-4 text-gray-400 shrink-0" />}
                     </button>
@@ -931,7 +933,9 @@ const SpotlightPage = () => {
       {
         tempId: nextTempId(),
         kind: "product",
-        productBaseSku: p.sku,
+        // Stored identity is the base_sku; p.sku carries the primary variant for
+        // storefront actions and must NOT be persisted here.
+        productBaseSku: p.baseSku,
         customTitle: null, customSubtitle: null, customImageUrl: null,
         linkUrl: null, badge: null, meta: {}, isActive: true,
         product: p,

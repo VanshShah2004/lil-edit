@@ -19,7 +19,10 @@ export type SectionKey = (typeof SECTION_KEYS)[number];
 export interface ResolvedProductItem {
   kind: "product";
   id: string;
+  /** Primary colour variant's sku — what storefront actions (heart, quick add, PDP link) use. */
   sku: string;
+  /** The product's base_sku — the identity curated items are stored under (admin flows use this). */
+  baseSku: string;
   slug: string;
   categorySlug: string;
   title: string;

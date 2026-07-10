@@ -20,7 +20,7 @@ import {
   type AddToCartPayload,
   type CartItem,
 } from "@/lib/cartApi";
-import { hydrateSkus, type ResolvedSkuView } from "@/lib/productHydration";
+import { hydrateSkus, resolveVariantSku, type ResolvedSkuView } from "@/lib/productHydration";
 import {
   getGuestCart,
   setGuestCart,
@@ -265,10 +265,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // Guest: persist to localStorage and re-hydrate. No login wall — the sign-in
       // prompt happens later, at checkout (see Cart.tsx).
       if (!user) {
-        // Resolve live stock so the guest cap matches the DB cart's per-line clamp.
-        // hydrateSkus never throws; an unresolved view falls back to the 99-only
-        // clamp (old behavior) — never block the add.
-        const view = (await hydrateSkus([payload.sku])).get(payload.sku);
+        // Resolve the exact colour variant + live stock in one pass: a stray base_sku
+        // maps to the primary variant (the one the placard shows), and the guest cap
+        // matches the DB cart's per-line clamp. Never throws; an unresolved view falls
+        // back to the raw sku + 99-only clamp (old behavior) — never block the add.
+        const { sku: resolvedSku, view } = await resolveVariantSku(payload.sku);
         const outOfStock = view
           ? !view.isUnlimited && (view.stock ?? 0) <= 0
           : (opts?.outOfStock ?? false);
@@ -280,24 +281,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
             : Math.min(99, view.stock ?? 0);
         const applied = addGuestCartLine(
           {
-            product_slug: payload.product_slug,
-            sku: payload.sku,
+            product_slug: view?.slug ?? payload.product_slug,
+            sku: resolvedSku,
             size: payload.size,
             quantity: requestedQty,
           },
           maxAllowed
         );
-        console.log("[CartContext] guest addToCart", payload.sku, payload.size, `×${requestedQty}`, `applied=${applied}`);
+        console.log("[CartContext] guest addToCart", resolvedSku, payload.size, `×${requestedQty}`, `applied=${applied}`);
         refetchCart();
         showAddToast(applied, maxAllowed, outOfStock, () =>
-          undoAddGuestCart(payload.sku, payload.size, applied)
+          undoAddGuestCart(resolvedSku, payload.size, applied)
         );
         return;
       }
       try {
-        const { outOfStock, applied, maxAllowed } = await apiAdd(payload);
+        // `sku` is the sku the backend actually stored — a base_sku add is resolved
+        // server-side to the primary colour variant, so Undo targets the real row.
+        const { outOfStock, applied, maxAllowed, sku: storedSku } = await apiAdd(payload);
         showAddToast(applied, maxAllowed, outOfStock, () =>
-          void undoAddToCart(payload.sku, payload.size, applied)
+          void undoAddToCart(storedSku, payload.size, applied)
         );
         refetchCart();
       } catch (err) {

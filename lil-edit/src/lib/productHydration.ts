@@ -7,6 +7,8 @@ import { getBackendBaseUrl } from "@/lib/backend";
  */
 export interface ResolvedSkuView {
   sku: string;
+  /** The product's base_sku — lets callers match a variant row against a placard's base sku. */
+  baseSku: string;
   title: string;
   slug: string;
   categorySlug: string;
@@ -32,6 +34,27 @@ export interface ResolvedSkuView {
  * network/CORS failure returns an empty map so a guest cart just renders nothing rather
  * than erroring.
  */
+/**
+ * Resolve a possibly-base SKU to the concrete colour-variant SKU a placard displays.
+ * Placards carry the product's base_sku, which isn't purchasable on its own — an empty
+ * resolved colour name is the signal we got one, so we re-resolve to the primary colour
+ * variant (colors[0], the same variant whose image the placard shows). Falls back to the
+ * input sku when hydration fails — never blocks the caller's action.
+ */
+export async function resolveVariantSku(
+  sku: string
+): Promise<{ sku: string; view?: ResolvedSkuView }> {
+  let view = (await hydrateSkus([sku])).get(sku);
+  // Requested sku IS the base_sku and the product has colour variants → re-resolve
+  // to the primary variant so the caller acts on a real, purchasable variant.
+  if (view && view.baseSku === sku && view.colors.length > 0 && view.colors[0].sku !== sku) {
+    const primarySku = view.colors[0].sku;
+    console.log(`[productHydration] resolveVariantSku  base=${sku} → primary=${primarySku}`);
+    view = (await hydrateSkus([primarySku])).get(primarySku) ?? view;
+  }
+  return { sku: view?.sku ?? sku, view };
+}
+
 export async function hydrateSkus(skus: string[]): Promise<Map<string, ResolvedSkuView>> {
   const unique = [...new Set(skus.filter(Boolean))];
   if (unique.length === 0) return new Map();

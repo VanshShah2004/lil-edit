@@ -251,6 +251,10 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     let serverSlug: string | null = null;
     let isUnlimited = false;
     let stock: number | null = null;
+    // The sku the cart row is stored under. A base_sku add is rewritten to the
+    // product's primary colour variant below — cart lines always carry a real,
+    // purchasable variant (same rule as the placards/wishlist).
+    let skuToStore = sku;
 
     const { data: variantRows, error: vErr } = await db()
       .from("products")
@@ -272,7 +276,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     if (!serverSlug) {
       const { data: baseRow, error: bErr } = await db()
         .from("products")
-        .select("slug, is_unlimited")
+        .select("slug, is_unlimited, product_variants(variant_sku, stock, is_unlimited, sort_order)")
         .eq("base_sku", sku)
         .maybeSingle();
       if (bErr) {
@@ -282,11 +286,23 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       }
       serverSlug = (baseRow?.slug as string | undefined) ?? null;
       if (serverSlug) {
-        isUnlimited = !!baseRow?.is_unlimited;
-        stock = isUnlimited ? null : 0;
+        // Base-sku add → resolve to the primary colour variant (lowest sort_order),
+        // taking its colour identity and stock. Products with no variants keep the
+        // base sku (product-level stock semantics, as before).
+        const primary = [...((baseRow?.product_variants as Array<{ variant_sku: string; stock: number | null; is_unlimited: boolean; sort_order: number | null }> | null) ?? [])]
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))[0];
+        if (primary) {
+          skuToStore = primary.variant_sku;
+          isUnlimited = !!primary.is_unlimited || !!baseRow?.is_unlimited;
+          stock = isUnlimited ? null : (primary.stock ?? 0);
+          log.step(`base sku resolved to primary variant  ${sku} → ${skuToStore}`);
+        } else {
+          isUnlimited = !!baseRow?.is_unlimited;
+          stock = isUnlimited ? null : 0;
+        }
       }
     }
-    log.step(`DB sku validate: ${fms(performance.now() - t0Validate)}  slug=${serverSlug ?? "∅"}`);
+    log.step(`DB sku validate: ${fms(performance.now() - t0Validate)}  slug=${serverSlug ?? "∅"}  sku=${skuToStore}`);
 
     if (!serverSlug) {
       log.warn(`sku not found  sku=${sku}`).end("CART ADD");
@@ -305,14 +321,14 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     const outOfStock = !isUnlimited && (stock ?? 0) <= 0;
     const maxAllowed = isUnlimited ? MAX_QTY : outOfStock ? 1 : Math.min(MAX_QTY, stock ?? 0);
     const clampedQty = Math.min(maxAllowed, qty);
-    if (outOfStock) log.warn(`adding out-of-stock item  sku=${sku}`);
+    if (outOfStock) log.warn(`adding out-of-stock item  sku=${skuToStore}`);
 
     const t0Conflict = performance.now();
     const { data: existing, error: existErr } = await db()
       .from("cart_items")
       .select("id, quantity")
       .eq("user_id", userId)
-      .eq("sku", sku)
+      .eq("sku", skuToStore)
       .eq("size", sizeVal)
       .maybeSingle();
     log.step(`DB conflict check: ${fms(performance.now() - t0Conflict)}  existing=${!!existing}`);
@@ -349,7 +365,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
           type: "cart_add",
           userId,
           productSlug: serverSlug,
-          sku,
+          sku: skuToStore,
           metadata: { size: sizeVal, quantity: applied, via: "increment" },
         });
       }
@@ -357,13 +373,15 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
       log.success(`incremented  id=${existing.id}  qty=${existing.quantity}→${newQty}  applied=${applied}  total=${fms(log.elapsed())}`).end("CART ADD");
       // `applied` = delta actually added (0 when the line was already at the stock cap)
       // and `maxAllowed` = per-line ceiling — the frontend uses these to tell the user
-      // when a re-add was capped instead of showing a plain success toast.
-      res.json({ ok: true, action: "incremented", cartItemId: existing.id, quantity: newQty, applied, maxAllowed, outOfStock });
+      // when a re-add was capped instead of showing a plain success toast. `sku` is the
+      // sku the line was STORED under (a base_sku add resolves to the primary variant),
+      // so the client's Undo can find the row.
+      res.json({ ok: true, action: "incremented", cartItemId: existing.id, sku: skuToStore, quantity: newQty, applied, maxAllowed, outOfStock });
     } else {
       const t0Write = performance.now();
       const { data: inserted, error: insertErr } = await db()
         .from("cart_items")
-        .insert({ user_id: userId, product_slug: serverSlug, sku, size: sizeVal, quantity: clampedQty })
+        .insert({ user_id: userId, product_slug: serverSlug, sku: skuToStore, size: sizeVal, quantity: clampedQty })
         .select("id")
         .single();
       log.step(`DB insert: ${fms(performance.now() - t0Write)}`);
@@ -376,7 +394,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
 
       await redisDel(log, cartKey(userId));
       log.success(`inserted  id=${inserted.id}  total=${fms(log.elapsed())}`).end("CART ADD");
-      res.status(201).json({ ok: true, action: "added", cartItemId: inserted.id, quantity: clampedQty, applied: clampedQty, maxAllowed, outOfStock });
+      res.status(201).json({ ok: true, action: "added", cartItemId: inserted.id, sku: skuToStore, quantity: clampedQty, applied: clampedQty, maxAllowed, outOfStock });
     }
   } catch (err) {
     log.error("unhandled error", err).end("CART ADD");

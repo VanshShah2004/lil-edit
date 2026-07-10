@@ -72,6 +72,8 @@ export interface AddToCartResult {
   requested: number;
   /** Per-line ceiling the backend clamped against (min(99, stock); 99 if unlimited/OOS). */
   maxAllowed: number;
+  /** The sku the line was STORED under — a base_sku add resolves server-side to the primary variant. */
+  sku: string;
 }
 
 export async function addToCart(payload: AddToCartPayload): Promise<AddToCartResult> {
@@ -86,14 +88,15 @@ export async function addToCart(payload: AddToCartPayload): Promise<AddToCartRes
     throw new Error((body as { error?: string }).error ?? `Add to cart failed (${res.status})`);
   }
   const requested = payload.quantity ?? 1;
-  const b = body as { outOfStock?: boolean; applied?: number; maxAllowed?: number };
-  console.log("[cartApi] addToCart success", { applied: b.applied, maxAllowed: b.maxAllowed });
+  const b = body as { outOfStock?: boolean; applied?: number; maxAllowed?: number; sku?: string };
+  console.log("[cartApi] addToCart success", { applied: b.applied, maxAllowed: b.maxAllowed, sku: b.sku });
   return {
     outOfStock: !!b.outOfStock,
     // Older backend without the field → assume fully applied (previous behavior).
     applied: typeof b.applied === "number" ? b.applied : requested,
     requested,
     maxAllowed: typeof b.maxAllowed === "number" ? b.maxAllowed : 99,
+    sku: typeof b.sku === "string" && b.sku ? b.sku : payload.sku,
   };
 }
 

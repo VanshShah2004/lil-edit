@@ -241,6 +241,11 @@ function mapDatabaseProductToFrontend(dbProduct: ProductRow, isDraft: boolean) {
 function mapDatabaseToRecommended(dbProd: ProductRow) {
   const images    = dbProd.product_images || [];
   const primaryImg = images.find((img) => img.is_primary)?.image_url || images[0]?.image_url || "";
+  // Placards act on the exact variant they display: emit the primary colour variant's
+  // sku (lowest sort_order) so heart/quick-add save that variant, not the base_sku.
+  const primaryVariant = [...(dbProd.product_variants ?? [])].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+  )[0];
   return {
     title: dbProd.title,
     slug: dbProd.slug,
@@ -248,7 +253,7 @@ function mapDatabaseToRecommended(dbProd: ProductRow) {
     price: dbProd.price,
     originalPrice: dbProd.original_price || dbProd.price,
     image: primaryImg,
-    sku: dbProd.base_sku,
+    sku: primaryVariant?.variant_sku ?? dbProd.base_sku,
     tags: dbProd.tags || [],
     // Custom badges plus the merchandising flags rendered as labels — same composition
     // the cart and wishlist endpoints use, so the sidebar shows "New Arrival" etc.
@@ -417,7 +422,10 @@ function mapSkuView(requestedSku: string, product: ProductRow | undefined) {
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
   );
 
-  const variant = variants.find((v) => v.variant_sku === requestedSku) ?? null;
+  // Legacy lines saved with a base_sku match no variant — fall back to the primary
+  // colour variant (lowest sort_order) so they display its colour/stock instead of a
+  // gray empty swatch. New writes always carry real variant skus.
+  const variant = variants.find((v) => v.variant_sku === requestedSku) ?? variants[0] ?? null;
   const variantImages = variant ? images.filter((img) => img.variant_id === variant.id) : [];
   const globalImages = images.filter((img) => img.variant_id == null);
   const primaryImage =
@@ -446,6 +454,7 @@ function mapSkuView(requestedSku: string, product: ProductRow | undefined) {
 
   return {
     sku: requestedSku,
+    baseSku: (product.base_sku ?? "") as string,
     title: product.title as string,
     slug: product.slug as string,
     categorySlug: product.category_slug as string,

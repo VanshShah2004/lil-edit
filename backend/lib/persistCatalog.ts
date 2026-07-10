@@ -1644,7 +1644,8 @@ export async function fetchRecommendedProducts(
   const REC_SELECT = `
     title, slug, category_slug, price, original_price, base_sku, tags, badges, gender,
     is_featured, is_new_arrival, is_trending, is_bestseller,
-    product_images(image_url, is_primary)
+    product_images(image_url, is_primary),
+    product_variants(variant_sku, sort_order)
   `;
 
   // Anchor product's gender + price drive ranking for BOTH the same-category

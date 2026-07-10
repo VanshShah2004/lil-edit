@@ -74,13 +74,19 @@ interface ProductRow {
   is_new_arrival: boolean;
   is_bestseller: boolean;
   is_trending: boolean;
+  product_variants?: Array<{ variant_sku: string; sort_order: number | null }> | null;
 }
 
 // ─── Resolved (frontend) shapes ──────────────────────────────────────────────
 interface ResolvedProduct {
   kind: "product";
   id: string;
+  // The primary colour variant's sku — the variant whose image the placard shows.
+  // Storefront actions (wishlist heart, quick add, PDP link) use this directly.
   sku: string;
+  // The product's base_sku — the identity curated items are STORED under
+  // (curation_section_items.product_base_sku); admin flows must use this, not `sku`.
+  baseSku: string;
   slug: string;
   categorySlug: string;
   title: string;
@@ -113,7 +119,7 @@ interface ResolvedSection {
 }
 
 const PRODUCT_SELECT =
-  "id, base_sku, slug, category_slug, title, price, original_price, badges, is_featured, is_new_arrival, is_bestseller, is_trending";
+  "id, base_sku, slug, category_slug, title, price, original_price, badges, is_featured, is_new_arrival, is_bestseller, is_trending, product_variants(variant_sku, sort_order)";
 
 // Compose the badge labels shown on a product card: the product's own custom badges
 // plus its merchandising flags rendered as labels (same composition the PDP rec list uses).
@@ -149,10 +155,17 @@ function buildPrimaryImageMap(
 
 function toResolvedProduct(p: ProductRow, image: string | null, extraBadges: string[] = []): ResolvedProduct {
   const badges = [...new Set([...composeBadges(p), ...extraBadges])];
+  // Placards act on the exact variant they display: emit the primary colour variant's
+  // sku (lowest sort_order — the variant the primary image belongs to). base_sku only
+  // when the product has no variants.
+  const primaryVariant = [...(p.product_variants ?? [])].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+  )[0];
   return {
     kind: "product",
     id: p.id,
-    sku: p.base_sku,
+    sku: primaryVariant?.variant_sku ?? p.base_sku,
+    baseSku: p.base_sku,
     slug: p.slug,
     categorySlug: p.category_slug,
     title: p.title,

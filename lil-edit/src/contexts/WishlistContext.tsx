@@ -19,7 +19,7 @@ import {
   removeWishlistItem as apiRemove,
   type WishlistItem,
 } from "@/lib/wishlistApi";
-import { hydrateSkus, type ResolvedSkuView } from "@/lib/productHydration";
+import { hydrateSkus, resolveVariantSku, type ResolvedSkuView } from "@/lib/productHydration";
 import {
   getGuestWishlist,
   setGuestWishlist,
@@ -206,7 +206,15 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   );
 
   const addToWishlist = useCallback(
-    async (productSlug: string, sku: string) => {
+    async (rawProductSlug: string, rawSku: string) => {
+      // Placards emit the exact variant sku they display; resolveVariantSku is a
+      // defensive no-op for those, and still maps a stray base_sku (e.g. a stale
+      // cached placard) to its primary colour variant so the saved line carries a
+      // real colour instead of a gray empty swatch.
+      const { sku, view } = await resolveVariantSku(rawSku);
+      const productSlug = view?.slug ?? rawProductSlug;
+      if (sku !== rawSku) console.log(`[WishlistContext] resolved sku  ${rawSku} → ${sku}`);
+
       // Guest: persist to localStorage and re-hydrate. No login wall — saving is free;
       // the sign-in prompt happens only when moving an item into the real cart.
       if (!user) {
