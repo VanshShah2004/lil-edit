@@ -36,6 +36,7 @@ import {
   type SizeChartMeasurements,
   type SizeUnit,
 } from "@/lib/sizeChartsApi";
+import { alphaSizeForAgeRange } from "@/lib/sizeLabels";
 
 const ACCENT = "#B19CD9";
 
@@ -50,6 +51,13 @@ const COLUMNS: { key: keyof SizeChartMeasurements; label: string }[] = [
 
 function composeSizeLabel(from: number, to: number, unit: SizeUnit): string {
   return `${from} - ${to} ${unit}`;
+}
+
+// Appends the matching letter size (fixed age→letter rule) next to the age
+// label wherever the row's range matches, e.g. "6 - 7 Years (XS)".
+function displaySizeLabel(row: SizeChartRow): string {
+  const alpha = alphaSizeForAgeRange(row.sizeFrom, row.sizeTo, row.sizeUnit);
+  return alpha ? `${row.sizeFrom} - ${row.sizeTo} ${row.sizeUnit} (${alpha})` : `${row.sizeFrom} - ${row.sizeTo} ${row.sizeUnit}`;
 }
 
 // Legacy/hand-edited rows may only carry the composed `size` string — parse it back
@@ -485,7 +493,7 @@ const SizeChartsManager = () => {
                               chart.rows.map(withSizeFields).map((row, i) => (
                                 <tr key={i}>
                                   <td className="px-3 py-2 text-xs font-semibold text-gray-800">
-                                    {row.sizeFrom} – {row.sizeTo} {row.sizeUnit}
+                                    {displaySizeLabel(row)}
                                   </td>
                                   {COLUMNS.map((col) => (
                                     <td key={col.key} className="px-3 py-2 text-xs text-gray-700">
@@ -573,6 +581,11 @@ const SizeChartsManager = () => {
                                     activeTextColor="#000000"
                                     className="w-32 h-9 shrink-0 !border-gray-400"
                                   />
+                                  {alphaSizeForAgeRange(row.sizeFrom, row.sizeTo, row.sizeUnit) && (
+                                    <span className="px-1.5 py-0.5 rounded-sm bg-[#B19CD9]/15 text-[10px] font-bold uppercase tracking-wide text-[#6B5B95]">
+                                      {alphaSizeForAgeRange(row.sizeFrom, row.sizeTo, row.sizeUnit)}
+                                    </span>
+                                  )}
                                 </div>
                                 <button
                                   type="button"
@@ -656,6 +669,11 @@ const SizeChartsManager = () => {
                                         activeTextColor="#000000"
                                         className="w-32 h-9 shrink-0 !border-gray-400"
                                       />
+                                      {alphaSizeForAgeRange(row.sizeFrom, row.sizeTo, row.sizeUnit) && (
+                                        <span className="px-1.5 py-0.5 rounded-sm bg-[#B19CD9]/15 text-[10px] font-bold uppercase tracking-wide text-[#6B5B95]">
+                                          {alphaSizeForAgeRange(row.sizeFrom, row.sizeTo, row.sizeUnit)}
+                                        </span>
+                                      )}
                                     </div>
                                   </td>
                                   {COLUMNS.map((col) => (
@@ -773,7 +791,7 @@ const SizeChartsManager = () => {
               mobileViewChart.rows.map(withSizeFields).map((row, i) => (
                 <div key={i} className="rounded-lg border border-gray-400 p-3">
                   <p className="text-sm font-bold text-gray-900 mb-2">
-                    {row.sizeFrom} – {row.sizeTo} {row.sizeUnit}
+                    {displaySizeLabel(row)}
                   </p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                     {COLUMNS.map((col) => (

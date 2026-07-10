@@ -2,7 +2,8 @@ import { useState } from "react";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import StockToggleSlider from "@/components/StockToggleSlider";
-import type { ProductSizeChart, SizeChartMeasurements } from "@/types/product";
+import { alphaSizeForAgeRange } from "@/lib/sizeLabels";
+import type { ProductSizeChart, SizeChartMeasurements, SizeChartRow } from "@/types/product";
 
 const COLUMNS: { key: keyof SizeChartMeasurements; label: string }[] = [
   { key: "topLength", label: "Top Length" },
@@ -11,6 +12,13 @@ const COLUMNS: { key: keyof SizeChartMeasurements; label: string }[] = [
   { key: "bottomLength", label: "Bottom Length" },
   { key: "waist", label: "Waist" },
 ];
+
+// Appends the matching letter size (fixed age→letter rule) next to the server-
+// composed age label wherever the row's range matches, e.g. "6 - 7 Years (XS)".
+function displaySizeLabel(row: SizeChartRow): string {
+  const alpha = alphaSizeForAgeRange(row.sizeFrom, row.sizeTo, row.sizeUnit);
+  return alpha ? `${row.size} (${alpha})` : row.size;
+}
 
 interface SizeChartDialogProps {
   chart: ProductSizeChart;
@@ -53,7 +61,7 @@ const SizeChartDialog = ({ chart, open, onOpenChange }: SizeChartDialogProps) =>
         <div className="flex flex-col gap-3 sm:hidden">
           {chart.rows.map((row, i) => (
             <div key={i} className="rounded-lg border border-gray-400 p-3">
-              <p className="text-sm font-bold text-slate-900 mb-2">{row.size}</p>
+              <p className="text-sm font-bold text-slate-900 mb-2">{displaySizeLabel(row)}</p>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                 {COLUMNS.map((col) => (
                   <div key={col.key} className="flex items-center justify-between border-b border-gray-100 py-1">
@@ -80,7 +88,7 @@ const SizeChartDialog = ({ chart, open, onOpenChange }: SizeChartDialogProps) =>
             <tbody className="divide-y divide-gray-200">
               {chart.rows.map((row, i) => (
                 <tr key={i} className="hover:bg-gray-50/60">
-                  <td className="px-3 py-2.5 font-semibold text-slate-900 whitespace-nowrap text-left">{row.size}</td>
+                  <td className="px-3 py-2.5 font-semibold text-slate-900 whitespace-nowrap text-left">{displaySizeLabel(row)}</td>
                   {COLUMNS.map((col) => (
                     <td key={col.key} className="px-3 py-2.5 text-gray-700 tabular-nums">{row[unit][col.key]}</td>
                   ))}

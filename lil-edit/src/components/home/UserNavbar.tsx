@@ -26,6 +26,8 @@ import {
   Star,
   TrendingUp,
   PartyPopper,
+  Mail,
+  HelpCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
@@ -66,6 +68,8 @@ const UserNavbar = () => {
     { to: "/profile", label: "Profile", icon: User },
     { to: "/orders", label: "Your Orders", icon: Package },
     { to: "/reviews", label: "Your Reviews", icon: MessageSquare },
+    { to: "/contact", label: "Contact Us", icon: Mail },
+    { to: "/faq", label: "FAQ", icon: HelpCircle },
   ];
 
   const closeProfileMenu = () => setIsProfileOpen(false);
