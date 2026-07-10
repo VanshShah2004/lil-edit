@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ChevronRight, ChevronDown, ChevronUp, ChevronLeft, Heart, Star, StarHalf, BadgeCheck, ThumbsUp, X, ArrowRight, ArrowUpDown } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronUp, ChevronLeft, Heart, Star, StarHalf, BadgeCheck, X, ArrowRight, ArrowUpDown } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -598,7 +598,7 @@ export default function ProductDetail() {
                   className="relative rounded-3xl overflow-hidden p-8 sm:p-10 mb-8"
                   style={{
                     background: "linear-gradient(135deg, #f0fdf4 0%, #f5f3ff 50%, #fef9ee 100%)",
-                    border: "1px solid rgba(15,118,110,0.1)",
+                    border: "2px solid #D1D5DB",
                   }}
                 >
                   <div
@@ -689,7 +689,7 @@ export default function ProductDetail() {
                 {displayedReviews.map((review) => (
                   <div
                     key={review.id}
-                    className="relative p-6 sm:p-8 rounded-[2rem] border border-slate-300 bg-slate-50 shadow-md shadow-slate-400/30 sm:hover:bg-white sm:hover:-translate-y-1.5 sm:hover:shadow-2xl sm:hover:shadow-slate-900/25 sm:hover:border-teal-500 transition-all duration-300 group"
+                    className="relative p-6 sm:p-8 rounded-xl border border-slate-300 bg-slate-50 shadow-md shadow-slate-400/30 sm:hover:bg-white sm:hover:-translate-y-1.5 sm:hover:shadow-2xl sm:hover:shadow-slate-900/25 sm:hover:border-teal-500 transition-all duration-300 group"
                   >
                     <button type="button" className="absolute top-6 right-6 sm:top-8 sm:right-8 w-8 h-8 rounded-full bg-white text-slate-900 border border-slate-300 shadow-sm hover:bg-teal-700 hover:text-white hover:border-teal-700 transition-all duration-300 shrink-0 flex items-center justify-center">
                       <ArrowRight className="w-4 h-4" />
@@ -750,16 +750,6 @@ export default function ProductDetail() {
                       <p className="text-slate-600 leading-relaxed text-[15px] break-words whitespace-pre-wrap">
                         {review.comment}
                       </p>
-
-                      <div className="flex items-center gap-6 pt-4 mt-6 border-t border-gray-50">
-                        <button onClick={() => alert("Helpful rating recorded!")} className="inline-flex items-center gap-2 text-xs text-gray-400 hover:text-teal-700 transition-colors font-bold uppercase tracking-widest">
-                          <ThumbsUp size={14} />
-                          Helpful (0)
-                        </button>
-                        <button onClick={() => alert("Review reported!")} className="inline-flex items-center gap-2 text-xs text-gray-400 hover:text-slate-700 transition-colors font-bold uppercase tracking-widest">
-                          Report
-                        </button>
-                      </div>
                     </div>
                   </div>
                 ))}
