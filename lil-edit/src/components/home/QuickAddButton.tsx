@@ -23,6 +23,10 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
   const [addingSize, setAddingSize] = useState<string | null>(null);
   const adding = addingSize !== null;
   const [outOfStock, setOutOfStock] = useState(false);
+  // The concrete colour-variant SKU to add. Placards hand us the product's base_sku,
+  // which isn't purchasable on its own — handleClick resolves it to a real variant
+  // SKU (below) so the cart line carries the right colour + stock.
+  const [resolvedSku, setResolvedSku] = useState(product.sku);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,11 +38,11 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
     return () => document.removeEventListener("mousedown", onOutside);
   }, [open]);
 
-  const doAdd = async (size: string, oos: boolean = outOfStock) => {
+  const doAdd = async (size: string, sku: string = resolvedSku, oos: boolean = outOfStock) => {
     setAddingSize(size);
     try {
       await addToCart(
-        { product_slug: product.slug, sku: product.sku, size, quantity: 1 },
+        { product_slug: product.slug, sku, size, quantity: 1 },
         { outOfStock: oos }
       );
       setOpen(false);
@@ -55,8 +59,17 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
     }
     setLoading(true);
     try {
-      const map = await hydrateSkus([product.sku]);
-      const view = map.get(product.sku);
+      let view = (await hydrateSkus([product.sku])).get(product.sku);
+      // An empty colour name means we were handed a base_sku (it matched no variant) —
+      // resolve to the primary colour variant (colors[0], the same one the PDP
+      // canonicalises to) so the added line carries that variant's colour + stock,
+      // matching the image shown on the placard.
+      if (view && view.color.name === "" && view.colors.length > 0) {
+        const primarySku = view.colors[0].sku;
+        view = (await hydrateSkus([primarySku])).get(primarySku) ?? view;
+      }
+      const skuToAdd = view?.sku ?? product.sku;
+      setResolvedSku(skuToAdd);
       const isOOS = !!view && !view.isUnlimited && (view.stock ?? 0) <= 0;
       setOutOfStock(isOOS);
       const resolvedSizes = view?.sizes ?? [];
@@ -65,7 +78,7 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
         // label transitions Loading… → Adding… (both set in the same tick, so React
         // batches them into one render — no flash of the default "Add to Cart").
         setLoading(false);
-        await doAdd(resolvedSizes[0] ?? "", isOOS);
+        await doAdd(resolvedSizes[0] ?? "", skuToAdd, isOOS);
         return;
       }
       setSizes(resolvedSizes);

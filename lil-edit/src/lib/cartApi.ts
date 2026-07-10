@@ -64,7 +64,17 @@ export async function fetchCart(): Promise<CartItem[]> {
   return (data.items ?? []) as CartItem[];
 }
 
-export async function addToCart(payload: AddToCartPayload): Promise<{ outOfStock: boolean }> {
+export interface AddToCartResult {
+  outOfStock: boolean;
+  /** Quantity actually added this call (0 = line was already at the stock cap). */
+  applied: number;
+  /** Quantity the caller asked for. */
+  requested: number;
+  /** Per-line ceiling the backend clamped against (min(99, stock); 99 if unlimited/OOS). */
+  maxAllowed: number;
+}
+
+export async function addToCart(payload: AddToCartPayload): Promise<AddToCartResult> {
   console.log("[cartApi] addToCart payload:", payload);
   const res = await authFetch("/api/cart/add", {
     method: "POST",
@@ -75,8 +85,16 @@ export async function addToCart(payload: AddToCartPayload): Promise<{ outOfStock
     console.error("[cartApi] addToCart error:", body);
     throw new Error((body as { error?: string }).error ?? `Add to cart failed (${res.status})`);
   }
-  console.log("[cartApi] addToCart success");
-  return { outOfStock: !!(body as { outOfStock?: boolean }).outOfStock };
+  const requested = payload.quantity ?? 1;
+  const b = body as { outOfStock?: boolean; applied?: number; maxAllowed?: number };
+  console.log("[cartApi] addToCart success", { applied: b.applied, maxAllowed: b.maxAllowed });
+  return {
+    outOfStock: !!b.outOfStock,
+    // Older backend without the field → assume fully applied (previous behavior).
+    applied: typeof b.applied === "number" ? b.applied : requested,
+    requested,
+    maxAllowed: typeof b.maxAllowed === "number" ? b.maxAllowed : 99,
+  };
 }
 
 export async function updateCartItemColor(

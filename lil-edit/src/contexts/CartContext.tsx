@@ -224,41 +224,81 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addToCart = useCallback(
     async (payload: AddToCartPayload, opts?: { outOfStock?: boolean }) => {
-      const addedQty = payload.quantity ?? 1;
+      const requestedQty = payload.quantity ?? 1;
+
+      // One toast for both branches, keyed on the delta actually applied:
+      //   applied === 0          → warning, the line was already at the stock cap
+      //   0 < applied < requested → success, but note the cap (partial add)
+      //   applied === requested  → plain success (incl. the out-of-stock red note)
+      // Undo always subtracts `applied`, never the requested qty, so a capped add
+      // undoes exactly what it contributed.
+      const showAddToast = (applied: number, maxAllowed: number, outOfStock: boolean, undo: () => void) => {
+        if (applied <= 0) {
+          console.log(`[CartContext] add capped  sku=${payload.sku}  size=${payload.size}  maxAllowed=${maxAllowed}  applied=0  outOfStock=${outOfStock}`);
+          toast.warning("This product is already in your cart", {
+            description: outOfStock
+              ? "Out of stock — only 1 allowed in your bag."
+              : `Only ${maxAllowed} available — already in your bag. Selling fast, checkout now before it's gone!`,
+            // ! — the global Toaster's description class (text-muted-foreground,
+            // ui/sonner.tsx) lands on the same element; important wins the tie.
+            descriptionClassName: outOfStock ? "!text-red-600" : "!text-amber-600 !font-semibold",
+            duration: 6000,
+          });
+          return;
+        }
+        const capped = applied < requestedQty;
+        if (capped) console.log(`[CartContext] add partially capped  sku=${payload.sku}  requested=${requestedQty}  applied=${applied}  maxAllowed=${maxAllowed}`);
+        toast.success("Added to cart!", {
+          description: capped
+            ? outOfStock
+              ? "Out of stock — only 1 allowed in your bag."
+              : `Only ${maxAllowed} available — quantity capped. Selling fast, checkout now before it's gone!`
+            : outOfStock
+              ? "This product is currently out of stock."
+              : undefined,
+          descriptionClassName: capped && !outOfStock ? "!text-amber-600 !font-semibold" : "!text-red-600",
+          duration: 6000,
+          action: { label: "Undo", onClick: undo },
+        });
+      };
+
       // Guest: persist to localStorage and re-hydrate. No login wall — the sign-in
       // prompt happens later, at checkout (see Cart.tsx).
       if (!user) {
-        addGuestCartLine({
-          product_slug: payload.product_slug,
-          sku: payload.sku,
-          size: payload.size,
-          quantity: addedQty,
-        });
-        console.log("[CartContext] guest addToCart", payload.sku, payload.size, `×${addedQty}`);
-        refetchCart();
-        toast.success("Added to cart!", {
-          description: opts?.outOfStock ? "This product is currently out of stock." : undefined,
-          descriptionClassName: "text-red-600",
-          duration: 6000,
-          action: {
-            label: "Undo",
-            onClick: () => undoAddGuestCart(payload.sku, payload.size, addedQty),
+        // Resolve live stock so the guest cap matches the DB cart's per-line clamp.
+        // hydrateSkus never throws; an unresolved view falls back to the 99-only
+        // clamp (old behavior) — never block the add.
+        const view = (await hydrateSkus([payload.sku])).get(payload.sku);
+        const outOfStock = view
+          ? !view.isUnlimited && (view.stock ?? 0) <= 0
+          : (opts?.outOfStock ?? false);
+        // OOS → cap 1, mirroring the backend's /add rule.
+        const maxAllowed = !view || view.isUnlimited
+          ? 99
+          : outOfStock
+            ? 1
+            : Math.min(99, view.stock ?? 0);
+        const applied = addGuestCartLine(
+          {
+            product_slug: payload.product_slug,
+            sku: payload.sku,
+            size: payload.size,
+            quantity: requestedQty,
           },
-        });
+          maxAllowed
+        );
+        console.log("[CartContext] guest addToCart", payload.sku, payload.size, `×${requestedQty}`, `applied=${applied}`);
+        refetchCart();
+        showAddToast(applied, maxAllowed, outOfStock, () =>
+          undoAddGuestCart(payload.sku, payload.size, applied)
+        );
         return;
       }
       try {
-        const { outOfStock } = await apiAdd(payload);
-        toast.success("Added to cart!", {
-          description: outOfStock ? "This product is currently out of stock." : undefined,
-          descriptionClassName: "text-red-600",
-          duration: 6000,
-          action: {
-            label: "Undo",
-            onClick: () =>
-              void undoAddToCart(payload.sku, payload.size, addedQty),
-          },
-        });
+        const { outOfStock, applied, maxAllowed } = await apiAdd(payload);
+        showAddToast(applied, maxAllowed, outOfStock, () =>
+          void undoAddToCart(payload.sku, payload.size, applied)
+        );
         refetchCart();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Could not add to cart");

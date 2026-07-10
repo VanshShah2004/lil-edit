@@ -300,8 +300,10 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
     // Out-of-stock never blocks the add — mirrors place_order's never-reject stance
     // (stock clamps, it doesn't turn away a sale). The frontend surfaces outOfStock
     // as a note on the same "Added to cart" toast instead of rejecting the action.
+    // OOS lines are capped at qty 1: the sale isn't turned away, but you can't pile
+    // up units of something with zero stock.
     const outOfStock = !isUnlimited && (stock ?? 0) <= 0;
-    const maxAllowed = isUnlimited || outOfStock ? MAX_QTY : Math.min(MAX_QTY, stock ?? 0);
+    const maxAllowed = isUnlimited ? MAX_QTY : outOfStock ? 1 : Math.min(MAX_QTY, stock ?? 0);
     const clampedQty = Math.min(maxAllowed, qty);
     if (outOfStock) log.warn(`adding out-of-stock item  sku=${sku}`);
 
@@ -352,8 +354,11 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
         });
       }
 
-      log.success(`incremented  id=${existing.id}  qty=${existing.quantity}→${newQty}  total=${fms(log.elapsed())}`).end("CART ADD");
-      res.json({ ok: true, action: "incremented", cartItemId: existing.id, quantity: newQty, outOfStock });
+      log.success(`incremented  id=${existing.id}  qty=${existing.quantity}→${newQty}  applied=${applied}  total=${fms(log.elapsed())}`).end("CART ADD");
+      // `applied` = delta actually added (0 when the line was already at the stock cap)
+      // and `maxAllowed` = per-line ceiling — the frontend uses these to tell the user
+      // when a re-add was capped instead of showing a plain success toast.
+      res.json({ ok: true, action: "incremented", cartItemId: existing.id, quantity: newQty, applied, maxAllowed, outOfStock });
     } else {
       const t0Write = performance.now();
       const { data: inserted, error: insertErr } = await db()
@@ -371,7 +376,7 @@ router.post("/add", requireAuth, async (req: Request, res: Response) => {
 
       await redisDel(log, cartKey(userId));
       log.success(`inserted  id=${inserted.id}  total=${fms(log.elapsed())}`).end("CART ADD");
-      res.status(201).json({ ok: true, action: "added", cartItemId: inserted.id, quantity: clampedQty, outOfStock });
+      res.status(201).json({ ok: true, action: "added", cartItemId: inserted.id, quantity: clampedQty, applied: clampedQty, maxAllowed, outOfStock });
     }
   } catch (err) {
     log.error("unhandled error", err).end("CART ADD");
@@ -455,7 +460,9 @@ router.patch("/:id/color", requireAuth, async (req: Request, res: Response) => {
     const variantData = (product.product_variants as any[] ?? []).find(v => v.variant_sku === newSku);
     const isUnlimited = variantData ? !!variantData.is_unlimited : !!product.is_unlimited;
     const stock = isUnlimited ? null : (variantData?.stock ?? 0);
-    const maxAllowed = isUnlimited ? MAX_QTY : Math.min(MAX_QTY, stock ?? 0);
+    // OOS variant → cap 1 (same rule as /add): switching colour onto a sold-out
+    // variant keeps a single unit instead of zeroing the line.
+    const maxAllowed = isUnlimited ? MAX_QTY : (stock ?? 0) <= 0 ? 1 : Math.min(MAX_QTY, stock ?? 0);
 
     // Check for an existing item with the new SKU + same size
     const t0Conflict = performance.now();
@@ -569,7 +576,8 @@ router.patch("/:id/size", requireAuth, async (req: Request, res: Response) => {
       const variantData = (product.product_variants as any[] ?? []).find(v => v.variant_sku === current.sku);
       const isUnlimited = variantData ? !!variantData.is_unlimited : !!product.is_unlimited;
       const stock = isUnlimited ? null : (variantData?.stock ?? 0);
-      maxAllowed = isUnlimited ? MAX_QTY : Math.min(MAX_QTY, stock ?? 0);
+      // OOS → cap 1, same rule as /add (never clamp an existing line to zero).
+      maxAllowed = isUnlimited ? MAX_QTY : (stock ?? 0) <= 0 ? 1 : Math.min(MAX_QTY, stock ?? 0);
     }
     log.step(`DB product validate: ${fms(performance.now() - t0Validate)}  maxAllowed=${maxAllowed}`);
 
@@ -686,7 +694,8 @@ router.patch("/:id", requireAuth, async (req: Request, res: Response) => {
       const variantData = (product.product_variants as any[] ?? []).find(v => v.variant_sku === current.sku);
       const isUnlimited = variantData ? !!variantData.is_unlimited : !!product.is_unlimited;
       const stock = isUnlimited ? null : (variantData?.stock ?? 0);
-      maxAllowed = isUnlimited ? MAX_QTY : Math.min(MAX_QTY, stock ?? 0);
+      // OOS → cap 1, same rule as /add (never clamp an existing line to zero).
+      maxAllowed = isUnlimited ? MAX_QTY : (stock ?? 0) <= 0 ? 1 : Math.min(MAX_QTY, stock ?? 0);
     }
     log.step(`DB product validate: ${fms(performance.now() - t0Validate)}  maxAllowed=${maxAllowed}`);
 

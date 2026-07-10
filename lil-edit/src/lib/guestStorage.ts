@@ -108,16 +108,29 @@ export function clearGuestCart(): void {
   write(CART_KEY, []);
 }
 
-/** Add (or increment) a line, merging on (sku, size) and clamping to MAX_QTY. */
-export function addGuestCartLine(line: GuestCartLine): void {
+/**
+ * Add (or increment) a line, merging on (sku, size) and clamping to
+ * min(MAX_QTY, maxQty). `maxQty` is the live stock ceiling the caller resolved
+ * (omitted = 99-only clamp, the old behavior). Returns the delta actually
+ * applied — 0 when the line was already at the cap — so the caller can surface
+ * a "quantity capped" note instead of a plain success toast.
+ */
+export function addGuestCartLine(line: GuestCartLine, maxQty: number = MAX_QTY): number {
+  const cap = Math.max(1, Math.min(MAX_QTY, Math.floor(maxQty) || MAX_QTY));
   const lines = getGuestCart();
   const existing = lines.find((l) => l.sku === line.sku && l.size === line.size);
+  let applied: number;
   if (existing) {
-    existing.quantity = Math.min(MAX_QTY, existing.quantity + clampQty(line.quantity));
+    const before = existing.quantity;
+    existing.quantity = Math.min(cap, before + clampQty(line.quantity));
+    applied = existing.quantity - before;
   } else {
-    lines.push({ ...line, quantity: clampQty(line.quantity) });
+    const qty = Math.min(cap, clampQty(line.quantity));
+    lines.push({ ...line, quantity: qty });
+    applied = qty;
   }
   setGuestCart(lines);
+  return applied;
 }
 
 export function setGuestCartQty(sku: string, size: string, quantity: number): void {
