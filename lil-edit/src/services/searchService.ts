@@ -1,5 +1,6 @@
 import { getBackendBaseUrl } from "@/lib/backend";
 import { getVisitorId } from "@/lib/track";
+import { authHeader } from "@/lib/apiAuth";
 
 export type SuggestionType = "product" | "category" | "occasion" | "tag" | "badge" | "fabric" | "fit" | "color" | "trend" | "keyword";
 
@@ -59,8 +60,13 @@ export async function searchProducts(q: string, signal?: AbortSignal): Promise<S
   console.log("[searchService] GET", url);
 
   // The visitor id lets analytics join a search to its result clicks (search CTR)
-  // even for guests — same id the view/heartbeat beacons carry.
-  const res = await fetch(url, { signal, headers: { "X-Visitor-Id": getVisitorId() } });
+  // even for guests — same id the view/heartbeat beacons carry. The auth header
+  // (when a session exists) lets the backend attribute the search to the actual
+  // shopper instead of always logging it as a guest.
+  const res = await fetch(url, {
+    signal,
+    headers: { "X-Visitor-Id": getVisitorId(), ...(await authHeader()) },
+  });
   console.log("[searchService] GET", url, "→", res.status);
 
   if (!res.ok) {
