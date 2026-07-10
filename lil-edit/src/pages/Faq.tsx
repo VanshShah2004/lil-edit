@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Truck,
+  RefreshCw,
   Ruler,
   CreditCard,
   Sparkles,
@@ -42,8 +43,8 @@ type FaqSection = {
 // One source of truth for every question. Answers are plain strings so the
 // search box can match against them cheaply; an optional `link` renders a
 // single call-to-action under the answer. Content is written to match how the
-// store actually works — guest checkout, worldwide shipping, exchanges & store
-// credit (we don't do card refunds), Razorpay payments, and the FIRST10 coupon.
+// store actually works — guest checkout, worldwide shipping, no returns (choose
+// sizes carefully), Razorpay payments, and the FIRST10 coupon.
 const SECTIONS: FaqSection[] = [
   {
     id: "shipping",
@@ -76,6 +77,29 @@ const SECTIONS: FaqSection[] = [
       {
         q: "Will I have to pay customs or duties?",
         a: "International orders may be subject to import duties or taxes set by your country. These aren't included in your order total and are collected by your local customs — they're the responsibility of the recipient.",
+      },
+    ],
+  },
+  {
+    id: "returns",
+    title: "Returns & Exchanges",
+    icon: RefreshCw,
+    blurb: "Our policy, and how we can help.",
+    items: [
+      {
+        q: "What is your return policy?",
+        a: "At the moment, we do not accept returns. Please choose your size carefully using the size guide on each product page before you order.",
+        link: { to: "/returns", label: "Read our returns policy" },
+      },
+      {
+        q: "I ordered the wrong size — what can I do?",
+        a: "If your order is still marked Confirmed and hasn't moved to Processing, email us right away and we can swap the size before it ships. Once it's on its way, sizes can't be changed.",
+        link: { to: `mailto:${SUPPORT_EMAIL}`, label: "Email us", external: true },
+      },
+      {
+        q: "My order arrived damaged or incorrect — help!",
+        a: "Oh no — we're so sorry! Email us with your order number and a photo within 48 hours of delivery, and our little team will do everything we can to make it right.",
+        link: { to: `mailto:${SUPPORT_EMAIL}`, label: "Email us", external: true },
       },
     ],
   },

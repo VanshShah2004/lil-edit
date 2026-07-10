@@ -48,6 +48,7 @@ const About          = lazyWithLog("About",           () => import("./pages/Abou
 const Faq            = lazyWithLog("Faq",             () => import("./pages/Faq"));
 const Contact        = lazyWithLog("Contact",         () => import("./pages/Contact"));
 const Returns        = lazyWithLog("Returns",         () => import("./pages/Returns"));
+const Shipping       = lazyWithLog("Shipping",        () => import("./pages/Shipping"));
 const ForgotPassword = lazyWithLog("ForgotPassword",  () => import("./pages/ForgotPassword"));
 const AuthCallback   = lazyWithLog("AuthCallback",    () => import("./pages/AuthCallback"));
 const ProductDetail  = lazyWithLog("ProductDetail",   () => import("./pages/ProductDetail"));
@@ -55,6 +56,7 @@ const Profile        = lazyWithLog("Profile",         () => import("./pages/Prof
 const Cart           = lazyWithLog("Cart",            () => import("./pages/Cart"));
 const Wishlist       = lazyWithLog("Wishlist",        () => import("./pages/Wishlist"));
 const Collections    = lazyWithLog("Collections",     () => import("./pages/Collections"));
+const NewArrivals    = lazyWithLog("NewArrivals",     () => import("./pages/NewArrivals"));
 const SearchResults  = lazyWithLog("SearchResults",   () => import("./pages/SearchResults"));
 const Orders         = lazyWithLog("Orders",          () => import("./pages/Orders"));
 const AllOrders      = lazyWithLog("AllOrders",       () => import("./pages/AllOrders"));
@@ -123,11 +125,13 @@ const App = () => (
             <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/collections" element={<Collections />} />
+            <Route path="/new-arrivals" element={<NewArrivals />} />
             <Route path="/search" element={<SearchResults />} />
             <Route path="/about" element={<About />} />
             <Route path="/faq" element={<Faq />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/returns" element={<Returns />} />
+            <Route path="/shipping" element={<Shipping />} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
             <Route path="/orders/all" element={<ProtectedRoute><AllOrders /></ProtectedRoute>} />
