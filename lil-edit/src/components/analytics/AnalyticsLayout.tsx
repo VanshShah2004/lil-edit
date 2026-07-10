@@ -138,11 +138,11 @@ export function AnalyticsLayout({
         <div className="space-y-1 mb-8">
           <div className="flex items-center">
             <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>
-              Admin
+              Business Intelligence
             </p>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Analytics</h1>
-          <p className="text-sm text-gray-500">Business intelligence for The Lil Edit</p>
+          <p className="text-sm text-gray-500">Sales, shoppers, and store performance at a glance</p>
         </div>
 
         <div className="flex flex-col gap-6 lg:flex-row">

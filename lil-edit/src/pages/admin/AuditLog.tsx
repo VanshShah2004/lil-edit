@@ -671,7 +671,7 @@ const AuditLog = () => {
           <div className="space-y-1 mb-8">
             <div className="flex items-center">
               <p className="text-[12px] font-bold uppercase tracking-[0.2em]" style={{ color: ACCENT }}>
-                Admin
+                Audit Trail
               </p>
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Admin Activity</h1>
