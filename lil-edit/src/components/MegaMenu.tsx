@@ -6,7 +6,7 @@ const megaMenuItems = [
   "GIRLS",
   "BOYS",
   "TRENDING",
-  "BY OCCASSION",
+  "BY OCCASION",
 ];
 
 const megaMenuContent: Record<
@@ -37,7 +37,7 @@ const megaMenuContent: Record<
     { title: "SHOP BY LOOK", links: ["Traditional", "Modern Ethnic", "Streetwear", "Elegant", "Minimal"] },
     { title: "THEME-BASED", links: ["Super-hero Edit", "Safari Style", "Space Explorer"] },
   ],
-  "BY OCCASSION": [
+  "BY OCCASION": [
     { title: "EVENTS", links: ["Birthday", "Wedding", "Festive", "School Events", "Family Function"] },
     { title: "STYLE TYPE", links: ["Traditional", "Contemporary", "Comfort Wear", "Party Wear", "Premium Edit"] },
     { title: "SHOP FAST", links: ["Ready To Ship", "Under 1999", "Matching Siblings", "Quick Picks"] },
