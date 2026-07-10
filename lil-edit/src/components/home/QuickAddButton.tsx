@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCart } from "@/contexts/CartContext";
 import { hydrateSkus } from "@/lib/productHydration";
@@ -33,7 +34,6 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
     setAdding(true);
     try {
       await addToCart({ product_slug: product.slug, sku: product.sku, size, quantity: 1 });
-      toast.success("Added to cart!");
       setOpen(false);
     } finally {
       setAdding(false);
@@ -68,9 +68,14 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
       <button
         onClick={(e) => void handleClick(e)}
         disabled={loading || adding}
-        className="w-full py-1.5 bg-white/90 backdrop-blur text-foreground rounded-lg font-medium text-[10px] md:text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm disabled:opacity-60"
+        className={`w-full py-1.5 rounded-lg font-medium text-[10px] md:text-xs shadow-sm transition-colors flex items-center justify-center gap-1 ${
+          loading || adding
+            ? "bg-[#0F766E] text-white cursor-not-allowed"
+            : "bg-white/90 backdrop-blur text-foreground hover:bg-[#0F766E] hover:text-white"
+        }`}
       >
-        {loading ? "…" : adding ? "Adding…" : "Add to Cart"}
+        {(loading || adding) && <Loader2 className="w-3 h-3 animate-spin" />}
+        {loading ? "Loading…" : adding ? "Adding…" : "Add to Cart"}
       </button>
 
       {open && sizes && (
@@ -82,8 +87,11 @@ const QuickAddButton = ({ product }: { product: QuickAddProduct }) => {
                 key={size}
                 onClick={() => void doAdd(size)}
                 disabled={adding}
-                className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-gray-100 hover:bg-[#0F766E] hover:text-white transition-colors disabled:opacity-60"
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors flex items-center gap-1 ${
+                  adding ? "bg-[#0F766E] text-white cursor-not-allowed" : "bg-gray-100 hover:bg-[#0F766E] hover:text-white"
+                }`}
               >
+                {adding && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
                 {size}
               </button>
             ))}
