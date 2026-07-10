@@ -781,6 +781,7 @@ export interface SearchCatalogEntry {
   image: string;
   price: number;
   original_price: number;
+  created_at: string;
   variants: SearchCatalogVariant[];
 }
 
@@ -810,6 +811,7 @@ interface SearchCatalogDbRow {
   description_points: string[] | null;
   price: number | null;
   original_price: number | null;
+  created_at: string;
   product_images: Array<{ image_url: string; is_primary: boolean; variant_id: string | null; sort_order: number | null }> | null;
   product_variants: Array<{
     id: string;
@@ -824,7 +826,7 @@ interface SearchCatalogDbRow {
 
 const SEARCH_CATALOG_SELECT = `
   id, title, slug, base_sku, category, category_slug,
-  tags, badges, occasion, fabric, fit, gender, description_points, price, original_price,
+  tags, badges, occasion, fabric, fit, gender, description_points, price, original_price, created_at,
   product_images(image_url, is_primary, variant_id, sort_order),
   product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
 `.trim();
@@ -887,6 +889,7 @@ async function loadSearchCatalog(log: OpLogger): Promise<SearchCatalogEntry[]> {
       image: productImage,
       price: p.price ?? 0,
       original_price: p.original_price ?? p.price ?? 0,
+      created_at: p.created_at,
       variants,
     };
   });
@@ -1557,6 +1560,48 @@ export async function searchProducts(q: string, log: OpLogger): Promise<SearchPr
 
   const rows = rankVariantRows(catalog, lower);
   log.step(`Search - ${rows.length} variant cards matched "${q}" across ${catalog.length} products`);
+  return rows;
+}
+
+// ─── fetchNewArrivals (new-arrivals page) ─────────────────────────────────────
+
+export interface NewArrivalRow extends SearchProductRow {
+  createdAt: string;
+}
+
+/**
+ * Newest published products first — one card per product (primary variant's
+ * sku/image, same convention as Spotlight placards). Served from the same
+ * in-memory search catalog, so it inherits its 10-min TTL + invalidation.
+ */
+export async function fetchNewArrivals(limit: number, log: OpLogger): Promise<NewArrivalRow[]> {
+  const catalog = await loadSearchCatalog(log);
+
+  const rows: NewArrivalRow[] = [...catalog]
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0))
+    .slice(0, limit)
+    .map((entry) => {
+      const primary = entry.variants[0];
+      return {
+        id: entry.id,
+        title: entry.title,
+        slug: entry.slug,
+        sku: primary?.sku ?? entry.base_sku,
+        category: entry.category,
+        categorySlug: entry.category_slug,
+        price: entry.price,
+        originalPrice: entry.original_price,
+        image: primary?.image || entry.image,
+        badges: entry.badges,
+        color: primary
+          ? { name: primary.colorName, hex: primary.colorHex }
+          : { name: "", hex: "#cccccc" },
+        inStock: entry.variants.length === 0 ? true : entry.variants.some((v) => v.inStock),
+        createdAt: entry.created_at,
+      };
+    });
+
+  log.step(`New arrivals - ${rows.length} products (limit=${limit}) from ${catalog.length} in catalog`);
   return rows;
 }
 

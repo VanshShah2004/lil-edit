@@ -30,6 +30,7 @@ function entry(overrides: Partial<SearchCatalogEntry> & { title: string }): Sear
     image: "",
     price: 0,
     original_price: 0,
+    created_at: "",
     variants: [],
     ...overrides,
   };

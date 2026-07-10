@@ -125,7 +125,7 @@ const App = () => (
             <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/collections" element={<Collections />} />
-            <Route path="/new-arrivals" element={<NewArrivals />} />
+            <Route path="/collections/new-arrivals" element={<NewArrivals />} />
             <Route path="/search" element={<SearchResults />} />
             <Route path="/about" element={<About />} />
             <Route path="/faq" element={<Faq />} />

@@ -78,3 +78,24 @@ export async function searchProducts(q: string, signal?: AbortSignal): Promise<S
   console.log("[searchService] search →", data.products?.length ?? 0, "results for:", q);
   return { query: data.query ?? q, count: data.count ?? 0, products: data.products ?? [] };
 }
+
+export interface NewArrivalProduct extends SearchProduct {
+  createdAt: string;
+}
+
+export async function fetchNewArrivals(limit = 48, signal?: AbortSignal): Promise<NewArrivalProduct[]> {
+  const url = `${getBackendBaseUrl()}/api/products/new-arrivals?limit=${limit}`;
+  console.log("[searchService] GET", url);
+
+  const res = await fetch(url, { signal });
+  console.log("[searchService] GET", url, "→", res.status);
+
+  if (!res.ok) {
+    console.error("[searchService] new-arrivals error:", res.status);
+    return [];
+  }
+
+  const data = (await res.json()) as { count: number; products: NewArrivalProduct[] };
+  console.log("[searchService] new-arrivals →", data.products?.length ?? 0, "products");
+  return data.products ?? [];
+}

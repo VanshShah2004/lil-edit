@@ -247,7 +247,7 @@ const Navbar = () => {
               onToggle={() => setIsCollectionsOpen((prev) => !prev)}
               onNavigate={() => setMobileOpen(false)}
             >
-              <SideSubLink to="/collections?c=new-arrivals" icon={Sparkles} label="New Arrivals" onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections/new-arrivals" icon={Sparkles} label="New Arrivals" onClick={() => setMobileOpen(false)} />
               <SideSubLink to="/collections?c=girls" icon={Heart} label="Girls" onClick={() => setMobileOpen(false)} />
               <SideSubLink to="/collections?c=boys" icon={Star} label="Boys" onClick={() => setMobileOpen(false)} />
               <SideSubLink to="/collections?c=trending" icon={TrendingUp} label="Trending" onClick={() => setMobileOpen(false)} />

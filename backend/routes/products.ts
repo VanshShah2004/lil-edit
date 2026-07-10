@@ -13,6 +13,7 @@ import {
   fetchReviewsDataBySkus,
   fetchSuggestions,
   searchProducts,
+  fetchNewArrivals,
   invalidateSearchCatalog,
   type SuggestionRow,
   type SearchProductRow,
@@ -759,6 +760,23 @@ router.get("/suggestions", async (req: Request, res: Response) => {
     log.error("failed — returning empty suggestions", err);
     res.status(200).json({ suggestions: [] });
     log.end("SEARCH SUGGESTIONS");
+  }
+});
+
+// ─── GET /api/products/new-arrivals — newest products, one card each ─────────
+router.get("/new-arrivals", async (req: Request, res: Response) => {
+  const log = createLog().start("NEW ARRIVALS");
+  const rawLimit = Number(req.query.limit);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 100) : 48;
+
+  try {
+    const products = await fetchNewArrivals(limit, log);
+    log.success(`${products.length} new arrivals returned (limit=${limit})`).end("NEW ARRIVALS");
+    res.json({ count: products.length, products });
+  } catch (err) {
+    log.error("failed — returning empty list", err);
+    res.status(200).json({ count: 0, products: [] });
+    log.end("NEW ARRIVALS");
   }
 });
 

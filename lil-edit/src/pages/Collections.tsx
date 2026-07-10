@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Heart, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ const galleryImages = [
 
 export default function Collections() {
   const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -102,7 +104,10 @@ export default function Collections() {
             For Every Little Personality — Fashion-Forward Pieces Designed for Comfort and Style
           </p>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto justify-center">
-            <Button className="bg-gray-900 hover:bg-gray-800 text-white px-6 sm:px-8 h-11 sm:h-12 rounded-full font-semibold flex items-center justify-center gap-2 transition-colors duration-200">
+            <Button
+              onClick={() => navigate("/collections/new-arrivals")}
+              className="bg-gray-900 hover:bg-gray-800 text-white px-6 sm:px-8 h-11 sm:h-12 rounded-full font-semibold flex items-center justify-center gap-2 transition-colors duration-200"
+            >
               Shop New Arrivals
               <ArrowRight className="w-4 h-4" />
             </Button>
