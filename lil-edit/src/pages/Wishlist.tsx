@@ -27,6 +27,7 @@ import { useWishlist } from "@/contexts/WishlistContext";
 import Footer from "@/components/layout/Footer";
 
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
+import QuickAddButton from "@/components/home/QuickAddButton";
 import type { WishlistItem } from "@/lib/wishlistApi";
 import { useRecommendations, type RecommendationAnchor } from "@/hooks/useRecommendations";
 import { useCart } from "@/contexts/CartContext";
@@ -627,7 +628,8 @@ const WishlistPage = () => {
               {recommendations.map((p, idx) => (
                 <div
                   key={`${p.slug}-${p.sku}`}
-                  className={`group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all ${idx >= 4 ? "max-sm:hidden" : ""}`}
+                  onClick={() => navigate(`/collections/${p.categorySlug}/product/${p.slug}$${p.sku}`)}
+                  className={`group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer ${idx >= 4 ? "max-sm:hidden" : ""}`}
                 >
                   <div className="relative rounded-xl overflow-hidden aspect-[3/4] sm:aspect-[4/5] md:aspect-[5/6] mb-2 md:mb-1.5">
                     <img
@@ -638,22 +640,30 @@ const WishlistPage = () => {
                       className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                     />
                     <button
-                      onClick={() => void addToWishlist(p.slug, p.sku)}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const wishlisted = isWishlisted(p.slug, p.sku);
+                        if (wishlisted) {
+                          const entry = wishlistItems.find(
+                            (w) => w.productSlug === p.slug && w.sku === p.sku
+                          );
+                          if (entry) await removeFromWishlist(entry.id);
+                        } else {
+                          await addToWishlist(p.slug, p.sku);
+                        }
+                      }}
                       className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center transition-all"
-                      title={isWishlisted(p.slug, p.sku) ? "Already in wishlist" : "Add to wishlist"}
+                      title={isWishlisted(p.slug, p.sku) ? "Remove from wishlist" : "Add to wishlist"}
                     >
                       <Heart
                         className={`w-3.5 h-3.5 ${isWishlisted(p.slug, p.sku) ? "text-primary" : "text-muted-foreground"}`}
                         fill={isWishlisted(p.slug, p.sku) ? "currentColor" : "none"}
                       />
                     </button>
-                    <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                      <Link
-                        to={`/collections/${p.categorySlug}/product/${p.slug}$${p.sku}`}
-                        className="w-full py-1.5 bg-white/90 backdrop-blur text-slate-900 rounded-lg font-medium text-[10px] md:text-xs hover:bg-brand-teal hover:text-white transition-colors shadow-sm block text-center"
-                      >
-                        View Details
-                      </Link>
+                    {/* Card click covers navigation to the PDP; the overlay is the same
+                        quick add the home/PDP placards use (capped-qty toast flow). */}
+                    <div className="hidden md:block absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                      <QuickAddButton product={p} />
                     </div>
                   </div>
                   <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
