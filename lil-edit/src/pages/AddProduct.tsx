@@ -133,11 +133,14 @@ async function sendCurationToBackend(
   status: "DRAFT" | "PUBLISHED",
   formData: FormData,
   imagePreviews: string[],
-  isStockUnlimited: boolean
-): Promise<{ database?: PersistDatabaseResult }> {
+  isStockUnlimited: boolean,
+  skuIsPreview: boolean
+): Promise<{ database?: PersistDatabaseResult; committedSku?: string }> {
   const base = getBackendBaseUrl();
-  const body = { status, ...buildPayloadFromForm(formData, imagePreviews, isStockUnlimited) };
-  console.log(`[AddProduct] POST /api/products/preview  status=${status}  sku=${(body as { sku?: string }).sku ?? "?"}`);
+  // skuIsPreview=true → first save of a new product: the form's SKU is only a
+  // read-only preview and the backend mints (reserves) the real one on save.
+  const body = { status, skuIsPreview, ...buildPayloadFromForm(formData, imagePreviews, isStockUnlimited) };
+  console.log(`[AddProduct] POST /api/products/preview  status=${status}  sku=${(body as { sku?: string }).sku ?? "?"}  skuIsPreview=${skuIsPreview}`);
   const res = await fetch(`${base}/api/products/preview`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(await authHeader()) },
@@ -146,6 +149,7 @@ async function sendCurationToBackend(
   console.log(`[AddProduct] preview → ${res.status}${res.status === 401 || res.status === 403 ? " (admin auth failed)" : ""}`);
   let json: {
     ok?: boolean;
+    sku?: string;
     previewPath?: string;
     message?: string;
     database?: PersistDatabaseResult;
@@ -162,7 +166,10 @@ async function sendCurationToBackend(
         `Backend error (${res.status})`
     );
   }
-  return { database: json.database };
+  if (json.sku && json.sku !== (body as { sku?: string }).sku) {
+    console.log(`[AddProduct] server committed sku=${json.sku} (preview was ${(body as { sku?: string }).sku})`);
+  }
+  return { database: json.database, committedSku: json.sku };
 }
 
 const mapFormDataToProduct = (formData: FormData, imagePreviews: string[], isStockUnlimited = false): Product => {
@@ -220,6 +227,10 @@ const AddProduct = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isGeneratingSku, setIsGeneratingSku] = useState(false);
+  // False until the first successful draft save / launch. While false the SKU
+  // shown is a server peek (nothing reserved); the first successful save mints
+  // the real SKU server-side and locks the identifier for this product.
+  const [skuCommitted, setSkuCommitted] = useState(false);
   const [newPoint, setNewPoint] = useState("");
   const [newColorInput, setNewColorInput] = useState("");
   const [newTag, setNewTag] = useState("");
@@ -531,15 +542,20 @@ const AddProduct = () => {
 
     setIsSaving(true);
     try {
-      const { database } = await sendCurationToBackend("DRAFT", formData, imagePreviews, isStockUnlimited);
+      const { database, committedSku } = await sendCurationToBackend("DRAFT", formData, imagePreviews, isStockUnlimited, !skuCommitted);
       const mappedProduct = mapFormDataToProduct(formData, imagePreviews, isStockUnlimited);
       setSavedPreviewProduct(mappedProduct);
       setPreviewActivated(true);
       if (database && database.ok === false && "skipped" in database && database.skipped) {
         toast.warning(database.reason);
       } else {
+        const finalSku = committedSku || formData.sku;
+        if (committedSku && committedSku !== formData.sku) {
+          setFormData(prev => ({ ...prev, sku: committedSku }));
+        }
+        setSkuCommitted(true);
         toast.success("Draft saved to Supabase (draft tables).");
-        invalidateAfterMutation(formData.sku || undefined);
+        invalidateAfterMutation(finalSku || undefined);
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not reach the backend. Is it running on port 5000?");
@@ -553,14 +569,19 @@ const AddProduct = () => {
 
     setIsPublishing(true);
     try {
-      const { database } = await sendCurationToBackend("PUBLISHED", formData, imagePreviews, isStockUnlimited);
+      const { database, committedSku } = await sendCurationToBackend("PUBLISHED", formData, imagePreviews, isStockUnlimited, !skuCommitted);
       const mappedProduct = mapFormDataToProduct(formData, imagePreviews, isStockUnlimited);
       setSavedPreviewProduct(mappedProduct);
       setPreviewActivated(true);
       if (database && database.ok === false && "skipped" in database && database.skipped) {
         toast.warning(database.reason);
       } else {
-        toast.success(`The Product\nTitle: ${formData.name}\nSKU: ${formData.sku}\nhas successfully launched!`);
+        const finalSku = committedSku || formData.sku;
+        if (committedSku && committedSku !== formData.sku) {
+          setFormData(prev => ({ ...prev, sku: committedSku }));
+        }
+        setSkuCommitted(true);
+        toast.success(`The Product\nTitle: ${formData.name}\nSKU: ${finalSku}\nhas successfully launched!`);
         // Redirect to home page after successful launch
         setTimeout(() => {
           navigate("/");
@@ -593,22 +614,27 @@ const AddProduct = () => {
     }
   }, [formData.sku]);
 
-  // Reactive Base SKU generation from server when category or gender changes
+  // Reactive Base SKU preview from server when category or gender changes.
+  // Peek only — nothing is reserved until the first draft save / launch, so
+  // changing category/gender here without saving burns no SKU numbers. Once
+  // the SKU is committed (first successful save), the identifier is locked
+  // and later category/gender edits no longer touch it.
   useEffect(() => {
     if (!formData.category || !formData.gender) return;
+    if (skuCommitted) return;
 
     const fetchSku = async () => {
       setIsGeneratingSku(true);
       try {
         const base = getBackendBaseUrl();
-        console.log(`[AddProduct] GET /api/sku/generate  category=${formData.category}  gender=${formData.gender}`);
+        console.log(`[AddProduct] GET /api/sku/generate (peek)  category=${formData.category}  gender=${formData.gender}`);
         const res = await fetch(`${base}/api/sku/generate?category=${encodeURIComponent(formData.category)}&gender=${encodeURIComponent(formData.gender)}`, {
           headers: { ...(await authHeader()) },
         });
         console.log(`[AddProduct] sku/generate → ${res.status}${res.status === 401 || res.status === 403 ? " (admin auth failed)" : ""}`);
         const json = await res.json();
         if (json.sku) {
-          console.log(`[AddProduct] generated sku=${json.sku}`);
+          console.log(`[AddProduct] preview sku=${json.sku} (not reserved yet)`);
           setFormData(prev => ({ ...prev, sku: json.sku }));
         }
       } catch (err) {
@@ -619,7 +645,7 @@ const AddProduct = () => {
     };
 
     fetchSku();
-  }, [formData.category, formData.gender]);
+  }, [formData.category, formData.gender, skuCommitted]);
 
   // Reactive Slug generation when name or category changes
   useEffect(() => {

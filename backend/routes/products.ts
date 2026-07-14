@@ -39,6 +39,8 @@ import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAut
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { logActivity, optionalUserId } from "../lib/activityLog.js";
 import { logAdminAction } from "../lib/adminAudit.js";
+import { SKUCounterService } from "../services/skuCounterService.js";
+import { generateColorSku } from "../utils/skuCodes.js";
 
 // ─── In-process L1 cache (PDP detail only) ───────────────────────────────────
 const DETAIL_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -577,21 +579,18 @@ router.get("/recommendations", async (req: Request, res: Response) => {
 
 // ─── POST /api/products/preview — draft save or product launch ────────────────
 router.post("/preview", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-  const { status, ...data } = req.body as { status: string; [key: string]: unknown };
+  const { status, skuIsPreview, ...data } = req.body as { status: string; skuIsPreview?: boolean; [key: string]: unknown };
   const normalized: "DRAFT" | "PUBLISHED" = status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
-  const sku  = String(data.sku  ?? "UNKNOWN");
+  let sku    = String(data.sku  ?? "UNKNOWN");
   const name = String(data.name ?? "Untitled");
   const slug = String(data.slug ?? "");
   const adminId = (req as AuthenticatedRequest).userId;
 
   const opName = normalized === "DRAFT" ? "DRAFT SAVE" : "PRODUCT LAUNCH";
   const log    = createLog().start(opName);
-  log.step(`sku=${sku}  name="${name}"  slug=${slug}`);
+  log.step(`sku=${sku}  name="${name}"  slug=${slug}  skuIsPreview=${skuIsPreview === true}`);
 
   const previewPath = "/api/products/preview";
-  // Echo the submitted product back in the response, built per-request — no shared
-  // module-level state, so concurrent admins never see each other's payloads.
-  const payload     = { status: normalized, receivedAt: new Date().toISOString(), ...data };
 
   let database:
     | { ok: true; draftProductId?: string; publishedProductId?: string }
@@ -600,6 +599,29 @@ router.post("/preview", requireAuth, requireAdmin, async (req: Request, res: Res
 
   if (isSupabaseCatalogConfigured()) {
     try {
+      // First save of a brand-new product: the SKU in the payload is only the
+      // form's read-only preview (never reserved). Mint the real one now —
+      // atomically, so two admins saving the same category/gender concurrently
+      // get distinct numbers — and rebuild every variant SKU off the new base.
+      // Re-saves and EditProduct sends omit skuIsPreview and keep their SKU.
+      if (skuIsPreview === true) {
+        const category = String(data.category ?? "").trim();
+        const gender   = String(data.gender ?? "").trim();
+        if (!category || !gender) {
+          throw new Error("Category and Gender are required to assign a SKU.");
+        }
+        const minted = await SKUCounterService.generateNextSKU(category, gender, log);
+        log.step(`SKU minted on save  preview=${sku}  committed=${minted}`);
+        data.sku = minted;
+        if (Array.isArray(data.selectedColors)) {
+          data.selectedColors = (data.selectedColors as Array<Record<string, unknown>>).map((c) => ({
+            ...c,
+            sku: generateColorSku(minted, String(c.name ?? "")),
+          }));
+        }
+        sku = minted;
+      }
+
       if (normalized === "DRAFT") {
         const { draftProductId } = await saveDraftToDatabase(data, log);
         void invalidateCatalogCaches(log, sku);
@@ -639,7 +661,15 @@ router.post("/preview", requireAuth, requireAdmin, async (req: Request, res: Res
     } catch (err) {
       log.error("persistence failed", err).end(opName);
       database = { ok: false, error: err instanceof Error ? err.message : String(err) };
-      res.status(500).json({ ok: false, status: normalized, previewPath, payload, database });
+      res.status(500).json({
+        ok: false,
+        status: normalized,
+        previewPath,
+        // Echo the submitted product back, built per-request — no shared
+        // module-level state, so concurrent admins never see each other's payloads.
+        payload: { status: normalized, receivedAt: new Date().toISOString(), ...data },
+        database,
+      });
       return;
     }
   } else {
@@ -652,7 +682,16 @@ router.post("/preview", requireAuth, requireAdmin, async (req: Request, res: Res
   }
 
   log.end(opName);
-  res.json({ ok: true, status: normalized, previewPath, payload, database });
+  // `sku` is the committed base SKU (freshly minted on a first save) — the
+  // client syncs its form state to this authoritative value.
+  res.json({
+    ok: true,
+    status: normalized,
+    sku,
+    previewPath,
+    payload: { status: normalized, receivedAt: new Date().toISOString(), ...data },
+    database,
+  });
 });
 
 // ─── GET /api/products/catalog-list — thin initial list ──────────────────────

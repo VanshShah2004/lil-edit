@@ -27,3 +27,9 @@ export const generateGenderCode = (gender: string): string => {
   };
   return map[gender] ?? "GEN";
 };
+
+export const generateColorCode = (colorName: string): string =>
+  colorName.replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase();
+
+export const generateColorSku = (baseSku: string, colorName: string): string =>
+  `${baseSku}-${generateColorCode(colorName)}`;
