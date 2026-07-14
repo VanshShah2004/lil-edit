@@ -20,9 +20,15 @@ import { createLog } from "../lib/logger.js";
 
 // Belt-and-suspenders: these must never be gated even if their routers were ever
 // re-mounted below this middleware. /api/auth → admins must be able to log in;
-// /api/maintenance → public status + the admin toggle that turns the site back on.
+// /api/maintenance → public status + the admin toggle that turns the site back on;
+// /api/newsletter → the coming-soon page's own "notify me" form must keep working
+// while the store is offline (the route is guest-safe by design).
 function isAlwaysAllowed(path: string): boolean {
-  return path.startsWith("/api/auth") || path.startsWith("/api/maintenance");
+  return (
+    path.startsWith("/api/auth") ||
+    path.startsWith("/api/maintenance") ||
+    path.startsWith("/api/newsletter")
+  );
 }
 
 // Resolve whether the request carries a valid ADMIN token. Mirrors
