@@ -14,6 +14,7 @@ import {
   Loader,
   Search,
   Plus,
+  Minus,
   Flame,
   Tag,
   Play,
@@ -937,7 +938,7 @@ const EditProduct = () => {
         className="fixed left-0 right-0 z-40 bg-white/95 backdrop-blur-sm"
         style={{ top: "var(--navbar-height, 80px)" }}
       >
-        <div className="px-4 sm:px-8 lg:px-12 xl:px-20 py-2.5">
+        <div className="mx-auto max-w-screen-2xl px-3 lg:px-6 py-2.5">
           <button
             onClick={() => navigate("/admin/manage-products")}
             className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors uppercase tracking-widest"
@@ -947,8 +948,8 @@ const EditProduct = () => {
         </div>
       </div>
 
-      <div className="pt-[200px] md:pt-[168px] pb-24 px-3 sm:px-8 lg:px-12 xl:px-20">
-        <div className="mx-auto max-w-none">
+      <div className="relative pt-[200px] md:pt-[168px] pb-24">
+        <div className="mx-auto max-w-screen-2xl px-3 lg:px-6">
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
@@ -970,7 +971,7 @@ const EditProduct = () => {
             )}
           </motion.div>
 
-          <hr className="-mx-3 sm:-mx-8 lg:-mx-12 xl:-mx-20 mb-8 border-t border-foreground/50" />
+          <hr className="-mx-3 lg:-mx-6 mb-8 border-t border-foreground/50" />
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
             <motion.div
@@ -979,7 +980,7 @@ const EditProduct = () => {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="lg:col-span-3"
             >
-              <div className="bg-white rounded-lg border border-black shadow-md p-4 sm:p-10 space-y-12">
+              <div className="bg-white rounded-lg border border-foreground/50 shadow-md p-4 sm:p-10 space-y-12">
                 {/* Essential Details */}
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
@@ -1012,7 +1013,7 @@ const EditProduct = () => {
                         value={formData.brand}
                         onChange={handleInputChange}
                         placeholder="e.g. Atelier Edit"
-                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
                   </div>
@@ -1036,7 +1037,7 @@ const EditProduct = () => {
                         value={formData.fabric}
                         onChange={handleInputChange}
                         placeholder="e.g. Organza with Cotton Lining"
-                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
 
@@ -1050,7 +1051,7 @@ const EditProduct = () => {
                         value={formData.fit}
                         onChange={handleInputChange}
                         placeholder="e.g. Regular Fit"
-                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
 
@@ -1064,7 +1065,7 @@ const EditProduct = () => {
                         value={formData.occasion}
                         onChange={handleInputChange}
                         placeholder="e.g. Festive, Wedding"
-                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
 
@@ -1078,7 +1079,7 @@ const EditProduct = () => {
                         value={formData.care_instructions}
                         onChange={handleInputChange}
                         placeholder="e.g. Dry Clean Only"
-                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
+                        className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                       />
                     </motion.div>
                   </div>
@@ -1099,7 +1100,7 @@ const EditProduct = () => {
                         onChange={(e) => setNewPoint(e.target.value)}
                         onKeyPress={(e) => e.key === "Enter" && addDescriptionPoint()}
                         placeholder="Add a product feature or note..."
-                        className="flex-1 px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
+                        className="flex-1 px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
                       />
                       <button
                         onClick={addDescriptionPoint}
@@ -1207,7 +1208,7 @@ const EditProduct = () => {
                           value={formData.originalPrice}
                           onChange={handleInputChange}
                           placeholder="0.00"
-                          className="w-full pl-8 pr-4 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
+                          className="w-full pl-8 pr-4 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                         />
                       </div>
                     </motion.div>
@@ -1224,7 +1225,7 @@ const EditProduct = () => {
                           value={formData.price}
                           onChange={handleInputChange}
                           placeholder="0.00"
-                          className="w-full pl-8 pr-4 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
+                          className="w-full pl-8 pr-4 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-gray-900 outline-none transition-all duration-300 font-body text-base"
                         />
                       </div>
                     </motion.div>
@@ -1313,7 +1314,7 @@ const EditProduct = () => {
                           onChange={(e) => setNewTag(e.target.value)}
                           onKeyPress={(e) => e.key === "Enter" && addTag()}
                           placeholder="Add discovery tags (e.g. Minimalist, Organic)..."
-                          className="w-full pl-12 pr-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
+                          className="w-full pl-12 pr-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
                         />
                       </div>
                       <button
@@ -1365,17 +1366,16 @@ const EditProduct = () => {
                     />
                   </div>
 
-                  {sizeMode === "range" && (
-                    <p className="text-[11px] font-medium text-gray-500">
-                      {rangeAnchor ? (
-                        <>Start: <span className="font-bold text-gray-900">{rangeAnchor}</span> — now tap the end size (tap it again to clear).</>
-                      ) : (
-                        "Tap the first size, then the last — everything in between selects automatically."
-                      )}
-                    </p>
-                  )}
-
                   <div className="space-y-3 sm:space-y-4">
+                    {sizeMode === "range" && (
+                      <p className="text-[11px] font-medium text-gray-500">
+                        {rangeAnchor ? (
+                          <>Start: <span className="font-bold text-gray-900">{rangeAnchor}</span> — now tap the end size (tap it again to clear).</>
+                        ) : (
+                          "Tap the first size, then the last — everything in between selects automatically."
+                        )}
+                      </p>
+                    )}
                     <div className="grid grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                       {SIZES.filter(s => s.includes("Months") || s.includes("Years")).map((size) => (
                         <motion.button
@@ -1410,7 +1410,7 @@ const EditProduct = () => {
                     </div>
                   </div>
 
-                  <motion.div whileHover={{ scale: 1.01 }} className="group">
+                  <motion.div whileHover={{ scale: 1.01 }} className="group pt-2">
                     <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-800 mb-2 transition-colors group-focus-within:text-gray-900">
                       Sizing Chart
                     </label>
@@ -1438,7 +1438,7 @@ const EditProduct = () => {
                           onChange={(e) => setNewColorInput(e.target.value)}
                           onKeyPress={(e) => e.key === "Enter" && addColor()}
                           placeholder="Type 'Lavender', '#E6E6FA', or 'Lavender #E6E6FA'..."
-                          className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
+                          className="w-full px-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
                         />
                       </div>
                       <button
@@ -1457,9 +1457,10 @@ const EditProduct = () => {
                             animate={{ opacity: 1, y: 0 }}
                             whileHover={{ y: -4 }}
                             key={color.name}
-                            className="bg-white border border-gray-200 rounded-[2.5rem] p-8 shadow-[0_4px_20px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-500 group relative"
+                            className="bg-white border border-gray-200 rounded-xl p-4 sm:p-8 shadow-[0_4px_20px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-500 group relative"
                           >
                             <div className="space-y-8 relative z-10">
+                              {/* Header Row: Swatch, Name, and Image Management */}
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-gray-200">
                                 <div className="flex items-center gap-5">
                                   <div className="relative">
@@ -1467,6 +1468,9 @@ const EditProduct = () => {
                                       className="w-14 h-14 rounded-2xl border border-black/5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] transition-all duration-700 group-hover:scale-110"
                                       style={{ backgroundColor: color.hex }}
                                     />
+                                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white shadow-sm border border-gray-300 flex items-center justify-center">
+                                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color.hex }} />
+                                    </div>
                                   </div>
                                   <div className="flex flex-col">
                                     <h3 className="text-xl font-bold text-gray-900 tracking-tight leading-none mb-2">
@@ -1500,61 +1504,92 @@ const EditProduct = () => {
                                         fileInputRef.current?.click();
                                       }, 300);
                                     }}
-                                    className="py-2.5 px-6 rounded-full bg-black text-white border border-black text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg whitespace-nowrap"
+                                    className="ml-auto sm:ml-0 py-2.5 px-6 rounded-md bg-black text-white border border-black text-[10px] font-bold uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg whitespace-nowrap"
                                   >
                                     Edit Gallery
                                   </button>
                                 </div>
                               </div>
 
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                              {/* Footer Grid: Signature and Stock */}
+                              <div className="grid grid-cols-[2fr_3fr] sm:grid-cols-2 gap-4 sm:gap-8">
                                 <div className="space-y-3">
-                                  <div className="flex items-center h-10">
-                                    <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-gray-900 block">Variant Signature</span>
+                                  <div className="flex items-center min-h-[40px] sm:h-10">
+                                    <span className="text-[11px] font-bold uppercase tracking-[0.2em] sm:tracking-[0.25em] text-gray-900 leading-tight">
+                                      <span className="sm:hidden">Variant<br />Signature</span>
+                                      <span className="hidden sm:inline">Variant Signature</span>
+                                    </span>
                                   </div>
-                                  <div className="font-mono text-[11px] text-gray-900/80 bg-gray-900/5 px-3 py-1.5 rounded-lg border border-primary/10 w-fit">
+                                  <div className="font-mono text-[11px] text-gray-900/80 bg-gray-900/5 px-3 h-10 flex items-center rounded-lg border border-primary/10 w-fit max-w-full break-all">
                                     {color.sku}
                                   </div>
                                 </div>
 
                                 <div className="space-y-3">
-                                  <div className="flex items-center justify-between h-10">
-                                    <label className="text-[11px] font-bold uppercase tracking-widest text-gray-900 block">
-                                      {color.isUnlimited ? "Stock Level (Auto)" : "Stock Level"}
+                                  <div className="flex items-center justify-between gap-2 min-h-[40px] sm:h-10">
+                                    <label className="text-[11px] font-bold uppercase tracking-widest text-gray-900 leading-tight">
+                                      <span className="sm:hidden">Stock<br />Level</span>
+                                      <span className="hidden sm:inline">Stock Level</span>
                                     </label>
 
                                     <StockToggleSlider
                                       isUnlimited={!!color.isUnlimited}
                                       onChange={(unlimited) => toggleVariantStockMode(color.name, unlimited)}
-                                      className="w-40 h-9"
+                                      className="w-32 sm:w-40 h-8 sm:h-9 shrink-0"
+                                      limitedLabel="Limited"
+                                      unlimitedLabel="Unlimited"
+                                      limitedLabelMobile="Ltd"
+                                      unlimitedLabelMobile="Unltd"
                                     />
                                   </div>
 
-                                  <div className="relative group/input">
-                                    <input
-                                      type="number"
-                                      value={color.isUnlimited ? "" : color.stock}
-                                      onChange={(e) => updateVariantStock(color.name, parseInt(e.target.value) || 0)}
-                                      disabled={color.isUnlimited}
-                                      className={`w-full bg-transparent border-b border-gray-300 focus:border-[#B19CD9] outline-none transition-all py-1 text-sm font-medium font-body ${color.isUnlimited ? 'text-gray-800 opacity-50' : 'text-gray-900 opacity-100'}`}
-                                      placeholder={color.isUnlimited ? "Unlimited" : "1"}
-                                      min="1"
-                                    />
-                                  </div>
+                                  {color.isUnlimited ? (
+                                    <div className="flex items-center justify-center h-10 w-52 sm:w-28 rounded-md border border-gray-300 bg-gray-50 text-sm font-medium font-body text-gray-800">
+                                      Unlimited
+                                    </div>
+                                  ) : (
+                                    <div className="group/input flex items-center h-10 w-52 sm:w-28 rounded-md border border-gray-300 bg-gray-50 overflow-hidden focus-within:border-[#B19CD9] transition-all">
+                                      <button
+                                        type="button"
+                                        onClick={() => updateVariantStock(color.name, Math.max(1, (color.stock || 1) - 1))}
+                                        className="h-full px-2.5 flex items-center justify-center text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed transition-colors shrink-0"
+                                        aria-label="Decrease stock"
+                                      >
+                                        <Minus className="w-3.5 h-3.5" />
+                                      </button>
+                                      <input
+                                        type="number"
+                                        value={color.stock}
+                                        onChange={(e) => updateVariantStock(color.name, parseInt(e.target.value) || 0)}
+                                        className="flex-1 min-w-0 h-full bg-transparent border-x border-gray-300 px-1 outline-none text-sm font-medium font-body text-center text-gray-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        placeholder="1"
+                                        min="1"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => updateVariantStock(color.name, (color.stock || 0) + 1)}
+                                        className="h-full px-2.5 flex items-center justify-center text-gray-700 hover:bg-gray-200 disabled:cursor-not-allowed transition-colors shrink-0"
+                                        aria-label="Increase stock"
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
 
+                            {/* Corner Action */}
                             <button
                               onClick={() => removeColor(color.name)}
-                              className="absolute top-4 right-4 p-2.5 text-gray-800/20 hover:text-red-500 hover:bg-red-50 rounded-md transition-all z-20 opacity-0 group-hover:opacity-100"
+                              className="absolute top-4 sm:top-1 right-4 sm:right-1 p-2.5 text-gray-800/70 hover:text-red-500 hover:bg-red-50 rounded-md transition-all z-20 opacity-100"
                             >
                               <X size={14} />
                             </button>
                           </motion.div>
                         ))
                       ) : (
-                        <div className="p-16 text-center border-2 border-dashed border-gray-300 rounded-[3rem] bg-secondary/5">
+                        <div className="p-8 sm:p-16 text-center border-2 border-dashed border-gray-300 rounded-[3rem] bg-secondary/5">
                           <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-6">
                             <Plus className="w-6 h-6 text-gray-800" />
                           </div>
@@ -1792,7 +1827,7 @@ const EditProduct = () => {
                           onChange={(e) => setNewBadgeName(e.target.value)}
                           onKeyPress={(e) => e.key === "Enter" && createBadge()}
                           placeholder="Create custom badge (e.g. Limited Edition, Sustainable)..."
-                          className="w-full pl-12 pr-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 [&:not(:placeholder-shown)]:border-sky-200 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
+                          className="w-full pl-12 pr-5 py-4 rounded-md border border-gray-300 bg-gray-50 focus:bg-white [&:not(:placeholder-shown)]:bg-sky-50 focus:border-primary/50 outline-none transition-all duration-300 font-body text-base"
                         />
                       </div>
                       <button
@@ -1857,7 +1892,7 @@ const EditProduct = () => {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="lg:col-span-2 lg:sticky lg:top-32 h-fit"
             >
-              <div className="bg-white rounded-lg border border-black shadow-md px-4 py-3 space-y-4">
+              <div className="bg-white rounded-lg border border-foreground/50 shadow-md px-4 py-3 space-y-4">
                 <div className="flex items-center justify-between pb-1 border-b border-gray-300">
                   <h2 className="text-lg font-bold uppercase tracking-[0.15em] text-slate-900">
                     Live Preview
