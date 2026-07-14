@@ -45,6 +45,12 @@ const SIZES = [
   "3-4 Years",
   "4-5 Years",
   "5-6 Years",
+  "6-7 Years",
+  "7-8 Years",
+  "8-9 Years",
+  "9-10 Years",
+  "10-11 Years",
+  "11-12 Years",
   "XS", "S", "M", "L", "XL"
 ];
 
@@ -231,6 +237,11 @@ const AddProduct = () => {
   // shown is a server peek (nothing reserved); the first successful save mints
   // the real SKU server-side and locks the identifier for this product.
   const [skuCommitted, setSkuCommitted] = useState(false);
+  // Size selection mode — "range": tap a start and an end size and everything
+  // between them (in SIZES order) fills in; "individual": per-size toggling.
+  const [sizeMode, setSizeMode] = useState<"range" | "individual">("range");
+  // First endpoint of an in-progress range selection (null = none started).
+  const [rangeAnchor, setRangeAnchor] = useState<string | null>(null);
   const [newPoint, setNewPoint] = useState("");
   const [newColorInput, setNewColorInput] = useState("");
   const [newTag, setNewTag] = useState("");
@@ -321,6 +332,34 @@ const AddProduct = () => {
         selectedSizes: updated.sort((a, b) => SIZES.indexOf(a) - SIZES.indexOf(b)),
       };
     });
+  };
+
+  const handleSizeClick = (size: string) => {
+    if (sizeMode === "individual") {
+      toggleSize(size);
+      return;
+    }
+    if (rangeAnchor === null) {
+      // First tap anchors a fresh range (replacing any previous selection).
+      setRangeAnchor(size);
+      setFormData(prev => ({ ...prev, selectedSizes: [size] }));
+    } else if (rangeAnchor === size) {
+      // Tapping the anchor again clears it.
+      setRangeAnchor(null);
+      setFormData(prev => ({ ...prev, selectedSizes: [] }));
+    } else {
+      // Second tap completes the range — endpoints accepted in either order.
+      const a = SIZES.indexOf(rangeAnchor);
+      const b = SIZES.indexOf(size);
+      const [from, to] = a < b ? [a, b] : [b, a];
+      setFormData(prev => ({ ...prev, selectedSizes: SIZES.slice(from, to + 1) }));
+      setRangeAnchor(null);
+    }
+  };
+
+  const handleSizeModeChange = (individual: boolean) => {
+    setSizeMode(individual ? "individual" : "range");
+    setRangeAnchor(null);
   };
 
   const addColor = () => {
@@ -1061,19 +1100,35 @@ const AddProduct = () => {
 
                 {/* Sizes */}
                 <div className="space-y-8">
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-wrap items-center gap-4">
                     <div className="w-2 h-2 rounded-full bg-[#B19CD9]" />
                     <h2 className="text-xl font-bold text-gray-900 tracking-tight">Available Sizes</h2>
+                    <StockToggleSlider
+                      isUnlimited={sizeMode === "individual"}
+                      onChange={handleSizeModeChange}
+                      limitedLabel="Range"
+                      unlimitedLabel="Individual"
+                      className="w-44 h-9 ml-auto"
+                    />
                   </div>
 
                   <div className="space-y-3 sm:space-y-4">
-                    <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                    {sizeMode === "range" && (
+                      <p className="text-[11px] font-medium text-gray-500">
+                        {rangeAnchor ? (
+                          <>Start: <span className="font-bold text-gray-900">{rangeAnchor}</span> — now tap the end size (tap it again to clear).</>
+                        ) : (
+                          "Tap the first size, then the last — everything in between selects automatically."
+                        )}
+                      </p>
+                    )}
+                    <div className="grid grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                       {SIZES.filter(s => s.includes("Months") || s.includes("Years")).map((size) => (
                         <motion.button
                           key={size}
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => toggleSize(size)}
+                          onClick={() => handleSizeClick(size)}
                           className={`w-full py-4 rounded-md font-display font-medium text-sm transition-all duration-300 border shadow-sm ${formData.selectedSizes.includes(size)
                             ? "border-[#9E86C9] bg-[#B19CD9] text-black shadow-md shadow-purple-900/10"
                             : "border-gray-400 bg-white text-gray-900 hover:border-[#B19CD9]/50"
@@ -1089,7 +1144,7 @@ const AddProduct = () => {
                           key={size}
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => toggleSize(size)}
+                          onClick={() => handleSizeClick(size)}
                           className={`flex-1 py-4 rounded-md font-display font-medium text-sm transition-all duration-300 border shadow-sm ${formData.selectedSizes.includes(size)
                             ? "border-[#9E86C9] bg-[#B19CD9] text-black shadow-md shadow-purple-900/10"
                             : "border-gray-400 bg-white text-gray-900 hover:border-[#B19CD9]/50"
