@@ -255,7 +255,7 @@ const ProductPreviewView = ({
     <div className={`${compact ? "p-3" : "p-0"} ${mobileOnly ? "pt-3 px-3" : ""} bg-white`}>
       <div className={`flex ${compact || mobileOnly ? "flex-col gap-3" : "flex-col md:flex-row gap-4 md:gap-8 lg:gap-12"}`}>
         <div className={`w-full ${mobileOnly ? "block pt-1" : "md:hidden"}`}>
-          <p className="text-xs leading-[1.35] font-bold uppercase tracking-[0.2em] text-[#0f766e] mb-2 w-fit">{product.brand}</p>
+          <p className="text-xs leading-[1.35] font-bold uppercase tracking-[0.2em] text-[#0f766e] -mt-[5px] mb-2 w-fit">{product.brand}</p>
           <h1 className={`${compact ? "text-lg" : "text-2xl"} font-semibold text-slate-900 leading-tight mb-2`}>
             {product.title}
           </h1>
@@ -333,7 +333,7 @@ const ProductPreviewView = ({
         </div>
 
         <div className={`w-full ${compact || mobileOnly ? "" : "md:w-[45%]"}`}>
-          <p className={`${mobileOnly ? "hidden" : "hidden md:block"} text-xs leading-[1.35] font-bold uppercase tracking-[0.2em] text-[#0f766e] mb-2 w-fit`}>{product.brand}</p>
+          <p className={`${mobileOnly ? "hidden" : "hidden md:block"} text-xs leading-[1.35] font-bold uppercase tracking-[0.2em] text-[#0f766e] -mt-[5px] mb-2 w-fit`}>{product.brand}</p>
           <h1 className={`${mobileOnly ? "hidden" : "hidden md:block"} ${compact ? "text-lg" : "text-2xl"} font-semibold text-slate-900 leading-snug mb-3`}>
             {product.title}
           </h1>

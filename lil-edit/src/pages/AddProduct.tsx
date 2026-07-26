@@ -51,7 +51,6 @@ const SIZES = [
   "9-10 Years",
   "10-11 Years",
   "11-12 Years",
-  "XS", "S", "M", "L", "XL"
 ];
 
 const CATEGORIES = [
@@ -1123,29 +1122,13 @@ const AddProduct = () => {
                       </p>
                     )}
                     <div className="grid grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                      {SIZES.filter(s => s.includes("Months") || s.includes("Years")).map((size) => (
+                      {SIZES.map((size) => (
                         <motion.button
                           key={size}
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={() => handleSizeClick(size)}
                           className={`w-full py-4 rounded-md font-display font-medium text-sm transition-all duration-300 border shadow-sm ${formData.selectedSizes.includes(size)
-                            ? "border-[#9E86C9] bg-[#B19CD9] text-black shadow-md shadow-purple-900/10"
-                            : "border-gray-400 bg-white text-gray-900 hover:border-[#B19CD9]/50"
-                            }`}
-                        >
-                          {size}
-                        </motion.button>
-                      ))}
-                    </div>
-                    <div className="flex gap-3 sm:gap-4">
-                      {SIZES.filter(s => !s.includes("Months") && !s.includes("Years")).map((size) => (
-                        <motion.button
-                          key={size}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleSizeClick(size)}
-                          className={`flex-1 py-4 rounded-md font-display font-medium text-sm transition-all duration-300 border shadow-sm ${formData.selectedSizes.includes(size)
                             ? "border-[#9E86C9] bg-[#B19CD9] text-black shadow-md shadow-purple-900/10"
                             : "border-gray-400 bg-white text-gray-900 hover:border-[#B19CD9]/50"
                             }`}
