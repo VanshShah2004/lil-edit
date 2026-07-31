@@ -18,7 +18,7 @@ const AuthCallback = () => {
       if (cancelled) return;
 
       if (data.session) {
-        navigate("/dashboard", { replace: true });
+        navigate("/", { replace: true });
       } else {
         navigate("/login", { replace: true });
       }

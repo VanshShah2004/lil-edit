@@ -14,7 +14,7 @@ import TrackingBridge from "./components/TrackingBridge";
 import GuestIntentBridge from "./components/GuestIntentBridge";
 import { AuthPromptProvider } from "./contexts/AuthPromptContext";
 
-// Home is the landing route (/ and /dashboard) — keep it eager so the first
+// Home is the landing route (/) — keep it eager so the first
 // paint never waits on a chunk fetch. Every other page is split into its own
 // chunk and fetched on demand when the user navigates to that route.
 import Home from "./pages/Home";
@@ -117,9 +117,10 @@ const App = () => (
         <MaintenanceGate>
         <Suspense fallback={<RouteFallback />}>
           <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Home />} />
-            <Route path="/home" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Home />} />
+            {/* Legacy home URLs — kept so old bookmarks/links still land on the homepage. */}
+            <Route path="/dashboard" element={<Navigate to="/" replace />} />
+            <Route path="/home" element={<Navigate to="/" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />

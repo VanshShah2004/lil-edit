@@ -145,6 +145,8 @@ export function AnalyticsLayout({
           <p className="text-sm text-gray-500">Sales, shoppers, and store performance at a glance</p>
         </div>
 
+        <hr className="-mx-3 lg:-mx-6 mb-8 h-1 border-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
+
         <div className="flex flex-col gap-6 lg:flex-row">
           {/* Sidebar nav (desktop) / equal-size button grid (mobile — no horizontal
               swipe-to-scroll; every section is reachable without a gesture). A CSS

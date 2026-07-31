@@ -362,7 +362,7 @@ const OrdersPage = () => {
             <div className="hidden sm:block sm:w-[35%] sm:shrink-0" aria-hidden="true" />
           </div>
 
-          <hr className="relative left-1/2 w-screen -translate-x-1/2 border-t border-foreground/50 mt-6 mb-8" />
+          <hr className="relative left-1/2 w-screen -translate-x-1/2 h-1 border-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400 mt-6 mb-8" />
 
           <div className="flex flex-col sm:flex-row sm:gap-6 sm:items-start">
 
@@ -388,7 +388,7 @@ const OrdersPage = () => {
                   <Package size={48} className="text-brand-teal mb-4 opacity-40" />
                   <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">No orders yet</p>
                   <p className="text-sm text-gray-500 mb-6">When you place an order, it'll show up here.</p>
-                  <Link to="/dashboard" className="text-sm font-medium text-brand-teal underline underline-offset-2">Start shopping</Link>
+                  <Link to="/" className="text-sm font-medium text-brand-teal underline underline-offset-2">Start shopping</Link>
                 </div>
               ) : (
                 visibleOrders.map((order) => (

@@ -339,7 +339,7 @@ const WishlistPage = () => {
             )}
 
             {/* Section divider */}
-            <hr className="border-t border-foreground/50 mb-8" />
+            <hr className="h-1 border-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400 mb-8" />
 
             {/* FILTER TABS — baseline is an inset shadow (not a border) so the
                 active tab can paint a white bottom border over it and read as
@@ -378,7 +378,7 @@ const WishlistPage = () => {
                 <Heart size={48} className="text-primary mb-4 opacity-40" />
                 <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Your wishlist is empty</p>
                 <p className="text-sm text-gray-500 mb-6">Browse our collection and save your favourites!</p>
-                <Link to="/dashboard" className="text-sm font-medium text-primary underline underline-offset-2">
+                <Link to="/" className="text-sm font-medium text-primary underline underline-offset-2">
                   Start shopping
                 </Link>
               </div>
@@ -564,7 +564,7 @@ const WishlistPage = () => {
                 <ShoppingBag className="w-4 h-4" />
                 {movingAll ? "Moving…" : "Move Selected to Cart"}
               </Button>
-              <Link to="/dashboard" className="block mt-4 sm:mt-6">
+              <Link to="/" className="block mt-4 sm:mt-6">
                 <Button
                   variant="outline"
                   className="w-full border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg py-3 sm:py-4 font-medium text-sm sm:text-base"

@@ -730,7 +730,7 @@ const AddProduct = () => {
             </h1>
           </motion.div>
 
-          <hr className="-mx-3 lg:-mx-6 mb-8 border-t border-foreground/50" />
+          <hr className="-mx-3 lg:-mx-6 mb-8 h-1 border-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
             {/* Main Form */}
@@ -1188,7 +1188,7 @@ const AddProduct = () => {
                             animate={{ opacity: 1, y: 0 }}
                             whileHover={{ y: -4 }}
                             key={color.name}
-                            className="bg-white border border-gray-200 rounded-xl p-4 sm:p-8 shadow-[0_4px_20px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-500 group relative"
+                            className="bg-white border border-gray-400 rounded-md p-4 sm:p-8 shadow-[0_4px_20px_rgb(0,0,0,0.08)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-500 group relative"
                           >
                             <div className="space-y-8 relative z-10">
                               {/* Header Row: Swatch, Name, and Image Management */}
@@ -1320,7 +1320,7 @@ const AddProduct = () => {
                           </motion.div>
                         ))
                       ) : (
-                        <div className="p-8 sm:p-16 text-center border-2 border-dashed border-gray-300 rounded-[3rem] bg-secondary/5">
+                        <div className="p-8 sm:p-16 text-center border-2 border-dashed border-gray-300 rounded-md bg-secondary/5">
                           <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-6">
                             <Plus className="w-6 h-6 text-gray-800" />
                           </div>

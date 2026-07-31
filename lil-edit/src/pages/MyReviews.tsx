@@ -193,7 +193,7 @@ const MyReviewsPage = () => {
               </div>
 
               {/* Full-bleed separator between stats and the tabbed preview */}
-              <hr className="-mx-3 sm:-mx-6 mb-5 border-t border-foreground/50" />
+              <hr className="-mx-3 sm:-mx-6 mb-5 h-1 border-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
 
               {/* Tabbed preview — switch between Pending and Reviewed */}
               <DraggableTabs tabs={TABS} value={tab} onChange={setTab} />

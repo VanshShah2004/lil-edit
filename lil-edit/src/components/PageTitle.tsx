@@ -19,7 +19,10 @@ const HOME_BRAND = "The Lil Edit";
 
 const ROUTE_TITLES: Array<{ pattern: string; label: string }> = [
   { pattern: "/",                     label: "" },
+  // Legacy home URLs that redirect to "/" — listed so the tab title never flashes
+  // "Page Not Found" for the frame before the redirect commits.
   { pattern: "/dashboard",            label: "" },
+  { pattern: "/home",                 label: "" },
   { pattern: "/auth/callback",        label: "Signing in…" },
   { pattern: "/login",                label: "Login" },
   { pattern: "/signup",               label: "Sign Up" },

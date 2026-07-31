@@ -37,7 +37,7 @@ const SizeCharts = () => {
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Sizing Chart Setup</h1>
             <p className="text-sm text-gray-500">Create and manage sizing charts with measurements in inches and centimeters.</p>
           </div>
-          <hr className="-mx-3 lg:-mx-6 border-t border-foreground/50" />
+          <hr className="-mx-3 lg:-mx-6 h-1 border-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
         </div>
       </div>
 

@@ -176,7 +176,7 @@ const AllOrdersPage = () => {
               </div>
             )}
 
-            <hr className="relative left-1/2 w-screen -translate-x-1/2 border-t border-gray-400 mt-4 mb-4" />
+            <hr className="relative left-1/2 w-screen -translate-x-1/2 h-1 border-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400 mt-4 mb-4" />
 
             {/* Search + sort controls */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -245,7 +245,7 @@ const AllOrdersPage = () => {
                   {query.trim() ? "Try a different order number or product name." : "When you place an order, it'll show up here."}
                 </p>
                 {!query.trim() && (
-                  <Link to="/dashboard" className="text-sm font-medium text-brand-teal underline underline-offset-2">Start shopping</Link>
+                  <Link to="/" className="text-sm font-medium text-brand-teal underline underline-offset-2">Start shopping</Link>
                 )}
               </div>
             ) : (

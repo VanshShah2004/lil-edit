@@ -27,7 +27,7 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
 
   const go = (path: "login" | "signup") => {
     const target =
-      redirect && redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : "/dashboard";
+      redirect && redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : "/";
     setRedirect(null);
     navigate(`/${path}?redirect=${encodeURIComponent(target)}`);
   };

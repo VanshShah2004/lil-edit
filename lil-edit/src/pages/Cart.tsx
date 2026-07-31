@@ -378,7 +378,7 @@ export default function Cart() {
             )}
 
             {/* Section divider */}
-            <hr className="border-t border-foreground/50 mb-8" />
+            <hr className="h-1 border-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400 mb-8" />
 
             {/* Loading skeleton */}
             {cartLoading && <CartSkeleton />}
@@ -393,7 +393,7 @@ export default function Cart() {
                   <p className="text-sm text-gray-500 mb-6">
                     Add items to your cart to get started!
                   </p>
-                  <Link to="/dashboard">
+                  <Link to="/">
                     <Button className="bg-brand-teal hover:bg-[#0C5D53] text-white rounded-lg px-8 h-11">
                       Continue Shopping
                     </Button>

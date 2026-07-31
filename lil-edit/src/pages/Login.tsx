@@ -18,12 +18,12 @@ const Login = () => {
   const [searchParams] = useSearchParams();
 
   // Return the user to where the guest flow began (?redirect=/checkout or /cart), falling
-  // back to the dashboard. Only same-origin absolute paths are honored (no open redirect).
+  // back to the homepage. Only same-origin absolute paths are honored (no open redirect).
   const redirectParam = searchParams.get("redirect");
   const redirectTo =
     redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
       ? redirectParam
-      : "/dashboard";
+      : "/";
 
   useEffect(() => {
     if (user) {

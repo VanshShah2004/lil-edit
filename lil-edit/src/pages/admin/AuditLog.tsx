@@ -679,7 +679,7 @@ const AuditLog = () => {
               An audit trail of everything admins do — product, coupon, order, Spotlight, access and site changes.
             </p>
           </div>
-          <hr className="-mx-3 lg:-mx-6 border-t border-foreground/50" />
+          <hr className="-mx-3 lg:-mx-6 h-1 border-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
         </div>
       </div>
 

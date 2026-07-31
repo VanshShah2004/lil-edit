@@ -26,12 +26,12 @@ const Signup = () => {
   const [searchParams] = useSearchParams();
 
   // Preserve the guest flow's destination (?redirect=/checkout or /cart) through the OTP
-  // steps, falling back to the dashboard. Same-origin absolute paths only (no open redirect).
+  // steps, falling back to the homepage. Same-origin absolute paths only (no open redirect).
   const redirectParam = searchParams.get("redirect");
   const redirectTo =
     redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
       ? redirectParam
-      : "/dashboard";
+      : "/";
 
   useEffect(() => {
     if (user) {

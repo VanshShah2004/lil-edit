@@ -155,7 +155,7 @@ const UserNavbar = () => {
             >
               <Menu className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
-            <Link to="/dashboard" className="flex-shrink flex items-center gap-2 sm:gap-3 min-w-0">
+            <Link to="/" className="flex-shrink flex items-center gap-2 sm:gap-3 min-w-0">
               <img src={logo} alt="The Lil Edit" className="h-10 sm:h-12 md:h-9 lg:h-9.5 w-auto shrink-0" />
               <div className="hidden min-[430px]:block text-xl md:text-[18px] lg:text-[20px] text-foreground leading-none" style={{ fontFamily: "'Playfair Display', serif" }}>
                 The Lil Edit
@@ -380,7 +380,7 @@ const UserNavbar = () => {
 
         <nav className="flex flex-col flex-1 pt-[3px] pb-2 overflow-y-auto">
           <SideSection label="Front Row">
-            <SideLink to="/dashboard" icon={Home} label="Home" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+            <SideLink to="/" icon={Home} label="Home" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
             {isAdmin ? (
               <SideLink to="/collections" icon={Shirt} label="Collections" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
             ) : (
@@ -498,7 +498,7 @@ function SideLink({
   badge?: number;
   badgeClass?: string;
 }) {
-  const active = pathname === to || (to !== "/dashboard" && pathname.startsWith(to + "/"));
+  const active = pathname === to || (to !== "/" && pathname.startsWith(to + "/"));
   const hasBadge = typeof badge === "number" && badge > 0;
   return (
     <Link

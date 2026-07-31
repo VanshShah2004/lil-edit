@@ -970,7 +970,7 @@ const EditProduct = () => {
             )}
           </motion.div>
 
-          <hr className="-mx-3 lg:-mx-6 mb-8 border-t border-foreground/50" />
+          <hr className="-mx-3 lg:-mx-6 mb-8 h-1 border-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
             <motion.div

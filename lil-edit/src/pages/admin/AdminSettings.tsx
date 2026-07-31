@@ -98,7 +98,7 @@ const AdminSettings = () => {
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Admin Settings</h1>
             <p className="text-sm text-gray-500">Manage products, orders, and storefront content from one place.</p>
           </div>
-          <hr className="-mx-3 lg:-mx-6 border-t border-foreground/50" />
+          <hr className="-mx-3 lg:-mx-6 h-1 border-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
         </div>
       </div>
 
