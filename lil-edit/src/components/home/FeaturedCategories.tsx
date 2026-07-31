@@ -1,29 +1,94 @@
-const FeaturedCategories = () => {
-  const categories = [
-    { title: "Ethnic Wear", img: "https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?auto=format&fit=crop&q=80&w=500" },
-    { title: "Accessories", img: "https://images.unsplash.com/photo-1522856339183-5a70f1a9b233?auto=format&fit=crop&q=80&w=500" },
-    { title: "Winter Wear", img: "https://images.unsplash.com/photo-1543886562-b91c0ff4e0cb?auto=format&fit=crop&q=80&w=500" },
-    { title: "Daily Essentials", img: "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&q=80&w=500" },
-  ];
+import { ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useCuratedSection, metaStr } from "@/hooks/useCuratedSection";
+import type { ResolvedItem, ResolvedEditorialItem } from "@/lib/curationApi";
+import girlImg from "@/assets/collage/featured-categories-girl.png";
+import boyImg from "@/assets/collage/featured-categories-boy.png";
+
+interface Category {
+  id: string;
+  title: string;
+  sub: string;
+  img: string;
+  objectPos: string;
+  to: string;
+}
+
+// Local content shown until the curation engine returns tiles.
+const FALLBACK: Category[] = [
+  { id: "boy", title: "LIL GENTLEMEN", sub: "BOLD & BALLER", img: boyImg, objectPos: "center 50%", to: "/collections" },
+  { id: "girl", title: "LIL BEAUTIES", sub: "GRACEFUL & SWEET", img: girlImg, objectPos: "center 15%", to: "/collections" },
+];
+
+const FeaturedCategories = ({ previewItems }: { previewItems?: ResolvedItem[] }) => {
+  const preview = previewItems !== undefined;
+  const navigate = useNavigate();
+  const { editorials: fetchedEditorials } = useCuratedSection("home_featured_categories", { skip: preview });
+  const editorials = preview
+    ? previewItems.filter((i): i is ResolvedEditorialItem => i.kind === "editorial")
+    : fetchedEditorials;
+
+  const go = (link: string) => {
+    if (/^https?:\/\//i.test(link)) window.location.assign(link);
+    else navigate(link);
+  };
+
+  const curated: Category[] = editorials.map((it) => ({
+    id: it.id,
+    title: it.title ?? "",
+    sub: it.subtitle ?? "",
+    img: it.image ?? "",
+    objectPos: metaStr(it.meta, "object_position") || "center 50%",
+    to: it.link ?? "/collections",
+  }));
+  // Always show 2 categories: admin tiles first, remaining slots from the local mocks.
+  const categories = [...curated, ...FALLBACK.slice(0, Math.max(0, 2 - curated.length))].slice(0, 2);
+  console.log(`[FeaturedCategories] curated=${curated.length} → rendering ${categories.length} (mock fill=${categories.length - Math.min(curated.length, 2)})`);
 
   return (
-    <section className="py-12 md:py-14 px-4">
-      <div className="container mx-auto">
-        <div className="mb-8">
-          <p className="text-xs font-semibold tracking-[0.18em] uppercase text-primary/80 mb-2">Shop By Category</p>
-          <h2 className="font-display text-3xl md:text-4xl font-semibold text-foreground">Featured Categories</h2>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {categories.map((category) => (
-            <div key={category.title} className="group cursor-pointer">
-              <div className="w-full aspect-square rounded-2xl overflow-hidden mb-3 shadow-sm border border-border bg-card group-hover:shadow-lg transition-all duration-300">
-                <img
-                  src={category.img}
-                  alt={category.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                />
+    <section className="relative py-12 md:py-16 bg-white overflow-hidden">
+      {/* Background Decorative Elements */}
+      <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500 rounded-full blur-[100px]" />
+        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-rose-500 rounded-full blur-[100px]" />
+      </div>
+
+      <div className="container px-4 relative z-10">
+        <div className="flex flex-col md:flex-row items-stretch justify-center gap-0 rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-border">
+          {categories.map((category, idx) => (
+            <div
+              key={category.id}
+              onClick={() => go(category.to)}
+              className="relative flex-1 group cursor-pointer overflow-hidden min-h-[300px] md:min-h-[420px]"
+            >
+              {/* Natural Image */}
+              <img
+                src={category.img}
+                alt={category.title}
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" style={{ objectPosition: category.objectPos }}
+              />
+
+              {/* Content Overlay - Minimal for maximum image vibrancy */}
+              <div className="absolute inset-0 p-6 md:p-10 flex flex-col justify-end items-start bg-black/5 group-hover:bg-black/0 transition-all duration-500">
+                <h2 className="text-3xl md:text-6xl font-bold text-black tracking-tight mb-2 transition-transform duration-500 group-hover:-translate-y-2 drop-shadow-md">
+                  {category.title}
+                </h2>
+                <p className="text-[#0F766E] text-xs md:text-sm font-bold tracking-widest mb-3 transition-transform duration-500 group-hover:-translate-y-2 drop-shadow-sm">
+                  {category.sub}
+                </p>
+
+                <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+                  <span className="text-black font-black text-sm uppercase tracking-widest">Discover Collection</span>
+                  <div className="w-10 h-10 rounded-full border border-black/20 flex items-center justify-center bg-white/80 backdrop-blur-md hover:bg-black hover:text-white transition-all">
+                    <ArrowRight className="w-5 h-5" />
+                  </div>
+                </div>
               </div>
-              <h3 className="font-display font-medium text-base md:text-lg text-foreground group-hover:text-primary transition-colors">{category.title}</h3>
+
+              {/* Center Divider Line (Desktop only) */}
+              {idx === 0 && (
+                <div className="hidden md:block absolute right-0 top-1/4 bottom-1/4 w-[1px] bg-[#9B7EC8]/10 z-20" />
+              )}
             </div>
           ))}
         </div>

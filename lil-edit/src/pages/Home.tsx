@@ -1,22 +1,40 @@
 import { useEffect } from "react";
+import Navbar from "@/components/layout/Navbar";
+import RouteFallback from "@/components/RouteFallback";
 import Footer from "@/components/layout/Footer";
 import FeaturedCategories from "@/components/home/FeaturedCategories";
 import RecommendedForYou from "@/components/home/RecommendedForYou";
 import TrendingSection from "@/components/home/TrendingSection";
 import UserNavbar from "@/components/home/UserNavbar";
+import HomeCollage from "@/components/home/HomeCollage";
+import ShopTheLook from "@/components/home/ShopTheLook";
+import AboutLilEdit from "@/components/home/AboutLilEdit";
+import HeroSection from "@/components/landing/HeroSection";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Home = () => {
+  const { user, loading } = useAuth();
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
+  // Show loading state
+  if (loading) {
+    return <RouteFallback />;
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-background via-secondary/20 to-background font-body selection:bg-primary/20">
-      <UserNavbar />
-      <main className="flex-1 pt-24 md:pt-28">
-        <TrendingSection />
+    <div className="min-h-screen flex flex-col font-body selection:bg-primary/20">
+      {user ? <UserNavbar /> : <Navbar />}
+      <main className="flex-1 pt-[calc(var(--navbar-height)+32px)] md:pt-[calc(var(--navbar-height)+16px)] bg-[#E8DDF7]">
+        <HomeCollage />
+        <HeroSection hidePhoto={true} />
         <FeaturedCategories />
+        <TrendingSection />
         <RecommendedForYou />
+        <ShopTheLook />
+        <AboutLilEdit />
       </main>
       <Footer />
     </div>

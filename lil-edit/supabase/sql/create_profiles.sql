@@ -1,4 +1,5 @@
 -- 1. Create the profile table
+
 CREATE TABLE IF NOT EXISTS public.profiles (
   id uuid REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   email text,
@@ -6,6 +7,13 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   last_name text,
   password_hash text,
   role text DEFAULT 'customer' CHECK (role IN ('customer', 'admin')),
+
+  -- ✅ New Columns
+  phone_number text,
+  is_phone_number_verified boolean DEFAULT false,
+  dob date,
+  gender text CHECK (gender IN ('male', 'female', 'other')),
+
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -24,7 +32,46 @@ CREATE POLICY "Users can update own profile" ON public.profiles
 
 --------------------------------------------------------
 
--- 2. Trigger Function (FINAL FIXED)
+-- 1b. Admin email allowlist + root-owner helper
+--
+-- Pre-authorized admin emails (for accounts that may not exist yet). The signup
+-- trigger below reads this so an allowlisted email is created as an admin. RLS is
+-- ON with NO policies → the public PostgREST roles (anon key ships in the
+-- frontend) cannot read or write it; the SECURITY DEFINER trigger and the
+-- service-role backend bypass RLS, so the legitimate paths still work.
+--
+-- The grant/revoke RPC that maintains this table from the admin UI lives in
+-- lil-edit/supabase/migrations/20260629_admin_email_allowlist.sql — run that too.
+CREATE TABLE IF NOT EXISTS public.admin_email_allowlist (
+  email          text PRIMARY KEY CHECK (email = lower(btrim(email)) AND email <> ''),
+  added_by       uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  added_by_email text,
+  note           text,
+  created_at     timestamptz NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.admin_email_allowlist ENABLE ROW LEVEL SECURITY;
+
+-- Single source of truth for the hardcoded owner emails that are ALWAYS admin and
+-- can NEVER be demoted. Keep in sync with the migration's copy.
+CREATE OR REPLACE FUNCTION public.is_root_admin(p_email text)
+RETURNS boolean
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT lower(btrim(coalesce(p_email, ''))) = ANY (ARRAY[
+    'shahvanshm23.4.2004@gmail.com',
+    'meghnashahm@gmail.com'
+  ]);
+$$;
+
+REVOKE ALL ON FUNCTION public.is_root_admin(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.is_root_admin(text) FROM anon, authenticated;
+
+--------------------------------------------------------
+
+-- 2. Trigger Function (UPDATED)
+
 CREATE OR REPLACE FUNCTION public.handle_new_user_profile()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -32,7 +79,6 @@ DECLARE
   providers_text text;
   is_google boolean := false;
   is_email boolean := false;
-  is_initial_password_set boolean := false;
   is_completed_email boolean := false;
 
   user_role text;
@@ -42,27 +88,27 @@ BEGIN
   is_google := provider_text = 'google' OR providers_text LIKE '%google%';
   is_email := provider_text = 'email' OR providers_text LIKE '%email%';
 
-  -- For email auth, we consider signup complete when BOTH password and metadata are present
+  -- Email signup completion check
   IF is_email THEN
     is_completed_email :=
       COALESCE(NULLIF(NEW.encrypted_password, ''), '') <> ''
       AND NULLIF(trim(COALESCE(NEW.raw_user_meta_data->>'first_name', '')), '') IS NOT NULL;
   END IF;
 
-  -- Assign role (clean + scalable)
-  IF NEW.email = ANY (ARRAY[
-    'shahvanshm23.4.2004@gmail.com',
-    'meghnashahm@gmail.com'
-  ]) THEN
+  -- Assign role: hardcoded owners OR any email pre-authorized in the allowlist.
+  -- (This runs SECURITY DEFINER, so it can read the RLS-locked allowlist.)
+  IF public.is_root_admin(NEW.email)
+     OR EXISTS (
+       SELECT 1 FROM public.admin_email_allowlist a
+       WHERE a.email = lower(btrim(NEW.email))
+     ) THEN
     user_role := 'admin';
   ELSE
     user_role := 'customer';
   END IF;
 
-  -- Create/update profile ONLY when signup is complete
+  -- Create/update profile
   IF is_google OR is_completed_email THEN
-    -- Prevent redundant writes on every sign-in by only executing if relevant data changed
-    -- or if the profile somehow doesn't exist yet
     IF TG_OP = 'INSERT' 
        OR NEW.email IS DISTINCT FROM OLD.email
        OR NEW.raw_user_meta_data IS DISTINCT FROM OLD.raw_user_meta_data
@@ -70,42 +116,55 @@ BEGIN
        OR NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = NEW.id)
     THEN
 
-    INSERT INTO public.profiles (
-      id,
-      email,
-      first_name,
-      last_name,
-      password_hash,
-      role
-    )
-    VALUES (
-      NEW.id,
-      NEW.email,
-      COALESCE(
-        NEW.raw_user_meta_data->>'first_name',
-        NEW.raw_user_meta_data->>'given_name',
-        split_part(NEW.raw_user_meta_data->>'full_name', ' ', 1),
-        split_part(NEW.raw_user_meta_data->>'name', ' ', 1)
-      ),
-      COALESCE(
-        NEW.raw_user_meta_data->>'last_name',
-        NEW.raw_user_meta_data->>'family_name',
-        split_part(NEW.raw_user_meta_data->>'full_name', ' ', 2),
-        split_part(NEW.raw_user_meta_data->>'name', ' ', 2)
-      ),
-      NEW.encrypted_password,
-      user_role
-    )
-    ON CONFLICT (id) DO UPDATE SET
-      email = EXCLUDED.email,
-      first_name = COALESCE(EXCLUDED.first_name, public.profiles.first_name),
-      last_name = COALESCE(EXCLUDED.last_name, public.profiles.last_name),
-      password_hash = COALESCE(EXCLUDED.password_hash, public.profiles.password_hash),
-      updated_at = NOW();
-      -- 🔒 role is NOT updated intentionally
+      INSERT INTO public.profiles (
+        id,
+        email,
+        first_name,
+        last_name,
+        password_hash,
+        role,
+        phone_number,
+        is_phone_number_verified,
+        dob,
+        gender
+      )
+      VALUES (
+        NEW.id,
+        NEW.email,
+        COALESCE(
+          NEW.raw_user_meta_data->>'first_name',
+          NEW.raw_user_meta_data->>'given_name',
+          split_part(NEW.raw_user_meta_data->>'full_name', ' ', 1),
+          split_part(NEW.raw_user_meta_data->>'name', ' ', 1)
+        ),
+        COALESCE(
+          NEW.raw_user_meta_data->>'last_name',
+          NEW.raw_user_meta_data->>'family_name',
+          split_part(NEW.raw_user_meta_data->>'full_name', ' ', 2),
+          split_part(NEW.raw_user_meta_data->>'name', ' ', 2)
+        ),
+        NEW.encrypted_password,
+        user_role,
+        NEW.raw_user_meta_data->>'phone_number',
+        COALESCE((NEW.raw_user_meta_data->>'is_phone_number_verified')::boolean, false),
+        NULLIF(NEW.raw_user_meta_data->>'dob', '')::date,
+        NEW.raw_user_meta_data->>'gender'
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        email = EXCLUDED.email,
+        first_name = COALESCE(EXCLUDED.first_name, public.profiles.first_name),
+        last_name = COALESCE(EXCLUDED.last_name, public.profiles.last_name),
+        password_hash = COALESCE(EXCLUDED.password_hash, public.profiles.password_hash),
+        phone_number = COALESCE(EXCLUDED.phone_number, public.profiles.phone_number),
+        is_phone_number_verified = COALESCE(EXCLUDED.is_phone_number_verified, public.profiles.is_phone_number_verified),
+        dob = COALESCE(EXCLUDED.dob, public.profiles.dob),
+        gender = COALESCE(EXCLUDED.gender, public.profiles.gender),
+        updated_at = NOW();
+
     END IF;
+
   ELSIF TG_OP = 'UPDATE' THEN
-    -- For existing users, update password_hash if they do a password reset
+    -- Password reset handling
     IF NEW.encrypted_password IS DISTINCT FROM OLD.encrypted_password THEN
       UPDATE public.profiles
       SET 
@@ -121,7 +180,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 --------------------------------------------------------
 
--- 3. Public helper RPCs used by signup/login flows
+-- 3. Public helper RPC
+
 CREATE OR REPLACE FUNCTION public.is_profile_registered(p_email text)
 RETURNS boolean
 LANGUAGE sql
@@ -141,6 +201,7 @@ GRANT EXECUTE ON FUNCTION public.is_profile_registered(text) TO authenticated;
 --------------------------------------------------------
 
 -- 4. Attach Trigger
+
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
 CREATE TRIGGER on_auth_user_created
@@ -150,3 +211,54 @@ CREATE TRIGGER on_auth_user_created
 
 --------------------------------------------------------
 
+-- 5. Lock profiles.role so it cannot be self-assigned
+--
+-- Authorization (admin vs customer) lives in profiles.role, and the
+-- "Users can update own profile" policy above lets a user UPDATE their own row.
+-- Without the guard below, any logged-in user could self-promote straight from
+-- the browser:  supabase.from('profiles').update({ role: 'admin' }).eq('id', myId)
+--
+-- This lock MUST be created together with the table — that is why it lives here
+-- and not in a separate file. (A standalone copy also exists in
+-- secure_profile_role.sql for older runbooks; both are idempotent, so applying
+-- both is harmless. The canonical copy is THIS one.)
+--
+-- The BEFORE UPDATE trigger rejects any change to `role` by the PostgREST client
+-- roles (anon / authenticated). The service-role backend, the SECURITY DEFINER
+-- signup trigger, and superuser/migration sessions are unaffected, so legitimate
+-- role assignment (signup allowlist, manual promotion via SQL editor) still works.
+
+CREATE OR REPLACE FUNCTION public.enforce_profile_role_immutable()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+-- SECURITY INVOKER (the default) is REQUIRED here: the guard relies on
+-- current_user reflecting the actual caller. SECURITY DEFINER would rewrite
+-- current_user to the function owner and silently defeat the check.
+AS $$
+BEGIN
+  IF NEW.role IS DISTINCT FROM OLD.role
+     AND current_user IN ('authenticated', 'anon') THEN
+    RAISE EXCEPTION 'profiles.role is read-only'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_enforce_profile_role_immutable ON public.profiles;
+CREATE TRIGGER trg_enforce_profile_role_immutable
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_profile_role_immutable();
+
+-- Defense in depth: give the update policy an explicit WITH CHECK so its intent
+-- (the row must remain the caller's own) is self-documenting. The trigger above
+-- is what actually protects the role column; this is belt-and-suspenders and
+-- supersedes the simpler policy defined in section 1.
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+CREATE POLICY "Users can update own profile" ON public.profiles
+  FOR UPDATE
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+--------------------------------------------------------

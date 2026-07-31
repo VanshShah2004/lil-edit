@@ -14,7 +14,7 @@ const Index = () => {
 
   useEffect(() => {
     if (user && !loading) {
-      navigate("/dashboard", { replace: true });
+      navigate("/", { replace: true });
     }
   }, [user, loading, navigate]);
 

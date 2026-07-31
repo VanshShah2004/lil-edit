@@ -20,4 +20,23 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Vendored shadcn/ui primitives: keep the upstream file layout (variants +
+    // component in one file) and skeleton placeholder randomness. These trip
+    // DX-only rules that don't apply to library code we don't author.
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+      'react-hooks/purity': 'off',
+    },
+  },
+  {
+    // Context modules intentionally co-locate their consumer hook with the
+    // provider component; splitting them would churn imports app-wide. Only the
+    // Fast Refresh DX rule objects, so scope it off here.
+    files: ['src/contexts/**/*.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

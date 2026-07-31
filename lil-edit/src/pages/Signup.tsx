@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/layout/Navbar";
+import RouteFallback from "@/components/RouteFallback";
+import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import logo from "@/assets/logo.png";
 
@@ -19,15 +21,28 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-
-  const { sendSignupOtp, verifySignupOtpAndCompleteProfile, signInWithGoogle, user } = useAuth();
+  const { sendSignupOtp, verifySignupOtpAndCompleteProfile, signInWithGoogle, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Preserve the guest flow's destination (?redirect=/checkout or /cart) through the OTP
+  // steps, falling back to the homepage. Same-origin absolute paths only (no open redirect).
+  const redirectParam = searchParams.get("redirect");
+  const redirectTo =
+    redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+      ? redirectParam
+      : "/";
 
   useEffect(() => {
     if (user) {
-      navigate("/dashboard", { replace: true });
+      navigate(redirectTo, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, redirectTo]);
+
+  // Show loading state
+  if (authLoading) {
+    return <RouteFallback />;
+  }
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,8 +56,8 @@ const Signup = () => {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
       setLoading(false);
       return;
     }
@@ -79,7 +94,7 @@ const Signup = () => {
         last_name: lastName,
       });
 
-      navigate("/dashboard", { replace: true });
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "OTP verification failed. Please try again.");
     } finally {
@@ -116,12 +131,12 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-1 flex items-center justify-center py-16 px-4">
+    <div className="min-h-screen flex flex-col bg-[#E9DFF5]">
+      {user ? <UserNavbar /> : <Navbar />}
+      <main className="flex-1 flex items-center justify-center pb-[89px] sm:pb-16 px-4" style={{ paddingTop: 'calc(var(--navbar-height, 80px) + 2rem)' }}>
         <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <img src={logo} alt="The Lil Edit" className="h-16 mx-auto mb-6" />
+          <div className="text-center mb-8 sm:mb-3">
+            <img src={logo} alt="The Lil Edit" className="h-28 sm:h-24 mx-auto mb-6 sm:mb-[9px] sm:-mt-[5px]" />
             <h1 className="font-display text-3xl text-foreground mb-2">
               {step === "details" ? "Create an account" : "Verify your email"}
             </h1>

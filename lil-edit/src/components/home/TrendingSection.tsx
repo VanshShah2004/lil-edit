@@ -1,42 +1,121 @@
-import { Heart } from "lucide-react";
+import { Heart, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useWishlist } from "@/contexts/WishlistContext";
+import { useCuratedSection, pdpUrlFor } from "@/hooks/useCuratedSection";
+import type { ResolvedItem, ResolvedProductItem } from "@/lib/curationApi";
+import QuickAddButton from "@/components/home/QuickAddButton";
 
-const TrendingSection = () => {
-  const products = [
-    { name: "Floral Summer Dress", price: "42.00", img: "https://images.unsplash.com/photo-1622290319146-7b63df48a635?auto=format&fit=crop&q=80&w=500", badge: "Bestseller" },
-    { name: "Linen Overall Shorts", price: "36.00", img: "https://images.unsplash.com/photo-1544645239-0113c126511a?auto=format&fit=crop&q=80&w=500", badge: "Trending" },
-    { name: "Ribbed Knit Cardigan", price: "50.00", img: "https://images.unsplash.com/photo-1596870230751-ebdfce98ec42?auto=format&fit=crop&q=80&w=500" },
-    { name: "Classic Denim Jacket", price: "48.00", img: "https://images.unsplash.com/photo-1519238392176-7f41a868516d?auto=format&fit=crop&q=80&w=500", badge: "Trending" },
-  ];
+interface Card {
+  key: string;
+  name: string;
+  price: string;
+  img: string;
+  badge?: string;
+  // Set only for real curated products → enables PDP navigation + wishlist.
+  product?: ResolvedProductItem;
+}
+
+const TrendingSection = ({
+  previewItems,
+  previewTitle,
+  previewSubtitle,
+}: {
+  previewItems?: ResolvedItem[];
+  previewTitle?: string | null;
+  previewSubtitle?: string | null;
+}) => {
+  const preview = previewItems !== undefined;
+  const navigate = useNavigate();
+  const { isWishlisted, addToWishlist, removeFromWishlist, wishlistItems } = useWishlist();
+  const { products: fetchedProducts, title: fetchedTitle, subtitle: fetchedSubtitle } = useCuratedSection("home_trending", { skip: preview });
+  const products = preview
+    ? previewItems.filter((i): i is ResolvedProductItem => i.kind === "product")
+    : fetchedProducts;
+  const heading = (preview ? previewTitle : fetchedTitle) ?? "Trending Now";
+  const eyebrow = (preview ? previewSubtitle : fetchedSubtitle) ?? "Elevated Styles";
+
+  const curated: Card[] = products.map((p) => ({
+    key: p.id,
+    name: p.title,
+    price: String(p.price),
+    img: p.image ?? "",
+    badge: p.badges[0],
+    product: p,
+  }));
+  // No local mock fill for product sections: the backend already tops product
+  // sections up with real catalog items, so empty here means curation is
+  // unavailable — hide the strip rather than show placeholder products.
+  const cards = curated;
+
+  const toggleWishlist = (p: ResolvedProductItem) => {
+    const existing = wishlistItems.find((i) => i.slug === p.slug && i.sku === p.sku);
+    if (existing) void removeFromWishlist(existing.id);
+    else void addToWishlist(p.slug, p.sku);
+  };
+
+  if (cards.length === 0) {
+    console.log("[TrendingSection] no products — section hidden");
+    return null;
+  }
 
   return (
-    <section className="py-12 md:py-14 px-4">
-      <div className="container mx-auto">
-        <div className="flex items-end justify-between mb-8">
-          <div>
-            <p className="text-xs font-semibold tracking-[0.18em] uppercase text-primary/80 mb-2">Latest Picks</p>
-            <h2 className="font-display text-3xl md:text-4xl font-semibold text-foreground">Trending Now</h2>
+    <section className="pt-0 pb-12 md:pt-0 md:pb-14 px-0">
+      <div className="container">
+        <div className="mb-3 md:mb-4">
+          <p className="text-base font-black tracking-[0.2em] uppercase text-[#0F766E] mb-0.5 pt-8">
+            {eyebrow}
+          </p>
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-2xl md:text-3xl font-black text-foreground flex items-center gap-3">
+              {heading}
+            </h2>
+            <button className="flex items-center justify-center w-10 h-10 rounded-full bg-white text-foreground border border-border shadow-sm hover:bg-[#0F766E] hover:text-white transition-all duration-300 shrink-0">
+              <ArrowRight className="w-6 h-6" />
+            </button>
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {products.map((product) => (
-            <div key={product.name} className="group bg-card p-3 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all">
-              <div className="relative rounded-xl overflow-hidden aspect-[4/5] mb-3">
-                {product.badge && (
-                  <div className="absolute top-2 left-2 z-10 bg-primary/90 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md backdrop-blur shadow-sm">
-                    {product.badge}
-                  </div>
-                )}
-                <img src={product.img} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                <button className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-primary transition-all">
-                  <Heart className="w-3.5 h-3.5" />
-                </button>
+
+        {/* Mobile: 2x2 Grid (4 items) | Desktop: Horizontal scroll (10 items) */}
+        <div
+          className="grid grid-cols-2 gap-4 md:flex md:gap-5 md:overflow-x-auto md:no-scrollbar md:snap-x md:snap-mandatory md:scroll-smooth pb-2"
+          style={{ scrollbarWidth: "none" }}
+        >
+          {cards.map((card, idx) => {
+            const p = card.product;
+            const wishlisted = p ? isWishlisted(p.slug, p.sku) : false;
+            return (
+              <div
+                key={card.key}
+                onClick={p ? () => navigate(pdpUrlFor(p)) : undefined}
+                className={`group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all shrink-0 md:snap-start w-full md:w-[calc(20%-16px)] ${idx >= 4 ? 'hidden md:block' : ''} ${p ? 'cursor-pointer' : ''}`}
+              >
+                <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5">
+                  <img src={card.img} alt={card.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  {card.badge && (
+                    <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/90 text-[#0F766E] shadow-sm">
+                      {card.badge}
+                    </span>
+                  )}
+                  <button
+                    onClick={p ? (e) => { e.stopPropagation(); toggleWishlist(p); } : undefined}
+                    className={`absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center transition-all ${wishlisted ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+                    aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}
+                  >
+                    <Heart className="w-3.5 h-3.5" fill={wishlisted ? "currentColor" : "none"} />
+                  </button>
+                  {p && (
+                    <div className="hidden md:block absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                      <QuickAddButton product={p} />
+                    </div>
+                  )}
+                </div>
+                <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
+                  <h3 className="font-display text-xs md:text-sm font-medium text-foreground leading-snug">{card.name}</h3>
+                  <p className="font-body text-xs font-semibold text-[#0F766E] shrink-0">₹{card.price}</p>
+                </div>
               </div>
-              <div className="px-1 pb-1">
-                <h3 className="font-display text-sm md:text-base font-medium text-foreground truncate">{product.name}</h3>
-                <p className="font-body text-sm text-primary mt-1">${product.price}</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
