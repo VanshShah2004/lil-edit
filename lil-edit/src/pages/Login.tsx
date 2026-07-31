@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/layout/Navbar";
+import RouteFallback from "@/components/RouteFallback";
+import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import logo from "@/assets/logo.png";
 
@@ -11,14 +13,28 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { signIn, signInWithGoogle, user } = useAuth();
+  const { signIn, signInWithGoogle, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Return the user to where the guest flow began (?redirect=/checkout or /cart), falling
+  // back to the homepage. Only same-origin absolute paths are honored (no open redirect).
+  const redirectParam = searchParams.get("redirect");
+  const redirectTo =
+    redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+      ? redirectParam
+      : "/";
 
   useEffect(() => {
     if (user) {
-      navigate("/dashboard", { replace: true });
+      navigate(redirectTo, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, redirectTo]);
+
+  // Show loading state
+  if (authLoading) {
+    return <RouteFallback />;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +50,7 @@ const Login = () => {
 
     try {
       await signIn(email, password);
-      navigate("/dashboard", { replace: true });
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed. Please try again.");
     } finally {
@@ -55,12 +71,12 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-1 flex items-center justify-center py-16 px-4">
+    <div className="min-h-screen flex flex-col bg-[#E9DFF5]">
+      {user ? <UserNavbar /> : <Navbar />}
+      <main className="flex-1 flex items-center justify-center pb-[89px] sm:pb-16 px-4" style={{ paddingTop: 'calc(var(--navbar-height, 80px) + 2rem)' }}>
         <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <img src={logo} alt="The Lil Edit" className="h-16 mx-auto mb-6" />
+          <div className="text-center mb-8 sm:mb-3">
+            <img src={logo} alt="The Lil Edit" className="h-28 sm:h-24 mx-auto mb-6 sm:mb-[9px] sm:-mt-[5px]" />
             <h1 className="font-display text-3xl text-foreground mb-2">Welcome back</h1>
             <p className="text-muted-foreground font-body text-sm">Log in to your account</p>
           </div>
@@ -76,7 +92,7 @@ const Login = () => {
               <label className="block font-body text-sm text-foreground mb-1.5">Email</label>
               <input
                 type="email"
-                placeholder="hello@example.com"
+                placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}

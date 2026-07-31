@@ -1,5 +1,7 @@
 import express from "express";
 import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
+import { createLog } from "../lib/logger.js";
+import { authLimiter, otpSendLimiter } from "../middleware/rateLimiters.js";
 
 const router = express.Router();
 
@@ -15,17 +17,27 @@ function isMissingRpcError(message: string | undefined, code?: string) {
 
 /**
  * Signup step 1: server checks email not already registered in profiles,
- * then triggers Supabase email OTP. Client still calls verifyOtp + updateUser.
+ * then triggers Supabase email OTP.
+ *
+ * Rate limited two ways: authLimiter caps attempts per IP (bulk abuse from one
+ * source), otpSendLimiter caps sends per email address (bombing one inbox from
+ * many sources). Both sit in front of the handler so a throttled request never
+ * reaches Supabase.
  */
-router.post("/signup/send-otp", async (req, res) => {
+router.post("/signup/send-otp", authLimiter, otpSendLimiter, async (req, res) => {
+  const log = createLog().start("AUTH SIGNUP OTP");
   try {
     const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      log.warn("invalid or missing email").end("AUTH SIGNUP OTP");
       res.status(400).json({ error: "Valid email is required" });
       return;
     }
 
+    log.step(`email=${email}`);
+
     if (supabaseAdmin) {
+      log.step("DB check - email availability via admin client");
       const { data, error } = await supabaseAdmin
         .from("profiles")
         .select("id")
@@ -33,107 +45,63 @@ router.post("/signup/send-otp", async (req, res) => {
         .maybeSingle();
 
       if (error) {
-        console.error(error);
+        log.error("profile lookup failed", error).end("AUTH SIGNUP OTP");
         res.status(500).json({ error: "Could not verify email availability" });
         return;
       }
 
       if (data) {
-        res.status(409).json({
-          error: "This email is already registered. Please log in instead.",
-        });
+        log.warn(`email already registered  email=${email}`).end("AUTH SIGNUP OTP");
+        res.status(409).json({ error: "This email is already registered. Please log in instead." });
         return;
       }
     } else {
+      log.step("DB check - email availability via RPC");
       const { data: alreadyRegistered, error: rpcError } = await supabaseAnon.rpc(
         "is_profile_registered",
-        { p_email: email }
+        { p_email: email },
       );
 
       if (rpcError) {
         if (isMissingRpcError(rpcError.message, (rpcError as { code?: string }).code)) {
-          console.error(
-            "[auth] is_profile_registered RPC missing — run lil-edit/supabase/sql/create_profiles.sql."
-          );
+          log.error("is_profile_registered RPC missing — run lil-edit/supabase/sql/create_profiles.sql");
           res.status(500).json({ error: "Could not verify email availability" });
+          log.end("AUTH SIGNUP OTP");
           return;
         }
-        console.error(rpcError);
+        log.error("RPC error", rpcError).end("AUTH SIGNUP OTP");
         res.status(500).json({ error: "Could not verify email availability" });
         return;
       }
 
       if (alreadyRegistered === true) {
-        res.status(409).json({
-          error: "This email is already registered. Please log in instead.",
-        });
+        log.warn(`email already registered  email=${email}`).end("AUTH SIGNUP OTP");
+        res.status(409).json({ error: "This email is already registered. Please log in instead." });
         return;
       }
     }
 
+    log.step("Supabase Auth - send OTP");
     const { error: otpError } = await supabaseAnon.auth.signInWithOtp({ email });
     if (otpError) {
-      console.error(otpError);
+      log.error("OTP send failed", otpError).end("AUTH SIGNUP OTP");
       res.status(400).json({ error: otpError.message });
       return;
     }
 
+    log.success(`OTP sent  email=${email}`).end("AUTH SIGNUP OTP");
     res.status(200).json({ ok: true });
   } catch (e) {
-    console.error(e);
+    log.error("unhandled error", e).end("AUTH SIGNUP OTP");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-/**
- * Login guard: require a profile row before attempting password auth.
- */
-router.post("/login/check-profile", async (req, res) => {
-  try {
-    const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      res.status(400).json({ error: "Valid email is required" });
-      return;
-    }
-
-    if (supabaseAdmin) {
-      const { data, error } = await supabaseAdmin
-        .from("profiles")
-        .select("id")
-        .ilike("email", email)
-        .maybeSingle();
-
-      if (error) {
-        console.error(error);
-        res.status(500).json({ error: "Could not verify registration status" });
-        return;
-      }
-
-      res.status(200).json({ exists: Boolean(data) });
-      return;
-    }
-
-    const { data, error } = await supabaseAnon.rpc("is_profile_registered", {
-      p_email: email,
-    });
-
-    if (error) {
-      if (isMissingRpcError(error.message, (error as { code?: string }).code)) {
-        console.warn(
-          "[auth] is_profile_registered RPC missing — run the profiles SQL setup to enable pre-login profile checks."
-        );
-      } else {
-        console.error(error);
-        res.status(500).json({ error: "Could not verify registration status" });
-        return;
-      }
-    }
-
-    res.status(200).json({ exists: data === true });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+// NOTE: There is deliberately no "does this email have an account?" endpoint.
+// Login and password-reset run straight against Supabase and return a generic
+// result, so neither the API nor its error messages reveal whether an address is
+// registered (account enumeration). Signup still reports "already registered"
+// because it genuinely can't create a duplicate — that's the one unavoidable
+// disclosure, and it's rate limited above.
 
 export default router;

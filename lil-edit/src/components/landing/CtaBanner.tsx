@@ -7,7 +7,7 @@ const CtaBanner = () => {
   const [isLoginHovered, setIsLoginHovered] = useState(false);
 
   return (
-    <section className="bg-strip-soft border-y border-border/70">
+    <section className="bg-white border-y border-border/70">
       <div className="container mx-auto px-4 lg:px-8 py-12 md:py-16 text-center">
         <Sparkles className="h-8 w-8 text-primary mx-auto mb-4" />
         <h2 className="font-display text-3xl md:text-4xl text-foreground mb-3">

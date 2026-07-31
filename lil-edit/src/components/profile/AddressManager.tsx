@@ -1,18 +1,34 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Trash2, MapPin, CheckCircle2, Home, Briefcase, Navigation, Star } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Home, Briefcase, Loader2, X } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-interface AddressManagerProps {
-  addresses: any[];
-  setAddresses: React.Dispatch<React.SetStateAction<any[]>>;
-  setDeletedAddresses: React.Dispatch<React.SetStateAction<string[]>>;
+export interface Address {
+  id: string;
+  type: string;
+  label: string | null;
+  line1: string;
+  line2: string;
+  landmark: string;
+  city: string;
+  state: string;
+  country: string;
+  pincode: string;
+  is_default: boolean;
 }
 
-export default function AddressManager({ addresses, setAddresses, setDeletedAddresses }: AddressManagerProps) {
+interface AddressManagerProps {
+  addresses: Address[];
+  userId: string;
+  onChange: () => Promise<void> | void;
+}
+
+export default function AddressManager({ addresses, userId, onChange }: AddressManagerProps) {
   // Form State
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState({
     type: "home",
     label: "",
@@ -52,7 +68,7 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
     }
   };
 
-  const openForm = (address: any = null) => {
+  const openForm = (address: Address | null = null) => {
     if (address) {
       setEditingId(address.id);
       setForm({
@@ -90,7 +106,8 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
     setEditingId(null);
   };
 
-  const saveAddress = (e: React.FormEvent) => {
+  // Insert or update the address in the DB immediately, then refresh the parent list.
+  const saveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!form.line1.trim() || !form.line2.trim() || !form.city.trim() || !form.state.trim() || !form.country.trim() || !form.pincode.trim()) {
@@ -115,52 +132,81 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
     }
 
     const willBeDefault = form.is_default || addresses.length === 0;
-    
-    setAddresses((prev) => {
-      let newList = [...prev];
-      
-      if (willBeDefault) {
-        newList = newList.map(a => ({ ...a, is_default: false }));
-      }
 
-      const payload = {
-        type: finalType,
-        label: finalLabel,
-        line1: form.line1,
-        line2: form.line2,
-        landmark: form.landmark,
-        city: form.city,
-        state: form.state,
-        country: form.country,
-        pincode: form.pincode,
-        is_default: willBeDefault
-      };
+    const payload = {
+      type: finalType,
+      label: finalLabel,
+      line1: form.line1,
+      line2: form.line2,
+      landmark: form.landmark,
+      city: form.city,
+      state: form.state,
+      country: form.country,
+      pincode: form.pincode,
+      is_default: willBeDefault,
+      user_id: userId,
+    };
+
+    setIsSaving(true);
+    try {
+      // Only one address can be the default — clear the rest first.
+      if (willBeDefault) {
+        const { error: clearError } = await supabase
+          .from("addresses")
+          .update({ is_default: false })
+          .eq("user_id", userId);
+        if (clearError) throw clearError;
+      }
 
       if (editingId) {
-        return newList.map(a => a.id === editingId ? { ...a, ...payload } : a);
+        const { error } = await supabase.from("addresses").update(payload).eq("id", editingId);
+        if (error) throw error;
       } else {
-        const newAddress = { id: `temp-${Date.now()}`, ...payload };
-        return [newAddress, ...newList];
+        const { error } = await supabase.from("addresses").insert(payload);
+        if (error) throw error;
       }
-    });
 
-    closeForm();
-  };
-
-  const deleteAddress = (id: string) => {
-    if (!window.confirm("Delete this address?")) return;
-    
-    if (!id.startsWith('temp-')) {
-      setDeletedAddresses((prev) => [...prev, id]);
+      await onChange();
+      toast.success(editingId ? "Address updated" : "Address added");
+      closeForm();
+    } catch (error) {
+      console.error("Failed to save address:", error);
+      toast.error("Failed to save address");
+    } finally {
+      setIsSaving(false);
     }
-    setAddresses((prev) => prev.filter(a => a.id !== id));
   };
 
-  const setDefault = (id: string) => {
-    setAddresses((prev) => prev.map(a => ({
-      ...a,
-      is_default: a.id === id
-    })));
+  const deleteAddress = async (id: string) => {
+    if (!window.confirm("Delete this address?")) return;
+
+    try {
+      const { error } = await supabase.from("addresses").delete().eq("id", id);
+      if (error) throw error;
+      await onChange();
+      toast.success("Address deleted");
+    } catch (error) {
+      console.error("Failed to delete address:", error);
+      toast.error("Failed to delete address");
+    }
+  };
+
+  const setDefault = async (id: string) => {
+    try {
+      const { error: clearError } = await supabase
+        .from("addresses")
+        .update({ is_default: false })
+        .eq("user_id", userId);
+      if (clearError) throw clearError;
+
+      const { error } = await supabase.from("addresses").update({ is_default: true }).eq("id", id);
+      if (error) throw error;
+
+      await onChange();
+    } catch (error) {
+      console.error("Failed to set default address:", error);
+      toast.error("Failed to update default address");
+    }
   };
 
   const getIcon = (type: string) => {
@@ -172,7 +218,7 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
 
 
   return (
-    <div className="bg-[#F8F6FC] rounded-2xl shadow-[0_4px_20px_-4px_rgba(147,136,170,0.15)] border border-[#EDEBF5] overflow-hidden">
+    <div className="bg-[#F8F6FC] rounded-2xl shadow-[0_4px_20px_-4px_rgba(147,136,170,0.15)] border border-gray-400 overflow-hidden">
       <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-[#EDEBF5] bg-[#F1EEF8] flex justify-between items-center">
         <h3 className="text-base sm:text-lg font-body font-medium text-foreground">Saved Addresses</h3>
         {!isFormOpen && (
@@ -186,21 +232,37 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
         )}
       </div>
 
-      <div className="p-4 sm:p-6">
-        {isFormOpen ? (
+      <div className="p-4 sm:p-6 space-y-6">
+        {isFormOpen && (
           <form onSubmit={saveAddress} className="space-y-6 bg-white p-6 rounded-xl border border-[#EDEBF5]">
+            <div className="flex items-center justify-between -mt-1">
+              <h4 className="font-body text-base font-medium text-foreground">
+                {editingId ? "Edit Address" : "Add New Address"}
+              </h4>
+              <button
+                type="button"
+                onClick={closeForm}
+                disabled={isSaving}
+                aria-label="Close"
+                className="inline-flex items-center justify-center w-6 h-6 rounded-full text-destructive hover:bg-red-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block font-body text-sm text-foreground mb-1.5">Address Type</label>
-                <select
-                  value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
-                >
-                  <option value="home">Home</option>
-                  <option value="work">Work</option>
-                  <option value="other">Others</option>
-                </select>
+                <Select value={form.type} onValueChange={(value) => setForm({ ...form, type: value })}>
+                  <SelectTrigger className="w-full h-auto px-4 py-3 rounded-xl border border-gray-400 bg-background text-sm font-normal focus:outline-none focus:ring-2 focus:ring-teal-700/30 focus:ring-offset-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="home">Home</SelectItem>
+                    <SelectItem value="work">Work</SelectItem>
+                    <SelectItem value="other">Others</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {form.type === "other" && (
@@ -211,7 +273,7 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
                     value={form.label}
                     onChange={(e) => setForm({ ...form, label: e.target.value })}
                     placeholder="e.g. Gym, Hostel"
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-400 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
                   />
                 </div>
               )}
@@ -222,7 +284,7 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
                   required
                   value={form.line1}
                   onChange={(e) => setForm({ ...form, line1: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-400 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
                   placeholder="Apartment, unit, building, floor"
                 />
               </div>
@@ -233,7 +295,7 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
                   required
                   value={form.line2}
                   onChange={(e) => setForm({ ...form, line2: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-400 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
                   placeholder="Street address"
                 />
               </div>
@@ -243,7 +305,7 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
                 <input
                   value={form.landmark}
                   onChange={(e) => setForm({ ...form, landmark: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-400 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
                   placeholder="e.g. Near Apollo Hospital"
                 />
               </div>
@@ -255,7 +317,7 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
                   value={form.pincode}
                   onChange={handlePincodeChange}
                   maxLength={6}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-400 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
                   placeholder="6-digit pincode"
                 />
               </div>
@@ -266,7 +328,7 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
                   required
                   value={form.city}
                   onChange={(e) => setForm({ ...form, city: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-400 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
                 />
               </div>
 
@@ -276,7 +338,7 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
                   required
                   value={form.state}
                   onChange={(e) => setForm({ ...form, state: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-400 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
                 />
               </div>
 
@@ -286,7 +348,7 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
                   required
                   value={form.country}
                   onChange={(e) => setForm({ ...form, country: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-400 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-teal-700/30"
                 />
               </div>
               
@@ -302,23 +364,34 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <div className="flex justify-end gap-3 pt-4">
               <button
                 type="button"
                 onClick={closeForm}
-                className="px-6 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-secondary transition-colors"
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-xl border border-destructive text-sm font-medium text-destructive hover:bg-red-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-8 py-2.5 bg-teal-700 text-white text-sm font-medium rounded-xl hover:bg-teal-800 transition-colors flex items-center"
+                disabled={isSaving}
+                className="px-8 py-2.5 bg-teal-700 text-white text-sm font-medium rounded-xl hover:bg-teal-800 transition-colors flex items-center disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Confirm Address
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  "Confirm Address"
+                )}
               </button>
             </div>
           </form>
-        ) : addresses.length === 0 ? (
+        )}
+
+        {addresses.length === 0 && !isFormOpen && (
           <div className="text-center py-10 bg-white rounded-xl border border-[#EDEBF5] border-dashed">
             <MapPin className="w-10 h-10 text-teal-200 mx-auto mb-3" />
             <h4 className="text-foreground font-medium mb-1">No addresses found</h4>
@@ -331,7 +404,9 @@ export default function AddressManager({ addresses, setAddresses, setDeletedAddr
               Add New Address
             </button>
           </div>
-        ) : (
+        )}
+
+        {addresses.length > 0 && !(isFormOpen && editingId) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {addresses.map((addr) => (
               <div key={addr.id} className={`p-5 bg-white rounded-xl border ${addr.is_default ? 'border-teal-500 shadow-sm' : 'border-[#EDEBF5]'} relative group transition-all`}>

@@ -6,7 +6,7 @@ const megaMenuItems = [
   "GIRLS",
   "BOYS",
   "TRENDING",
-  "BY OCCASSION",
+  "BY OCCASION",
 ];
 
 const megaMenuContent: Record<
@@ -37,7 +37,7 @@ const megaMenuContent: Record<
     { title: "SHOP BY LOOK", links: ["Traditional", "Modern Ethnic", "Streetwear", "Elegant", "Minimal"] },
     { title: "THEME-BASED", links: ["Super-hero Edit", "Safari Style", "Space Explorer"] },
   ],
-  "BY OCCASSION": [
+  "BY OCCASION": [
     { title: "EVENTS", links: ["Birthday", "Wedding", "Festive", "School Events", "Family Function"] },
     { title: "STYLE TYPE", links: ["Traditional", "Contemporary", "Comfort Wear", "Party Wear", "Premium Edit"] },
     { title: "SHOP FAST", links: ["Ready To Ship", "Under 1999", "Matching Siblings", "Quick Picks"] },
@@ -69,24 +69,24 @@ const MegaMenu = () => {
   return (
     <div
       ref={megaMenuRef}
-      className="border-t border-border/60 bg-background w-full"
+      className="border-t border-border/60 bg-background w-full shadow-md relative z-0"
       onMouseLeave={() => window.innerWidth >= 768 && setActiveMegaTab(null)}
     >
-      <div className="container mx-auto px-1 sm:px-4 lg:px-8 py-3.5 md:py-0.5 lg:py-1">
-        <div className="flex items-center justify-center whitespace-nowrap overflow-hidden pb-1">
+      <div className="container mx-auto px-1 sm:px-4 lg:px-8 pt-0 pb-1.5 md:py-0.5 lg:py-1">
+        <div className="flex items-center justify-center whitespace-nowrap overflow-x-auto no-scrollbar pb-1">
           {megaMenuItems.map((item, index) => (
-            <div key={`unified-${item}`} className="flex items-center">
+            <div key={`unified-${item}`} className={`flex items-center${index === 0 ? " pl-44" : ""}${index === megaMenuItems.length - 1 ? " pr-44" : ""}`}>
               <button
                 type="button"
                 onMouseEnter={() => window.innerWidth >= 768 && setActiveMegaTab(item)}
                 onClick={() => setActiveMegaTab((prev) => (prev === item ? null : item))}
-                className={`px-[1.2vw] min-[450px]:px-2 sm:px-3 lg:px-4 py-1 text-[2.65vw] min-[450px]:text-[12px] sm:text-xs md:text-[11px] lg:text-[13px] font-bold tracking-tighter min-[450px]:tracking-tight sm:tracking-wide transition-colors ${activeMegaTab === item ? "text-teal-600" : "text-foreground hover:text-teal-600"
+                className={`px-[1.2vw] min-[450px]:px-2 sm:px-3 lg:px-4 py-1 text-[3.2vw] min-[450px]:text-[13px] sm:text-[12px] md:text-[11px] lg:text-[13px] font-bold tracking-tighter min-[450px]:tracking-tight sm:tracking-wide transition-colors ${activeMegaTab === item ? "text-teal-700 sm:text-teal-600" : "text-foreground hover:text-teal-700 sm:hover:text-teal-600"
                   }`}
               >
                 {item}
               </button>
               {index < megaMenuItems.length - 1 && (
-                <span className="px-[1vw] min-[450px]:px-2 sm:px-3 lg:px-4 text-[#9a65ad] font-bold select-none text-[2.65vw] min-[450px]:text-[12px] sm:text-xs md:text-[11px] lg:text-[13px]">
+                <span className="px-[1vw] min-[450px]:px-2 sm:px-3 lg:px-4 text-[#7A4A8C] sm:text-[#9a65ad] font-bold select-none text-[3.2vw] min-[450px]:text-[13px] sm:text-[12px] md:text-[11px] lg:text-[13px]">
                   |
                 </span>
               )}
@@ -101,7 +101,7 @@ const MegaMenu = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
               {(megaMenuContent[activeMegaTab] ?? []).map((section) => (
                 <div key={`section-${section.title}`} className="space-y-2.5">
-                  <h3 className="text-xs md:text-sm lg:text-base font-semibold tracking-[0.1em] lg:tracking-[0.12em] text-[#9a65ad]">
+                  <h3 className="text-xs md:text-sm lg:text-base font-semibold tracking-[0.1em] lg:tracking-[0.12em] text-[#7A4A8C] sm:text-[#9a65ad]">
                     {section.title}
                   </h3>
                   <ul className="space-y-1.5 md:space-y-2">

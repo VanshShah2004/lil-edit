@@ -8,9 +8,9 @@ const features = [
 ];
 
 const FeaturesBar = () => (
-  <section className="bg-band-mist border-y border-border/60">
+  <section className="bg-white border-y border-border/60">
     <div className="container mx-auto px-4 lg:px-8 py-8 md:py-10">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 md:gap-8">
         {features.map((f) => (
           <div key={f.label} className="flex flex-col items-center text-center gap-3">
             <div className="w-12 h-12 rounded-full bg-primary/[0.07] flex items-center justify-center ring-1 ring-border/40">

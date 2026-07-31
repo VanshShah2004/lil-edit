@@ -22,7 +22,7 @@ export default function SearchBar({ value, onChange, onClose, autoFocus = false 
   }, [autoFocus]);
 
   return (
-    <div className="sticky top-0 z-10 bg-background pt-4 pb-4 px-3 sm:px-4 md:px-8 border-b border-border/60">
+    <div className="bg-background pt-4 pb-4 px-3 sm:px-4 md:px-8">
       <div className="flex items-center gap-3">
         <div className="relative flex-1 group">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-teal-600 transition-colors">
@@ -34,7 +34,7 @@ export default function SearchBar({ value, onChange, onClose, autoFocus = false 
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder="Search products, categories, or trends..."
-            className="w-full bg-secondary/50 border border-border/50 rounded-full py-3 pl-12 pr-10 text-base md:text-lg focus:outline-none focus:ring-2 focus:ring-teal-600/30 focus:border-teal-600 focus:bg-background transition-all placeholder:text-muted-foreground/70"
+            className="w-full bg-white border border-gray-400 rounded-md py-3 pl-12 pr-10 text-base md:text-lg focus:outline-none focus:ring-2 focus:ring-teal-600/30 focus:border-teal-600 focus:bg-white transition-all placeholder:text-muted-foreground/70"
           />
           {value && (
             <button
@@ -45,7 +45,7 @@ export default function SearchBar({ value, onChange, onClose, autoFocus = false 
               className="absolute inset-y-0 right-0 pr-4 flex items-center text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Clear search"
             >
-              <div className="bg-secondary p-1 rounded-full">
+              <div className="bg-gray-100 p-1 rounded-full">
                 <X className="w-4 h-4" />
               </div>
             </button>

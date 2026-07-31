@@ -32,6 +32,44 @@ CREATE POLICY "Users can update own profile" ON public.profiles
 
 --------------------------------------------------------
 
+-- 1b. Admin email allowlist + root-owner helper
+--
+-- Pre-authorized admin emails (for accounts that may not exist yet). The signup
+-- trigger below reads this so an allowlisted email is created as an admin. RLS is
+-- ON with NO policies → the public PostgREST roles (anon key ships in the
+-- frontend) cannot read or write it; the SECURITY DEFINER trigger and the
+-- service-role backend bypass RLS, so the legitimate paths still work.
+--
+-- The grant/revoke RPC that maintains this table from the admin UI lives in
+-- lil-edit/supabase/migrations/20260629_admin_email_allowlist.sql — run that too.
+CREATE TABLE IF NOT EXISTS public.admin_email_allowlist (
+  email          text PRIMARY KEY CHECK (email = lower(btrim(email)) AND email <> ''),
+  added_by       uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  added_by_email text,
+  note           text,
+  created_at     timestamptz NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.admin_email_allowlist ENABLE ROW LEVEL SECURITY;
+
+-- Single source of truth for the hardcoded owner emails that are ALWAYS admin and
+-- can NEVER be demoted. Keep in sync with the migration's copy.
+CREATE OR REPLACE FUNCTION public.is_root_admin(p_email text)
+RETURNS boolean
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT lower(btrim(coalesce(p_email, ''))) = ANY (ARRAY[
+    'shahvanshm23.4.2004@gmail.com',
+    'meghnashahm@gmail.com'
+  ]);
+$$;
+
+REVOKE ALL ON FUNCTION public.is_root_admin(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.is_root_admin(text) FROM anon, authenticated;
+
+--------------------------------------------------------
+
 -- 2. Trigger Function (UPDATED)
 
 CREATE OR REPLACE FUNCTION public.handle_new_user_profile()
@@ -57,11 +95,13 @@ BEGIN
       AND NULLIF(trim(COALESCE(NEW.raw_user_meta_data->>'first_name', '')), '') IS NOT NULL;
   END IF;
 
-  -- Assign role
-  IF NEW.email = ANY (ARRAY[
-    'shahvanshm23.4.2004@gmail.com',
-    'meghnashahm@gmail.com'
-  ]) THEN
+  -- Assign role: hardcoded owners OR any email pre-authorized in the allowlist.
+  -- (This runs SECURITY DEFINER, so it can read the RLS-locked allowlist.)
+  IF public.is_root_admin(NEW.email)
+     OR EXISTS (
+       SELECT 1 FROM public.admin_email_allowlist a
+       WHERE a.email = lower(btrim(NEW.email))
+     ) THEN
     user_role := 'admin';
   ELSE
     user_role := 'customer';
@@ -168,5 +208,57 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT OR UPDATE ON auth.users
   FOR EACH ROW
   EXECUTE PROCEDURE public.handle_new_user_profile();
+
+--------------------------------------------------------
+
+-- 5. Lock profiles.role so it cannot be self-assigned
+--
+-- Authorization (admin vs customer) lives in profiles.role, and the
+-- "Users can update own profile" policy above lets a user UPDATE their own row.
+-- Without the guard below, any logged-in user could self-promote straight from
+-- the browser:  supabase.from('profiles').update({ role: 'admin' }).eq('id', myId)
+--
+-- This lock MUST be created together with the table — that is why it lives here
+-- and not in a separate file. (A standalone copy also exists in
+-- secure_profile_role.sql for older runbooks; both are idempotent, so applying
+-- both is harmless. The canonical copy is THIS one.)
+--
+-- The BEFORE UPDATE trigger rejects any change to `role` by the PostgREST client
+-- roles (anon / authenticated). The service-role backend, the SECURITY DEFINER
+-- signup trigger, and superuser/migration sessions are unaffected, so legitimate
+-- role assignment (signup allowlist, manual promotion via SQL editor) still works.
+
+CREATE OR REPLACE FUNCTION public.enforce_profile_role_immutable()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+-- SECURITY INVOKER (the default) is REQUIRED here: the guard relies on
+-- current_user reflecting the actual caller. SECURITY DEFINER would rewrite
+-- current_user to the function owner and silently defeat the check.
+AS $$
+BEGIN
+  IF NEW.role IS DISTINCT FROM OLD.role
+     AND current_user IN ('authenticated', 'anon') THEN
+    RAISE EXCEPTION 'profiles.role is read-only'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_enforce_profile_role_immutable ON public.profiles;
+CREATE TRIGGER trg_enforce_profile_role_immutable
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_profile_role_immutable();
+
+-- Defense in depth: give the update policy an explicit WITH CHECK so its intent
+-- (the row must remain the caller's own) is self-documenting. The trigger above
+-- is what actually protects the role column; this is belt-and-suspenders and
+-- supersedes the simpler policy defined in section 1.
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+CREATE POLICY "Users can update own profile" ON public.profiles
+  FOR UPDATE
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
 
 --------------------------------------------------------

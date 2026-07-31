@@ -53,6 +53,7 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        "brand-teal": "rgb(var(--brand-teal) / <alpha-value>)",
         cream: "hsl(var(--cream))",
         blush: "hsl(var(--blush))",
         sage: "hsl(var(--sage))",

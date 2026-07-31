@@ -1,9 +1,12 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import SearchBar from "./SearchBar";
 import FrequentSearches from "./FrequentSearches";
 import CollageGrid from "./CollageGrid";
 import CategoriesList from "./CategoriesList";
+import SuggestionsDropdown from "./SuggestionsDropdown";
+import { useSearchSuggestions } from "@/hooks/useSearchSuggestions";
 
 interface SearchPanelProps {
   isOpen: boolean;
@@ -13,30 +16,67 @@ interface SearchPanelProps {
 export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
-  // Lock body scroll and handle ESC key
+  const { suggestions, loading } = useSearchSuggestions(searchTerm);
+  const hasQuery = searchTerm.trim().length >= 1;
+
+  // Go to the full search results page for a term, then close the panel.
+  const submitSearch = useCallback((term: string) => {
+    const trimmed = term.trim();
+    if (!trimmed) return;
+    console.log("[SearchPanel] submit search →", trimmed);
+    navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+    onClose();
+  }, [navigate, onClose]);
+
+  // Clear state when panel closes so re-opening starts fresh.
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = "hidden";
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape") onClose();
-      };
-      window.addEventListener("keydown", handleKeyDown);
-      return () => {
-        document.body.style.overflow = "";
-        window.removeEventListener("keydown", handleKeyDown);
-      };
+      console.log("[SearchPanel] opened");
+    } else {
+      console.log("[SearchPanel] closed — resetting state");
+      // Reset the query so a re-open starts fresh.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSearchTerm("");
     }
+  }, [isOpen]);
+
+  // Body-scroll lock + Escape to close + close on any click/tap outside the panel
+  // (incl. the navbar, profile icon, and mega menu, which the backdrop doesn't
+  // cover on mobile since the panel sits below the navbar).
+  useEffect(() => {
+    if (!isOpen) {
+      document.body.style.overflow = "";
+      return;
+    }
+
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+
+    const handleOutsidePointer = (e: MouseEvent | TouchEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        console.log("[SearchPanel] outside pointer — closing");
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleOutsidePointer);
+    document.addEventListener("touchstart", handleOutsidePointer);
     return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleOutsidePointer);
+      document.removeEventListener("touchstart", handleOutsidePointer);
       document.body.style.overflow = "";
     };
   }, [isOpen, onClose]);
 
-  // Handle click outside to close
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+    if (e.target === e.currentTarget) onClose();
   };
 
   if (!isOpen) return null;
@@ -48,27 +88,35 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
       aria-modal="true"
       role="dialog"
     >
-      {/* 
-        Desktop: slide in from right (w-full max-w-md or lg)
-        Mobile: fade and slide up slightly (w-full h-full)
-      */}
       <div
         ref={panelRef}
         className="w-full h-full md:w-[480px] lg:w-[540px] bg-background shadow-2xl flex flex-col md:animate-slide-in-right animate-slide-up-fade overflow-hidden border-l border-border/50"
       >
-        <SearchBar
-          value={searchTerm}
-          onChange={setSearchTerm}
-          onClose={onClose}
-          autoFocus={true}
-        />
-        
+        {/* Pinned search input */}
+        <div className="shrink-0 z-10 bg-background border-b border-border/60">
+          <SearchBar
+            value={searchTerm}
+            onChange={(val) => setSearchTerm(val)}
+            onClose={onClose}
+            autoFocus={true}
+          />
+        </div>
+
+        {/* Single scroll region — suggestions on top while searching, then the
+            rest of the search panel always below */}
         <div className="flex-1 overflow-y-auto no-scrollbar pb-safe">
-          <FrequentSearches onSelect={(term) => setSearchTerm(term)} />
+          {hasQuery && (
+            <SuggestionsDropdown
+              suggestions={suggestions}
+              loading={loading}
+              query={searchTerm}
+              onClose={onClose}
+              onSubmit={submitSearch}
+            />
+          )}
+          <FrequentSearches onSelect={submitSearch} />
           <CollageGrid />
           <CategoriesList />
-          
-          {/* If there was real search results, we would render them here instead of FrequentSearches when searchTerm is not empty */}
         </div>
       </div>
     </div>,

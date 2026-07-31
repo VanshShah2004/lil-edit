@@ -34,6 +34,13 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  /**
+   * True once the profile row fetch has settled (success OR failure) for the
+   * current user. Distinct from `loading`, which only tracks the auth session.
+   * Route guards that depend on `profile.role` (AdminRoute) must wait on this so
+   * they don't read a still-null profile and falsely reject a real admin.
+   */
+  profileLoaded: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   sendSignupOtp: (email: string) => Promise<void>;
@@ -45,6 +52,8 @@ interface AuthContextType {
     newPassword: string;
   }) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Re-fetch the current user's profile row (e.g. after a phone verification). No-op if logged out. */
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,40 +65,49 @@ function getApiBaseUrl(): string {
   return "";
 }
 
-function isMissingRpcError(message: string | undefined, code?: string) {
-  if (!message) return false;
-  return (
-    message.includes("does not exist") ||
-    message.includes("Could not find the function") ||
-    code === "PGRST202" ||
-    code === "42883"
-  );
-}
-
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
-    if (!error && data) {
-      setProfile({
-        id: data.id,
-        email: data.email,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        role: data.role,
-        phone_number: data.phone_number,
-        is_phone_number_verified: data.is_phone_number_verified,
-        dob: data.dob,
-        gender: data.gender,
-      } as Profile);
+    console.log(`[AuthContext] fetching profile  user=${userId}`);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
+      if (!error && data) {
+        console.log(`[AuthContext] profile loaded  user=${userId}  role=${data.role}`);
+        setProfile({
+          id: data.id,
+          email: data.email,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          role: data.role,
+          phone_number: data.phone_number,
+          is_phone_number_verified: data.is_phone_number_verified,
+          dob: data.dob,
+          gender: data.gender,
+        } as Profile);
+      } else {
+        console.warn(`[AuthContext] profile fetch returned no row  user=${userId}`, error);
+      }
+    } finally {
+      // Mark the load settled whether it succeeded or failed, so guards can tell
+      // "still loading" apart from "loaded, no admin role".
+      console.log(`[AuthContext] profile load settled  user=${userId}  → profileLoaded=true`);
+      setProfileLoaded(true);
     }
+  };
+
+  const refreshProfile = async () => {
+    const { data } = await supabase.auth.getUser();
+    const uid = data.user?.id;
+    if (!uid) return;
+    await fetchProfile(uid);
   };
 
   const loadProfileInBackground = (userId: string) => {
@@ -129,7 +147,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (currentUser) {
           loadProfileInBackground(currentUser.id);
         } else {
+          console.log("[AuthContext] no user — clearing profile + profileLoaded");
           setProfile(null);
+          setProfileLoaded(false);
         }
       } catch (err) {
         console.error("Auth state change error:", err);
@@ -140,6 +160,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       listener?.subscription.unsubscribe();
     };
+    // Mount-only: registers a single auth listener for the app's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const sendSignupOtp = async (email: string) => {
@@ -213,60 +235,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const ensureProfileExistsForLogin = async (email: string) => {
-    const normalized = email.trim();
-    if (!normalized) {
-      throw new Error("Email is required");
-    }
-
-    const apiBase = getApiBaseUrl();
-    if (apiBase) {
-      try {
-        const res = await fetch(`${apiBase}/api/auth/login/check-profile`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: normalized }),
-        });
-        const body = (await res.json().catch(() => ({}))) as { error?: string; exists?: boolean };
-        if (!res.ok) {
-          throw new Error(
-            typeof body.error === "string"
-              ? body.error
-              : `Could not verify registration status (${res.status})`
-          );
-        }
-        if (body.exists !== true) {
-          throw new Error("User not registered. Please sign up first.");
-        }
-        return;
-      } catch (e) {
-        if (e instanceof TypeError) {
-          throw new Error(
-            "Cannot reach the API. Start the backend in a separate terminal: npm run dev:api from the repo root (or npm run dev in backend/)."
-          );
-        }
-        throw e;
-      }
-    }
-
-    const { data, error } = await supabase.rpc("is_profile_registered", {
-      p_email: normalized,
-    });
-
-    if (error) {
-      if (isMissingRpcError(error.message, (error as { code?: string }).code)) {
-        throw new Error(
-          "Pre-login profile check is not configured. Run the updated profiles SQL setup first."
-        );
-      }
-      throw new Error("Could not verify registration status. Please try again.");
-    }
-
-    if (data !== true) {
-      throw new Error("User not registered. Please sign up first.");
-    }
-  };
-
   const signInWithGoogle = async () => {
     const redirectTo = `${window.location.origin}/auth/callback`;
     const { error } = await supabase.auth.signInWithOAuth({
@@ -279,8 +247,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const sendPasswordResetOtp = async (email: string) => {
     const normalized = email.trim();
     if (!normalized) throw new Error("Email is required");
-    await ensureProfileExistsForLogin(normalized);
 
+    // No "does this account exist?" pre-check: that would let anyone probe which
+    // emails are registered. We ask Supabase to send a reset OTP and, crucially,
+    // DON'T surface a "user not found" error — the caller always shows the same
+    // "if an account exists, we sent a code" message. shouldCreateUser:false means
+    // a non-existent email simply gets no code (no account is created).
     const { error } = await supabase.auth.signInWithOtp({
       email: normalized,
       options: {
@@ -288,7 +260,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       },
     });
 
-    if (error) throw error;
+    if (error) {
+      // Keep the log (real failures still need debugging) but don't leak existence.
+      console.warn(`[AuthContext] password reset OTP send  status=${(error as { status?: number }).status ?? "?"}  msg=${error.message}`);
+      // Surface only genuine "try again later" conditions. A rate-limit is the same
+      // whether or not the account exists, so it's safe to show.
+      if ((error as { status?: number }).status === 429) {
+        throw new Error("Too many attempts. Please wait a few minutes and try again.");
+      }
+      // Everything else (including "user not found") is swallowed so the response is
+      // identical for registered and unregistered addresses.
+    }
   };
 
   const verifySignupOtpAndCompleteProfile = async ({
@@ -350,14 +332,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string) => {
-    await ensureProfileExistsForLogin(email);
-
+    // No pre-check: Supabase already returns a single generic "invalid login
+    // credentials" for both a wrong password AND an unknown email, so login can't
+    // be used to tell whether an account exists. We just normalize the copy.
     const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim(),
       password,
     });
 
-    if (authError) throw authError;
+    if (authError) {
+      const status = (authError as { status?: number }).status;
+      if (status === 400 || /invalid login credentials/i.test(authError.message)) {
+        throw new Error("Invalid email or password.");
+      }
+      throw authError;
+    }
   };
 
   const signOut = async () => {
@@ -371,6 +360,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         user,
         profile,
         loading,
+        profileLoaded,
         signIn,
         signInWithGoogle,
         sendSignupOtp,
@@ -378,6 +368,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         verifySignupOtpAndCompleteProfile,
         verifyPasswordResetOtpAndUpdatePassword,
         signOut,
+        refreshProfile,
       }}
     >
       {children}

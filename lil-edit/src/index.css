@@ -3,6 +3,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Dashboard "jiggle" edit mode (analytics card hide/show) ──────────────────
+   Applied by useHideable() (components/analytics/customize.tsx) while the customise
+   / edit mode is active. Each card also gets a small randomised negative
+   animation-delay inline, so they wobble out of phase — the classic iOS
+   home-screen look. Honours reduced-motion.
+
+   The wobble animates the INDEPENDENT `rotate` property (not `transform`), so the
+   drag-to-reorder code is free to own `translate`/`scale` on the very same element
+   — a card can jiggle AND glide at once, with no transform-property fight. */
+@keyframes dash-jiggle {
+  0%   { rotate: -0.9deg; }
+  50%  { rotate: 0.9deg; }
+  100% { rotate: -0.9deg; }
+}
+.dash-jiggle {
+  animation: dash-jiggle 0.32s ease-in-out infinite;
+  will-change: rotate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-jiggle {
+    animation: none;
+  }
+}
+
 @layer base {
   :root {
     /* Soft lavender mist — violet family only, no blue */
@@ -53,6 +77,19 @@
     --sidebar-border: 272 12% 92%;
     --sidebar-ring: 268 24% 68%;
     --navbar-height: 64px;
+    --brand-teal: 15 118 110;    /* #0F766E */
+  }
+
+  @media (color-gamut: p3) {
+    :root {
+      --brand-teal: 10 106 99;   /* slightly muted for wide-gamut displays */
+    }
+  }
+
+  @media (max-width: 639px) {
+    :root {
+      --brand-teal: 9 90 84;     /* #095A54 — darker on mobile to reduce glare */
+    }
   }
 }
 
@@ -64,11 +101,47 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    overflow-x: hidden;
+    /* Match body's background so any sub-pixel gap next to a fixed overlay
+       (mobile vw-unit rounding, etc.) shows the page color, not white. */
+    background-color: hsl(var(--background));
+  }
+
+  html, body {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;    /* Firefox */
+  }
+
+  html::-webkit-scrollbar, body::-webkit-scrollbar {
+    display: none;            /* Chrome, Safari and Opera */
+  }
+
+  /* Hide ALL scrollbars on mobile (touch devices) — scrolling still works normally */
+  @media (pointer: coarse) {
+    * {
+      -ms-overflow-style: none !important;
+      scrollbar-width: none !important;
+    }
+    *::-webkit-scrollbar {
+      display: none !important;
+    }
+  }
+
+  /* react-remove-scroll adds a compensating padding to <body> when it
+     locks scroll. Because we hide scrollbars entirely, that
+     compensation is redundant and would shift the page — neutralize it.
+     Also set the background to black so any edge gaps behind overlays
+     are invisible (no white strips). */
+  html body[data-scroll-locked] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+    background-color: #000 !important;
+    background-image: none !important;
   }
 
   body {
     @apply text-foreground font-body antialiased min-h-screen;
+    /* Clip horizontal overflow here (not on <html>) — see the note above. */
+    overflow-x: hidden;
     background-color: hsl(var(--background));
     background-image:
       radial-gradient(ellipse 120% 90% at 12% -5%, hsl(275 38% 94% / 0.5), transparent 55%),
@@ -140,4 +213,10 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;            /* Chrome, Safari and Opera */
   }
+}
+
+@keyframes coupon-emoji-fly {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.3) rotate(0deg); }
+  15%  { opacity: 1; transform: translate(calc(var(--tx) * 0.14), calc(var(--ty) * 0.14)) scale(1.25) rotate(calc(var(--rot) * 0.14)); }
+  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.8) rotate(var(--rot)); }
 }
