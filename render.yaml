@@ -5,7 +5,7 @@ services:
   - type: web
     name: lil-edit-frontend
     runtime: static
-    plan: starter
+    plan: free
     branch: main
     rootDir: lil-edit
     buildCommand: "npm ci && npm run build"
