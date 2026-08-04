@@ -3,7 +3,7 @@
 # for why VITE_API_URL / VITE_BACKEND_URL must point at the EC2 backend's public URL.
 services:
   - type: web
-    name: lil-edit-frontend
+    name: lil-edit-portal
     runtime: static
     branch: main
     rootDir: lil-edit
