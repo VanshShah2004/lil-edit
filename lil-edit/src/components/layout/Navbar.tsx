@@ -197,7 +197,7 @@ const Navbar = () => {
 
       {/* Left Menu Overlay */}
       <div
-        className={`fixed inset-0 z-[60] bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${mobileOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        className={`fixed inset-0 z-[900] bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${mobileOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
         onClick={() => setMobileOpen(false)}
         aria-hidden={!mobileOpen}
@@ -208,7 +208,7 @@ const Navbar = () => {
         role="dialog"
         aria-modal="true"
         aria-label="Main menu"
-        className={`fixed top-0 left-0 bottom-0 z-[70] w-80 max-w-[88vw] bg-background shadow-2xl border-r border-border transform transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] flex flex-col ${mobileOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed top-0 left-0 bottom-0 z-[910] w-80 max-w-[88vw] bg-background shadow-2xl border-r border-border transform transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] flex flex-col ${mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
       >
         <div className="relative overflow-hidden bg-gradient-to-br from-brand-teal/12 via-[#E8DDF7]/45 to-emerald-50 px-5 pt-7 pb-6">
