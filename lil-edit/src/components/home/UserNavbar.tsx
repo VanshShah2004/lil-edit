@@ -143,7 +143,7 @@ const UserNavbar = () => {
         className={`fixed top-0 left-0 right-0 z-50 border-b border-border transition-all duration-300 bg-background shadow-sm`}
       >
         <div className="max-w-screen-2xl mx-auto flex items-center justify-between h-[5rem] md:h-[3.1rem] lg:h-[3.4rem] px-3 lg:px-6">
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="flex items-center gap-1 sm:gap-4 min-w-0">
             <button
               type="button"
               onClick={() => {
@@ -156,7 +156,7 @@ const UserNavbar = () => {
               <Menu className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
             <Link to="/" className="flex-shrink flex items-center gap-2 sm:gap-3 min-w-0">
-              <img src={logo} alt="The Lil Edit" className="h-10 sm:h-12 md:h-9 lg:h-9.5 w-auto shrink-0" />
+              <img src={logo} alt="The Lil Edit" className="h-14 sm:h-16 md:h-9 lg:h-9.5 w-auto shrink-0" />
               <div className="hidden min-[430px]:block text-xl md:text-[18px] lg:text-[20px] text-foreground leading-none" style={{ fontFamily: "'Playfair Display', serif" }}>
                 The Lil Edit
               </div>
