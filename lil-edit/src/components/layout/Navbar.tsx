@@ -242,7 +242,7 @@ const Navbar = () => {
               to="/collections"
               icon={Shirt}
               label="Collections"
-              active={location.pathname === "/collections" || location.pathname.startsWith("/collections/")}
+              active={location.pathname === "/collections"}
               open={isCollectionsOpen}
               onToggle={() => setIsCollectionsOpen((prev) => !prev)}
               onNavigate={() => setMobileOpen(false)}
