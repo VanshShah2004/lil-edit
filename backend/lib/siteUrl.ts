@@ -4,6 +4,7 @@
 // confirmation email so the link is derived the same way everywhere.
 let warnedMissingSiteUrl = false;
 
+
 export function publicSiteUrl(): string {
   const explicit = process.env.PUBLIC_SITE_URL?.trim();
   const corsFirst = process.env.CORS_ORIGIN?.split(",")[0]?.trim();

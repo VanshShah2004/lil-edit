@@ -1,6 +1,6 @@
 import { useState, useRef, useLayoutEffect, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Heart, ShoppingCart, Menu, X, Search, Home, Shirt, Info, User, ChevronRight, Sparkles, Star, TrendingUp, PartyPopper } from "lucide-react";
+import { Heart, ShoppingCart, Menu, X, Search, Home, Shirt, Info, User, ChevronRight, Sparkles, Star, TrendingUp, PartyPopper, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
@@ -247,11 +247,11 @@ const Navbar = () => {
               onToggle={() => setIsCollectionsOpen((prev) => !prev)}
               onNavigate={() => setMobileOpen(false)}
             >
-              <SideSubLink to="/collections/new-arrivals" icon={Sparkles} label="New Arrivals" onClick={() => setMobileOpen(false)} />
-              <SideSubLink to="/collections/girls" icon={Heart} label="Girls" onClick={() => setMobileOpen(false)} />
-              <SideSubLink to="/collections/boys" icon={Star} label="Boys" onClick={() => setMobileOpen(false)} />
-              <SideSubLink to="/collections/trending" icon={TrendingUp} label="Trending" onClick={() => setMobileOpen(false)} />
-              <SideSubLink to="/collections/occasion" icon={PartyPopper} label="By Occasion" onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections/new-arrivals" icon={Sparkles} label="New Arrivals" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections/girls" icon={Heart} label="Girls" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections/boys" icon={Star} label="Boys" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections/trending" icon={TrendingUp} label="Trending" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections/occasion" icon={PartyPopper} label="By Occasion" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
             </SideCollapse>
             <SideLink to="/about" icon={Info} label="About Us" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
           </SideSection>
@@ -403,7 +403,7 @@ function SideCollapse({
       <div
         className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${open ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}
       >
-        <div className="ml-4 pl-2 border-l-2 border-gray-400 flex flex-col gap-0.5 py-0.5">
+        <div className="ml-4 flex flex-col gap-0.5 py-0.5">
           {children}
         </div>
       </div>
@@ -416,21 +416,29 @@ function SideSubLink({
   to,
   icon: Icon,
   label,
+  pathname,
   onClick,
 }: {
   to: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
+  pathname: string;
   onClick: () => void;
 }) {
+  const active = pathname === to;
   return (
     <Link
       to={to}
       onClick={onClick}
-      className="group flex items-center gap-2.5 px-3 py-1.5 md:py-1 rounded-lg text-foreground hover:bg-secondary transition-colors"
+      aria-current={active ? "page" : undefined}
+      className={`group flex items-center gap-2.5 px-3 py-2 md:py-1.5 rounded-lg transition-colors ${active
+        ? "bg-brand-teal/10 text-[#0F766E] font-semibold"
+        : "text-foreground hover:bg-secondary"
+        }`}
     >
-      <Icon className="w-4 h-4 md:w-3.5 md:h-3.5 shrink-0 text-muted-foreground group-hover:text-[#0F766E]" />
-      <span className="font-medium text-sm md:text-[13px]">{label}</span>
+      <Play className={`w-4 h-4 md:w-3.5 md:h-3.5 shrink-0 ${active ? "text-[#0F766E]" : "text-primary"}`} fill="currentColor" />
+      <Icon className={`w-4 h-4 md:w-3.5 md:h-3.5 shrink-0 ${active ? "text-[#0F766E]" : "text-muted-foreground group-hover:text-[#0F766E]"}`} />
+      <span className="font-medium text-base md:text-sm">{label}</span>
     </Link>
   );
 }
