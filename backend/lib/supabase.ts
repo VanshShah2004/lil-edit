@@ -1,10 +1,5 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import dotenv from "dotenv";
+import "./loadEnv.js";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
 const anonKey =

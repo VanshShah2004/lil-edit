@@ -6,13 +6,8 @@
  *   npx tsx scripts/migrate-images.ts
  */
 
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import "../lib/loadEnv.js";
 import { randomUUID } from "node:crypto";
-import dotenv from "dotenv";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 import { supabaseAdmin } from "../lib/supabase.js";
 
