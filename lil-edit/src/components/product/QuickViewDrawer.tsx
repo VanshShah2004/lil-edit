@@ -165,8 +165,20 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
   }, [open, product?.id, emblaApi]);
 
   useEffect(() => {
-    if (open) document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    // <html>'s own background is the cream design token (--background:
+    // 275 32% 99%), painted so sub-pixel gaps next to a fixed overlay show page
+    // color instead of white (see index.css). Below this bottom sheet's rounded
+    // corners that same cream shows through as a visible sliver against the
+    // sheet's pure white — same class of gap the repo already patches to black
+    // for Radix overlays via body[data-scroll-locked]. Force it to solid white
+    // here so the sheet reads as flush all the way to the screen edge.
+    document.documentElement.style.backgroundColor = "#fff";
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.backgroundColor = "";
+    };
   }, [open]);
 
   useEffect(() => {
