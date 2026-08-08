@@ -47,12 +47,6 @@ const FeaturedCategories = ({ previewItems }: { previewItems?: ResolvedItem[] })
 
   return (
     <section className="relative py-12 md:py-16 bg-white overflow-hidden">
-      {/* Background Decorative Elements */}
-      <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500 rounded-full blur-[100px]" />
-        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-rose-500 rounded-full blur-[100px]" />
-      </div>
-
       <div className="container px-4 relative z-10">
         <div className="flex flex-col md:flex-row items-stretch justify-center gap-0 rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-border">
           {categories.map((category, idx) => (
