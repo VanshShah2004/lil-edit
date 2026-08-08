@@ -10,10 +10,16 @@ import {
   Eye,
   Share2,
 } from "lucide-react";
-import { motion, AnimatePresence, useMotionValue, animate } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from "@/components/ui/carousel";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -92,12 +98,16 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
   const { user } = useAuth();
   const { promptAuth } = useAuthPrompt();
   const closeRef = useRef<HTMLButtonElement>(null);
-  const swipeStartX = useRef(0);
-  const swipeActive = useRef(false);
-  const dragX = useMotionValue(0);
   const isDesktop = useIsDesktop();
+  // Embla drives the image gallery — the same engine as the PDP gallery. The old
+  // hand-rolled pointer swipe animated the outgoing image using the PREVIOUS
+  // slide direction (framer's `custom` on the child wins over AnimatePresence's,
+  // and the exiting child still carries last render's value), so every time you
+  // reversed direction both images flew the same way and the swipe looked broken
+  // one-sided. Embla is symmetric by construction and adds momentum,
+  // rubber-banding at the edges and a live peek of the neighbouring slide.
+  const [emblaApi, setEmblaApi] = useState<CarouselApi>();
   const [activeImg, setActiveImg] = useState(0);
-  const [slideDir, setSlideDir] = useState<1 | -1>(1);
   const [shareOpen, setShareOpen] = useState(false);
 
   // Resizable sheet height — the drag handle lets the user pull the drawer
@@ -131,9 +141,28 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
     if (sheetHeightVh <= minHeightVh + 5) onClose();
   };
 
-  // Reset gallery to the first image whenever a different product is shown.
+  // Mirror whichever slide embla settled on into `activeImg`, which drives the
+  // thumbnail highlight and the "n / total" badge — direction-agnostic.
+  useEffect(() => {
+    if (!emblaApi) return;
+    const onSelect = () => setActiveImg(emblaApi.selectedScrollSnap());
+    emblaApi.on("select", onSelect);
+    emblaApi.on("reInit", onSelect);
+    return () => {
+      emblaApi.off("select", onSelect);
+      emblaApi.off("reInit", onSelect);
+    };
+  }, [emblaApi]);
+
+  // Reset the gallery to the first image whenever the drawer opens or a different
+  // product is shown. `open` matters because the carousel unmounts on close and
+  // embla always remounts on slide 0 — without this, `activeImg` (badge +
+  // thumbnail highlight) would keep pointing at the last-viewed slide.
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setActiveImg(0); }, [product?.id]);
+  useEffect(() => {
+    setActiveImg(0);
+    emblaApi?.scrollTo(0, true); // jump, no slide animation
+  }, [open, product?.id, emblaApi]);
 
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
@@ -160,9 +189,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
     product.images && product.images.length > 0 ? product.images : [product.image];
   const total = allImages.length;
 
-  const goTo = (idx: number, dir: 1 | -1) => { setSlideDir(dir); setActiveImg(idx); };
-  const prev = () => goTo((activeImg - 1 + total) % total, -1);
-  const next = () => goTo((activeImg + 1) % total, 1);
+  const goTo = (idx: number) => emblaApi?.scrollTo(idx);
 
   const liveCartItem =
     product.source === "cart" ? cartItems.find((i) => i.id === product.id) : undefined;
@@ -262,62 +289,38 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
   // ── Shared pieces ────────────────────────────────────────────────────────
 
   const carousel = (heightClass: string, inlineHeight?: string) => (
-    <motion.div
+    <div
       className={`relative rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 ${heightClass}`}
-      style={{ ...(inlineHeight ? { height: inlineHeight } : {}), touchAction: "pan-y", x: dragX }}
-      onPointerDown={(e) => {
-        swipeStartX.current = e.clientX;
-        swipeActive.current = true;
-        e.currentTarget.setPointerCapture(e.pointerId);
-      }}
-      onPointerMove={(e) => {
-        if (!swipeActive.current) return;
-        dragX.set(e.clientX - swipeStartX.current);
-      }}
-      onPointerUp={(e) => {
-        swipeActive.current = false;
-        const dx = e.clientX - swipeStartX.current;
-        if (dx < -40) {
-          dragX.set(0);
-          next();
-        } else if (dx > 40) {
-          dragX.set(0);
-          prev();
-        } else {
-          void animate(dragX, 0, { type: "spring", stiffness: 600, damping: 40 });
-        }
-      }}
-      onPointerCancel={() => {
-        swipeActive.current = false;
-        void animate(dragX, 0, { type: "spring", stiffness: 600, damping: 40 });
-      }}
+      style={inlineHeight ? { height: inlineHeight } : undefined}
     >
-      <AnimatePresence initial={false} custom={slideDir}>
-        <motion.img
-          key={activeImg}
-          custom={slideDir}
-          draggable={false}
-          variants={{
-            enter: (dir: number) => ({ x: dir * 280, opacity: 0 }),
-            center: { x: 0, opacity: 1 },
-            exit: (dir: number) => ({ x: dir * -280, opacity: 0 }),
-          }}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={{ duration: 0.38, ease: [0.32, 0.72, 0, 1] }}
-          src={allImages[activeImg]}
-          alt={`${product.title} — image ${activeImg + 1}`}
-          onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-          className="absolute inset-0 w-full h-full object-cover object-center select-none"
-        />
-      </AnimatePresence>
+      {/* Embla arbitrates horizontal-vs-vertical itself, so a mostly-vertical
+          drag still scrolls the sheet while a horizontal one pages the gallery —
+          in either direction, with the same physics. */}
+      <Carousel
+        setApi={setEmblaApi}
+        opts={{ loop: total > 1, watchDrag: total > 1 }}
+        className={`w-full h-full ${total > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}
+      >
+        <CarouselContent className="ml-0 h-full">
+          {allImages.map((img, i) => (
+            <CarouselItem key={i} className="pl-0 basis-full h-full">
+              <img
+                src={img}
+                alt={`${product.title} — image ${i + 1}`}
+                draggable={false}
+                onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                className="w-full h-full object-cover object-center select-none"
+              />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
       {total > 1 && (
         <span className="absolute top-2 right-2 bg-black/40 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full z-10">
           {activeImg + 1} / {total}
         </span>
       )}
-    </motion.div>
+    </div>
   );
 
   const thumbs = () => (
@@ -325,7 +328,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
       {allImages.map((img, i) => (
         <button
           key={i}
-          onClick={() => goTo(i, i > activeImg ? 1 : -1)}
+          onClick={() => goTo(i)}
           className={`flex-shrink-0 w-16 h-20 rounded-xl overflow-hidden border-2 transition-all duration-200 ${
             activeImg === i
               ? "border-brand-teal scale-105 shadow-md"
