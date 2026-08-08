@@ -36,7 +36,7 @@ const AboutLilEdit = () => {
 
           {/* Content Block */}
           <div className="w-full md:w-[65%] lg:w-[60%] flex flex-col items-center md:items-start text-center md:text-left -mt-[15px] md:mt-0">
-            <span className="text-xs md:text-sm font-black tracking-[0.6em] uppercase text-[#0F766E] mb-2 block">
+            <span className="text-xs md:text-sm font-black tracking-[0.6em] uppercase text-[#0F766E] mb-2 md:mb-5 block">
               The Lil Edit Story
             </span>
 
@@ -62,7 +62,7 @@ const AboutLilEdit = () => {
                   <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-md transform transition-transform duration-500 group-hover:scale-110">
                     {value.icon}
                   </div>
-                  <h3 className="font-bold text-base md:text-lg text-foreground tracking-tight">
+                  <h3 className="font-bold text-sm text-foreground tracking-tight">
                     {value.title}
                   </h3>
                 </div>
