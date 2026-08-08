@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles, Heart, Star, TrendingUp, PartyPopper } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import FeaturedCollectionsGrid from "@/components/collections/FeaturedCollection
 import Footer from "@/components/layout/Footer";
 import { getBackendBaseUrl } from "@/lib/backend";
 import { authHeader } from "@/lib/apiAuth";
+import { fetchNewArrivals } from "@/services/searchService";
 
 import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
 import img2 from "@/assets/searchbar-frequent_searches/le-2.png";
@@ -28,6 +29,17 @@ import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
 const TICKER_WORDS = [
   "Featured Collections", "Spring/Summer '26",
   "Styled by You", "The Lil Edit",
+];
+
+// Every collection listing the storefront has. Icons match the ones the side
+// menu uses for these same links (components/home/UserNavbar), so the two
+// navigations agree on what each collection looks like.
+const SUB_COLLECTIONS = [
+  { to: "/collections/new-arrivals", label: "New Arrivals", blurb: "The latest drop, newest first", icon: Sparkles,    gradient: "from-emerald-100 to-teal-200" },
+  { to: "/collections/girls",        label: "Girls",        blurb: "Everything in the girls' line", icon: Heart,       gradient: "from-pink-100 to-rose-200" },
+  { to: "/collections/boys",         label: "Boys",         blurb: "Everything in the boys' line",  icon: Star,        gradient: "from-blue-100 to-cyan-200" },
+  { to: "/collections/trending",     label: "Trending",     blurb: "What everyone's buying",        icon: TrendingUp,  gradient: "from-amber-100 to-orange-200" },
+  { to: "/collections/occasion",     label: "By Occasion",  blurb: "Birthdays, festives, holidays", icon: PartyPopper, gradient: "from-purple-100 to-indigo-200" },
 ];
 
 const galleryImages = [
@@ -54,6 +66,50 @@ export default function Collections() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // One real product shot per sub-collection, keyed by route. A gradient shows
+  // until these land (and stays if the fetch fails), so the tiles never wait on
+  // the network to be usable.
+  const [previews, setPreviews] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    console.log("[Collections] fetching sub-collection previews");
+
+    // Girls/Boys/Trending need their own calls — the arrivals payload carries
+    // occasion and isTrending, but not gender, so it can't be split client-side.
+    Promise.all([
+      fetchNewArrivals(12, ctrl.signal),
+      fetchNewArrivals(12, ctrl.signal, "girls"),
+      fetchNewArrivals(12, ctrl.signal, "boys"),
+      fetchNewArrivals(12, ctrl.signal, undefined, true),
+    ])
+      .then(([all, girls, boys, trending]) => {
+        const occasion = all.find((p) => {
+          const o = (p.occasion ?? "").trim();
+          return o !== "" && o.toLowerCase() !== "general wear";
+        });
+
+        const next: Record<string, string> = {};
+        const put = (route: string, image?: string) => { if (image) next[route] = image; };
+        put("/collections/new-arrivals", all[0]?.image);
+        put("/collections/girls", girls[0]?.image);
+        put("/collections/boys", boys[0]?.image);
+        put("/collections/trending", trending[0]?.image);
+        put("/collections/occasion", occasion?.image ?? all[1]?.image);
+
+        console.log("[Collections] previews resolved for", Object.keys(next).length, "collections");
+        setPreviews(next);
+      })
+      .catch((err) => {
+        if ((err as Error).name === "AbortError") {
+          console.log("[Collections] preview fetch aborted");
+          return;
+        }
+        console.error("[Collections] preview fetch failed:", err);
+      });
+
+    return () => ctrl.abort();
+  }, []);
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,22 +168,19 @@ export default function Collections() {
           <div className="absolute top-1/3 -left-10 w-56 h-56 bg-purple-300 rounded-full blur-3xl" />
         </div>
 
-        {/* Heights are matched to the New Arrivals hero, not the padding values:
-            that hero is py-28 md:py-32 over three rows, while this one adds a
-            CTA row (stacked on mobile, inline from sm), so the padding is pulled
-            in by about half the extra height at each breakpoint. */}
-        <div className="relative z-10 flex flex-col items-center text-center px-4 sm:px-6 py-12 sm:py-20 md:py-[93.5px]">
+        {/* Without the tagline this hero is three rows (eyebrow, heading, CTAs),
+            the same count as the New Arrivals hero — so it can share that page's
+            padding instead of compensating for an extra row. Mobile stays lower
+            because the two CTAs stack there. */}
+        <div className="relative z-10 flex flex-col items-center text-center px-4 sm:px-6 py-20 sm:py-28 md:py-[123px]">
           <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-brand-teal mb-4">
             <Sparkles className="w-3.5 h-3.5" />
             Every Little Personality
           </span>
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold leading-none mb-4 text-gray-900">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold leading-none mb-8 text-gray-900">
             Curated
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#0C5D53] via-[#7B5AB5] to-emerald-700"> Collections</span>
           </h1>
-          <p className="text-sm sm:text-base text-gray-700 max-w-xl mb-6">
-            Fashion-forward pieces designed for comfort and style — grouped the way you actually shop.
-          </p>
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto justify-center">
             <Button
               onClick={() => navigate("/collections/new-arrivals")}
@@ -175,6 +228,71 @@ export default function Collections() {
             <div className="-mx-4 sm:-mx-6 lg:-mx-8">
               <FeaturedCollectionsGrid />
             </div>
+
+            {/* BROWSE THE COLLECTIONS — every collection listing, in one place.
+                The first tile spans two columns so five items fill the grid
+                evenly instead of leaving a hole in the last row. */}
+            <section>
+              <SectionHeading
+                label="Browse the Collections"
+                blurb="Every edit we stock, one tap away."
+              />
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                {SUB_COLLECTIONS.map(({ to, label, blurb, icon: Icon, gradient }, i) => {
+                  const image = previews[to];
+                  return (
+                    <Link
+                      key={to}
+                      to={to}
+                      className={`group relative overflow-hidden rounded-2xl h-40 sm:h-52 border border-gray-400 shadow-md hover:shadow-xl hover:border-gray-500 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal focus-visible:ring-offset-2 ${
+                        i === 0 ? "col-span-2" : ""
+                      }`}
+                    >
+                      {/* Gradient underneath doubles as the loading state and the
+                          fallback if a collection has no product to show yet. */}
+                      <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+
+                      {image && (
+                        <>
+                          <img
+                            src={image}
+                            alt=""
+                            loading="lazy"
+                            onError={(e) => { e.currentTarget.style.display = "none"; }}
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+                        </>
+                      )}
+
+                      <div className="absolute inset-0 flex flex-col justify-end items-start text-left p-3 sm:p-4">
+                        <span
+                          className={`w-9 h-9 rounded-full grid place-items-center mb-2 shadow-sm transition-transform duration-300 group-hover:scale-110 ${
+                            image ? "bg-white/90 text-gray-900" : "bg-white/70 text-gray-800"
+                          }`}
+                        >
+                          <Icon className="w-[18px] h-[18px]" />
+                        </span>
+                        <h3 className={`text-sm sm:text-base font-bold leading-tight ${image ? "text-white drop-shadow-md" : "text-gray-900"}`}>
+                          {label}
+                        </h3>
+                        <p className={`text-[11px] sm:text-xs mt-0.5 line-clamp-2 ${image ? "text-white/80 drop-shadow" : "text-gray-600"}`}>
+                          {blurb}
+                        </p>
+
+                        {/* Hover reveal, same slide-up pill the arrivals cards use */}
+                        <div className="hidden md:block max-h-0 opacity-0 group-hover:max-h-12 group-hover:opacity-100 group-hover:mt-2 transition-all duration-300 overflow-hidden">
+                          <span className="inline-flex items-center gap-1.5 bg-white text-gray-900 text-xs font-semibold px-3.5 py-1.5 rounded-full shadow-sm">
+                            Explore <ArrowRight className="w-3 h-3" />
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
           </div>
         </div>
 
@@ -301,13 +419,13 @@ export default function Collections() {
 // optional "View all" on the right.
 function SectionHeading({
   label, count, blurb, to,
-}: { label: string; count: number; blurb: string; to?: string }) {
+}: { label: string; count?: number; blurb: string; to?: string }) {
   return (
     <>
       <div className="flex items-end justify-between gap-3 mb-1">
         <div className="flex items-baseline gap-3">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">{label}</h2>
-          <span className="text-xs font-semibold text-gray-400">{count}</span>
+          {count !== undefined && <span className="text-xs font-semibold text-gray-400">{count}</span>}
         </div>
         {to && (
           <Link
