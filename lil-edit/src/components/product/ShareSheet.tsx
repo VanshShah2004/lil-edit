@@ -329,7 +329,7 @@ const ShareSheet = ({ open, onClose, product }: ShareSheetProps) => {
             </div>
 
             {/* Utility Row */}
-            <div className="px-5 pt-1 pb-7 md:pb-5">
+            <div className="px-5 pt-1 pb-[calc(env(safe-area-inset-bottom)+1.75rem)] md:pb-5">
               <div className="flex gap-3 -mx-1 px-1">
                 {[
                   { id: "sms", label: "Messages", icon: <IoChatbubbleEllipses size={20} className="text-white" />, bg: "bg-[#34C759]", action: "sms" as const },

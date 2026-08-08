@@ -158,8 +158,8 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
   // product is shown. `open` matters because the carousel unmounts on close and
   // embla always remounts on slide 0 — without this, `activeImg` (badge +
   // thumbnail highlight) would keep pointing at the last-viewed slide.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveImg(0);
     emblaApi?.scrollTo(0, true); // jump, no slide animation
   }, [open, product?.id, emblaApi]);
@@ -522,10 +522,19 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
             aria-modal="true"
             aria-label="Quick product view"
             tabIndex={-1}
+            // Height is plain CSS, not a framer-animated value: `dvh` tracks the
+            // VISIBLE viewport, which is the same basis handleResizeMove divides by
+            // (window.innerHeight). With `vh` the two disagreed — vh resolves against
+            // the LARGE viewport (as if the browser toolbar were retracted), so at
+            // maxHeightVh the sheet could grow taller than the visible area and push
+            // its own drag handle out of reach under `overflow-hidden`. Keeping height
+            // out of `animate` also means a resize drag never springs, so `transition`
+            // now governs only `y`.
+            style={{ height: `${sheetHeightVh}dvh` }}
             initial={{ y: "100%" }}
-            animate={{ y: 0, height: `${sheetHeightVh}vh` }}
+            animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={resizing.current ? { duration: 0 } : { type: "spring", damping: 32, stiffness: 380, mass: 0.8 }}
+            transition={{ type: "spring", damping: 32, stiffness: 380, mass: 0.8 }}
             className="fixed inset-x-0 bottom-0 z-[300] flex flex-col bg-white rounded-t-3xl shadow-2xl outline-none overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
@@ -626,7 +635,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
                 </div>
 
                 {/* Desktop CTA — sticky footer */}
-                <div className="flex-shrink-0 border-t border-gray-100 px-5 py-4 bg-white">
+                <div className="flex-shrink-0 border-t border-gray-100 px-5 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] bg-white">
                   {ctaDesktop()}
                 </div>
               </>
@@ -647,7 +656,12 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
                 </div>
 
                 {/* Mobile CTA footer */}
-                <div className="flex-shrink-0 border-t border-gray-100 px-4 sm:px-5 py-3 bg-white">
+                {/* pb keeps the CTAs clear of the home indicator / gesture bar. The
+                    env() term is exactly the strip that used to sit outside the layout
+                    viewport and show the page background; it is now the sheet's own
+                    white. 0.75rem is the previous py-3, so nothing moves where the
+                    inset is 0 (every desktop browser, non-notched phones). */}
+                <div className="flex-shrink-0 border-t border-gray-100 px-4 sm:px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] bg-white">
                   {ctaMobile()}
                 </div>
               </>

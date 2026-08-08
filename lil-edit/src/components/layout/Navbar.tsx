@@ -65,8 +65,12 @@ const Navbar = () => {
     };
   }, [mobileOpen]);
 
+  // pt-[env(safe-area-inset-top)] on the header keeps the bar clear of the
+  // notch/status bar now that index.html sets viewport-fit=cover. The offsetHeight
+  // measurement above includes that padding, so --navbar-height grows with it and
+  // every page's pt-[calc(var(--navbar-height)+…)] still clears the header.
   return (
-    <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border shadow-sm">
+    <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border shadow-sm pt-[env(safe-area-inset-top)]">
       <div className="max-w-screen-2xl mx-auto flex items-center justify-between h-[5rem] md:h-[3.1rem] lg:h-[3.4rem] px-3 lg:px-6">
         {/* Left Actions & Logo */}
         <div className="flex items-center gap-1 sm:gap-4 min-w-0">
@@ -208,7 +212,7 @@ const Navbar = () => {
         role="dialog"
         aria-modal="true"
         aria-label="Main menu"
-        className={`fixed top-0 left-0 bottom-0 z-[910] w-80 max-w-[88vw] bg-background shadow-2xl border-r border-border transform transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] flex flex-col ${mobileOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed top-0 left-0 bottom-0 z-[910] w-80 max-w-[88vw] bg-background shadow-2xl border-r border-border transform transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
       >
         <div className="relative overflow-hidden bg-gradient-to-br from-brand-teal/12 via-[#E8DDF7]/45 to-emerald-50 px-5 pt-7 pb-6">
