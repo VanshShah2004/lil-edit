@@ -157,7 +157,7 @@ const UserNavbar = () => {
               <Menu className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
             <Link to="/" className="flex-shrink flex items-center gap-2 sm:gap-3 min-w-0">
-              <img src={logo} alt="The Lil Edit" className="h-14 sm:h-16 md:h-9 lg:h-9.5 w-auto shrink-0" />
+              <img src={logo} alt="The Lil Edit" className="h-11 sm:h-12 md:h-9 lg:h-9.5 w-auto shrink-0" />
               <div className="hidden min-[430px]:block text-xl md:text-[18px] lg:text-[20px] text-foreground leading-none" style={{ fontFamily: "'Playfair Display', serif" }}>
                 The Lil Edit
               </div>

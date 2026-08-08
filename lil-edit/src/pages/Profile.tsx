@@ -192,14 +192,14 @@ export default function Profile() {
                   />
                   {fieldErrors.last_name && <p className="text-sm text-destructive mt-1">{fieldErrors.last_name}</p>}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block font-body text-sm text-foreground mb-1.5">Date of Birth</label>
                   <input
                     type="date"
                     value={personalInfo.dob}
                     onChange={(e) => handleFieldChange("dob", e.target.value)}
                     max={new Date().toISOString().split("T")[0]}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-400 bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
+                    className="w-full min-w-0 px-4 py-3 rounded-xl border border-gray-400 bg-background font-body text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
                   />
                 </div>
                 <div>
