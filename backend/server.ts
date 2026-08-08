@@ -39,7 +39,10 @@ import { supabaseAdmin, supabaseAnon } from "./lib/supabase.js";
 import { createLog } from "./lib/logger.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, ".env") });
+// Running from source (tsx server.ts) puts __dirname next to .env; running the
+// compiled build (dist/server.js) puts __dirname one level below it in dist/.
+const localEnvPath = path.join(__dirname, ".env");
+dotenv.config({ path: fs.existsSync(localEnvPath) ? localEnvPath : path.join(__dirname, "..", ".env") });
 
 // Process-level backstop. The app deliberately runs best-effort, fire-and-forget tasks
 // (confirmation email, review verification, cache busts) that are NOT awaited by the request
