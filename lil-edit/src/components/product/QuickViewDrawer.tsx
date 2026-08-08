@@ -97,7 +97,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
     useWishlist();
   const { user } = useAuth();
   const { promptAuth } = useAuthPrompt();
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
   const isDesktop = useIsDesktop();
   // Embla drives the image gallery — the same engine as the PDP gallery. The old
   // hand-rolled pointer swipe animated the outgoing image using the PREVIOUS
@@ -176,9 +176,14 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Move focus into the dialog on open — onto the sheet itself, NOT the close
+  // button. Focusing the button lit up its `focus-visible` ring, so every open
+  // painted a teal ring + white offset gap around the X. The sheet is
+  // tabIndex={-1} + outline-none, so focus is still trapped in the right place
+  // for Escape/Tab and screen readers, with nothing drawn.
   useEffect(() => {
     if (open) {
-      const t = setTimeout(() => closeRef.current?.focus(), 80);
+      const t = setTimeout(() => sheetRef.current?.focus({ preventScroll: true }), 80);
       return () => clearTimeout(t);
     }
   }, [open]);
@@ -512,6 +517,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
 
           {/* Drawer — always slides up from bottom */}
           <motion.div
+            ref={sheetRef}
             role="dialog"
             aria-modal="true"
             aria-label="Quick product view"
@@ -560,7 +566,6 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
                   <Share2 size={19} />
                 </button>
                 <button
-                  ref={closeRef}
                   onClick={onClose}
                   className={`${iconBtn} text-gray-500 hover:text-gray-800`}
                   aria-label="Close quick view"
