@@ -483,6 +483,12 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
     </div>
   );
 
+  // Header action pill — same filled-grey chrome ShareSheet uses, so the two
+  // sheets read as one family when the share sheet layers on top. Shared here so
+  // the heart / share / close buttons can't drift apart again.
+  const iconBtn =
+    "w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal focus-visible:ring-offset-2";
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -522,19 +528,21 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
               onPointerCancel={handleResizeEnd}
               className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-ns-resize active:cursor-ns-resize touch-none select-none"
             >
-              <div className="w-12 h-1.5 rounded-full bg-gray-200" />
+              <div className="w-12 h-1.5 rounded-full bg-gray-400" />
             </div>
 
-            {/* Header */}
-            <div className={`flex items-center justify-between px-4 sm:px-5 md:px-6 flex-shrink-0 mb-[10px] ${isDesktop ? "pt-1 pb-3 border-b border-gray-100" : "pt-1 pb-0"}`}>
-              <span className="flex items-center gap-1.5 text-base font-bold text-gray-900 opacity-65">
-                Quick View <Eye size={19} />
+            {/* Header — padding is plain responsive Tailwind rather than the
+                isDesktop branch: useIsDesktop breaks at 768px, which is exactly
+                `md`, so the header no longer re-renders on resize. */}
+            <div className="flex items-center justify-between px-4 sm:px-5 md:px-6 flex-shrink-0 pt-1 pb-3">
+              <span className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-[0.15em] text-brand-teal">
+                <Eye size={14} /> Quick View
               </span>
               <div className="flex items-center gap-1">
                 {product.source === "cart" && (
                   <button
                     onClick={handleWishlistToggle}
-                    className={`w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 shadow-sm hover:bg-gray-100 transition-colors outline-none ${wishlisted ? "text-primary" : "text-gray-500 hover:text-primary"}`}
+                    className={`${iconBtn} ${wishlisted ? "text-primary" : "text-gray-500 hover:text-primary"}`}
                     aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}
                   >
                     <Heart size={19} fill={wishlisted ? "currentColor" : "none"} />
@@ -543,7 +551,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
                 <button
                   onClick={() => setShareOpen(true)}
                   disabled={productUnavailable}
-                  className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 shadow-sm hover:bg-gray-100 transition-colors text-gray-500 hover:text-brand-teal outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+                  className={`${iconBtn} text-gray-500 hover:text-brand-teal disabled:opacity-40 disabled:cursor-not-allowed`}
                   aria-label="Share product"
                 >
                   <Share2 size={19} />
@@ -551,13 +559,18 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
                 <button
                   ref={closeRef}
                   onClick={onClose}
-                  className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 shadow-sm hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-800 outline-none"
+                  className={`${iconBtn} text-gray-500 hover:text-gray-800`}
                   aria-label="Close quick view"
                 >
                   <X size={20} />
                 </button>
               </div>
             </div>
+
+            {/* Hairline under the bar at BOTH breakpoints — mirrors ShareSheet's
+                divider. Previously desktop-only, which left the mobile sheet's
+                header floating unanchored above the content. */}
+            <div className="h-px mx-4 sm:mx-5 md:mx-6 mb-[10px] flex-shrink-0 bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
 
             <AnimatePresence mode="wait" initial={false}>
               {loading ? (
