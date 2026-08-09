@@ -14,6 +14,7 @@ import {
   fetchSuggestions,
   searchProducts,
   fetchNewArrivals,
+  fetchCollectionCounts,
   invalidateSearchCatalog,
   type SuggestionRow,
   type SearchProductRow,
@@ -819,6 +820,24 @@ router.get("/new-arrivals", async (req: Request, res: Response) => {
     log.error("failed — returning empty list", err);
     res.status(200).json({ count: 0, products: [] });
     log.end("NEW ARRIVALS");
+  }
+});
+
+// ─── GET /api/products/collection-counts — styles per collection ─────────────
+// Powers the "N styles" line on the Collections page placards and tiles. Reads
+// the in-memory search catalog, so it's a cache hit in the common case; a
+// failure degrades to nulls and the frontend simply omits the line.
+router.get("/collection-counts", async (_req: Request, res: Response) => {
+  const log = createLog().start("COLLECTION COUNTS");
+
+  try {
+    const counts = await fetchCollectionCounts(log);
+    log.success("counts returned").end("COLLECTION COUNTS");
+    res.json(counts);
+  } catch (err) {
+    log.error("failed — returning nulls", err);
+    res.status(200).json({ newArrivals: null, girls: null, boys: null, trending: null, occasion: null });
+    log.end("COLLECTION COUNTS");
   }
 });
 

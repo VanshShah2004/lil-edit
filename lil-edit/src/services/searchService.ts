@@ -106,3 +106,31 @@ export async function fetchNewArrivals(
   console.log("[searchService] new-arrivals →", data.products?.length ?? 0, "products");
   return data.products ?? [];
 }
+
+// How many published styles each storefront collection holds. Every value is
+// nullable so a partial/failed payload just hides the count rather than
+// rendering a misleading "0 styles".
+export interface CollectionCounts {
+  newArrivals: number | null;
+  girls: number | null;
+  boys: number | null;
+  trending: number | null;
+  occasion: number | null;
+}
+
+export async function fetchCollectionCounts(signal?: AbortSignal): Promise<CollectionCounts | null> {
+  const url = `${getBackendBaseUrl()}/api/products/collection-counts`;
+  console.log("[searchService] GET", url);
+
+  const res = await fetch(url, { signal });
+  console.log("[searchService] GET", url, "→", res.status);
+
+  if (!res.ok) {
+    console.error("[searchService] collection-counts error:", res.status);
+    return null;
+  }
+
+  const data = (await res.json()) as CollectionCounts;
+  console.log("[searchService] collection-counts →", data);
+  return data;
+}

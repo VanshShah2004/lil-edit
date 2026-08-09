@@ -1629,6 +1629,52 @@ export async function fetchNewArrivals(
   return rows;
 }
 
+// ─── fetchCollectionCounts (Collections page placards/tiles) ─────────────────
+
+export interface CollectionCounts {
+  newArrivals: number;
+  girls: number;
+  boys: number;
+  trending: number;
+  occasion: number;
+}
+
+/**
+ * How many published styles sit behind each storefront collection. Counted off
+ * the same in-memory catalog the listings themselves read, so a placard's number
+ * always agrees with the page it links to, and it costs no extra DB round trip.
+ *
+ * Filters mirror the listing pages exactly: gender uses fetchNewArrivals' rule
+ * (unisex/untagged shows on BOTH gendered pages, only an explicit opposite tag
+ * excludes), and occasion counts products actually tagged for one — blank and
+ * "General wear" fold into the catalog tail there, so they aren't occasion
+ * styles. Note these are un-capped totals; the listings themselves fetch at
+ * most 48, so a catalog past that will show more here than the page renders.
+ */
+export async function fetchCollectionCounts(log: OpLogger): Promise<CollectionCounts> {
+  const catalog = await loadSearchCatalog(log);
+
+  const matchesGender = (entry: SearchCatalogEntry, want: "girls" | "boys") => {
+    const g = entry.gender.trim().toLowerCase();
+    return g === want || (g !== "girls" && g !== "boys");
+  };
+
+  const counts: CollectionCounts = {
+    newArrivals: catalog.length,
+    girls: catalog.filter((e) => matchesGender(e, "girls")).length,
+    boys: catalog.filter((e) => matchesGender(e, "boys")).length,
+    trending: catalog.filter((e) => e.is_trending === true).length,
+    occasion: catalog.filter((e) => {
+      // First occasion only — same convention the occasions page buckets by.
+      const o = ((e.occasion ?? "").split(",")[0] ?? "").trim().toLowerCase();
+      return o !== "" && o !== "general wear";
+    }).length,
+  };
+
+  log.step(`Collection counts - all=${counts.newArrivals} girls=${counts.girls} boys=${counts.boys} trending=${counts.trending} occasion=${counts.occasion}`);
+  return counts;
+}
+
 /**
  * Per-VARIANT ranking for the full results page: every colour variant is
  * scored and sorted as its own card (product-level fields + its own colour),
