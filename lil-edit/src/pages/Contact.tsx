@@ -7,7 +7,7 @@ import { Mail, MessageCircle, Clock, Phone, AtSign } from "lucide-react";
 
 // Same support inbox used across FAQ / footer / exchanges — one source of truth.
 const SUPPORT_EMAIL = "hello.theliledit@gmail.com";
-const PHONE_NUMBERS = ["7045353953", "9819175073"];
+const PHONE_NUMBERS = ["7045353952", "9819175073"];
 const INSTAGRAM_HANDLE = "the.liledit";
 
 const Contact = () => {

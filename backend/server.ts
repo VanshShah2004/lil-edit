@@ -1,10 +1,11 @@
+// First import on purpose: populates process.env before any module below reads it.
+import "./lib/loadEnv.js";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import compression from "compression";
-import dotenv from "dotenv";
 import authRouter from "./routes/auth.js";
 import productsRouter from "./routes/products.js";
 import skuRouter from "./routes/sku.js";
@@ -39,7 +40,6 @@ import { supabaseAdmin, supabaseAnon } from "./lib/supabase.js";
 import { createLog } from "./lib/logger.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, ".env") });
 
 // Process-level backstop. The app deliberately runs best-effort, fire-and-forget tasks
 // (confirmation email, review verification, cache busts) that are NOT awaited by the request

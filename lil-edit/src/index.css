@@ -138,6 +138,26 @@
     background-image: none !important;
   }
 
+  /* iOS Safari sizes input[type=date] from its native shadow DOM and ignores
+     width:100% / min-width:0, so the field overflows its container (on Profile
+     it gets clipped by the card's overflow-hidden). Dropping the native
+     appearance makes it lay out as an ordinary box. iOS also centres the value
+     pseudo-element by default, unlike every other text input — left-align it so
+     it matches its siblings, and give it a line-box floor so the field does not
+     collapse to padding-only when empty. */
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
+    min-height: 1.2em;
+  }
+
   body {
     @apply text-foreground font-body antialiased min-h-screen;
     /* Clip horizontal overflow here (not on <html>) — see the note above. */

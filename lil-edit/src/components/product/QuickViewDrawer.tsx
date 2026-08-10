@@ -10,10 +10,16 @@ import {
   Eye,
   Share2,
 } from "lucide-react";
-import { motion, AnimatePresence, useMotionValue, animate } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from "@/components/ui/carousel";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -91,13 +97,17 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
     useWishlist();
   const { user } = useAuth();
   const { promptAuth } = useAuthPrompt();
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const swipeStartX = useRef(0);
-  const swipeActive = useRef(false);
-  const dragX = useMotionValue(0);
+  const sheetRef = useRef<HTMLDivElement>(null);
   const isDesktop = useIsDesktop();
+  // Embla drives the image gallery — the same engine as the PDP gallery. The old
+  // hand-rolled pointer swipe animated the outgoing image using the PREVIOUS
+  // slide direction (framer's `custom` on the child wins over AnimatePresence's,
+  // and the exiting child still carries last render's value), so every time you
+  // reversed direction both images flew the same way and the swipe looked broken
+  // one-sided. Embla is symmetric by construction and adds momentum,
+  // rubber-banding at the edges and a live peek of the neighbouring slide.
+  const [emblaApi, setEmblaApi] = useState<CarouselApi>();
   const [activeImg, setActiveImg] = useState(0);
-  const [slideDir, setSlideDir] = useState<1 | -1>(1);
   const [shareOpen, setShareOpen] = useState(false);
 
   // Resizable sheet height — the drag handle lets the user pull the drawer
@@ -131,13 +141,44 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
     if (sheetHeightVh <= minHeightVh + 5) onClose();
   };
 
-  // Reset gallery to the first image whenever a different product is shown.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setActiveImg(0); }, [product?.id]);
+  // Mirror whichever slide embla settled on into `activeImg`, which drives the
+  // thumbnail highlight and the "n / total" badge — direction-agnostic.
+  useEffect(() => {
+    if (!emblaApi) return;
+    const onSelect = () => setActiveImg(emblaApi.selectedScrollSnap());
+    emblaApi.on("select", onSelect);
+    emblaApi.on("reInit", onSelect);
+    return () => {
+      emblaApi.off("select", onSelect);
+      emblaApi.off("reInit", onSelect);
+    };
+  }, [emblaApi]);
+
+  // Reset the gallery to the first image whenever the drawer opens or a different
+  // product is shown. `open` matters because the carousel unmounts on close and
+  // embla always remounts on slide 0 — without this, `activeImg` (badge +
+  // thumbnail highlight) would keep pointing at the last-viewed slide.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActiveImg(0);
+    emblaApi?.scrollTo(0, true); // jump, no slide animation
+  }, [open, product?.id, emblaApi]);
 
   useEffect(() => {
-    if (open) document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    // <html>'s own background is the cream design token (--background:
+    // 275 32% 99%), painted so sub-pixel gaps next to a fixed overlay show page
+    // color instead of white (see index.css). Below this bottom sheet's rounded
+    // corners that same cream shows through as a visible sliver against the
+    // sheet's pure white — same class of gap the repo already patches to black
+    // for Radix overlays via body[data-scroll-locked]. Force it to solid white
+    // here so the sheet reads as flush all the way to the screen edge.
+    document.documentElement.style.backgroundColor = "#fff";
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.backgroundColor = "";
+    };
   }, [open]);
 
   useEffect(() => {
@@ -147,9 +188,14 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Move focus into the dialog on open — onto the sheet itself, NOT the close
+  // button. Focusing the button lit up its `focus-visible` ring, so every open
+  // painted a teal ring + white offset gap around the X. The sheet is
+  // tabIndex={-1} + outline-none, so focus is still trapped in the right place
+  // for Escape/Tab and screen readers, with nothing drawn.
   useEffect(() => {
     if (open) {
-      const t = setTimeout(() => closeRef.current?.focus(), 80);
+      const t = setTimeout(() => sheetRef.current?.focus({ preventScroll: true }), 80);
       return () => clearTimeout(t);
     }
   }, [open]);
@@ -160,9 +206,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
     product.images && product.images.length > 0 ? product.images : [product.image];
   const total = allImages.length;
 
-  const goTo = (idx: number, dir: 1 | -1) => { setSlideDir(dir); setActiveImg(idx); };
-  const prev = () => goTo((activeImg - 1 + total) % total, -1);
-  const next = () => goTo((activeImg + 1) % total, 1);
+  const goTo = (idx: number) => emblaApi?.scrollTo(idx);
 
   const liveCartItem =
     product.source === "cart" ? cartItems.find((i) => i.id === product.id) : undefined;
@@ -262,62 +306,38 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
   // ── Shared pieces ────────────────────────────────────────────────────────
 
   const carousel = (heightClass: string, inlineHeight?: string) => (
-    <motion.div
+    <div
       className={`relative rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 ${heightClass}`}
-      style={{ ...(inlineHeight ? { height: inlineHeight } : {}), touchAction: "pan-y", x: dragX }}
-      onPointerDown={(e) => {
-        swipeStartX.current = e.clientX;
-        swipeActive.current = true;
-        e.currentTarget.setPointerCapture(e.pointerId);
-      }}
-      onPointerMove={(e) => {
-        if (!swipeActive.current) return;
-        dragX.set(e.clientX - swipeStartX.current);
-      }}
-      onPointerUp={(e) => {
-        swipeActive.current = false;
-        const dx = e.clientX - swipeStartX.current;
-        if (dx < -40) {
-          dragX.set(0);
-          next();
-        } else if (dx > 40) {
-          dragX.set(0);
-          prev();
-        } else {
-          void animate(dragX, 0, { type: "spring", stiffness: 600, damping: 40 });
-        }
-      }}
-      onPointerCancel={() => {
-        swipeActive.current = false;
-        void animate(dragX, 0, { type: "spring", stiffness: 600, damping: 40 });
-      }}
+      style={inlineHeight ? { height: inlineHeight } : undefined}
     >
-      <AnimatePresence initial={false} custom={slideDir}>
-        <motion.img
-          key={activeImg}
-          custom={slideDir}
-          draggable={false}
-          variants={{
-            enter: (dir: number) => ({ x: dir * 280, opacity: 0 }),
-            center: { x: 0, opacity: 1 },
-            exit: (dir: number) => ({ x: dir * -280, opacity: 0 }),
-          }}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={{ duration: 0.38, ease: [0.32, 0.72, 0, 1] }}
-          src={allImages[activeImg]}
-          alt={`${product.title} — image ${activeImg + 1}`}
-          onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
-          className="absolute inset-0 w-full h-full object-cover object-center select-none"
-        />
-      </AnimatePresence>
+      {/* Embla arbitrates horizontal-vs-vertical itself, so a mostly-vertical
+          drag still scrolls the sheet while a horizontal one pages the gallery —
+          in either direction, with the same physics. */}
+      <Carousel
+        setApi={setEmblaApi}
+        opts={{ loop: total > 1, watchDrag: total > 1 }}
+        className={`w-full h-full ${total > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}
+      >
+        <CarouselContent className="ml-0 h-full">
+          {allImages.map((img, i) => (
+            <CarouselItem key={i} className="pl-0 basis-full h-full">
+              <img
+                src={img}
+                alt={`${product.title} — image ${i + 1}`}
+                draggable={false}
+                onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                className="w-full h-full object-cover object-center select-none"
+              />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
       {total > 1 && (
         <span className="absolute top-2 right-2 bg-black/40 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full z-10">
           {activeImg + 1} / {total}
         </span>
       )}
-    </motion.div>
+    </div>
   );
 
   const thumbs = () => (
@@ -325,7 +345,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
       {allImages.map((img, i) => (
         <button
           key={i}
-          onClick={() => goTo(i, i > activeImg ? 1 : -1)}
+          onClick={() => goTo(i)}
           className={`flex-shrink-0 w-16 h-20 rounded-xl overflow-hidden border-2 transition-all duration-200 ${
             activeImg === i
               ? "border-brand-teal scale-105 shadow-md"
@@ -483,6 +503,12 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
     </div>
   );
 
+  // Header action pill — same filled-grey chrome ShareSheet uses, so the two
+  // sheets read as one family when the share sheet layers on top. Shared here so
+  // the heart / share / close buttons can't drift apart again.
+  const iconBtn =
+    "w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal focus-visible:ring-offset-2";
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -503,14 +529,24 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
 
           {/* Drawer — always slides up from bottom */}
           <motion.div
+            ref={sheetRef}
             role="dialog"
             aria-modal="true"
             aria-label="Quick product view"
             tabIndex={-1}
+            // Height is plain CSS, not a framer-animated value: `dvh` tracks the
+            // VISIBLE viewport, which is the same basis handleResizeMove divides by
+            // (window.innerHeight). With `vh` the two disagreed — vh resolves against
+            // the LARGE viewport (as if the browser toolbar were retracted), so at
+            // maxHeightVh the sheet could grow taller than the visible area and push
+            // its own drag handle out of reach under `overflow-hidden`. Keeping height
+            // out of `animate` also means a resize drag never springs, so `transition`
+            // now governs only `y`.
+            style={{ height: `${sheetHeightVh}dvh` }}
             initial={{ y: "100%" }}
-            animate={{ y: 0, height: `${sheetHeightVh}vh` }}
+            animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={resizing.current ? { duration: 0 } : { type: "spring", damping: 32, stiffness: 380, mass: 0.8 }}
+            transition={{ type: "spring", damping: 32, stiffness: 380, mass: 0.8 }}
             className="fixed inset-x-0 bottom-0 z-[300] flex flex-col bg-white rounded-t-3xl shadow-2xl outline-none overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
@@ -522,19 +558,21 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
               onPointerCancel={handleResizeEnd}
               className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-ns-resize active:cursor-ns-resize touch-none select-none"
             >
-              <div className="w-12 h-1.5 rounded-full bg-gray-200" />
+              <div className="w-12 h-1.5 rounded-full bg-gray-400" />
             </div>
 
-            {/* Header */}
-            <div className={`flex items-center justify-between px-4 sm:px-5 md:px-6 flex-shrink-0 mb-[10px] ${isDesktop ? "pt-1 pb-3 border-b border-gray-100" : "pt-1 pb-0"}`}>
-              <span className="flex items-center gap-1.5 text-base font-bold text-gray-900 opacity-65">
-                Quick View <Eye size={19} />
+            {/* Header — padding is plain responsive Tailwind rather than the
+                isDesktop branch: useIsDesktop breaks at 768px, which is exactly
+                `md`, so the header no longer re-renders on resize. */}
+            <div className="flex items-center justify-between px-4 sm:px-5 md:px-6 flex-shrink-0 pt-1 pb-3">
+              <span className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-[0.15em] text-brand-teal">
+                <Eye size={14} /> Quick View
               </span>
               <div className="flex items-center gap-1">
                 {product.source === "cart" && (
                   <button
                     onClick={handleWishlistToggle}
-                    className={`w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 shadow-sm hover:bg-gray-100 transition-colors outline-none ${wishlisted ? "text-primary" : "text-gray-500 hover:text-primary"}`}
+                    className={`${iconBtn} ${wishlisted ? "text-primary" : "text-gray-500 hover:text-primary"}`}
                     aria-label={wishlisted ? "Remove from wishlist" : "Save to wishlist"}
                   >
                     <Heart size={19} fill={wishlisted ? "currentColor" : "none"} />
@@ -543,21 +581,25 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
                 <button
                   onClick={() => setShareOpen(true)}
                   disabled={productUnavailable}
-                  className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 shadow-sm hover:bg-gray-100 transition-colors text-gray-500 hover:text-brand-teal outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+                  className={`${iconBtn} text-gray-500 hover:text-brand-teal disabled:opacity-40 disabled:cursor-not-allowed`}
                   aria-label="Share product"
                 >
                   <Share2 size={19} />
                 </button>
                 <button
-                  ref={closeRef}
                   onClick={onClose}
-                  className="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 shadow-sm hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-800 outline-none"
+                  className={`${iconBtn} text-gray-500 hover:text-gray-800`}
                   aria-label="Close quick view"
                 >
                   <X size={20} />
                 </button>
               </div>
             </div>
+
+            {/* Hairline under the bar at BOTH breakpoints — mirrors ShareSheet's
+                divider. Previously desktop-only, which left the mobile sheet's
+                header floating unanchored above the content. */}
+            <div className="h-px mx-4 sm:mx-5 md:mx-6 mb-[10px] flex-shrink-0 bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
 
             <AnimatePresence mode="wait" initial={false}>
               {loading ? (
@@ -605,7 +647,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
                 </div>
 
                 {/* Desktop CTA — sticky footer */}
-                <div className="flex-shrink-0 border-t border-gray-100 px-5 py-4 bg-white">
+                <div className="flex-shrink-0 border-t border-gray-100 px-5 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] bg-white">
                   {ctaDesktop()}
                 </div>
               </>
@@ -626,7 +668,12 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
                 </div>
 
                 {/* Mobile CTA footer */}
-                <div className="flex-shrink-0 border-t border-gray-100 px-4 sm:px-5 py-3 bg-white">
+                {/* pb keeps the CTAs clear of the home indicator / gesture bar. The
+                    env() term is exactly the strip that used to sit outside the layout
+                    viewport and show the page background; it is now the sheet's own
+                    white. 0.75rem is the previous py-3, so nothing moves where the
+                    inset is 0 (every desktop browser, non-notched phones). */}
+                <div className="flex-shrink-0 border-t border-gray-100 px-4 sm:px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] bg-white">
                   {ctaMobile()}
                 </div>
               </>

@@ -104,7 +104,10 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
 
         {/* Single scroll region — suggestions on top while searching, then the
             rest of the search panel always below */}
-        <div className="flex-1 overflow-y-auto no-scrollbar pb-safe">
+        {/* `pb-safe` used to sit here, but no `safe` spacing key is defined in the
+            Tailwind config, so it never generated a rule. Spelled out as an arbitrary
+            value it actually applies now that viewport-fit=cover makes env() non-zero. */}
+        <div className="flex-1 overflow-y-auto no-scrollbar pb-[calc(env(safe-area-inset-bottom)+1rem)]">
           {hasQuery && (
             <SuggestionsDropdown
               suggestions={suggestions}

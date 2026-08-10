@@ -1,6 +1,6 @@
 import { useState, useRef, useLayoutEffect, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Heart, ShoppingCart, Menu, X, Search, Home, Shirt, Info, User, ChevronRight, Sparkles, Star, TrendingUp, PartyPopper } from "lucide-react";
+import { Heart, ShoppingCart, Menu, X, Search, Home, Shirt, Info, User, ChevronRight, Sparkles, Star, TrendingUp, PartyPopper, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
@@ -65,11 +65,15 @@ const Navbar = () => {
     };
   }, [mobileOpen]);
 
+  // pt-[env(safe-area-inset-top)] on the header keeps the bar clear of the
+  // notch/status bar now that index.html sets viewport-fit=cover. The offsetHeight
+  // measurement above includes that padding, so --navbar-height grows with it and
+  // every page's pt-[calc(var(--navbar-height)+…)] still clears the header.
   return (
-    <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border shadow-sm">
+    <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border shadow-sm pt-[env(safe-area-inset-top)]">
       <div className="max-w-screen-2xl mx-auto flex items-center justify-between h-[5rem] md:h-[3.1rem] lg:h-[3.4rem] px-3 lg:px-6">
         {/* Left Actions & Logo */}
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+        <div className="flex items-center gap-1 sm:gap-4 min-w-0">
           <button
             type="button"
             onClick={() => {
@@ -81,7 +85,7 @@ const Navbar = () => {
             <Menu className="w-6 h-6 sm:w-7 sm:h-7" />
           </button>
           <Link to="/" className="flex-shrink flex items-center gap-2 sm:gap-3 min-w-0">
-            <img src={logo} alt="The Lil Edit" className="h-10 sm:h-12 md:h-9 lg:h-9.5 w-auto shrink-0" />
+            <img src={logo} alt="The Lil Edit" className="h-11 sm:h-12 md:h-9 lg:h-9.5 w-auto shrink-0" />
             <div className="hidden min-[430px]:block text-xl md:text-[18px] lg:text-[20px] text-foreground leading-none" style={{ fontFamily: "'Playfair Display', serif" }}>
               The Lil Edit
             </div>
@@ -197,7 +201,7 @@ const Navbar = () => {
 
       {/* Left Menu Overlay */}
       <div
-        className={`fixed inset-0 z-[60] bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${mobileOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        className={`fixed inset-0 z-[900] bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${mobileOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
         onClick={() => setMobileOpen(false)}
         aria-hidden={!mobileOpen}
@@ -208,7 +212,7 @@ const Navbar = () => {
         role="dialog"
         aria-modal="true"
         aria-label="Main menu"
-        className={`fixed top-0 left-0 bottom-0 z-[70] w-80 max-w-[88vw] bg-background shadow-2xl border-r border-border transform transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] flex flex-col ${mobileOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed top-0 left-0 bottom-0 z-[910] w-80 max-w-[88vw] bg-background shadow-2xl border-r border-border transform transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${mobileOpen ? "translate-x-0" : "-translate-x-full"
           }`}
       >
         <div className="relative overflow-hidden bg-gradient-to-br from-brand-teal/12 via-[#E8DDF7]/45 to-emerald-50 px-5 pt-7 pb-6">
@@ -242,16 +246,16 @@ const Navbar = () => {
               to="/collections"
               icon={Shirt}
               label="Collections"
-              active={location.pathname === "/collections" || location.pathname.startsWith("/collections/")}
+              active={location.pathname === "/collections"}
               open={isCollectionsOpen}
               onToggle={() => setIsCollectionsOpen((prev) => !prev)}
               onNavigate={() => setMobileOpen(false)}
             >
-              <SideSubLink to="/collections/new-arrivals" icon={Sparkles} label="New Arrivals" onClick={() => setMobileOpen(false)} />
-              <SideSubLink to="/collections/girls" icon={Heart} label="Girls" onClick={() => setMobileOpen(false)} />
-              <SideSubLink to="/collections/boys" icon={Star} label="Boys" onClick={() => setMobileOpen(false)} />
-              <SideSubLink to="/collections/trending" icon={TrendingUp} label="Trending" onClick={() => setMobileOpen(false)} />
-              <SideSubLink to="/collections/occasion" icon={PartyPopper} label="By Occasion" onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections/new-arrivals" icon={Sparkles} label="New Arrivals" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections/girls" icon={Heart} label="Girls" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections/boys" icon={Star} label="Boys" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections/trending" icon={TrendingUp} label="Trending" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
+              <SideSubLink to="/collections/occasion" icon={PartyPopper} label="By Occasion" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
             </SideCollapse>
             <SideLink to="/about" icon={Info} label="About Us" pathname={location.pathname} onClick={() => setMobileOpen(false)} />
           </SideSection>
@@ -403,7 +407,7 @@ function SideCollapse({
       <div
         className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${open ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}
       >
-        <div className="ml-4 pl-2 border-l-2 border-gray-400 flex flex-col gap-0.5 py-0.5">
+        <div className="ml-4 flex flex-col gap-0.5 py-0.5">
           {children}
         </div>
       </div>
@@ -416,21 +420,29 @@ function SideSubLink({
   to,
   icon: Icon,
   label,
+  pathname,
   onClick,
 }: {
   to: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
+  pathname: string;
   onClick: () => void;
 }) {
+  const active = pathname === to;
   return (
     <Link
       to={to}
       onClick={onClick}
-      className="group flex items-center gap-2.5 px-3 py-1.5 md:py-1 rounded-lg text-foreground hover:bg-secondary transition-colors"
+      aria-current={active ? "page" : undefined}
+      className={`group flex items-center gap-2.5 px-3 py-2 md:py-1.5 rounded-lg transition-colors ${active
+        ? "bg-brand-teal/10 text-[#0F766E] font-semibold"
+        : "text-foreground hover:bg-secondary"
+        }`}
     >
-      <Icon className="w-4 h-4 md:w-3.5 md:h-3.5 shrink-0 text-muted-foreground group-hover:text-[#0F766E]" />
-      <span className="font-medium text-sm md:text-[13px]">{label}</span>
+      <Play className={`w-4 h-4 md:w-3.5 md:h-3.5 shrink-0 ${active ? "text-[#0F766E]" : "text-primary"}`} fill="currentColor" />
+      <Icon className={`w-4 h-4 md:w-3.5 md:h-3.5 shrink-0 ${active ? "text-[#0F766E]" : "text-muted-foreground group-hover:text-[#0F766E]"}`} />
+      <span className="font-medium text-base md:text-sm">{label}</span>
     </Link>
   );
 }

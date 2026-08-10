@@ -1,0 +1,41 @@
+# Split hosting: backend runs separately on EC2. Render hosts only the static
+# frontend build — no backend runtime/secrets belong here. See lil-edit/.env.example
+# for why VITE_API_URL / VITE_BACKEND_URL must point at the EC2 backend's public URL.
+services:
+  - type: web
+    name: lil-edit-portal
+    runtime: static
+    branch: main
+    rootDir: lil-edit
+    buildCommand: "npm ci && npm run build"
+    staticPublishPath: ./dist
+    autoDeploy: true
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_FIREBASE_API_KEY
+        sync: false
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: VITE_FIREBASE_PROJECT_ID
+        sync: false
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        sync: false
+      - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+        sync: false
+      - key: VITE_FIREBASE_APP_ID
+        sync: false
+      - key: VITE_RAZORPAY_KEY_ID
+        sync: false
+      - key: VITE_IMAGE_CDN_BASE
+        sync: false
+      - key: VITE_API_URL
+        sync: false
+      - key: VITE_BACKEND_URL
+        sync: false

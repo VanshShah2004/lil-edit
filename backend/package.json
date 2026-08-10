@@ -4,9 +4,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "tsx server.ts",
+    "start": "node dist/server.js",
     "dev": "tsx watch server.ts",
-    "build": "tsc --noEmit",
+    "build": "tsc",
     "lint": "eslint .",
     "test": "node --import tsx --test test/mailer.test.ts test/orderEmail.test.ts test/searchRanking.test.ts"
   },
@@ -23,7 +23,8 @@
     "express-rate-limit": "^8.5.2",
     "ioredis": "^5.10.1",
     "nodemailer": "^9.0.1",
-    "razorpay": "^2.9.6"
+    "razorpay": "^2.9.6",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -36,7 +37,6 @@
     "globals": "^17.6.0",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
-    "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.60.1"
   }

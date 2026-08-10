@@ -28,6 +28,7 @@ import {
   PartyPopper,
   Mail,
   HelpCircle,
+  Play,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
@@ -140,10 +141,14 @@ const UserNavbar = () => {
     <>
       <header
         ref={headerRef}
-        className={`fixed top-0 left-0 right-0 z-50 border-b border-border transition-all duration-300 bg-background shadow-sm`}
+        // pt-[env(safe-area-inset-top)] keeps the bar clear of the notch/status bar
+        // now that index.html sets viewport-fit=cover. offsetHeight includes this
+        // padding, so --navbar-height grows with it (and sonner's mobile toast offset,
+        // which is calc(var(--navbar-height) + 12px), follows automatically).
+        className={`fixed top-0 left-0 right-0 z-50 border-b border-border transition-all duration-300 bg-background shadow-sm pt-[env(safe-area-inset-top)]`}
       >
         <div className="max-w-screen-2xl mx-auto flex items-center justify-between h-[5rem] md:h-[3.1rem] lg:h-[3.4rem] px-3 lg:px-6">
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="flex items-center gap-1 sm:gap-4 min-w-0">
             <button
               type="button"
               onClick={() => {
@@ -156,7 +161,7 @@ const UserNavbar = () => {
               <Menu className="w-6 h-6 sm:w-7 sm:h-7" />
             </button>
             <Link to="/" className="flex-shrink flex items-center gap-2 sm:gap-3 min-w-0">
-              <img src={logo} alt="The Lil Edit" className="h-10 sm:h-12 md:h-9 lg:h-9.5 w-auto shrink-0" />
+              <img src={logo} alt="The Lil Edit" className="h-11 sm:h-12 md:h-9 lg:h-9.5 w-auto shrink-0" />
               <div className="hidden min-[430px]:block text-xl md:text-[18px] lg:text-[20px] text-foreground leading-none" style={{ fontFamily: "'Playfair Display', serif" }}>
                 The Lil Edit
               </div>
@@ -334,7 +339,7 @@ const UserNavbar = () => {
 
       {/* Left Menu Overlay */}
       <div
-        className={`fixed inset-0 z-[60] bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${isLeftMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        className={`fixed inset-0 z-[900] bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${isLeftMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
         onClick={() => setIsLeftMenuOpen(false)}
         aria-hidden={!isLeftMenuOpen}
@@ -345,7 +350,7 @@ const UserNavbar = () => {
         role="dialog"
         aria-modal="true"
         aria-label="Main menu"
-        className={`fixed top-0 left-0 bottom-0 z-[70] w-80 max-w-[88vw] bg-background shadow-2xl border-r border-border transform transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] flex flex-col ${isLeftMenuOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed top-0 left-0 bottom-0 z-[910] w-80 max-w-[88vw] bg-background shadow-2xl border-r border-border transform transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${isLeftMenuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
       >
         {/* Header — branded gradient band with greeting + avatar */}
@@ -393,11 +398,11 @@ const UserNavbar = () => {
                 onToggle={() => setIsCollectionsOpen((prev) => !prev)}
                 onNavigate={() => setIsLeftMenuOpen(false)}
               >
-                <SideSubLink to="/collections/new-arrivals" icon={Sparkles} label="New Arrivals" onClick={() => setIsLeftMenuOpen(false)} />
-                <SideSubLink to="/collections/girls" icon={Heart} label="Girls" onClick={() => setIsLeftMenuOpen(false)} />
-                <SideSubLink to="/collections/boys" icon={Star} label="Boys" onClick={() => setIsLeftMenuOpen(false)} />
-                <SideSubLink to="/collections/trending" icon={TrendingUp} label="Trending" onClick={() => setIsLeftMenuOpen(false)} />
-                <SideSubLink to="/collections/occasion" icon={PartyPopper} label="By Occasion" onClick={() => setIsLeftMenuOpen(false)} />
+                <SideSubLink to="/collections/new-arrivals" icon={Sparkles} label="New Arrivals" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideSubLink to="/collections/girls" icon={Heart} label="Girls" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideSubLink to="/collections/boys" icon={Star} label="Boys" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideSubLink to="/collections/trending" icon={TrendingUp} label="Trending" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideSubLink to="/collections/occasion" icon={PartyPopper} label="By Occasion" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               </SideCollapse>
             )}
             <SideLink to="/profile" icon={User} label="Profile" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
@@ -574,7 +579,7 @@ function SideCollapse({
       <div
         className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${open ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}
       >
-        <div className="ml-4 pl-2 border-l-2 border-gray-400 flex flex-col gap-0.5 py-0.5">
+        <div className="ml-4 flex flex-col gap-0.5 py-0.5">
           {children}
         </div>
       </div>
@@ -587,21 +592,29 @@ function SideSubLink({
   to,
   icon: Icon,
   label,
+  pathname,
   onClick,
 }: {
   to: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
+  pathname: string;
   onClick: () => void;
 }) {
+  const active = pathname === to;
   return (
     <Link
       to={to}
       onClick={onClick}
-      className="group flex items-center gap-2.5 px-3 py-1.5 md:py-1 rounded-lg text-foreground hover:bg-secondary transition-colors"
+      aria-current={active ? "page" : undefined}
+      className={`group flex items-center gap-2.5 px-3 py-2 md:py-1.5 rounded-lg transition-colors ${active
+        ? "bg-brand-teal/10 text-[#0F766E] font-semibold"
+        : "text-foreground hover:bg-secondary"
+        }`}
     >
-      <Icon className="w-4 h-4 md:w-3.5 md:h-3.5 shrink-0 text-muted-foreground group-hover:text-[#0F766E]" />
-      <span className="font-medium text-sm md:text-[13px]">{label}</span>
+      <Play className={`w-4 h-4 md:w-3.5 md:h-3.5 shrink-0 ${active ? "text-[#0F766E]" : "text-primary"}`} fill="currentColor" />
+      <Icon className={`w-4 h-4 md:w-3.5 md:h-3.5 shrink-0 ${active ? "text-[#0F766E]" : "text-muted-foreground group-hover:text-[#0F766E]"}`} />
+      <span className="font-medium text-base md:text-sm">{label}</span>
     </Link>
   );
 }

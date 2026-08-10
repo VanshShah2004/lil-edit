@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Heart, ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, Sparkles, Heart, Star, TrendingUp, PartyPopper, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,13 @@ import FeaturedCollectionsGrid from "@/components/collections/FeaturedCollection
 import Footer from "@/components/layout/Footer";
 import { getBackendBaseUrl } from "@/lib/backend";
 import { authHeader } from "@/lib/apiAuth";
+import {
+  fetchNewArrivals, fetchCollectionCounts,
+  type NewArrivalProduct, type CollectionCounts,
+} from "@/services/searchService";
+import {
+  Carousel, CarouselContent, CarouselItem, type CarouselApi,
+} from "@/components/ui/carousel";
 
 import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
 import img2 from "@/assets/searchbar-frequent_searches/le-2.png";
@@ -20,14 +27,43 @@ import img4 from "@/assets/searchbar-frequent_searches/le-4.png";
 import img5 from "@/assets/searchbar-frequent_searches/le-5.png";
 import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
 
-const occasionCategories = [
-  { id: "occ-1", name: "Birthday Party", gradient: "from-pink-200 to-rose-200", icon: "🎉" },
-  { id: "occ-2", name: "Casual Wear", gradient: "from-blue-200 to-cyan-200", icon: "👟" },
-  { id: "occ-3", name: "Festive Fits", gradient: "from-purple-200 to-indigo-200", icon: "✨" },
-  { id: "occ-4", name: "Vacation Looks", gradient: "from-yellow-200 to-orange-200", icon: "🌴" },
-  { id: "occ-5", name: "Winter Cozy", gradient: "from-blue-100 to-slate-200", icon: "🧣" },
-  { id: "occ-6", name: "Everyday Basics", gradient: "from-stone-200 to-slate-200", icon: "👕" },
+// Visual language borrowed from the New Arrivals page (pages/arrivals/ArrivalsPage):
+// eyebrow + gradient-accent heading, a scrolling ticker under the hero, section
+// headings with a count and blurb, and an image-fill bento mosaic. Kept local to
+// this file so the five ArrivalsPage-driven collection pages stay untouched.
+
+const TICKER_WORDS = [
+  "Featured Collections", "Spring/Summer '26",
+  "Styled by You", "The Lil Edit",
 ];
+
+// Every collection listing the storefront has. Icons match the ones the side
+// menu uses for these same links (components/home/UserNavbar), so the two
+// navigations agree on what each collection looks like. countKey maps the
+// entry onto its field in the /collection-counts payload.
+interface SubCollection {
+  to: string;
+  countKey: keyof CollectionCounts;
+  label: string;
+  blurb: string;
+  icon: LucideIcon;
+  gradient: string;
+}
+
+const SUB_COLLECTIONS: SubCollection[] = [
+  { to: "/collections/new-arrivals", countKey: "newArrivals", label: "New Arrivals", blurb: "Fresh drops landing every week",   icon: Sparkles,    gradient: "from-emerald-100 to-teal-200" },
+  { to: "/collections/girls",        countKey: "girls",       label: "Girls",        blurb: "Twirly dresses for little trendsetters", icon: Heart,       gradient: "from-pink-100 to-rose-200" },
+  { to: "/collections/boys",         countKey: "boys",        label: "Boys",         blurb: "Everyday fits built for adventure", icon: Star,        gradient: "from-blue-100 to-cyan-200" },
+  { to: "/collections/trending",     countKey: "trending",    label: "Trending",     blurb: "The pieces everyone's loving now",  icon: TrendingUp,  gradient: "from-amber-100 to-orange-200" },
+  { to: "/collections/occasion",     countKey: "occasion",    label: "By Occasion",  blurb: "Outfits dressed up for celebrations", icon: PartyPopper, gradient: "from-purple-100 to-indigo-200" },
+];
+
+// "12 styles" / "1 style" — null (fetch failed or field missing) renders nothing
+// at all rather than a misleading "0 styles".
+function stylesLabel(count: number | null | undefined): string | null {
+  if (count === null || count === undefined) return null;
+  return `${count} ${count === 1 ? "style" : "styles"}`;
+}
 
 const galleryImages = [
   { id: "gal-1", image: img1, caption: "Sunset Vibes", price: "3200" },
@@ -40,11 +76,78 @@ const galleryImages = [
   { id: "gal-8", image: img1, caption: "Mini Chic", price: "2600" },
 ];
 
+// Hand-tuned row spans, same mosaic rhythm the arrivals page uses for its
+// "From the Collection" tail. Rows are 90–120px so the shortest tile still
+// reads as a garment rather than a sliver of fabric.
+const BENTO_SPANS = [
+  "row-span-3", "row-span-2", "row-span-3", "row-span-4",
+  "row-span-2", "row-span-3", "row-span-2", "row-span-3",
+];
+
 export default function Collections() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // One real product per sub-collection, keyed by route, for the placard
+  // carousel. Girls/Boys/Trending need their own calls — the arrivals payload
+  // carries occasion and isTrending, but not gender, so it can't be split
+  // client-side.
+  const [previews, setPreviews] = useState<Record<string, NewArrivalProduct>>({});
+  // Style counts per collection. Its own request (and own catch) so a counts
+  // failure never costs the page its preview imagery, or vice-versa.
+  const [counts, setCounts] = useState<CollectionCounts | null>(null);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    console.log("[Collections] fetching sub-collection preview products");
+
+    Promise.all([
+      fetchNewArrivals(12, ctrl.signal),
+      fetchNewArrivals(12, ctrl.signal, "girls"),
+      fetchNewArrivals(12, ctrl.signal, "boys"),
+      fetchNewArrivals(12, ctrl.signal, undefined, true),
+    ])
+      .then(([all, girls, boys, trending]) => {
+        const occasion = all.find((p) => {
+          const o = (p.occasion ?? "").trim();
+          return o !== "" && o.toLowerCase() !== "general wear";
+        });
+
+        const next: Record<string, NewArrivalProduct> = {};
+        const put = (route: string, product?: NewArrivalProduct) => { if (product) next[route] = product; };
+        put("/collections/new-arrivals", all[0]);
+        put("/collections/girls", girls[0]);
+        put("/collections/boys", boys[0]);
+        put("/collections/trending", trending[0]);
+        put("/collections/occasion", occasion ?? all[1]);
+
+        console.log("[Collections] preview products resolved for", Object.keys(next).length, "collections");
+        setPreviews(next);
+      })
+      .catch((err) => {
+        if ((err as Error).name === "AbortError") {
+          console.log("[Collections] preview fetch aborted");
+          return;
+        }
+        console.error("[Collections] preview fetch failed:", err);
+      });
+
+    fetchCollectionCounts(ctrl.signal)
+      .then((data) => {
+        console.log("[Collections] collection counts resolved:", data);
+        setCounts(data);
+      })
+      .catch((err) => {
+        if ((err as Error).name === "AbortError") {
+          console.log("[Collections] counts fetch aborted");
+          return;
+        }
+        console.error("[Collections] counts fetch failed:", err);
+      });
+
+    return () => ctrl.abort();
+  }, []);
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,154 +187,195 @@ export default function Collections() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 overflow-x-hidden w-full">
-      {user ? <UserNavbar /> : <Navbar />}
+      {/* Page-local keyframes: ticker scroll (mirrors ArrivalsPage) */}
+      <style>{`
+        @keyframes col-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        @media (prefers-reduced-motion: reduce) {
+          .col-ticker-track { animation: none !important; }
+        }
+      `}</style>
 
-      {/* Navbar offset spacer */}
+      {user ? <UserNavbar /> : <Navbar />}
       <div className="pt-[var(--navbar-height)]" />
 
-      {/* HERO SECTION */}
-      <section className="relative w-full bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 overflow-hidden py-32 sm:py-32 md:py-40 min-h-[50vh] sm:min-h-[40vh] flex flex-col justify-center">
-        <div className="absolute inset-0 opacity-20 sm:opacity-30">
-          <div className="absolute top-4 sm:top-10 left-4 sm:left-10 w-32 sm:w-40 h-32 sm:h-40 bg-pink-300 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-4 sm:bottom-10 right-4 sm:right-10 w-40 sm:w-56 h-40 sm:h-56 bg-blue-300 rounded-full blur-3xl"></div>
+      {/* HERO */}
+      <section className="relative w-full bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 overflow-hidden">
+        <div className="absolute inset-0 opacity-40 sm:opacity-50" aria-hidden="true">
+          <div className="absolute -top-10 left-1/4 w-72 h-72 bg-pink-300 rounded-full blur-3xl" />
+          <div className="absolute -bottom-16 right-1/5 w-80 h-80 bg-blue-300 rounded-full blur-3xl" />
+          <div className="absolute top-1/3 -left-10 w-56 h-56 bg-purple-300 rounded-full blur-3xl" />
         </div>
 
-        <div className="relative flex flex-col items-center justify-center text-center px-4 sm:px-6 z-10">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-3 sm:mb-5 leading-tight max-w-4xl">
-            Curated Collections
+        {/* Without the tagline this hero is three rows (eyebrow, heading, CTAs),
+            the same count as the New Arrivals hero — so it can share that page's
+            padding instead of compensating for an extra row. Mobile stays lower
+            because the two CTAs stack there. */}
+        <div className="relative z-10 flex flex-col items-center text-center px-4 sm:px-6 py-20 sm:py-28 md:py-[123px]">
+          <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-brand-teal mb-4">
+            <Sparkles className="w-3.5 h-3.5" />
+            Every Little Personality
+          </span>
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold leading-none mb-8 text-gray-900">
+            Curated
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#0C5D53] via-[#7B5AB5] to-emerald-700"> Collections</span>
           </h1>
-          <p className="text-sm sm:text-base md:text-lg text-gray-700 mb-6 sm:mb-10 max-w-2xl px-2">
-            For Every Little Personality — Fashion-Forward Pieces Designed for Comfort and Style
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto justify-center">
             <Button
               onClick={() => navigate("/collections/new-arrivals")}
-              className="bg-gray-900 hover:bg-gray-800 text-white px-6 sm:px-8 h-11 sm:h-12 rounded-full font-semibold flex items-center justify-center gap-2 transition-colors duration-200"
+              className="bg-gray-900 hover:bg-gray-800 text-white px-6 sm:px-8 h-11 sm:h-12 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
             >
-              Shop New Arrivals
+              Shop new arrivals
               <ArrowRight className="w-4 h-4" />
             </Button>
             <Button
               variant="outline"
-              className="border-gray-900 text-gray-900 hover:bg-gray-100 px-6 sm:px-8 h-11 sm:h-12 rounded-full font-semibold transition-colors duration-200"
-            >Explore
+              onClick={() => navigate("/collections/trending")}
+              className="border-0 text-gray-900 hover:bg-gray-100 px-6 sm:px-8 h-11 sm:h-12 rounded-xl font-semibold transition-colors"
+            >
+              See what's trending
             </Button>
+          </div>
+        </div>
+
+        {/* SCROLLING TICKER */}
+        <div className="relative z-10 border-t border-gray-400 bg-white/60 overflow-hidden py-2.5 shadow-sm">
+          <div
+            className="col-ticker-track flex w-max whitespace-nowrap"
+            style={{ animation: "col-ticker 22s linear infinite" }}
+          >
+            {[0, 1].map((copy) => (
+              <div key={copy} className="flex items-center" aria-hidden={copy === 1}>
+                {TICKER_WORDS.concat(TICKER_WORDS).map((w, i) => (
+                  <span key={`${copy}-${i}`} className="flex items-center text-[11px] sm:text-xs font-bold uppercase tracking-[0.25em] text-gray-500">
+                    <span className="px-4 sm:px-6">{w}</span>
+                    <span className="text-brand-teal">✦</span>
+                  </span>
+                ))}
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* MAIN CONTENT */}
-      <main className="w-full py-6 sm:py-12 md:py-16">
-        {/* FEATURED COLLECTIONS & SHOP BY OCCASION */}
+      <main className="w-full py-8 sm:py-12 md:py-14">
         <div className="px-4 sm:px-8 md:px-12 lg:px-16">
-          <div className="max-w-5xl mx-auto space-y-10 sm:space-y-12 md:space-y-16">
-            {/* FEATURED COLLECTIONS GRID */}
-            <FeaturedCollectionsGrid />
-
-            {/* SHOP BY OCCASION */}
+          <div className="max-w-5xl mx-auto space-y-12 sm:space-y-16">
+            {/* BROWSE THE COLLECTIONS — every collection listing, in one place.
+                Girls/Boys share a row at half width each; the remaining three
+                collections share an equal-thirds row below them. */}
             <section>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
-                Shop by Occasion
-              </h2>
+              <SectionHeading
+                label="Browse the Collections"
+                blurb="Every edit we stock, one tap away."
+              />
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 lg:gap-4">
-                {occasionCategories.map((occasion) => (
-                  <div
-                    key={occasion.id}
-                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl h-40 sm:h-48 md:h-56 lg:h-48 cursor-pointer bg-gradient-to-br ${occasion.gradient} shadow-md hover:shadow-lg transition-all duration-300`}
-                  >
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-3 sm:p-4 z-10">
-                      <div className="text-4xl sm:text-5xl md:text-5xl lg:text-4xl mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300">
-                        {occasion.icon}
-                      </div>
-                      <h3 className="text-sm sm:text-base md:text-base lg:text-sm font-bold text-gray-900 line-clamp-2">
-                        {occasion.name}
-                      </h3>
-                    </div>
+              <div className="mb-6 sm:mb-8">
+                <CollectionsPlacardCarousel previews={previews} counts={counts} />
+              </div>
 
-                    <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-all duration-300" />
-                  </div>
-                ))}
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                  <CollectionTile {...SUB_COLLECTIONS[1]} counts={counts} heightClass="h-28 sm:h-36" />
+                  <CollectionTile {...SUB_COLLECTIONS[2]} counts={counts} heightClass="h-28 sm:h-36" />
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                  <CollectionTile {...SUB_COLLECTIONS[0]} counts={counts} />
+                  <CollectionTile {...SUB_COLLECTIONS[3]} counts={counts} />
+                  <CollectionTile {...SUB_COLLECTIONS[4]} counts={counts} />
+                </div>
               </div>
             </section>
+
+            {/* The grid carries its own px-4 sm:px-6 lg:px-8 so it can stand
+                alone in the admin Spotlight preview. Here the page already
+                supplies a gutter, so cancel the duplicate at every breakpoint. */}
+            <div className="-mx-4 sm:-mx-6 lg:-mx-8">
+              <FeaturedCollectionsGrid />
+            </div>
           </div>
         </div>
 
-        {/* SEASON HIGHLIGHT BANNER - FULL WIDTH */}
+        {/* SEASON HIGHLIGHT BANNER — full width */}
         <section className="w-full py-12 sm:py-14 md:py-16">
-          <div className="relative overflow-hidden bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 py-32 sm:py-36 md:py-40 px-4 sm:px-8 md:px-12 lg:px-16 flex items-center justify-center text-center">
-            <div className="absolute inset-0 opacity-15 sm:opacity-20">
-              <div className="absolute top-0 left-0 w-64 sm:w-96 h-64 sm:h-96 bg-white rounded-full blur-3xl"></div>
+          <div className="relative overflow-hidden bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 py-28 sm:py-32 md:py-36 px-4 sm:px-8 md:px-12 lg:px-16 flex items-center justify-center text-center">
+            <div className="absolute inset-0 opacity-20" aria-hidden="true">
+              <div className="absolute top-0 left-0 w-64 sm:w-96 h-64 sm:h-96 bg-white rounded-full blur-3xl" />
+              <div className="absolute bottom-0 right-0 w-56 sm:w-80 h-56 sm:h-80 bg-white rounded-full blur-3xl" />
             </div>
 
             <div className="relative z-10 max-w-3xl">
-              <span className="inline-block text-xs sm:text-sm font-bold text-gray-700 mb-2 sm:mb-3 md:mb-4 bg-white/70 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
-                Limited Edition
+              <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-gray-800 mb-4 bg-white/70 px-3 py-1.5 rounded-full">
+                <Sparkles className="w-3.5 h-3.5" />
+                Limited edition
               </span>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-4">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-3">
                 Spring/Summer '26
               </h2>
-              <p className="text-sm sm:text-base md:text-lg text-gray-800 mb-5 sm:mb-6 md:mb-8">
-                Designed for comfort, crafted for style. Discover our latest collection.
+              <p className="text-sm sm:text-base md:text-lg text-gray-800 mb-6">
+                Designed for comfort, crafted for style. The season's line-up, all in one place.
               </p>
-              <Button className="bg-gray-900 hover:bg-gray-800 text-white px-6 sm:px-8 h-10 sm:h-11 md:h-12 rounded-full font-semibold text-sm sm:text-base transition-colors duration-200">
-                Shop Now
+              <Button
+                onClick={() => navigate("/collections/new-arrivals")}
+                className="bg-gray-900 hover:bg-gray-800 text-white px-6 sm:px-8 h-11 sm:h-12 rounded-full font-semibold text-sm sm:text-base transition-colors"
+              >
+                Shop the season
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
           </div>
         </section>
 
-        {/* STYLED BY OUR COMMUNITY & NEWSLETTER */}
         <div className="px-4 sm:px-8 md:px-12 lg:px-16">
-          <div className="max-w-5xl mx-auto space-y-10 sm:space-y-12 md:space-y-16">
-            {/* STYLED BY OUR COMMUNITY */}
+          <div className="max-w-5xl mx-auto space-y-12 sm:space-y-16">
+            {/* STYLED BY OUR COMMUNITY — bento mosaic */}
             <section>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
-                Styled by Our Community
-              </h2>
+              <SectionHeading
+                label="Styled by Our Community"
+                count={galleryImages.length}
+                blurb="Real looks, worn by real little people."
+              />
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {galleryImages.map((item) => (
-                  <div
+              <div className="grid grid-cols-2 gap-2.5 auto-rows-[90px] sm:grid-cols-3 sm:gap-3 sm:auto-rows-[100px] md:auto-rows-[120px] [grid-auto-flow:dense]">
+                {galleryImages.map((item, idx) => (
+                  <figure
                     key={item.id}
-                    className="group bg-card p-2 md:p-1.5 rounded-2xl shadow-sm border border-border hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                    className={`group relative rounded-xl sm:rounded-2xl overflow-hidden border border-gray-400 shadow-md hover:shadow-xl hover:border-gray-500 transition-all ${BENTO_SPANS[idx % BENTO_SPANS.length]}`}
                   >
-                    <div className="relative rounded-xl overflow-hidden aspect-[3/4] md:aspect-[4/5] mb-2 md:mb-1.5">
-                      <img
-                        src={item.image}
-                        alt={item.caption}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <button className="absolute top-2 right-2 w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-muted-foreground hover:text-primary transition-all">
-                        <Heart className="w-3.5 h-3.5" />
-                      </button>
-                      <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                        <button className="w-full py-1.5 bg-white/90 backdrop-blur text-foreground rounded-lg font-medium text-[10px] md:text-xs hover:bg-[#0F766E] hover:text-white transition-colors shadow-sm">
-                          Add to Cart
-                        </button>
-                      </div>
-                    </div>
-                    <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
-                      <h3 className="font-display text-xs md:text-sm font-medium text-foreground leading-snug">{item.caption}</h3>
-                      <p className="font-body text-xs font-semibold text-[#0F766E] shrink-0">₹{item.price}</p>
-                    </div>
-                  </div>
+                    <img
+                      src={item.image}
+                      alt={item.caption}
+                      loading="lazy"
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
+
+                    <figcaption className="absolute inset-x-0 bottom-0 p-3 sm:p-4 flex flex-col items-start justify-end">
+                      <span className="text-[9px] sm:text-[11px] font-semibold tracking-wider text-white/90 uppercase mb-0.5 sm:mb-1 drop-shadow-md">
+                        ₹{item.price}
+                      </span>
+                      <h3 className="text-xs sm:text-sm md:text-base font-bold text-white leading-tight drop-shadow-md line-clamp-2 group-hover:-translate-y-1 transition-transform duration-300">
+                        {item.caption}
+                      </h3>
+                    </figcaption>
+                  </figure>
                 ))}
               </div>
             </section>
 
             {/* NEWSLETTER CTA */}
             <section>
-              <div className="relative overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl bg-gradient-to-br from-gray-900 to-gray-800 px-4 sm:px-8 md:px-12 lg:px-16 py-10 sm:py-14 md:py-16 text-center text-white">
-                <div className="absolute top-0 right-0 w-64 sm:w-96 h-64 sm:h-96 bg-purple-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+              <div className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-gradient-to-br from-gray-900 to-gray-800 px-4 sm:px-8 md:px-12 lg:px-16 py-12 sm:py-14 md:py-16 text-center text-white">
+                <div className="absolute top-0 right-0 w-64 sm:w-96 h-64 sm:h-96 bg-purple-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" aria-hidden="true" />
                 <div className="relative z-10">
-                  <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 sm:mb-3 md:mb-4">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-white/70 mb-4">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Stay in the loop
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3">
                     Stay in Style
                   </h2>
-                  <p className="text-xs sm:text-sm md:text-base opacity-90 mb-5 sm:mb-6 md:mb-8 max-w-2xl mx-auto">
-                    Get exclusive access to new collections, special offers, and style tips delivered to your inbox.
+                  <p className="text-xs sm:text-sm md:text-base opacity-90 mb-6 max-w-2xl mx-auto">
+                    Get first look at new collections, special offers, and styling ideas in your inbox.
                   </p>
 
                   <form
@@ -244,18 +388,18 @@ export default function Collections() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Enter your email"
-                      className="px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg sm:rounded-full bg-white/20 border border-white/30 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white transition-all duration-200"
+                      className="px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg sm:rounded-full bg-white/20 border border-white/30 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white transition-all"
                     />
                     <Button
                       type="submit"
                       disabled={submitting}
-                      className="bg-white text-gray-900 hover:bg-gray-100 px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-full font-semibold text-xs sm:text-sm flex-shrink-0 transition-colors duration-200 disabled:opacity-60"
+                      className="bg-white text-gray-900 hover:bg-gray-100 px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-full font-semibold text-xs sm:text-sm flex-shrink-0 transition-colors disabled:opacity-60"
                     >
                       {submitting ? "Joining..." : "Subscribe"}
                     </Button>
                   </form>
 
-                  <p className="text-[10px] sm:text-xs opacity-75 mt-3 sm:mt-4">
+                  <p className="text-[10px] sm:text-xs opacity-75 mt-4">
                     We respect your privacy. Unsubscribe anytime.
                   </p>
                 </div>
@@ -266,6 +410,197 @@ export default function Collections() {
       </main>
 
       <Footer />
-    </div >
+    </div>
+  );
+}
+
+// Section heading in the arrivals language: title + count, blurb underneath,
+// optional "View all" on the right.
+function SectionHeading({
+  label, count, blurb, to,
+}: { label: string; count?: number; blurb: string; to?: string }) {
+  return (
+    <>
+      <div className="flex items-end justify-between gap-3 mb-1">
+        <div className="flex items-baseline gap-3">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">{label}</h2>
+          {count !== undefined && <span className="text-xs font-semibold text-gray-400">{count}</span>}
+        </div>
+        {to && (
+          <Link
+            to={to}
+            className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-brand-teal hover:underline shrink-0"
+          >
+            View All
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        )}
+      </div>
+      <p className="text-xs sm:text-sm text-gray-500 mb-5">{blurb}</p>
+    </>
+  );
+}
+
+// One big placard per collection — near-identical layout to the New Arrivals
+// spotlight card (pages/arrivals/ArrivalsPage SpotlightCard): image on one
+// side, copy + CTA on the other, gradient bleeding through behind the text.
+// Same embla engine + auto-advance/loop pattern too, just a 3s interval
+// (vs. the arrivals page's 5s) since there's no drag-to-inspect motivation
+// here — it's a route into a collection, not a product.
+function CollectionsPlacardCarousel({
+  previews, counts,
+}: { previews: Record<string, NewArrivalProduct>; counts: CollectionCounts | null }) {
+  const [api, setApi] = useState<CarouselApi>();
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [hovered, setHovered] = useState(false);
+  const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    if (!api) return;
+    const onSelect = () => setActiveIndex(api.selectedScrollSnap());
+    const onDown = () => setDragging(true);
+    const onSettle = () => setDragging(false);
+    onSelect();
+    api.on("select", onSelect);
+    api.on("pointerDown", onDown);
+    api.on("settle", onSettle);
+    return () => {
+      api.off("select", onSelect);
+      api.off("pointerDown", onDown);
+      api.off("settle", onSettle);
+    };
+  }, [api]);
+
+  useEffect(() => {
+    if (!api || hovered || dragging) return;
+    const id = setInterval(() => api.scrollNext(), 3000);
+    return () => clearInterval(id);
+  }, [api, hovered, dragging]);
+
+  return (
+    <div
+      className="relative select-none"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <Carousel
+        setApi={setApi}
+        opts={{ loop: true, duration: 30 }}
+        className="cursor-grab active:cursor-grabbing"
+      >
+        <CarouselContent className="ml-0">
+          {SUB_COLLECTIONS.map(({ to, countKey, label, blurb, icon: Icon, gradient }) => {
+            const p = previews[to];
+            const styles = stylesLabel(counts?.[countKey]);
+            return (
+              <CarouselItem key={to} className="pl-0">
+                <div className="h-full px-0.5">
+                  {/* A real anchor, not a click handler: keyboard focus,
+                      middle-click and open-in-new-tab all work. Embla's own
+                      capture-phase click guard preventDefaults the event after
+                      a drag, so dragging the carousel never navigates. */}
+                  <Link
+                    to={to}
+                    className={`group relative block h-full rounded-3xl overflow-hidden bg-gradient-to-br ${gradient} text-gray-900 border border-gray-400 cursor-pointer hover:border-gray-500 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal focus-visible:ring-offset-2`}
+                  >
+                    <div className="grid h-full grid-rows-[auto_1fr] md:grid-rows-1 md:grid-cols-[2fr_3fr] md:h-72">
+                      {/* Image side */}
+                      <div className="relative aspect-[4/3] md:aspect-auto md:h-full overflow-hidden">
+                        {p?.image ? (
+                          <img
+                            src={p.image}
+                            alt={label}
+                            onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                            className="w-full h-full object-cover object-center group-hover:scale-[1.04] transition-transform duration-700"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-white/30 grid place-items-center">
+                            <Icon className="w-12 h-12 text-gray-900/40" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Text side — every row has a reserved height so all
+                          slides line up regardless of copy length */}
+                      <div className="relative flex flex-col justify-center gap-2 sm:gap-3 p-5 sm:p-7 md:p-8">
+                        <div className="absolute top-0 right-0 w-40 h-40 bg-white/25 rounded-full blur-3xl" />
+                        <span className="inline-flex w-fit items-center gap-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-gray-800">
+                          <Icon className="w-3.5 h-3.5" />
+                          Collection
+                        </span>
+                        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold leading-tight text-gray-900 line-clamp-1">{label}</h2>
+                        <p className="text-xs sm:text-sm text-gray-700 max-w-md line-clamp-2">{blurb}</p>
+                        {/* Meta row keeps its height even while the count and
+                            preview are still in flight, so the CTA below never
+                            jumps as the two requests land. */}
+                        <div className="flex flex-nowrap overflow-hidden items-center gap-2 min-h-[1.125rem] sm:min-h-[1.25rem] text-xs sm:text-sm text-gray-600">
+                          {styles && <span className="font-semibold text-gray-800 shrink-0">{styles}</span>}
+                          {styles && p?.category && <span className="text-gray-400 shrink-0">•</span>}
+                          {p?.category && <span className="truncate">{p.category}</span>}
+                        </div>
+                        {/* Stacked mobile layout puts the CTA at the bottom of
+                            a full-width block, so it reads better tucked to the
+                            right edge. From md up the text sits in its own
+                            column beside the image and the pill goes back to
+                            leading the left margin with the copy. */}
+                        <div className="mt-0.5 sm:mt-1 flex justify-end md:justify-start">
+                          <span className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 sm:px-5 h-9 sm:h-10 rounded-full font-semibold text-xs sm:text-sm group-hover:bg-gray-800 transition-colors">
+                            Explore
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </div>
+              </CarouselItem>
+            );
+          })}
+        </CarouselContent>
+      </Carousel>
+
+      {/* Dots */}
+      <div className="mt-3 flex justify-center items-center gap-1.5">
+        {SUB_COLLECTIONS.map((c, i) => (
+          <button
+            key={c.to}
+            onClick={(e) => { e.stopPropagation(); api?.scrollTo(i); }}
+            className={`h-1.5 rounded-full transition-all duration-300 ${
+              i === activeIndex ? "w-5 bg-gray-900" : "w-1.5 bg-gray-400 hover:bg-gray-600"
+            }`}
+            aria-label={`Show ${c.label}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Single gradient tile in the "Browse the Collections" rows below the
+// placard carousel — colour + icon only, no product image.
+function CollectionTile({
+  to, countKey, label, icon: Icon, gradient, counts, heightClass = "h-40 sm:h-52",
+}: SubCollection & { counts: CollectionCounts | null; heightClass?: string }) {
+  const styles = stylesLabel(counts?.[countKey]);
+
+  return (
+    <Link
+      to={to}
+      className={`group relative overflow-hidden rounded-2xl ${heightClass} border border-gray-400 shadow-md hover:shadow-xl hover:border-gray-500 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal focus-visible:ring-offset-2 bg-gradient-to-br ${gradient}`}
+    >
+      <div className="absolute inset-0 flex flex-col justify-center items-center text-center p-3 sm:p-4">
+        <span className="w-9 h-9 rounded-full grid place-items-center mb-2 shadow-sm transition-transform duration-300 group-hover:scale-110 bg-white/70 text-gray-800">
+          <Icon className="w-[18px] h-[18px]" />
+        </span>
+        <h3 className="text-sm sm:text-base font-bold leading-tight text-gray-900">
+          {label}
+        </h3>
+        {styles && (
+          <span className="mt-1 text-[10px] sm:text-xs font-semibold text-gray-700">
+            {styles}
+          </span>
+        )}
+      </div>
+    </Link>
   );
 }
