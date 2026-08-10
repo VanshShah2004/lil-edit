@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Sparkles, Heart, Star, TrendingUp, PartyPopper } from "lucide-react";
+import { ArrowRight, Sparkles, Heart, Star, TrendingUp, PartyPopper, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,13 @@ import FeaturedCollectionsGrid from "@/components/collections/FeaturedCollection
 import Footer from "@/components/layout/Footer";
 import { getBackendBaseUrl } from "@/lib/backend";
 import { authHeader } from "@/lib/apiAuth";
-import { fetchNewArrivals } from "@/services/searchService";
+import {
+  fetchNewArrivals, fetchCollectionCounts,
+  type NewArrivalProduct, type CollectionCounts,
+} from "@/services/searchService";
+import {
+  Carousel, CarouselContent, CarouselItem, type CarouselApi,
+} from "@/components/ui/carousel";
 
 import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
 import img2 from "@/assets/searchbar-frequent_searches/le-2.png";
@@ -33,14 +39,31 @@ const TICKER_WORDS = [
 
 // Every collection listing the storefront has. Icons match the ones the side
 // menu uses for these same links (components/home/UserNavbar), so the two
-// navigations agree on what each collection looks like.
-const SUB_COLLECTIONS = [
-  { to: "/collections/new-arrivals", label: "New Arrivals", blurb: "The latest drop, newest first", icon: Sparkles,    gradient: "from-emerald-100 to-teal-200" },
-  { to: "/collections/girls",        label: "Girls",        blurb: "Everything in the girls' line", icon: Heart,       gradient: "from-pink-100 to-rose-200" },
-  { to: "/collections/boys",         label: "Boys",         blurb: "Everything in the boys' line",  icon: Star,        gradient: "from-blue-100 to-cyan-200" },
-  { to: "/collections/trending",     label: "Trending",     blurb: "What everyone's buying",        icon: TrendingUp,  gradient: "from-amber-100 to-orange-200" },
-  { to: "/collections/occasion",     label: "By Occasion",  blurb: "Birthdays, festives, holidays", icon: PartyPopper, gradient: "from-purple-100 to-indigo-200" },
+// navigations agree on what each collection looks like. countKey maps the
+// entry onto its field in the /collection-counts payload.
+interface SubCollection {
+  to: string;
+  countKey: keyof CollectionCounts;
+  label: string;
+  blurb: string;
+  icon: LucideIcon;
+  gradient: string;
+}
+
+const SUB_COLLECTIONS: SubCollection[] = [
+  { to: "/collections/new-arrivals", countKey: "newArrivals", label: "New Arrivals", blurb: "Fresh drops landing every week",   icon: Sparkles,    gradient: "from-emerald-100 to-teal-200" },
+  { to: "/collections/girls",        countKey: "girls",       label: "Girls",        blurb: "Twirly dresses for little trendsetters", icon: Heart,       gradient: "from-pink-100 to-rose-200" },
+  { to: "/collections/boys",         countKey: "boys",        label: "Boys",         blurb: "Everyday fits built for adventure", icon: Star,        gradient: "from-blue-100 to-cyan-200" },
+  { to: "/collections/trending",     countKey: "trending",    label: "Trending",     blurb: "The pieces everyone's loving now",  icon: TrendingUp,  gradient: "from-amber-100 to-orange-200" },
+  { to: "/collections/occasion",     countKey: "occasion",    label: "By Occasion",  blurb: "Outfits dressed up for celebrations", icon: PartyPopper, gradient: "from-purple-100 to-indigo-200" },
 ];
+
+// "12 styles" / "1 style" — null (fetch failed or field missing) renders nothing
+// at all rather than a misleading "0 styles".
+function stylesLabel(count: number | null | undefined): string | null {
+  if (count === null || count === undefined) return null;
+  return `${count} ${count === 1 ? "style" : "styles"}`;
+}
 
 const galleryImages = [
   { id: "gal-1", image: img1, caption: "Sunset Vibes", price: "3200" },
@@ -66,17 +89,19 @@ export default function Collections() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  // One real product shot per sub-collection, keyed by route. A gradient shows
-  // until these land (and stays if the fetch fails), so the tiles never wait on
-  // the network to be usable.
-  const [previews, setPreviews] = useState<Record<string, string>>({});
+  // One real product per sub-collection, keyed by route, for the placard
+  // carousel. Girls/Boys/Trending need their own calls — the arrivals payload
+  // carries occasion and isTrending, but not gender, so it can't be split
+  // client-side.
+  const [previews, setPreviews] = useState<Record<string, NewArrivalProduct>>({});
+  // Style counts per collection. Its own request (and own catch) so a counts
+  // failure never costs the page its preview imagery, or vice-versa.
+  const [counts, setCounts] = useState<CollectionCounts | null>(null);
 
   useEffect(() => {
     const ctrl = new AbortController();
-    console.log("[Collections] fetching sub-collection previews");
+    console.log("[Collections] fetching sub-collection preview products");
 
-    // Girls/Boys/Trending need their own calls — the arrivals payload carries
-    // occasion and isTrending, but not gender, so it can't be split client-side.
     Promise.all([
       fetchNewArrivals(12, ctrl.signal),
       fetchNewArrivals(12, ctrl.signal, "girls"),
@@ -89,15 +114,15 @@ export default function Collections() {
           return o !== "" && o.toLowerCase() !== "general wear";
         });
 
-        const next: Record<string, string> = {};
-        const put = (route: string, image?: string) => { if (image) next[route] = image; };
-        put("/collections/new-arrivals", all[0]?.image);
-        put("/collections/girls", girls[0]?.image);
-        put("/collections/boys", boys[0]?.image);
-        put("/collections/trending", trending[0]?.image);
-        put("/collections/occasion", occasion?.image ?? all[1]?.image);
+        const next: Record<string, NewArrivalProduct> = {};
+        const put = (route: string, product?: NewArrivalProduct) => { if (product) next[route] = product; };
+        put("/collections/new-arrivals", all[0]);
+        put("/collections/girls", girls[0]);
+        put("/collections/boys", boys[0]);
+        put("/collections/trending", trending[0]);
+        put("/collections/occasion", occasion ?? all[1]);
 
-        console.log("[Collections] previews resolved for", Object.keys(next).length, "collections");
+        console.log("[Collections] preview products resolved for", Object.keys(next).length, "collections");
         setPreviews(next);
       })
       .catch((err) => {
@@ -106,6 +131,19 @@ export default function Collections() {
           return;
         }
         console.error("[Collections] preview fetch failed:", err);
+      });
+
+    fetchCollectionCounts(ctrl.signal)
+      .then((data) => {
+        console.log("[Collections] collection counts resolved:", data);
+        setCounts(data);
+      })
+      .catch((err) => {
+        if ((err as Error).name === "AbortError") {
+          console.log("[Collections] counts fetch aborted");
+          return;
+        }
+        console.error("[Collections] counts fetch failed:", err);
       });
 
     return () => ctrl.abort();
@@ -222,77 +260,38 @@ export default function Collections() {
       <main className="w-full py-8 sm:py-12 md:py-14">
         <div className="px-4 sm:px-8 md:px-12 lg:px-16">
           <div className="max-w-5xl mx-auto space-y-12 sm:space-y-16">
-            {/* The grid carries its own px-4 sm:px-6 lg:px-8 so it can stand
-                alone in the admin Spotlight preview. Here the page already
-                supplies a gutter, so cancel the duplicate at every breakpoint. */}
-            <div className="-mx-4 sm:-mx-6 lg:-mx-8">
-              <FeaturedCollectionsGrid />
-            </div>
-
             {/* BROWSE THE COLLECTIONS — every collection listing, in one place.
-                The first tile spans two columns so five items fill the grid
-                evenly instead of leaving a hole in the last row. */}
+                Girls/Boys share a row at half width each; the remaining three
+                collections share an equal-thirds row below them. */}
             <section>
               <SectionHeading
                 label="Browse the Collections"
                 blurb="Every edit we stock, one tap away."
               />
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                {SUB_COLLECTIONS.map(({ to, label, blurb, icon: Icon, gradient }, i) => {
-                  const image = previews[to];
-                  return (
-                    <Link
-                      key={to}
-                      to={to}
-                      className={`group relative overflow-hidden rounded-2xl h-40 sm:h-52 border border-gray-400 shadow-md hover:shadow-xl hover:border-gray-500 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal focus-visible:ring-offset-2 ${
-                        i === 0 ? "col-span-2" : ""
-                      }`}
-                    >
-                      {/* Gradient underneath doubles as the loading state and the
-                          fallback if a collection has no product to show yet. */}
-                      <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+              <div className="mb-6 sm:mb-8">
+                <CollectionsPlacardCarousel previews={previews} counts={counts} />
+              </div>
 
-                      {image && (
-                        <>
-                          <img
-                            src={image}
-                            alt=""
-                            loading="lazy"
-                            onError={(e) => { e.currentTarget.style.display = "none"; }}
-                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
-                        </>
-                      )}
-
-                      <div className="absolute inset-0 flex flex-col justify-end items-start text-left p-3 sm:p-4">
-                        <span
-                          className={`w-9 h-9 rounded-full grid place-items-center mb-2 shadow-sm transition-transform duration-300 group-hover:scale-110 ${
-                            image ? "bg-white/90 text-gray-900" : "bg-white/70 text-gray-800"
-                          }`}
-                        >
-                          <Icon className="w-[18px] h-[18px]" />
-                        </span>
-                        <h3 className={`text-sm sm:text-base font-bold leading-tight ${image ? "text-white drop-shadow-md" : "text-gray-900"}`}>
-                          {label}
-                        </h3>
-                        <p className={`text-[11px] sm:text-xs mt-0.5 line-clamp-2 ${image ? "text-white/80 drop-shadow" : "text-gray-600"}`}>
-                          {blurb}
-                        </p>
-
-                        {/* Hover reveal, same slide-up pill the arrivals cards use */}
-                        <div className="hidden md:block max-h-0 opacity-0 group-hover:max-h-12 group-hover:opacity-100 group-hover:mt-2 transition-all duration-300 overflow-hidden">
-                          <span className="inline-flex items-center gap-1.5 bg-white text-gray-900 text-xs font-semibold px-3.5 py-1.5 rounded-full shadow-sm">
-                            Explore <ArrowRight className="w-3 h-3" />
-                          </span>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                  <CollectionTile {...SUB_COLLECTIONS[1]} counts={counts} heightClass="h-28 sm:h-36" />
+                  <CollectionTile {...SUB_COLLECTIONS[2]} counts={counts} heightClass="h-28 sm:h-36" />
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                  <CollectionTile {...SUB_COLLECTIONS[0]} counts={counts} />
+                  <CollectionTile {...SUB_COLLECTIONS[3]} counts={counts} />
+                  <CollectionTile {...SUB_COLLECTIONS[4]} counts={counts} />
+                </div>
               </div>
             </section>
+
+            {/* The grid carries its own px-4 sm:px-6 lg:px-8 so it can stand
+                alone in the admin Spotlight preview. Here the page already
+                supplies a gutter, so cancel the duplicate at every breakpoint. */}
+            <div className="-mx-4 sm:-mx-6 lg:-mx-8">
+              <FeaturedCollectionsGrid />
+            </div>
           </div>
         </div>
 
@@ -439,5 +438,169 @@ function SectionHeading({
       </div>
       <p className="text-xs sm:text-sm text-gray-500 mb-5">{blurb}</p>
     </>
+  );
+}
+
+// One big placard per collection — near-identical layout to the New Arrivals
+// spotlight card (pages/arrivals/ArrivalsPage SpotlightCard): image on one
+// side, copy + CTA on the other, gradient bleeding through behind the text.
+// Same embla engine + auto-advance/loop pattern too, just a 3s interval
+// (vs. the arrivals page's 5s) since there's no drag-to-inspect motivation
+// here — it's a route into a collection, not a product.
+function CollectionsPlacardCarousel({
+  previews, counts,
+}: { previews: Record<string, NewArrivalProduct>; counts: CollectionCounts | null }) {
+  const [api, setApi] = useState<CarouselApi>();
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [hovered, setHovered] = useState(false);
+  const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    if (!api) return;
+    const onSelect = () => setActiveIndex(api.selectedScrollSnap());
+    const onDown = () => setDragging(true);
+    const onSettle = () => setDragging(false);
+    onSelect();
+    api.on("select", onSelect);
+    api.on("pointerDown", onDown);
+    api.on("settle", onSettle);
+    return () => {
+      api.off("select", onSelect);
+      api.off("pointerDown", onDown);
+      api.off("settle", onSettle);
+    };
+  }, [api]);
+
+  useEffect(() => {
+    if (!api || hovered || dragging) return;
+    const id = setInterval(() => api.scrollNext(), 3000);
+    return () => clearInterval(id);
+  }, [api, hovered, dragging]);
+
+  return (
+    <div
+      className="relative select-none"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <Carousel
+        setApi={setApi}
+        opts={{ loop: true, duration: 30 }}
+        className="cursor-grab active:cursor-grabbing"
+      >
+        <CarouselContent className="ml-0">
+          {SUB_COLLECTIONS.map(({ to, countKey, label, blurb, icon: Icon, gradient }) => {
+            const p = previews[to];
+            const styles = stylesLabel(counts?.[countKey]);
+            return (
+              <CarouselItem key={to} className="pl-0">
+                <div className="h-full px-0.5">
+                  {/* A real anchor, not a click handler: keyboard focus,
+                      middle-click and open-in-new-tab all work. Embla's own
+                      capture-phase click guard preventDefaults the event after
+                      a drag, so dragging the carousel never navigates. */}
+                  <Link
+                    to={to}
+                    className={`group relative block h-full rounded-3xl overflow-hidden bg-gradient-to-br ${gradient} text-gray-900 border border-gray-400 cursor-pointer hover:border-gray-500 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal focus-visible:ring-offset-2`}
+                  >
+                    <div className="grid h-full grid-rows-[auto_1fr] md:grid-rows-1 md:grid-cols-[2fr_3fr] md:h-72">
+                      {/* Image side */}
+                      <div className="relative aspect-[4/3] md:aspect-auto md:h-full overflow-hidden">
+                        {p?.image ? (
+                          <img
+                            src={p.image}
+                            alt={label}
+                            onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
+                            className="w-full h-full object-cover object-center group-hover:scale-[1.04] transition-transform duration-700"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-white/30 grid place-items-center">
+                            <Icon className="w-12 h-12 text-gray-900/40" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Text side — every row has a reserved height so all
+                          slides line up regardless of copy length */}
+                      <div className="relative flex flex-col justify-center gap-2 sm:gap-3 p-5 sm:p-7 md:p-8">
+                        <div className="absolute top-0 right-0 w-40 h-40 bg-white/25 rounded-full blur-3xl" />
+                        <span className="inline-flex w-fit items-center gap-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-gray-800">
+                          <Icon className="w-3.5 h-3.5" />
+                          Collection
+                        </span>
+                        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold leading-tight text-gray-900 line-clamp-1">{label}</h2>
+                        <p className="text-xs sm:text-sm text-gray-700 max-w-md line-clamp-2">{blurb}</p>
+                        {/* Meta row keeps its height even while the count and
+                            preview are still in flight, so the CTA below never
+                            jumps as the two requests land. */}
+                        <div className="flex flex-nowrap overflow-hidden items-center gap-2 min-h-[1.125rem] sm:min-h-[1.25rem] text-xs sm:text-sm text-gray-600">
+                          {styles && <span className="font-semibold text-gray-800 shrink-0">{styles}</span>}
+                          {styles && p?.category && <span className="text-gray-400 shrink-0">•</span>}
+                          {p?.category && <span className="truncate">{p.category}</span>}
+                        </div>
+                        {/* Stacked mobile layout puts the CTA at the bottom of
+                            a full-width block, so it reads better tucked to the
+                            right edge. From md up the text sits in its own
+                            column beside the image and the pill goes back to
+                            leading the left margin with the copy. */}
+                        <div className="mt-0.5 sm:mt-1 flex justify-end md:justify-start">
+                          <span className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 sm:px-5 h-9 sm:h-10 rounded-full font-semibold text-xs sm:text-sm group-hover:bg-gray-800 transition-colors">
+                            Explore
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </div>
+              </CarouselItem>
+            );
+          })}
+        </CarouselContent>
+      </Carousel>
+
+      {/* Dots */}
+      <div className="mt-3 flex justify-center items-center gap-1.5">
+        {SUB_COLLECTIONS.map((c, i) => (
+          <button
+            key={c.to}
+            onClick={(e) => { e.stopPropagation(); api?.scrollTo(i); }}
+            className={`h-1.5 rounded-full transition-all duration-300 ${
+              i === activeIndex ? "w-5 bg-gray-900" : "w-1.5 bg-gray-400 hover:bg-gray-600"
+            }`}
+            aria-label={`Show ${c.label}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Single gradient tile in the "Browse the Collections" rows below the
+// placard carousel — colour + icon only, no product image.
+function CollectionTile({
+  to, countKey, label, icon: Icon, gradient, counts, heightClass = "h-40 sm:h-52",
+}: SubCollection & { counts: CollectionCounts | null; heightClass?: string }) {
+  const styles = stylesLabel(counts?.[countKey]);
+
+  return (
+    <Link
+      to={to}
+      className={`group relative overflow-hidden rounded-2xl ${heightClass} border border-gray-400 shadow-md hover:shadow-xl hover:border-gray-500 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal focus-visible:ring-offset-2 bg-gradient-to-br ${gradient}`}
+    >
+      <div className="absolute inset-0 flex flex-col justify-center items-center text-center p-3 sm:p-4">
+        <span className="w-9 h-9 rounded-full grid place-items-center mb-2 shadow-sm transition-transform duration-300 group-hover:scale-110 bg-white/70 text-gray-800">
+          <Icon className="w-[18px] h-[18px]" />
+        </span>
+        <h3 className="text-sm sm:text-base font-bold leading-tight text-gray-900">
+          {label}
+        </h3>
+        {styles && (
+          <span className="mt-1 text-[10px] sm:text-xs font-semibold text-gray-700">
+            {styles}
+          </span>
+        )}
+      </div>
+    </Link>
   );
 }
