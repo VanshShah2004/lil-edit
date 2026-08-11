@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Sparkles, Heart, Star, TrendingUp, PartyPopper, ArrowRight, type LucideIcon } from "lucide-react";
 import SectionHeading from "./SectionHeading";
 import { useCuratedSection } from "@/hooks/useCuratedSection";
-import type { ResolvedItem, ResolvedProductItem } from "@/lib/curationApi";
+import type { ResolvedItem, ResolvedEditorialItem } from "@/lib/curationApi";
 import {
   fetchNewArrivals, fetchCollectionCounts,
   type NewArrivalProduct, type CollectionCounts,
@@ -40,28 +40,27 @@ function stylesLabel(count: number | null | undefined): string | null {
   return `${count} ${count === 1 ? "style" : "styles"}`;
 }
 
-const onlyProducts = (items: ResolvedItem[]) =>
-  items.filter((i): i is ResolvedProductItem => i.kind === "product");
+const onlyEditorials = (items: ResolvedItem[]) =>
+  items.filter((i): i is ResolvedEditorialItem => i.kind === "editorial");
 
 /**
  * "Browse the Collections" — the placard carousel plus the gradient tile rows.
  *
- * Labels, blurbs and routes are fixed in code (SUB_COLLECTIONS above): the only
- * curated part is each placard's IMAGE, and it is curated by PICKING A PRODUCT —
- * the admin chooses a catalog product per slot and the placard wears its photo.
- * There is no title/link/upload form, so a placard can never drift away from the
- * collection it routes into.
+ * Labels, blurbs, icons and gradients are fixed in code (SUB_COLLECTIONS above).
+ * Two things per placard are curated, both optional: its IMAGE and its LINK. The
+ * Spotlight editor offers an image upload and a product dropdown for the link —
+ * no free-text URL — so a placard can only ever point at a real published product
+ * or, left empty, at its own collection listing.
  *
- * collections_browse holds up to five product picks matched BY POSITION to
- * SUB_COLLECTIONS, and an image resolves in this order:
+ * collections_browse holds up to five editorial tiles matched to SUB_COLLECTIONS
+ * BY SLOT (the row's sort_order), and each field falls back independently:
  *
- *   picked product's photo  →  newest product in that collection  →  gradient + icon
+ *   image:  tile image  →  newest product in that collection  →  gradient + icon
+ *   link:   tile link   →  that collection's own /collections/… route
  *
  * So an unfilled slot (or an entirely empty section) leaves the strip exactly as
- * it was before curation existed. Unlike other product sections this one is NOT
- * topped up with random catalog products — see NO_FALLBACK_SECTIONS in
- * backend/routes/curation.ts — because a random product behind "Girls" would be
- * worse than the collection's own newest piece.
+ * it was before curation existed. The tile rows below the carousel are never
+ * curated — they always route into their collection.
  */
 export default function BrowseCollections({ previewItems }: { previewItems?: ResolvedItem[] }) {
   const preview = previewItems !== undefined;
@@ -73,10 +72,10 @@ export default function BrowseCollections({ previewItems }: { previewItems?: Res
   // failure never costs the strip its imagery, or vice-versa.
   const [counts, setCounts] = useState<CollectionCounts | null>(null);
 
-  // Only the curated picks are overridden in the admin preview — the fallback
+  // Only the curated tiles are overridden in the admin preview — the fallback
   // products and counts still load live, so the pane shows the strip in context.
-  const { products: fetchedPicks } = useCuratedSection("collections_browse", { skip: preview });
-  const picks = preview ? onlyProducts(previewItems) : fetchedPicks;
+  const { editorials: fetchedTiles } = useCuratedSection("collections_browse", { skip: preview });
+  const tiles = preview ? onlyEditorials(previewItems) : fetchedTiles;
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -129,10 +128,21 @@ export default function BrowseCollections({ previewItems }: { previewItems?: Res
     return () => ctrl.abort();
   }, []);
 
-  // Photo of the product picked for a collection, by its slot in SUB_COLLECTIONS.
-  // Empty string (no pick, or a pick whose product lost its image) is treated as
-  // "not set" so it falls through to the collection's own newest product.
-  const curatedImage = (index: number): string => picks[index]?.image || "";
+  // The tile curating a given placard, by its slot in SUB_COLLECTIONS.
+  //
+  // Matched on the server-sent `slot` (the row's sort_order), NOT array position:
+  // a deactivated row is filtered out at read time, which would otherwise slide
+  // every later placard's tile up one collection. Payloads with no slot at all (a
+  // cache entry written before the field existed) fall back to position, so the
+  // strip keeps its curated art for the rest of that TTL.
+  const slotted = tiles.some((t) => t.slot !== undefined);
+  const tileAt = (index: number): ResolvedEditorialItem | undefined =>
+    slotted ? tiles.find((t) => t.slot === index) : tiles[index];
+
+  // Empty string / undefined is treated as "not set" throughout, so each field
+  // falls through to its own default independently of the other.
+  const curatedImage = (index: number): string => tileAt(index)?.image || "";
+  const curatedLink = (index: number): string => tileAt(index)?.link || "";
 
   return (
     <section>
@@ -142,7 +152,7 @@ export default function BrowseCollections({ previewItems }: { previewItems?: Res
       />
 
       <div className="mb-6 sm:mb-8">
-        <CollectionsPlacardCarousel previews={previews} counts={counts} curatedImage={curatedImage} />
+        <CollectionsPlacardCarousel previews={previews} counts={counts} curatedImage={curatedImage} curatedLink={curatedLink} />
       </div>
 
       <div className="space-y-1.5 sm:space-y-2">
@@ -167,11 +177,12 @@ export default function BrowseCollections({ previewItems }: { previewItems?: Res
 // (vs. the arrivals page's 5s) since there's no drag-to-inspect motivation
 // here — it's a route into a collection, not a product.
 function CollectionsPlacardCarousel({
-  previews, counts, curatedImage,
+  previews, counts, curatedImage, curatedLink,
 }: {
   previews: Record<string, NewArrivalProduct>;
   counts: CollectionCounts | null;
   curatedImage: (index: number) => string;
+  curatedLink: (index: number) => string;
 }) {
   const [api, setApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -217,6 +228,8 @@ function CollectionsPlacardCarousel({
             const styles = stylesLabel(counts?.[countKey]);
             // Admin's picture wins; otherwise the collection's newest product.
             const image = curatedImage(index) || p?.image || "";
+            // Admin's product link wins; otherwise the collection's own listing.
+            const href = curatedLink(index) || to;
             return (
               <CarouselItem key={to} className="pl-0">
                 <div className="h-full px-0.5">
@@ -225,7 +238,7 @@ function CollectionsPlacardCarousel({
                       capture-phase click guard preventDefaults the event after
                       a drag, so dragging the carousel never navigates. */}
                   <Link
-                    to={to}
+                    to={href}
                     className={`group relative block h-full rounded-3xl overflow-hidden bg-gradient-to-br ${gradient} text-gray-900 border border-gray-400 cursor-pointer hover:border-gray-500 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal focus-visible:ring-offset-2`}
                   >
                     <div className="grid h-full grid-rows-[auto_1fr] md:grid-rows-1 md:grid-cols-[2fr_3fr] md:h-72">

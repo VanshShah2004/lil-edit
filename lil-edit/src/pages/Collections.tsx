@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Sparkles, Heart, Star, TrendingUp, PartyPopper } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,11 +8,10 @@ import Navbar from "@/components/layout/Navbar";
 import RouteFallback from "@/components/RouteFallback";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
-import FeaturedCollectionsGrid from "@/components/collections/FeaturedCollectionsGrid";
+import BrowseCollections from "@/components/collections/BrowseCollections";
 import Footer from "@/components/layout/Footer";
 import { getBackendBaseUrl } from "@/lib/backend";
 import { authHeader } from "@/lib/apiAuth";
-import { fetchNewArrivals } from "@/services/searchService";
 
 import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
 import img2 from "@/assets/searchbar-frequent_searches/le-2.png";
@@ -29,17 +28,6 @@ import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
 const TICKER_WORDS = [
   "Featured Collections", "Spring/Summer '26",
   "Styled by You", "The Lil Edit",
-];
-
-// Every collection listing the storefront has. Icons match the ones the side
-// menu uses for these same links (components/home/UserNavbar), so the two
-// navigations agree on what each collection looks like.
-const SUB_COLLECTIONS = [
-  { to: "/collections/new-arrivals", label: "New Arrivals", blurb: "The latest drop, newest first", icon: Sparkles,    gradient: "from-emerald-100 to-teal-200" },
-  { to: "/collections/girls",        label: "Girls",        blurb: "Everything in the girls' line", icon: Heart,       gradient: "from-pink-100 to-rose-200" },
-  { to: "/collections/boys",         label: "Boys",         blurb: "Everything in the boys' line",  icon: Star,        gradient: "from-blue-100 to-cyan-200" },
-  { to: "/collections/trending",     label: "Trending",     blurb: "What everyone's buying",        icon: TrendingUp,  gradient: "from-amber-100 to-orange-200" },
-  { to: "/collections/occasion",     label: "By Occasion",  blurb: "Birthdays, festives, holidays", icon: PartyPopper, gradient: "from-purple-100 to-indigo-200" },
 ];
 
 const galleryImages = [
@@ -66,50 +54,6 @@ export default function Collections() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  // One real product shot per sub-collection, keyed by route. A gradient shows
-  // until these land (and stays if the fetch fails), so the tiles never wait on
-  // the network to be usable.
-  const [previews, setPreviews] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    const ctrl = new AbortController();
-    console.log("[Collections] fetching sub-collection previews");
-
-    // Girls/Boys/Trending need their own calls — the arrivals payload carries
-    // occasion and isTrending, but not gender, so it can't be split client-side.
-    Promise.all([
-      fetchNewArrivals(12, ctrl.signal),
-      fetchNewArrivals(12, ctrl.signal, "girls"),
-      fetchNewArrivals(12, ctrl.signal, "boys"),
-      fetchNewArrivals(12, ctrl.signal, undefined, true),
-    ])
-      .then(([all, girls, boys, trending]) => {
-        const occasion = all.find((p) => {
-          const o = (p.occasion ?? "").trim();
-          return o !== "" && o.toLowerCase() !== "general wear";
-        });
-
-        const next: Record<string, string> = {};
-        const put = (route: string, image?: string) => { if (image) next[route] = image; };
-        put("/collections/new-arrivals", all[0]?.image);
-        put("/collections/girls", girls[0]?.image);
-        put("/collections/boys", boys[0]?.image);
-        put("/collections/trending", trending[0]?.image);
-        put("/collections/occasion", occasion?.image ?? all[1]?.image);
-
-        console.log("[Collections] previews resolved for", Object.keys(next).length, "collections");
-        setPreviews(next);
-      })
-      .catch((err) => {
-        if ((err as Error).name === "AbortError") {
-          console.log("[Collections] preview fetch aborted");
-          return;
-        }
-        console.error("[Collections] preview fetch failed:", err);
-      });
-
-    return () => ctrl.abort();
-  }, []);
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -222,77 +166,10 @@ export default function Collections() {
       <main className="w-full py-8 sm:py-12 md:py-14">
         <div className="px-4 sm:px-8 md:px-12 lg:px-16">
           <div className="max-w-5xl mx-auto space-y-12 sm:space-y-16">
-            {/* The grid carries its own px-4 sm:px-6 lg:px-8 so it can stand
-                alone in the admin Spotlight preview. Here the page already
-                supplies a gutter, so cancel the duplicate at every breakpoint. */}
-            <div className="-mx-4 sm:-mx-6 lg:-mx-8">
-              <FeaturedCollectionsGrid />
-            </div>
-
-            {/* BROWSE THE COLLECTIONS — every collection listing, in one place.
-                The first tile spans two columns so five items fill the grid
-                evenly instead of leaving a hole in the last row. */}
-            <section>
-              <SectionHeading
-                label="Browse the Collections"
-                blurb="Every edit we stock, one tap away."
-              />
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                {SUB_COLLECTIONS.map(({ to, label, blurb, icon: Icon, gradient }, i) => {
-                  const image = previews[to];
-                  return (
-                    <Link
-                      key={to}
-                      to={to}
-                      className={`group relative overflow-hidden rounded-2xl h-40 sm:h-52 border border-gray-400 shadow-md hover:shadow-xl hover:border-gray-500 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal focus-visible:ring-offset-2 ${
-                        i === 0 ? "col-span-2" : ""
-                      }`}
-                    >
-                      {/* Gradient underneath doubles as the loading state and the
-                          fallback if a collection has no product to show yet. */}
-                      <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
-
-                      {image && (
-                        <>
-                          <img
-                            src={image}
-                            alt=""
-                            loading="lazy"
-                            onError={(e) => { e.currentTarget.style.display = "none"; }}
-                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
-                        </>
-                      )}
-
-                      <div className="absolute inset-0 flex flex-col justify-end items-start text-left p-3 sm:p-4">
-                        <span
-                          className={`w-9 h-9 rounded-full grid place-items-center mb-2 shadow-sm transition-transform duration-300 group-hover:scale-110 ${
-                            image ? "bg-white/90 text-gray-900" : "bg-white/70 text-gray-800"
-                          }`}
-                        >
-                          <Icon className="w-[18px] h-[18px]" />
-                        </span>
-                        <h3 className={`text-sm sm:text-base font-bold leading-tight ${image ? "text-white drop-shadow-md" : "text-gray-900"}`}>
-                          {label}
-                        </h3>
-                        <p className={`text-[11px] sm:text-xs mt-0.5 line-clamp-2 ${image ? "text-white/80 drop-shadow" : "text-gray-600"}`}>
-                          {blurb}
-                        </p>
-
-                        {/* Hover reveal, same slide-up pill the arrivals cards use */}
-                        <div className="hidden md:block max-h-0 opacity-0 group-hover:max-h-12 group-hover:opacity-100 group-hover:mt-2 transition-all duration-300 overflow-hidden">
-                          <span className="inline-flex items-center gap-1.5 bg-white text-gray-900 text-xs font-semibold px-3.5 py-1.5 rounded-full shadow-sm">
-                            Explore <ArrowRight className="w-3 h-3" />
-                          </span>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
+            {/* BROWSE THE COLLECTIONS — the placard carousel plus the tile
+                rows. Carries its own section heading; the placard images are
+                admin-curatable via the Spotlight (collections_browse). */}
+            <BrowseCollections />
           </div>
         </div>
 
