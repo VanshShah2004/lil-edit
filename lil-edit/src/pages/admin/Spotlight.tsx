@@ -32,7 +32,8 @@ import RouteFallback from "@/components/RouteFallback";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadProductImage } from "@/lib/uploadImage";
-import { metaStr } from "@/hooks/useCuratedSection";
+import { metaStr, pdpUrlFor } from "@/hooks/useCuratedSection";
+import { SUB_COLLECTIONS, subCollectionLabel } from "@/components/collections/subCollections";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import {
   fetchAdminSections,
@@ -63,7 +64,7 @@ const SECTION_GROUPS: { label: string; icon: typeof LayoutGrid; keys: SectionKey
   {
     label: "Collections Page",
     icon: ShoppingBag,
-    keys: ["collections_featured"],
+    keys: ["collections_browse"],
   },
   {
     label: "Search Bar",
@@ -74,6 +75,22 @@ const SECTION_GROUPS: { label: string; icon: typeof LayoutGrid; keys: SectionKey
 
 function groupOf(key: SectionKey): string | null {
   return SECTION_GROUPS.find((g) => g.keys.includes(key))?.label ?? null;
+}
+
+// Sections whose tiles are cut down to "which placard + picture + where it
+// points". Labels, blurbs and routes are fixed in the storefront component, so
+// the tile form drops title/subtitle/badge and swaps the free-text link for a
+// product dropdown — a placard can then only ever point at a real published
+// product, or (left empty) at its own collection listing.
+//
+// Each tile NAMES its placard in meta.collection, at most one tile per
+// collection, so row order carries no meaning here and the reorder arrows are
+// hidden. The backend enforces the same two rules on save.
+const IMAGE_AND_LINK_ONLY = new Set<SectionKey>(["collections_browse"]);
+
+/** The collection a tile fronts, or "" if it names none. */
+function tileCollection(item: DraftItem): string {
+  return metaStr(item.meta, "collection");
 }
 
 // ─── Local working copy of an item (decoupled from the server shape) ──────────
@@ -273,16 +290,142 @@ function ProductPickerModal({
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// Product link dropdown — the only way to set a link on an IMAGE_AND_LINK_ONLY
+// tile. Type-to-filter over published products (the same admin product-search the
+// picker modal uses, which lists the 20 newest when the box is empty), and the
+// chosen product's PDP path becomes the tile's link_url. Clearing it hands the
+// placard back to its own collection route.
+// ═════════════════════════════════════════════════════════════════════════════
+function ProductLinkPicker({
+  valueTitle,
+  onPick,
+  onClear,
+}: {
+  valueTitle: string;
+  onPick: (p: ResolvedProductItem) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<ResolvedProductItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+    const t = setTimeout(() => {
+      searchProducts(query.trim())
+        .then((products) => { if (!cancelled) setResults(products); })
+        .catch((err) => { if (!cancelled) toast.error(err instanceof Error ? err.message : "Search failed"); })
+        .finally(() => { if (!cancelled) setLoading(false); });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [query, open]);
+
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Links to</label>
+
+      {/* Closed state reads as a select: current choice + chevron. */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left border border-gray-200 rounded-lg bg-white hover:border-gray-900 focus:outline-none focus:border-gray-900"
+      >
+        <span className={`flex-1 min-w-0 truncate ${valueTitle ? "text-gray-900 font-semibold" : "text-gray-400"}`}>
+          {valueTitle || "This collection's own page"}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {valueTitle && !open && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-red-600 hover:text-red-700"
+        >
+          <X className="w-3 h-3" /> Clear — link to the collection instead
+        </button>
+      )}
+
+      {open && (
+        <div className="mt-1.5 border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+          <div className="p-2 border-b border-gray-100">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by title or SKU…"
+                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:border-gray-900"
+              />
+            </div>
+          </div>
+
+          <div className="max-h-52 overflow-y-auto">
+            {/* The "no product" choice lives in the list itself, so the dropdown
+                covers both states the placard can be in. */}
+            <button
+              type="button"
+              onClick={() => { onClear(); setOpen(false); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-gray-500 hover:bg-gray-50 border-b border-gray-100"
+            >
+              This collection's own page
+            </button>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-8 text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+            ) : results.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                <PackageX className="w-6 h-6 mb-1.5" />
+                <p className="text-xs">No products found</p>
+              </div>
+            ) : (
+              results.map((p) => (
+                <button
+                  key={p.baseSku}
+                  type="button"
+                  onClick={() => { onPick(p); setOpen(false); }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-left hover:bg-gray-50"
+                >
+                  <div className="w-9 h-9 rounded-md overflow-hidden bg-gray-100 shrink-0">
+                    {p.image && <img src={p.image} alt="" className="w-full h-full object-cover" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{p.title}</p>
+                    <p className="text-[11px] text-gray-500 truncate">{p.baseSku} · ₹{p.price}</p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      <p className="mt-1.5 text-[11px] text-gray-400">
+        Published products only. Left unset, the placard opens its own collection listing.
+      </p>
+    </div>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // Editorial tile form modal
 // ═════════════════════════════════════════════════════════════════════════════
 function EditorialTileModal({
   sectionKey,
   initial,
+  takenCollections,
   onClose,
   onSave,
 }: {
   sectionKey: SectionKey;
   initial: DraftItem | null;
+  /** Collections already claimed by OTHER tiles — one placard, one tile. */
+  takenCollections: Set<string>;
   onClose: () => void;
   onSave: (d: DraftItem) => void;
 }) {
@@ -292,14 +435,26 @@ function EditorialTileModal({
   const [desktopImageUrl, setDesktopImageUrl] = useState(metaStr(initial?.meta, "desktop_image_url"));
   const [link, setLink] = useState(initial?.linkUrl ?? "");
   const [badge, setBadge] = useState(initial?.badge ?? "");
+  // Which product the link points at, for sections whose link is a product dropdown.
+  // The URL alone can't be turned back into a product name, so the label rides along
+  // in meta purely so the form can redisplay the choice.
+  const [linkProductTitle, setLinkProductTitle] = useState(metaStr(initial?.meta, "link_product_title"));
+  const [linkProductSku, setLinkProductSku] = useState(metaStr(initial?.meta, "link_product_sku"));
+  // Which placard this tile fronts. Chosen first — everything below it is "what
+  // that placard shows", so the form reads top-down as one decision then its detail.
+  const [collection, setCollection] = useState(metaStr(initial?.meta, "collection"));
   const [uploading, setUploading] = useState(false);
   const [uploadingDesktop, setUploadingDesktop] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const desktopFileRef = useRef<HTMLInputElement>(null);
 
+  // Placard tiles carry only a picture and a destination — their copy is fixed in
+  // the storefront component, so title/subtitle/badge would all be dead inputs and
+  // the link is a product dropdown rather than a free-text URL.
+  const imageAndLinkOnly = IMAGE_AND_LINK_ONLY.has(sectionKey);
   // Shop the Look cards never render a badge (label/title/link only), so don't
   // offer the field there — it would be a dead input.
-  const showBadge = sectionKey !== "home_shop_the_look";
+  const showBadge = sectionKey !== "home_shop_the_look" && !imageAndLinkOnly;
   // Only the collage carousel sections read meta.desktop_image_url today —
   // offering the field elsewhere would be a dead control.
   const showDesktopImage = sectionKey === "home_collage" || sectionKey === "home_hero_plus";
@@ -336,8 +491,19 @@ function EditorialTileModal({
     // Home Collage tiles are pure per-breakpoint overrides — mobile, desktop, or both
     // may be left empty and the storefront fills each gap with its built-in default,
     // so an all-empty tile is valid. Every other editorial section still needs its image.
-    if (!showDesktopImage && !mobileImage) {
+    if (!showDesktopImage && !imageAndLinkOnly && !mobileImage) {
       toast.error("An image is required for a tile");
+      return;
+    }
+    // The placard has to be chosen before there's anything to curate.
+    if (imageAndLinkOnly && !collection) {
+      toast.error("Choose which collection this tile is for");
+      return;
+    }
+    // A placard tile may set either field — but a tile with neither curates
+    // nothing, which is what deleting the row already means.
+    if (imageAndLinkOnly && !mobileImage && !link.trim()) {
+      toast.error("Set an image, a product link, or both");
       return;
     }
     // Any existing meta (size, object_position, …) is preserved untouched — those
@@ -347,12 +513,24 @@ function EditorialTileModal({
       if (desktopImage) meta.desktop_image_url = desktopImage;
       else delete meta.desktop_image_url;
     }
+    if (imageAndLinkOnly) {
+      meta.collection = collection;
+      if (linkProductSku) {
+        meta.link_product_sku = linkProductSku;
+        meta.link_product_title = linkProductTitle;
+      } else {
+        delete meta.link_product_sku;
+        delete meta.link_product_title;
+      }
+    }
     onSave({
       tempId: initial?.tempId ?? nextTempId(),
       kind: "editorial",
       productBaseSku: null,
-      customTitle: title.trim() || null,
-      customSubtitle: subtitle.trim() || null,
+      // Placard copy is fixed in the storefront component; clear anything a tile
+      // carried from before so the saved row matches what the form can express.
+      customTitle: imageAndLinkOnly ? null : title.trim() || null,
+      customSubtitle: imageAndLinkOnly ? null : subtitle.trim() || null,
       customImageUrl: mobileImage || null,
       linkUrl: link.trim() || null,
       // Sections without a badge slot (Shop the Look) also clear any badge a tile
@@ -376,9 +554,37 @@ function EditorialTileModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Which placard this tile fronts — chosen first, since the image and
+              link below are only meaningful once it's known. Collections already
+              taken by another tile are disabled rather than hidden, so it's clear
+              they exist and are simply spoken for. */}
+          {imageAndLinkOnly && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Collection *</label>
+              <select
+                value={collection}
+                onChange={(e) => setCollection(e.target.value)}
+                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-gray-900"
+              >
+                <option value="">Choose a collection…</option>
+                {SUB_COLLECTIONS.map((c) => {
+                  const taken = takenCollections.has(c.key);
+                  return (
+                    <option key={c.key} value={c.key} disabled={taken}>
+                      {c.label}{taken ? " — already has a tile" : ""}
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="mt-1.5 text-[11px] text-gray-400">One tile per collection. The rest of the placard's copy is fixed on the page.</p>
+            </div>
+          )}
+
           {/* Image (mobile, when a section also offers a desktop variant) */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">{showDesktopImage ? "Mobile image" : "Image *"}</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+              {showDesktopImage ? "Mobile image" : imageAndLinkOnly ? "Placard image" : "Image *"}
+            </label>
             <div className="flex items-center gap-3">
               <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shrink-0 flex items-center justify-center">
                 {imageUrl ? <img src={imageUrl} alt="" className="w-full h-full object-cover" /> : <ImagePlus className="w-6 h-6 text-gray-300" />}
@@ -412,7 +618,11 @@ function EditorialTileModal({
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleUpload(f); e.target.value = ""; }}
                 />
                 <p className="text-[11px] text-gray-400">
-                  {showDesktopImage ? "Uses the built-in collage image on mobile if left empty." : "JPG/PNG, compressed on upload."}
+                  {showDesktopImage
+                    ? "Uses the built-in collage image on mobile if left empty."
+                    : imageAndLinkOnly
+                      ? "Left empty, the placard keeps this collection's newest product."
+                      : "JPG/PNG, compressed on upload."}
                 </p>
               </div>
             </div>
@@ -462,9 +672,27 @@ function EditorialTileModal({
             </div>
           )}
 
-          <Field label="Title" value={title} onChange={setTitle} placeholder="e.g. Celebration Look" />
-          <Field label="Subtitle / label" value={subtitle} onChange={setSubtitle} placeholder="e.g. FESTIVE EDIT" />
-          <Field label="Link URL" value={link} onChange={setLink} placeholder="/collections" />
+          {imageAndLinkOnly ? (
+            <ProductLinkPicker
+              valueTitle={linkProductTitle}
+              onPick={(p) => {
+                setLink(pdpUrlFor(p));
+                setLinkProductSku(p.baseSku);
+                setLinkProductTitle(p.title);
+              }}
+              onClear={() => {
+                setLink("");
+                setLinkProductSku("");
+                setLinkProductTitle("");
+              }}
+            />
+          ) : (
+            <>
+              <Field label="Title" value={title} onChange={setTitle} placeholder="e.g. Celebration Look" />
+              <Field label="Subtitle / label" value={subtitle} onChange={setSubtitle} placeholder="e.g. FESTIVE EDIT" />
+              <Field label="Link URL" value={link} onChange={setLink} placeholder="/collections" />
+            </>
+          )}
           {showBadge && <Field label="Badge" value={badge} onChange={setBadge} placeholder="e.g. New, Trending" />}
         </div>
 
@@ -555,6 +783,7 @@ function ItemRow({
   index,
   total,
   showBadge = true,
+  namesItsPlacard = false,
   onMove,
   onRemove,
   onEdit,
@@ -565,6 +794,9 @@ function ItemRow({
   total: number;
   /** Sections whose storefront card has no badge slot (Shop the Look) hide the chip. */
   showBadge?: boolean;
+  /** Tiles that name their own placard (IMAGE_AND_LINK_ONLY): drop the reorder
+      arrows and the slot number, since position drives nothing for them. */
+  namesItsPlacard?: boolean;
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
   onEdit: () => void;
@@ -579,8 +811,19 @@ function ItemRow({
   // thumbnail is never blank when the tile actually has imagery.
   const img = isProduct ? item.product?.image ?? null : item.customImageUrl || desktopImage || null;
   const missing = isProduct && !item.product; // product unpublished/deleted
-  const title = isProduct ? item.product?.title ?? item.productBaseSku ?? "Unknown product" : item.customTitle ?? "Untitled tile";
-  const sub = isProduct ? item.productBaseSku ?? "" : item.customSubtitle ?? "";
+  // A placard tile carries no copy of its own, so the collection it names IS its
+  // identity in this list, and its destination is the useful second line. A tile
+  // whose collection no longer exists reads as unassigned rather than silently
+  // looking fine while curating nothing.
+  const placard = namesItsPlacard ? subCollectionLabel(tileCollection(item)) : null;
+  const title = isProduct
+    ? item.product?.title ?? item.productBaseSku ?? "Unknown product"
+    : item.customTitle ?? (namesItsPlacard ? placard ?? "⚠ No collection set" : "Untitled tile");
+  const sub = isProduct
+    ? item.productBaseSku ?? ""
+    : item.customSubtitle ?? (namesItsPlacard
+      ? metaStr(item.meta, "link_product_title") || item.linkUrl || "Opens this collection"
+      : "");
 
   // Chips are rendered in two places (inline with the title on desktop, on their own
   // row on mobile), so the styles live here once.
@@ -588,8 +831,9 @@ function ItemRow({
   const badgeChip = "shrink-0 max-w-[120px] truncate text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700";
 
   // The slot number is overlaid on the thumbnail's corner (instead of a floating
-  // circle beside the card), so the card spans the full row width.
-  const slotBadge = (
+  // circle beside the card), so the card spans the full row width. Tiles that name
+  // their own placard have no ordinal to show — position means nothing to them.
+  const slotBadge = namesItsPlacard ? null : (
     <span className="absolute top-0 left-0 min-w-5 h-5 px-1 flex items-center justify-center rounded-br-lg bg-black/70 text-[10px] font-bold text-white tabular-nums pointer-events-none">
       {index + 1}
     </span>
@@ -600,10 +844,12 @@ function ItemRow({
       <div className="flex items-center gap-3 p-3">
         {/* Reorder arrows sit inline on desktop; on mobile they move into the
             action bar below, where they get real touch targets. */}
-        <div className="hidden sm:flex flex-col">
-          <button onClick={() => onMove(-1)} disabled={index === 0} className="text-gray-400 hover:text-gray-900 disabled:opacity-25"><ArrowUp className="w-4 h-4" /></button>
-          <button onClick={() => onMove(1)} disabled={index === total - 1} className="text-gray-400 hover:text-gray-900 disabled:opacity-25"><ArrowDown className="w-4 h-4" /></button>
-        </div>
+        {!namesItsPlacard && (
+          <div className="hidden sm:flex flex-col">
+            <button onClick={() => onMove(-1)} disabled={index === 0} className="text-gray-400 hover:text-gray-900 disabled:opacity-25"><ArrowUp className="w-4 h-4" /></button>
+            <button onClick={() => onMove(1)} disabled={index === total - 1} className="text-gray-400 hover:text-gray-900 disabled:opacity-25"><ArrowDown className="w-4 h-4" /></button>
+          </div>
+        )}
 
         {isProduct && item.product ? (
           <button
@@ -669,7 +915,7 @@ function ItemRow({
           {showBadge && item.badge && <span className={badgeChip}>{item.badge}</span>}
         </div>
         <span className="flex-1" />
-        {total > 1 && (
+        {total > 1 && !namesItsPlacard && (
           <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
             <button onClick={() => onMove(-1)} disabled={index === 0} className="px-3.5 py-1.5 text-gray-600 active:bg-gray-100 disabled:opacity-25"><ArrowUp className="w-4 h-4" /></button>
             <span className="w-px self-stretch bg-gray-200" />
@@ -1039,6 +1285,14 @@ const SpotlightPage = () => {
   const canAddProduct = selected && (selected.itemType === "product" || selected.itemType === "mixed");
   const canAddTile = selected && (selected.itemType === "editorial" || selected.itemType === "mixed");
 
+  // One tile per collection: which are spoken for, and whether any are left. Both
+  // are only meaningful for sections whose tiles name their own placard.
+  const namesItsPlacard = !!selected && IMAGE_AND_LINK_ONLY.has(selected.key);
+  const claimedCollections = namesItsPlacard
+    ? new Set(draft.map(tileCollection).filter(Boolean))
+    : new Set<string>();
+  const allPlacardsCurated = namesItsPlacard && claimedCollections.size >= SUB_COLLECTIONS.length;
+
   return (
     <div className="min-h-screen bg-white text-[#1a1a1a] flex flex-col font-sans">
       {user ? <UserNavbar /> : <Navbar />}
@@ -1214,7 +1468,9 @@ const SpotlightPage = () => {
                         <h2 className="font-display text-2xl font-black text-foreground truncate">{selected.title}</h2>
                         <p className="text-xs text-gray-500">
                           {selected.itemType === "product" && "Holds catalog products. Empty = random products shown automatically."}
-                          {selected.itemType === "editorial" && "Holds custom image/title/link tiles."}
+                          {selected.itemType === "editorial" && (IMAGE_AND_LINK_ONLY.has(selected.key)
+                            ? "One tile per placard, in order. Each sets that placard's picture and where it points — everything else is fixed on the page."
+                            : "Holds custom image/title/link tiles.")}
                           {selected.itemType === "mixed" && "Holds products and/or custom tiles."}
                           {" "}Max {selected.maxItems}.
                         </p>
@@ -1243,7 +1499,9 @@ const SpotlightPage = () => {
                       {canAddTile && (
                         <button
                           onClick={() => setTileEditing({ item: null })}
-                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-400 rounded-md px-3 py-2 bg-white hover:border-gray-900"
+                          disabled={allPlacardsCurated}
+                          title={allPlacardsCurated ? "Every collection already has a tile — edit one instead" : undefined}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-400 rounded-md px-3 py-2 bg-white hover:border-gray-900 disabled:opacity-40 disabled:hover:border-gray-400"
                         >
                           <ImagePlus className="w-3.5 h-3.5" /> Add tile
                         </button>
@@ -1266,9 +1524,11 @@ const SpotlightPage = () => {
                         <div className="py-14 text-center">
                           <p className="text-sm font-semibold text-gray-700 mb-1">No items yet</p>
                           <p className="text-xs text-gray-500">
-                            {selected.itemType === "editorial"
-                              ? "Add tiles to populate this section."
-                              : "Empty — the storefront will show random products automatically. Add products to curate."}
+                            {selected.itemType !== "editorial"
+                              ? "Empty — the storefront will show random products automatically. Add products to curate."
+                              : IMAGE_AND_LINK_ONLY.has(selected.key)
+                                ? "Empty — every placard shows its own collection's newest product and opens that collection. Add tiles to override."
+                                : "Add tiles to populate this section."}
                           </p>
                         </div>
                       ) : (
@@ -1279,6 +1539,7 @@ const SpotlightPage = () => {
                             index={i}
                             total={draft.length}
                             showBadge={selected.key !== "home_shop_the_look"}
+                            namesItsPlacard={namesItsPlacard}
                             onMove={(dir) => move(i, dir)}
                             onRemove={() => removeAt(i)}
                             onEdit={() => setTileEditing({ item })}
@@ -1381,6 +1642,16 @@ const SpotlightPage = () => {
         <EditorialTileModal
           sectionKey={selected.key}
           initial={tileEditing.item}
+          // Everything claimed by another tile — the one being edited keeps its own
+          // collection selectable, so re-saving it unchanged isn't blocked.
+          takenCollections={
+            new Set(
+              draft
+                .filter((d) => d.tempId !== tileEditing.item?.tempId)
+                .map(tileCollection)
+                .filter(Boolean),
+            )
+          }
           onClose={() => setTileEditing(null)}
           onSave={upsertTile}
         />

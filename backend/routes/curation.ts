@@ -20,13 +20,21 @@ const KNOWN_SECTION_KEYS = [
   "home_featured_categories",
   "home_collage",
   "home_hero_plus",
-  "collections_featured",
+  "collections_browse",
 ] as const;
 
-// Sections whose editorial tiles are pure per-breakpoint overrides: any missing
-// image (mobile, desktop, or both) falls back to the storefront's built-in
-// default, so an imageless tile is valid there.
-const IMAGE_OPTIONAL_SECTIONS = new Set<string>(["home_collage", "home_hero_plus"]);
+// Sections whose editorial tiles are pure overrides on top of storefront defaults,
+// so an imageless tile is valid: the collage sections fall back to their built-in
+// image per breakpoint, and a collections_browse tile may carry only a link (its
+// placard then keeps that collection's own newest product as the picture).
+const IMAGE_OPTIONAL_SECTIONS = new Set<string>(["home_collage", "home_hero_plus", "collections_browse"]);
+
+// The five collections the "Browse the Collections" strip renders, mirroring
+// SUB_COLLECTIONS in lil-edit/src/components/collections/subCollections.ts. Each
+// collections_browse tile names one of these in meta.collection. Keep the two
+// lists in step — a key only this side knows is unreachable from the editor, and
+// one only the frontend knows is rejected on save.
+const BROWSE_COLLECTION_KEYS = new Set<string>(["new-arrivals", "girls", "boys", "trending", "occasion"]);
 type SectionKey = (typeof KNOWN_SECTION_KEYS)[number];
 
 function isKnownKey(k: string): k is SectionKey {
@@ -510,7 +518,11 @@ router.get("/admin/sections", async (_req: Request, res: Response) => {
       itemsBySection.set(r.section_id, arr);
     }
 
-    const result = ((sections ?? []) as SectionRow[]).map((s) => ({
+    // Only sections this build knows how to render. A retired section's rows can
+    // outlive the code that drove them (collections_featured until its migration is
+    // applied), and the editor has no form or preview renderer for one — it would
+    // reach the pane as an unrenderable tab. Saves already 400 on unknown keys.
+    const result = ((sections ?? []) as SectionRow[]).filter((s) => isKnownKey(s.section_key)).map((s) => ({
       key: s.section_key,
       title: s.title,
       subtitle: s.subtitle,
@@ -618,6 +630,28 @@ router.put("/sections/:key/items", adminMutationLimiter, async (req: Request, re
         log.warn(`item ${i} editorial without image`).end("CURATION SET ITEMS");
         res.status(400).json({ error: `Item ${i + 1}: editorial tiles need an image` });
         return;
+      }
+    }
+
+    // A collections_browse tile names the placard it fronts, and only one tile may
+    // claim each collection — the storefront takes the first match, so a duplicate
+    // would silently shadow its twin.
+    if (key === "collections_browse") {
+      const claimed = new Set<string>();
+      for (const [i, it] of items.entries()) {
+        const meta = (it.meta ?? {}) as Record<string, unknown>;
+        const collection = typeof meta.collection === "string" ? meta.collection : "";
+        if (!BROWSE_COLLECTION_KEYS.has(collection)) {
+          log.warn(`item ${i} collection="${collection}" is not a known sub-collection`).end("CURATION SET ITEMS");
+          res.status(400).json({ error: `Item ${i + 1}: choose which collection this tile is for` });
+          return;
+        }
+        if (claimed.has(collection)) {
+          log.warn(`item ${i} duplicate collection=${collection}`).end("CURATION SET ITEMS");
+          res.status(400).json({ error: `Two tiles are set to "${collection}" — each collection can hold only one.` });
+          return;
+        }
+        claimed.add(collection);
       }
     }
 

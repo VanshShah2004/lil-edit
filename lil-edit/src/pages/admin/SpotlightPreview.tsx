@@ -7,7 +7,7 @@ import FeaturedCategories from "@/components/home/FeaturedCategories";
 import HomeCollage from "@/components/home/HomeCollage";
 import FrequentSearches from "@/components/search/FrequentSearches";
 import CollageGrid from "@/components/search/CollageGrid";
-import FeaturedCollectionsGrid from "@/components/collections/FeaturedCollectionsGrid";
+import BrowseCollections from "@/components/collections/BrowseCollections";
 import { SECTION_KEYS, type ResolvedItem, type SectionKey } from "@/lib/curationApi";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,7 +35,7 @@ const PREVIEW_BACKGROUNDS: Record<SectionKey, string> = {
   home_featured_categories: "bg-[#E8DDF7]",
   home_collage: "bg-[#E8DDF7]",
   home_hero_plus: "bg-[#E8DDF7]",
-  collections_featured: "bg-white",
+  collections_browse: "bg-white",
 };
 
 // One real storefront component per section, fed the draft items as previewItems.
@@ -52,7 +52,11 @@ const PREVIEW_RENDERERS: Record<SectionKey, (items: ResolvedItem[], title: strin
   // HeroSection+ previews only override the extra swipe slides — the grid page
   // is still fetched live so the admin sees the whole carousel in context.
   home_hero_plus: (items) => <HomeCollage previewExtraItems={items} />,
-  collections_featured: (items, title, subtitle) => <FeaturedCollectionsGrid previewItems={items} previewTitle={title} previewSubtitle={subtitle} />,
+  // Only the curated picks are overridden here — the per-collection fallback
+  // products and style counts still load live, so the pane shows the strip in
+  // context. Labels/blurbs/routes are fixed in code, so there is nothing else to
+  // preview: title/subtitle are ignored.
+  collections_browse: (items) => <BrowseCollections previewItems={items} />,
 };
 
 interface PreviewState {
