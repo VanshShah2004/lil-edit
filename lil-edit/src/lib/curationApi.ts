@@ -46,11 +46,6 @@ export interface ResolvedEditorialItem {
   link: string | null;
   badge: string | null;
   meta: Record<string, unknown>;
-  /** The row's sort_order, for sections that map tiles onto fixed slots
-      (collections_browse). Optional: older cached payloads predate the field.
-      Key off this rather than the array index — a deactivated row is filtered
-      server-side, which would otherwise shift every later tile down one slot. */
-  slot?: number;
 }
 
 export type ResolvedItem = ResolvedProductItem | ResolvedEditorialItem;

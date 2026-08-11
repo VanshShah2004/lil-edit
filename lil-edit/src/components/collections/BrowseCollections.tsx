@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Sparkles, Heart, Star, TrendingUp, PartyPopper, ArrowRight, type LucideIcon } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import SectionHeading from "./SectionHeading";
-import { useCuratedSection } from "@/hooks/useCuratedSection";
+import { SUB_COLLECTIONS, type SubCollection } from "./subCollections";
+import { useCuratedSection, metaStr } from "@/hooks/useCuratedSection";
 import type { ResolvedItem, ResolvedEditorialItem } from "@/lib/curationApi";
 import {
   fetchNewArrivals, fetchCollectionCounts,
@@ -11,27 +12,6 @@ import {
 import {
   Carousel, CarouselContent, CarouselItem, type CarouselApi,
 } from "@/components/ui/carousel";
-
-// Every collection listing the storefront has. Icons match the ones the side
-// menu uses for these same links (components/home/UserNavbar), so the two
-// navigations agree on what each collection looks like. countKey maps the
-// entry onto its field in the /collection-counts payload.
-interface SubCollection {
-  to: string;
-  countKey: keyof CollectionCounts;
-  label: string;
-  blurb: string;
-  icon: LucideIcon;
-  gradient: string;
-}
-
-const SUB_COLLECTIONS: SubCollection[] = [
-  { to: "/collections/new-arrivals", countKey: "newArrivals", label: "New Arrivals", blurb: "Fresh drops landing every week",   icon: Sparkles,    gradient: "from-emerald-100 to-teal-200" },
-  { to: "/collections/girls",        countKey: "girls",       label: "Girls",        blurb: "Twirly dresses for little trendsetters", icon: Heart,       gradient: "from-pink-100 to-rose-200" },
-  { to: "/collections/boys",         countKey: "boys",        label: "Boys",         blurb: "Everyday fits built for adventure", icon: Star,        gradient: "from-blue-100 to-cyan-200" },
-  { to: "/collections/trending",     countKey: "trending",    label: "Trending",     blurb: "The pieces everyone's loving now",  icon: TrendingUp,  gradient: "from-amber-100 to-orange-200" },
-  { to: "/collections/occasion",     countKey: "occasion",    label: "By Occasion",  blurb: "Outfits dressed up for celebrations", icon: PartyPopper, gradient: "from-purple-100 to-indigo-200" },
-];
 
 // "12 styles" / "1 style" — null (fetch failed or field missing) renders nothing
 // at all rather than a misleading "0 styles".
@@ -52,15 +32,17 @@ const onlyEditorials = (items: ResolvedItem[]) =>
  * no free-text URL — so a placard can only ever point at a real published product
  * or, left empty, at its own collection listing.
  *
- * collections_browse holds up to five editorial tiles matched to SUB_COLLECTIONS
- * BY SLOT (the row's sort_order), and each field falls back independently:
+ * collections_browse holds at most one tile per sub-collection. Each tile NAMES
+ * its placard in meta.collection (a SUB_COLLECTIONS key), so row order carries no
+ * meaning and reordering the list can never re-point a picture. Both fields fall
+ * back independently:
  *
  *   image:  tile image  →  newest product in that collection  →  gradient + icon
  *   link:   tile link   →  that collection's own /collections/… route
  *
- * So an unfilled slot (or an entirely empty section) leaves the strip exactly as
- * it was before curation existed. The tile rows below the carousel are never
- * curated — they always route into their collection.
+ * So an uncurated collection (or an entirely empty section) leaves the strip
+ * exactly as it was before curation existed. The tile rows below the carousel are
+ * never curated — they always route into their collection.
  */
 export default function BrowseCollections({ previewItems }: { previewItems?: ResolvedItem[] }) {
   const preview = previewItems !== undefined;
@@ -128,21 +110,17 @@ export default function BrowseCollections({ previewItems }: { previewItems?: Res
     return () => ctrl.abort();
   }, []);
 
-  // The tile curating a given placard, by its slot in SUB_COLLECTIONS.
-  //
-  // Matched on the server-sent `slot` (the row's sort_order), NOT array position:
-  // a deactivated row is filtered out at read time, which would otherwise slide
-  // every later placard's tile up one collection. Payloads with no slot at all (a
-  // cache entry written before the field existed) fall back to position, so the
-  // strip keeps its curated art for the rest of that TTL.
-  const slotted = tiles.some((t) => t.slot !== undefined);
-  const tileAt = (index: number): ResolvedEditorialItem | undefined =>
-    slotted ? tiles.find((t) => t.slot === index) : tiles[index];
+  // The tile curating a given placard, found by the collection it names. The
+  // editor allows only one tile per collection, but a stale duplicate (an older
+  // draft, or a hand-edited row) would otherwise render unpredictably — first
+  // match wins, matching the order the admin list shows them in.
+  const tileFor = (key: string): ResolvedEditorialItem | undefined =>
+    tiles.find((t) => metaStr(t.meta, "collection") === key);
 
   // Empty string / undefined is treated as "not set" throughout, so each field
   // falls through to its own default independently of the other.
-  const curatedImage = (index: number): string => tileAt(index)?.image || "";
-  const curatedLink = (index: number): string => tileAt(index)?.link || "";
+  const curatedImage = (key: string): string => tileFor(key)?.image || "";
+  const curatedLink = (key: string): string => tileFor(key)?.link || "";
 
   return (
     <section>
@@ -157,13 +135,13 @@ export default function BrowseCollections({ previewItems }: { previewItems?: Res
 
       <div className="space-y-1.5 sm:space-y-2">
         <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-          <CollectionTile {...SUB_COLLECTIONS[1]} counts={counts} heightClass="h-28 sm:h-36" />
-          <CollectionTile {...SUB_COLLECTIONS[2]} counts={counts} heightClass="h-28 sm:h-36" />
+          <CollectionTile collection={SUB_COLLECTIONS[1]} counts={counts} heightClass="h-28 sm:h-36" />
+          <CollectionTile collection={SUB_COLLECTIONS[2]} counts={counts} heightClass="h-28 sm:h-36" />
         </div>
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-          <CollectionTile {...SUB_COLLECTIONS[0]} counts={counts} />
-          <CollectionTile {...SUB_COLLECTIONS[3]} counts={counts} />
-          <CollectionTile {...SUB_COLLECTIONS[4]} counts={counts} />
+          <CollectionTile collection={SUB_COLLECTIONS[0]} counts={counts} />
+          <CollectionTile collection={SUB_COLLECTIONS[3]} counts={counts} />
+          <CollectionTile collection={SUB_COLLECTIONS[4]} counts={counts} />
         </div>
       </div>
     </section>
@@ -181,8 +159,8 @@ function CollectionsPlacardCarousel({
 }: {
   previews: Record<string, NewArrivalProduct>;
   counts: CollectionCounts | null;
-  curatedImage: (index: number) => string;
-  curatedLink: (index: number) => string;
+  curatedImage: (key: string) => string;
+  curatedLink: (key: string) => string;
 }) {
   const [api, setApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -223,13 +201,13 @@ function CollectionsPlacardCarousel({
         className="cursor-grab active:cursor-grabbing"
       >
         <CarouselContent className="ml-0">
-          {SUB_COLLECTIONS.map(({ to, countKey, label, blurb, icon: Icon, gradient }, index) => {
+          {SUB_COLLECTIONS.map(({ key, to, countKey, label, blurb, icon: Icon, gradient }) => {
             const p = previews[to];
             const styles = stylesLabel(counts?.[countKey]);
             // Admin's picture wins; otherwise the collection's newest product.
-            const image = curatedImage(index) || p?.image || "";
+            const image = curatedImage(key) || p?.image || "";
             // Admin's product link wins; otherwise the collection's own listing.
-            const href = curatedLink(index) || to;
+            const href = curatedLink(key) || to;
             return (
               <CarouselItem key={to} className="pl-0">
                 <div className="h-full px-0.5">
@@ -317,8 +295,10 @@ function CollectionsPlacardCarousel({
 // Single gradient tile in the rows below the placard carousel — colour + icon
 // only, no product image (curated pictures are a placard-only feature).
 function CollectionTile({
-  to, countKey, label, icon: Icon, gradient, counts, heightClass = "h-40 sm:h-52",
-}: SubCollection & { counts: CollectionCounts | null; heightClass?: string }) {
+  collection: { to, countKey, label, icon: Icon, gradient },
+  counts,
+  heightClass = "h-40 sm:h-52",
+}: { collection: SubCollection; counts: CollectionCounts | null; heightClass?: string }) {
   const styles = stylesLabel(counts?.[countKey]);
 
   return (

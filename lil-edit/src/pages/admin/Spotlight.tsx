@@ -33,6 +33,7 @@ import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadProductImage } from "@/lib/uploadImage";
 import { metaStr, pdpUrlFor } from "@/hooks/useCuratedSection";
+import { SUB_COLLECTIONS, subCollectionLabel } from "@/components/collections/subCollections";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import {
   fetchAdminSections,
@@ -76,20 +77,21 @@ function groupOf(key: SectionKey): string | null {
   return SECTION_GROUPS.find((g) => g.keys.includes(key))?.label ?? null;
 }
 
-// Sections whose picks map onto fixed storefront slots BY POSITION. Each row is
-// labelled with the placard it feeds, so it's visible that row 2 is the Girls
-// placard — and that reordering re-points the pictures rather than just
-// resequencing a strip.
-const SLOT_LABELS: Partial<Record<SectionKey, string[]>> = {
-  collections_browse: ["New Arrivals", "Girls", "Boys", "Trending", "By Occasion"],
-};
-
-// Sections whose tiles are cut down to "picture + where it points". Labels,
-// blurbs and routes are fixed in the storefront component, so the tile form drops
-// title/subtitle/badge and swaps the free-text link for a product dropdown — a
-// placard can then only ever point at a real published product, or (left empty)
-// at its own collection listing.
+// Sections whose tiles are cut down to "which placard + picture + where it
+// points". Labels, blurbs and routes are fixed in the storefront component, so
+// the tile form drops title/subtitle/badge and swaps the free-text link for a
+// product dropdown — a placard can then only ever point at a real published
+// product, or (left empty) at its own collection listing.
+//
+// Each tile NAMES its placard in meta.collection, at most one tile per
+// collection, so row order carries no meaning here and the reorder arrows are
+// hidden. The backend enforces the same two rules on save.
 const IMAGE_AND_LINK_ONLY = new Set<SectionKey>(["collections_browse"]);
+
+/** The collection a tile fronts, or "" if it names none. */
+function tileCollection(item: DraftItem): string {
+  return metaStr(item.meta, "collection");
+}
 
 // ─── Local working copy of an item (decoupled from the server shape) ──────────
 interface DraftItem {
@@ -416,11 +418,14 @@ function ProductLinkPicker({
 function EditorialTileModal({
   sectionKey,
   initial,
+  takenCollections,
   onClose,
   onSave,
 }: {
   sectionKey: SectionKey;
   initial: DraftItem | null;
+  /** Collections already claimed by OTHER tiles — one placard, one tile. */
+  takenCollections: Set<string>;
   onClose: () => void;
   onSave: (d: DraftItem) => void;
 }) {
@@ -435,6 +440,9 @@ function EditorialTileModal({
   // in meta purely so the form can redisplay the choice.
   const [linkProductTitle, setLinkProductTitle] = useState(metaStr(initial?.meta, "link_product_title"));
   const [linkProductSku, setLinkProductSku] = useState(metaStr(initial?.meta, "link_product_sku"));
+  // Which placard this tile fronts. Chosen first — everything below it is "what
+  // that placard shows", so the form reads top-down as one decision then its detail.
+  const [collection, setCollection] = useState(metaStr(initial?.meta, "collection"));
   const [uploading, setUploading] = useState(false);
   const [uploadingDesktop, setUploadingDesktop] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -487,8 +495,13 @@ function EditorialTileModal({
       toast.error("An image is required for a tile");
       return;
     }
-    // A placard tile may set either field — but a tile with neither is a slot that
-    // curates nothing, which is what deleting the row already means.
+    // The placard has to be chosen before there's anything to curate.
+    if (imageAndLinkOnly && !collection) {
+      toast.error("Choose which collection this tile is for");
+      return;
+    }
+    // A placard tile may set either field — but a tile with neither curates
+    // nothing, which is what deleting the row already means.
     if (imageAndLinkOnly && !mobileImage && !link.trim()) {
       toast.error("Set an image, a product link, or both");
       return;
@@ -501,6 +514,7 @@ function EditorialTileModal({
       else delete meta.desktop_image_url;
     }
     if (imageAndLinkOnly) {
+      meta.collection = collection;
       if (linkProductSku) {
         meta.link_product_sku = linkProductSku;
         meta.link_product_title = linkProductTitle;
@@ -540,6 +554,32 @@ function EditorialTileModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Which placard this tile fronts — chosen first, since the image and
+              link below are only meaningful once it's known. Collections already
+              taken by another tile are disabled rather than hidden, so it's clear
+              they exist and are simply spoken for. */}
+          {imageAndLinkOnly && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Collection *</label>
+              <select
+                value={collection}
+                onChange={(e) => setCollection(e.target.value)}
+                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-gray-900"
+              >
+                <option value="">Choose a collection…</option>
+                {SUB_COLLECTIONS.map((c) => {
+                  const taken = takenCollections.has(c.key);
+                  return (
+                    <option key={c.key} value={c.key} disabled={taken}>
+                      {c.label}{taken ? " — already has a tile" : ""}
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="mt-1.5 text-[11px] text-gray-400">One tile per collection. The rest of the placard's copy is fixed on the page.</p>
+            </div>
+          )}
+
           {/* Image (mobile, when a section also offers a desktop variant) */}
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
@@ -743,7 +783,7 @@ function ItemRow({
   index,
   total,
   showBadge = true,
-  slotLabel,
+  namesItsPlacard = false,
   onMove,
   onRemove,
   onEdit,
@@ -754,8 +794,9 @@ function ItemRow({
   total: number;
   /** Sections whose storefront card has no badge slot (Shop the Look) hide the chip. */
   showBadge?: boolean;
-  /** Which fixed storefront slot this row feeds, for slot-mapped sections (SLOT_LABELS). */
-  slotLabel?: string;
+  /** Tiles that name their own placard (IMAGE_AND_LINK_ONLY): drop the reorder
+      arrows and the slot number, since position drives nothing for them. */
+  namesItsPlacard?: boolean;
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
   onEdit: () => void;
@@ -770,14 +811,17 @@ function ItemRow({
   // thumbnail is never blank when the tile actually has imagery.
   const img = isProduct ? item.product?.image ?? null : item.customImageUrl || desktopImage || null;
   const missing = isProduct && !item.product; // product unpublished/deleted
-  // A slot-mapped tile carries no copy of its own, so the placard it feeds IS its
-  // identity in this list, and its destination is the useful second line.
+  // A placard tile carries no copy of its own, so the collection it names IS its
+  // identity in this list, and its destination is the useful second line. A tile
+  // whose collection no longer exists reads as unassigned rather than silently
+  // looking fine while curating nothing.
+  const placard = namesItsPlacard ? subCollectionLabel(tileCollection(item)) : null;
   const title = isProduct
     ? item.product?.title ?? item.productBaseSku ?? "Unknown product"
-    : item.customTitle ?? slotLabel ?? "Untitled tile";
+    : item.customTitle ?? (namesItsPlacard ? placard ?? "⚠ No collection set" : "Untitled tile");
   const sub = isProduct
     ? item.productBaseSku ?? ""
-    : item.customSubtitle ?? (slotLabel
+    : item.customSubtitle ?? (namesItsPlacard
       ? metaStr(item.meta, "link_product_title") || item.linkUrl || "Opens this collection"
       : "");
 
@@ -787,8 +831,9 @@ function ItemRow({
   const badgeChip = "shrink-0 max-w-[120px] truncate text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700";
 
   // The slot number is overlaid on the thumbnail's corner (instead of a floating
-  // circle beside the card), so the card spans the full row width.
-  const slotBadge = (
+  // circle beside the card), so the card spans the full row width. Tiles that name
+  // their own placard have no ordinal to show — position means nothing to them.
+  const slotBadge = namesItsPlacard ? null : (
     <span className="absolute top-0 left-0 min-w-5 h-5 px-1 flex items-center justify-center rounded-br-lg bg-black/70 text-[10px] font-bold text-white tabular-nums pointer-events-none">
       {index + 1}
     </span>
@@ -799,10 +844,12 @@ function ItemRow({
       <div className="flex items-center gap-3 p-3">
         {/* Reorder arrows sit inline on desktop; on mobile they move into the
             action bar below, where they get real touch targets. */}
-        <div className="hidden sm:flex flex-col">
-          <button onClick={() => onMove(-1)} disabled={index === 0} className="text-gray-400 hover:text-gray-900 disabled:opacity-25"><ArrowUp className="w-4 h-4" /></button>
-          <button onClick={() => onMove(1)} disabled={index === total - 1} className="text-gray-400 hover:text-gray-900 disabled:opacity-25"><ArrowDown className="w-4 h-4" /></button>
-        </div>
+        {!namesItsPlacard && (
+          <div className="hidden sm:flex flex-col">
+            <button onClick={() => onMove(-1)} disabled={index === 0} className="text-gray-400 hover:text-gray-900 disabled:opacity-25"><ArrowUp className="w-4 h-4" /></button>
+            <button onClick={() => onMove(1)} disabled={index === total - 1} className="text-gray-400 hover:text-gray-900 disabled:opacity-25"><ArrowDown className="w-4 h-4" /></button>
+          </div>
+        )}
 
         {isProduct && item.product ? (
           <button
@@ -868,7 +915,7 @@ function ItemRow({
           {showBadge && item.badge && <span className={badgeChip}>{item.badge}</span>}
         </div>
         <span className="flex-1" />
-        {total > 1 && (
+        {total > 1 && !namesItsPlacard && (
           <div className="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
             <button onClick={() => onMove(-1)} disabled={index === 0} className="px-3.5 py-1.5 text-gray-600 active:bg-gray-100 disabled:opacity-25"><ArrowUp className="w-4 h-4" /></button>
             <span className="w-px self-stretch bg-gray-200" />
@@ -1238,6 +1285,14 @@ const SpotlightPage = () => {
   const canAddProduct = selected && (selected.itemType === "product" || selected.itemType === "mixed");
   const canAddTile = selected && (selected.itemType === "editorial" || selected.itemType === "mixed");
 
+  // One tile per collection: which are spoken for, and whether any are left. Both
+  // are only meaningful for sections whose tiles name their own placard.
+  const namesItsPlacard = !!selected && IMAGE_AND_LINK_ONLY.has(selected.key);
+  const claimedCollections = namesItsPlacard
+    ? new Set(draft.map(tileCollection).filter(Boolean))
+    : new Set<string>();
+  const allPlacardsCurated = namesItsPlacard && claimedCollections.size >= SUB_COLLECTIONS.length;
+
   return (
     <div className="min-h-screen bg-white text-[#1a1a1a] flex flex-col font-sans">
       {user ? <UserNavbar /> : <Navbar />}
@@ -1444,7 +1499,9 @@ const SpotlightPage = () => {
                       {canAddTile && (
                         <button
                           onClick={() => setTileEditing({ item: null })}
-                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-400 rounded-md px-3 py-2 bg-white hover:border-gray-900"
+                          disabled={allPlacardsCurated}
+                          title={allPlacardsCurated ? "Every collection already has a tile — edit one instead" : undefined}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-400 rounded-md px-3 py-2 bg-white hover:border-gray-900 disabled:opacity-40 disabled:hover:border-gray-400"
                         >
                           <ImagePlus className="w-3.5 h-3.5" /> Add tile
                         </button>
@@ -1482,7 +1539,7 @@ const SpotlightPage = () => {
                             index={i}
                             total={draft.length}
                             showBadge={selected.key !== "home_shop_the_look"}
-                            slotLabel={SLOT_LABELS[selected.key]?.[i]}
+                            namesItsPlacard={namesItsPlacard}
                             onMove={(dir) => move(i, dir)}
                             onRemove={() => removeAt(i)}
                             onEdit={() => setTileEditing({ item })}
@@ -1585,6 +1642,16 @@ const SpotlightPage = () => {
         <EditorialTileModal
           sectionKey={selected.key}
           initial={tileEditing.item}
+          // Everything claimed by another tile — the one being edited keeps its own
+          // collection selectable, so re-saving it unchanged isn't blocked.
+          takenCollections={
+            new Set(
+              draft
+                .filter((d) => d.tempId !== tileEditing.item?.tempId)
+                .map(tileCollection)
+                .filter(Boolean),
+            )
+          }
           onClose={() => setTileEditing(null)}
           onSave={upsertTile}
         />
