@@ -52,11 +52,24 @@ const PREVIEW_RENDERERS: Record<SectionKey, (items: ResolvedItem[], title: strin
   // HeroSection+ previews only override the extra swipe slides — the grid page
   // is still fetched live so the admin sees the whole carousel in context.
   home_hero_plus: (items) => <HomeCollage previewExtraItems={items} />,
-  // Only the curated picks are overridden here — the per-collection fallback
-  // products and style counts still load live, so the pane shows the strip in
-  // context. Labels/blurbs/routes are fixed in code, so there is nothing else to
-  // preview: title/subtitle are ignored.
-  collections_browse: (items) => <BrowseCollections previewItems={items} />,
+  // Only the curated picks and the section heading are overridden here — the
+  // per-collection fallback products and style counts still load live, so the pane
+  // shows the strip in context. A placard's sub-heading and picture preview through
+  // the draft items; either one left unset falls back to what SUB_COLLECTIONS ships,
+  // exactly as on the page. The placard's name and route stay fixed in code, so those
+  // are not previewable.
+  collections_browse: (items, title, subtitle) => <BrowseCollections previewItems={items} previewTitle={title} previewSubtitle={subtitle} />,
+};
+
+// The column a section sits inside on its real page. Most strips carry their own
+// container and padding (ShopTheLook's `container px-4`, TrendingSection's, …), so
+// they render full-bleed here and look right. BrowseCollections has none of its own
+// — on the Collections page it inherits the wrapper at Collections.tsx:167-168 — so
+// without this it runs edge-to-edge in the pane at every width. Reproduce the host
+// column exactly: responsive side padding on the outer div, the max-width cap on the
+// inner one, matching the real page's mobile AND desktop gutters.
+const PREVIEW_WRAPPERS: Partial<Record<SectionKey, { outer: string; inner: string }>> = {
+  collections_browse: { outer: "px-4 sm:px-8 md:px-12 lg:px-16", inner: "max-w-5xl mx-auto" },
 };
 
 interface PreviewState {
@@ -91,6 +104,11 @@ const SpotlightPreviewPage = () => {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
+  // Render the section whole, then re-create its host page's column when it has one.
+  // Sections with no entry in PREVIEW_WRAPPERS stay full-bleed, exactly as before.
+  const wrapper = state ? PREVIEW_WRAPPERS[state.key] : undefined;
+  const section = state ? PREVIEW_RENDERERS[state.key](state.items, state.title, state.subtitle) : null;
+
   return (
     // h-screen + internal scroll (scrollbar hidden): if the document itself scrolled,
     // the iframe would paint its own scrollbar track as a white strip over the
@@ -107,12 +125,14 @@ const SpotlightPreviewPage = () => {
           otherwise be clipped at the top of this standalone document. Clicks are
           captured so previewing never navigates or mutates wishlist/cart state. */}
       <div className="pt-16 pb-10" onClickCapture={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-        {state ? (
-          // Render the section whole — full preview width, no centered max-width column or
-          // side padding imposed here. Each component keeps its own intrinsic spacing.
-          PREVIEW_RENDERERS[state.key](state.items, state.title, state.subtitle)
-        ) : (
+        {section === null ? (
           <div className="py-24 text-center text-sm text-gray-400">Loading preview…</div>
+        ) : wrapper ? (
+          <div className={wrapper.outer}>
+            <div className={wrapper.inner}>{section}</div>
+          </div>
+        ) : (
+          section
         )}
       </div>
     </div>

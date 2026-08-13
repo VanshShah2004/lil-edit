@@ -26,7 +26,7 @@ import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
 // this file so the five ArrivalsPage-driven collection pages stay untouched.
 
 const TICKER_WORDS = [
-  "Featured Collections", "Spring/Summer '26",
+  "Featured Collections",
   "Styled by You", "The Lil Edit",
 ];
 
@@ -166,45 +166,11 @@ export default function Collections() {
       <main className="w-full py-8 sm:py-12 md:py-14">
         <div className="px-4 sm:px-8 md:px-12 lg:px-16">
           <div className="max-w-5xl mx-auto space-y-12 sm:space-y-16">
-            {/* BROWSE THE COLLECTIONS — the placard carousel plus the tile
+            {/* BROWSE COLLECTIONS — the placard carousel plus the tile
                 rows. Carries its own section heading; the placard images are
                 admin-curatable via the Spotlight (collections_browse). */}
             <BrowseCollections />
-          </div>
-        </div>
 
-        {/* SEASON HIGHLIGHT BANNER — full width */}
-        <section className="w-full py-12 sm:py-14 md:py-16">
-          <div className="relative overflow-hidden bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 py-28 sm:py-32 md:py-36 px-4 sm:px-8 md:px-12 lg:px-16 flex items-center justify-center text-center">
-            <div className="absolute inset-0 opacity-20" aria-hidden="true">
-              <div className="absolute top-0 left-0 w-64 sm:w-96 h-64 sm:h-96 bg-white rounded-full blur-3xl" />
-              <div className="absolute bottom-0 right-0 w-56 sm:w-80 h-56 sm:h-80 bg-white rounded-full blur-3xl" />
-            </div>
-
-            <div className="relative z-10 max-w-3xl">
-              <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-gray-800 mb-4 bg-white/70 px-3 py-1.5 rounded-full">
-                <Sparkles className="w-3.5 h-3.5" />
-                Limited edition
-              </span>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-3">
-                Spring/Summer '26
-              </h2>
-              <p className="text-sm sm:text-base md:text-lg text-gray-800 mb-6">
-                Designed for comfort, crafted for style. The season's line-up, all in one place.
-              </p>
-              <Button
-                onClick={() => navigate("/collections/new-arrivals")}
-                className="bg-gray-900 hover:bg-gray-800 text-white px-6 sm:px-8 h-11 sm:h-12 rounded-full font-semibold text-sm sm:text-base transition-colors"
-              >
-                Shop the season
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        <div className="px-4 sm:px-8 md:px-12 lg:px-16">
-          <div className="max-w-5xl mx-auto space-y-12 sm:space-y-16">
             {/* STYLED BY OUR COMMUNITY — bento mosaic */}
             <section>
               <SectionHeading

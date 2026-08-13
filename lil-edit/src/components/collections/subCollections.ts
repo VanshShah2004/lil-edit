@@ -2,7 +2,7 @@ import { Sparkles, Heart, Star, TrendingUp, PartyPopper, type LucideIcon } from 
 import type { CollectionCounts } from "@/services/searchService";
 
 // Every collection listing the storefront has, and the single source of truth for
-// the "Browse the Collections" strip. Icons match the ones the side menu uses for
+// the "Browse Collections" strip. Icons match the ones the side menu uses for
 // these same links (components/home/UserNavbar), so the two navigations agree on
 // what each collection looks like.
 //

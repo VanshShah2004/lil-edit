@@ -25,11 +25,11 @@ const KNOWN_SECTION_KEYS = [
 
 // Sections whose editorial tiles are pure overrides on top of storefront defaults,
 // so an imageless tile is valid: the collage sections fall back to their built-in
-// image per breakpoint, and a collections_browse tile may carry only a link (its
-// placard then keeps that collection's own newest product as the picture).
+// image per breakpoint, and a collections_browse tile may carry only a sub-heading
+// (its placard then keeps that collection's own newest product as the picture).
 const IMAGE_OPTIONAL_SECTIONS = new Set<string>(["home_collage", "home_hero_plus", "collections_browse"]);
 
-// The five collections the "Browse the Collections" strip renders, mirroring
+// The five collections the "Browse Collections" strip renders, mirroring
 // SUB_COLLECTIONS in lil-edit/src/components/collections/subCollections.ts. Each
 // collections_browse tile names one of these in meta.collection. Keep the two
 // lists in step — a key only this side knows is unreachable from the editor, and

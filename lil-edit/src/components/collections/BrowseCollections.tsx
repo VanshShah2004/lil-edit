@@ -7,7 +7,7 @@ import { useCuratedSection, metaStr } from "@/hooks/useCuratedSection";
 import type { ResolvedItem, ResolvedEditorialItem } from "@/lib/curationApi";
 import {
   fetchNewArrivals, fetchCollectionCounts,
-  type NewArrivalProduct, type CollectionCounts,
+  type NewArrivalProduct, type CollectionCounts, type CollectionWearTypes,
 } from "@/services/searchService";
 import {
   Carousel, CarouselContent, CarouselItem, type CarouselApi,
@@ -23,14 +23,30 @@ function stylesLabel(count: number | null | undefined): string | null {
 const onlyEditorials = (items: ResolvedItem[]) =>
   items.filter((i): i is ResolvedEditorialItem => i.kind === "editorial");
 
+// Is the page actually being looked at? Drives the carousel's autoplay pause.
+//
+// document.hidden covers a backgrounded tab or a fully occluded window. Losing
+// window focus (switching to another app while the browser stays visible) only
+// counts at the top level: inside the Spotlight's live-preview iframe the parent
+// editor always holds focus, so honouring it there would freeze that pane's
+// carousel for good. The iframe still sees the real tab's visibility.
+function pageIsAway(): boolean {
+  const focusMatters = window.self === window.top;
+  return document.hidden || (focusMatters && !document.hasFocus());
+}
+
 /**
- * "Browse the Collections" — the placard carousel plus the gradient tile rows.
+ * "Browse Collections" — the placard carousel plus the gradient tile rows.
  *
- * Labels, blurbs, icons and gradients are fixed in code (SUB_COLLECTIONS above).
+ * The section's own heading and blurb are curated (Spotlight → "Edit heading"),
+ * falling back to the copy shipped here. Everything INSIDE a placard — its label,
+ * blurb, icon and gradient — is still fixed in code (SUB_COLLECTIONS above).
+ *
  * Two things per placard are curated, both optional: its IMAGE and its LINK. The
- * Spotlight editor offers an image upload and a product dropdown for the link —
- * no free-text URL — so a placard can only ever point at a real published product
- * or, left empty, at its own collection listing.
+ * Spotlight editor shows one card per sub-collection; opening a card offers an
+ * image upload and a product dropdown for the link — no free-text URL — so a
+ * placard can only ever point at a real published product or, left empty, at its
+ * own collection listing.
  *
  * collections_browse holds at most one tile per sub-collection. Each tile NAMES
  * its placard in meta.collection (a SUB_COLLECTIONS key), so row order carries no
@@ -44,7 +60,15 @@ const onlyEditorials = (items: ResolvedItem[]) =>
  * exactly as it was before curation existed. The tile rows below the carousel are
  * never curated — they always route into their collection.
  */
-export default function BrowseCollections({ previewItems }: { previewItems?: ResolvedItem[] }) {
+export default function BrowseCollections({
+  previewItems,
+  previewTitle,
+  previewSubtitle,
+}: {
+  previewItems?: ResolvedItem[];
+  previewTitle?: string | null;
+  previewSubtitle?: string | null;
+}) {
   const preview = previewItems !== undefined;
   // One real product per sub-collection, keyed by route, as the image fallback.
   // Girls/Boys/Trending need their own calls — the arrivals payload carries
@@ -53,11 +77,25 @@ export default function BrowseCollections({ previewItems }: { previewItems?: Res
   // Style counts per collection. Its own request (and own catch) so a counts
   // failure never costs the strip its imagery, or vice-versa.
   const [counts, setCounts] = useState<CollectionCounts | null>(null);
+  // Which wear types each collection spans, from the same response. Server-derived
+  // off the whole catalog rather than the preview products, so a collection holding
+  // one lone Accessories piece still names it.
+  const [wearTypes, setWearTypes] = useState<CollectionWearTypes | null>(null);
 
   // Only the curated tiles are overridden in the admin preview — the fallback
   // products and counts still load live, so the pane shows the strip in context.
-  const { editorials: fetchedTiles } = useCuratedSection("collections_browse", { skip: preview });
+  const {
+    editorials: fetchedTiles,
+    title: fetchedTitle,
+    subtitle: fetchedSubtitle,
+  } = useCuratedSection("collections_browse", { skip: preview });
   const tiles = preview ? onlyEditorials(previewItems) : fetchedTiles;
+
+  // Heading and blurb come from the section record, edited via the Spotlight's
+  // "Edit heading". The shipped copy is the fallback, so an unseeded section, a
+  // cleared field or a failed fetch still renders the strip exactly as before.
+  const heading = (preview ? previewTitle : fetchedTitle) ?? "Browse Collections";
+  const blurb = (preview ? previewSubtitle : fetchedSubtitle) ?? "Every edit we stock, one tap away.";
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -98,6 +136,7 @@ export default function BrowseCollections({ previewItems }: { previewItems?: Res
       .then((data) => {
         console.log("[BrowseCollections] collection counts resolved:", data);
         setCounts(data);
+        setWearTypes(data?.wearTypes ?? null);
       })
       .catch((err) => {
         if ((err as Error).name === "AbortError") {
@@ -120,17 +159,23 @@ export default function BrowseCollections({ previewItems }: { previewItems?: Res
   // Empty string / undefined is treated as "not set" throughout, so each field
   // falls through to its own default independently of the other.
   const curatedImage = (key: string): string => tileFor(key)?.image || "";
-  const curatedLink = (key: string): string => tileFor(key)?.link || "";
+  // Only the picture and the sub-heading are curatable. The placard's name is the
+  // label the side menu and the mini tiles use for the same link, and its route is
+  // the collection it fronts — both stay fixed in SUB_COLLECTIONS.
+  const curatedSubtitle = (key: string): string => tileFor(key)?.subtitle || "";
 
   return (
     <section>
-      <SectionHeading
-        label="Browse the Collections"
-        blurb="Every edit we stock, one tap away."
-      />
+      <SectionHeading label={heading} blurb={blurb} />
 
       <div className="mb-6 sm:mb-8">
-        <CollectionsPlacardCarousel previews={previews} counts={counts} curatedImage={curatedImage} curatedLink={curatedLink} />
+        <CollectionsPlacardCarousel
+          previews={previews}
+          counts={counts}
+          curatedImage={curatedImage}
+          curatedSubtitle={curatedSubtitle}
+          wearTypes={wearTypes}
+        />
       </div>
 
       <div className="space-y-1.5 sm:space-y-2">
@@ -155,17 +200,21 @@ export default function BrowseCollections({ previewItems }: { previewItems?: Res
 // (vs. the arrivals page's 5s) since there's no drag-to-inspect motivation
 // here — it's a route into a collection, not a product.
 function CollectionsPlacardCarousel({
-  previews, counts, curatedImage, curatedLink,
+  previews, counts, curatedImage, curatedSubtitle, wearTypes,
 }: {
   previews: Record<string, NewArrivalProduct>;
   counts: CollectionCounts | null;
   curatedImage: (key: string) => string;
-  curatedLink: (key: string) => string;
+  curatedSubtitle: (key: string) => string;
+  wearTypes: CollectionWearTypes | null;
 }) {
   const [api, setApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [dragging, setDragging] = useState(false);
+  // True whenever the page isn't actually being looked at. Lazy initial read covers
+  // mounting into an already-hidden tab (a background-loaded page).
+  const [away, setAway] = useState(pageIsAway);
 
   useEffect(() => {
     if (!api) return;
@@ -183,11 +232,33 @@ function CollectionsPlacardCarousel({
     };
   }, [api]);
 
+  // Autoplay must stop while the page is away, not just look stopped. A hidden tab
+  // still runs setInterval (throttled), but the rAF driving Embla's animation is
+  // frozen — so scrollNext() kept queueing targets that couldn't animate, and coming
+  // back replayed the whole backlog at once as a jarring skid across several
+  // placards. Pausing on visibility/focus means you return to the slide you left on
+  // and the next advance is a normal, animated one 3s later.
   useEffect(() => {
-    if (!api || hovered || dragging) return;
+    const sync = () => {
+      const next = pageIsAway();
+      console.log(`[BrowseCollections] carousel ${next ? "paused — page away" : "resumed — page back"}`);
+      setAway(next);
+    };
+    document.addEventListener("visibilitychange", sync);
+    window.addEventListener("focus", sync);
+    window.addEventListener("blur", sync);
+    return () => {
+      document.removeEventListener("visibilitychange", sync);
+      window.removeEventListener("focus", sync);
+      window.removeEventListener("blur", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!api || hovered || dragging || away) return;
     const id = setInterval(() => api.scrollNext(), 3000);
     return () => clearInterval(id);
-  }, [api, hovered, dragging]);
+  }, [api, hovered, dragging, away]);
 
   return (
     <div
@@ -204,10 +275,16 @@ function CollectionsPlacardCarousel({
           {SUB_COLLECTIONS.map(({ key, to, countKey, label, blurb, icon: Icon, gradient }) => {
             const p = previews[to];
             const styles = stylesLabel(counts?.[countKey]);
+            // Every wear type the collection holds, most common first. Falls back to
+            // the preview product's own category if the server didn't send the list
+            // (older backend, or a degraded counts response), so the row never empties.
+            const wears = wearTypes?.[countKey] ?? [];
+            const wearLabel = wears.length > 0 ? wears.join(", ") : p?.category ?? "";
             // Admin's picture wins; otherwise the collection's newest product.
             const image = curatedImage(key) || p?.image || "";
-            // Admin's product link wins; otherwise the collection's own listing.
-            const href = curatedLink(key) || to;
+            // Admin's sub-heading wins; otherwise the words this placard ships with.
+            // The name and the route are never curated — see curatedSubtitle's note.
+            const subheading = curatedSubtitle(key) || blurb;
             return (
               <CarouselItem key={to} className="pl-0">
                 <div className="h-full px-0.5">
@@ -216,7 +293,7 @@ function CollectionsPlacardCarousel({
                       capture-phase click guard preventDefaults the event after
                       a drag, so dragging the carousel never navigates. */}
                   <Link
-                    to={href}
+                    to={to}
                     className={`group relative block h-full rounded-3xl overflow-hidden bg-gradient-to-br ${gradient} text-gray-900 border border-gray-400 cursor-pointer hover:border-gray-500 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal focus-visible:ring-offset-2`}
                   >
                     <div className="grid h-full grid-rows-[auto_1fr] md:grid-rows-1 md:grid-cols-[2fr_3fr] md:h-72">
@@ -236,30 +313,46 @@ function CollectionsPlacardCarousel({
                         )}
                       </div>
 
-                      {/* Text side — every row has a reserved height so all
-                          slides line up regardless of copy length */}
-                      <div className="relative flex flex-col justify-center gap-2 sm:gap-3 p-5 sm:p-7 md:p-8">
+                      {/* Text side — spacing is grouped rather than uniform, so the
+                          column reads as two blocks instead of five evenly-spaced
+                          lines: the eyebrow hugs the name it labels, the sub-heading
+                          follows close behind, then a wider break sets the meta row
+                          and CTA apart as the card's footer. Every row still reserves
+                          its height, so all slides line up regardless of copy length. */}
+                      <div className="relative flex flex-col justify-center p-5 sm:p-7 md:p-8">
                         <div className="absolute top-0 right-0 w-40 h-40 bg-white/25 rounded-full blur-3xl" />
                         <span className="inline-flex w-fit items-center gap-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-[0.25em] text-gray-800">
                           <Icon className="w-3.5 h-3.5" />
                           Collection
                         </span>
-                        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold leading-tight text-gray-900 line-clamp-1">{label}</h2>
-                        <p className="text-xs sm:text-sm text-gray-700 max-w-md line-clamp-2">{blurb}</p>
-                        {/* Meta row keeps its height even while the count and
-                            preview are still in flight, so the CTA below never
-                            jumps as the two requests land. */}
-                        <div className="flex flex-nowrap overflow-hidden items-center gap-2 min-h-[1.125rem] sm:min-h-[1.25rem] text-xs sm:text-sm text-gray-600">
+                        <h2 className="mt-1.5 text-xl sm:text-2xl md:text-3xl font-bold leading-tight text-gray-900 line-clamp-1">{label}</h2>
+                        {/* min-h holds two lines' worth whether or not the copy fills
+                            them, so the footer below sits at the same height on every
+                            slide instead of riding up under a one-line sub-heading. */}
+                        <p className="mt-2 text-xs sm:text-sm leading-relaxed text-gray-700 max-w-md line-clamp-2 min-h-[39px] sm:min-h-[46px]">{subheading}</p>
+                        {/* The count and bullet hold the left as fixed items (shrink-0);
+                            the wear types take the rest and wrap INSIDE their own column
+                            (min-w-0 is what lets a flex item shrink below its content and
+                            break), so a long list starts on the count's line and its
+                            continuation sits under the wear types rather than back under
+                            "N styles". items-start keeps the count on the first line.
+                            min-h reserves that second line on mobile (where the narrow
+                            card actually wraps) and one line from sm up (where the full
+                            list fits across), so the CTA below sits at the same height on
+                            every slide instead of jumping as the requests land, and
+                            line-clamp-2 caps the growth so it can never overrun the fixed
+                            md:h-72 card. */}
+                        <div className="mt-4 flex items-start gap-2 min-h-[2rem] sm:min-h-[1.25rem] text-xs sm:text-sm text-gray-600">
                           {styles && <span className="font-semibold text-gray-800 shrink-0">{styles}</span>}
-                          {styles && p?.category && <span className="text-gray-400 shrink-0">•</span>}
-                          {p?.category && <span className="truncate">{p.category}</span>}
+                          {styles && wearLabel && <span className="text-gray-400 shrink-0">•</span>}
+                          {wearLabel && <span className="min-w-0 line-clamp-2" title={wearLabel}>{wearLabel}</span>}
                         </div>
                         {/* Stacked mobile layout puts the CTA at the bottom of
                             a full-width block, so it reads better tucked to the
                             right edge. From md up the text sits in its own
                             column beside the image and the pill goes back to
                             leading the left margin with the copy. */}
-                        <div className="mt-0.5 sm:mt-1 flex justify-end md:justify-start">
+                        <div className="mt-2.5 sm:mt-3 flex justify-end md:justify-start">
                           <span className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 sm:px-5 h-9 sm:h-10 rounded-full font-semibold text-xs sm:text-sm group-hover:bg-gray-800 transition-colors">
                             Explore
                             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
