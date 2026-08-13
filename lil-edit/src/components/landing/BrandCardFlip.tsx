@@ -49,8 +49,8 @@ const BrandCardFlip = ({
         </div>
       </button>
 
-      <span className="flex items-center gap-1.5 font-body text-xs text-muted-foreground">
-        <RotateCw className="w-3.5 h-3.5" />
+      <span className="flex items-center gap-1 font-body text-[11px] text-muted-foreground">
+        <RotateCw className="w-3 h-3" />
         Tap the card to {flipped ? "flip back" : "see our contact details"}
       </span>
     </div>
