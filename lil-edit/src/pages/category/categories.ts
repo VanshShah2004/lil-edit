@@ -27,23 +27,68 @@ export interface CategoryDef {
    * listing below it, is identical, so the set reads as a single taxonomy rather
    * than four themed microsites.
    *
-   * All four are dark enough to carry cream type at ~9:1, which is what lets the
-   * placard be a saturated colour field instead of a tinted wash. Drawn from the
-   * dyes this catalogue is actually full of: maroon, plum, forest, indigo.
+   * Deep grounds for the dressed-up categories, bright pastels for the everyday
+   * ones. Anything legible works: paletteFor() derives the type, trim and texture
+   * colours from this value's luminance, so a ground can be swapped for a lighter
+   * or darker one without hand-editing anything else.
    */
   field: string;
 }
 
 /**
- * Gold, shared by all four placards — the zari/gota trim running through Indian
- * kidswear, and the thread that ties the categories together as one set. Used
- * ONLY on the jewel field, never on the white page below, where it would fall
- * below contrast (there the storefront's brand teal plays the accent role).
+ * Gold — the zari trim running through Indian kidswear. Used on the DEEP grounds
+ * only, never on the white page below or on a pastel ground, where it falls below
+ * contrast (there the ink below plays the accent role instead).
  */
 export const CATEGORY_TRIM = "#E3B23C";
 
-/** Warm off-white for type printed on a jewel field. */
+/** Warm off-white for type printed on a deep ground. */
 export const CATEGORY_CREAM = "#FAF6F0";
+
+/** Deep aubergine for type printed on a pastel ground. */
+export const CATEGORY_INK = "#2A2233";
+
+/** WCAG relative luminance of a #rrggbb colour. */
+function luminance(hex: string): number {
+  const ch = [1, 3, 5]
+    .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+  return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+}
+
+export interface FieldPalette {
+  /** Headline / name colour. */
+  text: string;
+  /** Standfirst and label colour — the same hue, stepped back. */
+  textMuted: string;
+  /** Rule and numeral colour. (The tile arrows follow `text`, not this.) */
+  trim: string;
+  /** The bandhani dot texture — white on deep grounds, ink on pastel ones. */
+  dots: string;
+}
+
+/**
+ * The colours that read on a given ground, chosen by how light it is rather than
+ * configured per category. A deep ground takes cream type and the gold trim; a
+ * pastel takes the ink instead, since gold on a pastel is illegible. Deriving it
+ * means the palette can gain a bright colour without every category needing its
+ * own hand-picked set of four values that could drift out of contrast.
+ */
+export function paletteFor(field: string): FieldPalette {
+  return luminance(field) < 0.3
+    ? {
+        text: CATEGORY_CREAM,
+        textMuted: "rgba(250, 246, 240, 0.78)",
+        trim: CATEGORY_TRIM,
+        dots: "rgba(255, 255, 255, 0.13)",
+      }
+    : {
+        text: CATEGORY_INK,
+        textMuted: "rgba(42, 34, 51, 0.72)",
+        trim: CATEGORY_INK,
+        dots: "rgba(42, 34, 51, 0.07)",
+      };
+}
 
 export const CATEGORIES: CategoryDef[] = [
   {
@@ -56,19 +101,19 @@ export const CATEGORIES: CategoryDef[] = [
     slug: "party-wear",
     label: "Party Wear",
     blurb: "Dressy outfits for parties and birthdays.",
-    field: "#6B1F4D", // plum
+    field: "#F7B7C9", // blush pink
   },
   {
     slug: "casual-wear",
     label: "Casual Wear",
     blurb: "Comfortable clothes for every day.",
-    field: "#3A5A40", // forest
+    field: "#A8D4F2", // sky blue
   },
   {
     slug: "accessories",
     label: "Accessories",
     blurb: "Bags, bows, belts and hair clips.",
-    field: "#27356B", // indigo
+    field: "#2F2D35", // charcoal
   },
 ];
 

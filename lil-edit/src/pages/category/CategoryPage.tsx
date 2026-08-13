@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Heart, PackageSearch } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, Heart, PackageSearch } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { buildPdpPath } from "@/lib/pdpUrl";
 import { fetchCategoryProducts, type CategoryProduct } from "@/services/categoryService";
-import { categoryBySlug, CATEGORY_TRIM, CATEGORY_CREAM } from "./categories";
+import { CATEGORIES, categoryBySlug, paletteFor } from "./categories";
 
 /**
  * One category's listing page (/collections/<category-slug>).
@@ -30,12 +30,15 @@ import { categoryBySlug, CATEGORY_TRIM, CATEGORY_CREAM } from "./categories";
  * inside the card's hover state and so leaves the resting grid identical.
  *
  * Above it sits the PLACARD, and that is the one place the page speaks for
- * itself: printed on a deep jewel ground — maroon, plum, forest, indigo, the
- * dyes this catalogue is full of — carrying cream type, a gold rule and the
- * category's size as a gold numeral. Gold is the zari/gota trim of Indian
- * kidswear and is shared by all four, so the categories read as one set in four
- * colourways. A bandhani dot grid at very low opacity keeps the ground from
- * going flat.
+ * itself: printed on that category's own ground — deep maroon and charcoal for
+ * the dressed-up categories, bright blush and sky for the everyday ones —
+ * carrying the category's size as an oversized numeral. A bandhani dot grid at
+ * very low opacity keeps the ground from going flat.
+ *
+ * Type, trim and dot colours are NOT hardcoded here: paletteFor() derives them
+ * from the ground's luminance, so a deep ground gets cream type and the gold zari
+ * trim while a pastel gets the ink instead. That is what lets the set mix dark and
+ * bright grounds without any of them going illegible.
  *
  * The placard carries NO product imagery, deliberately: several of these
  * categories hold one or two products, so cover art would reprint the whole
@@ -107,11 +110,18 @@ export default function CategoryPage({ slug }: { slug: string }) {
 
   const label = category?.label ?? "Category";
   const field = category?.field ?? "#2A2233";
+  const pal = paletteFor(field);
 
   return (
     <div
       className="min-h-screen bg-white flex flex-col text-gray-900 overflow-x-hidden"
-      style={{ ["--cat-field" as string]: field, ["--cat-trim" as string]: CATEGORY_TRIM }}
+      style={{
+        ["--cat-field" as string]: field,
+        ["--cat-text" as string]: pal.text,
+        ["--cat-text-muted" as string]: pal.textMuted,
+        ["--cat-trim" as string]: pal.trim,
+        ["--cat-dots" as string]: pal.dots,
+      }}
     >
       <style>{`
         @keyframes cat-rise  { from { opacity: 0; transform: translateY(0.6rem); } to { opacity: 1; transform: translateY(0); } }
@@ -173,6 +183,10 @@ export default function CategoryPage({ slug }: { slug: string }) {
               </div>
             </>
           )}
+
+          {/* Always rendered, including on an empty category — when a page has
+              nothing on it, somewhere else to go is the most useful thing on it. */}
+          <OtherCategories current={slug} />
         </div>
       </main>
 
@@ -209,7 +223,7 @@ function CategoryPlacard({
         className="pointer-events-none absolute inset-0"
         aria-hidden="true"
         style={{
-          backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.13) 1px, transparent 0)",
+          backgroundImage: "radial-gradient(circle at 1px 1px, var(--cat-dots) 1px, transparent 0)",
           backgroundSize: "22px 22px",
         }}
       />
@@ -238,7 +252,7 @@ function CategoryPlacard({
               lineHeight: 0.9,
               letterSpacing: "-0.03em",
               fontWeight: 700,
-              color: CATEGORY_CREAM,
+              color: "var(--cat-text)",
               animationDelay: "0.05s",
             }}
           >
@@ -258,7 +272,7 @@ function CategoryPlacard({
                the narrowest phones, where a line can still wrap. */
             <p
               className="cat-rise font-body mt-5 max-w-[44ch] text-[13px] sm:text-[15px] leading-relaxed line-clamp-2"
-              style={{ color: "rgba(250,246,240,0.78)", animationDelay: "0.12s" }}
+              style={{ color: "var(--cat-text-muted)", animationDelay: "0.12s" }}
             >
               {blurb}
             </p>
@@ -282,7 +296,7 @@ function CategoryPlacard({
           </span>
           <span
             className="font-body text-[10px] font-medium uppercase"
-            style={{ letterSpacing: "0.24em", color: "rgba(250,246,240,0.72)" }}
+            style={{ letterSpacing: "0.24em", color: "var(--cat-text-muted)" }}
           >
             {total === 1 ? "style" : "styles"}
           </span>
@@ -390,6 +404,66 @@ function ProductCard({ product: p }: { product: CategoryProduct }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// ─── The other three categories ──────────────────────────────────────────────
+// These pages have no entry point anywhere else in the storefront by design —
+// they are not in the nav, the Browse Collections strip or the Spotlight — so
+// without this a shopper who lands on one has no way to reach the other three.
+// Each tile is printed on that category's own placard ground, which is what makes
+// the four colourways legible as one set rather than four unrelated pages.
+function OtherCategories({ current }: { current: string }) {
+  const others = CATEGORIES.filter((c) => c.slug !== current);
+  if (others.length === 0) return null;
+
+  return (
+    <section className="mt-14 sm:mt-16">
+      <hr className="border-0 border-t border-gray-300" />
+      <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-brand-teal mb-4 pt-10">
+        More categories
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        {others.map((c) => {
+          // Each tile carries a different ground, so it needs its own derived
+          // palette rather than the page's — otherwise a pastel tile on a deep
+          // page would inherit cream type and vanish into its own background.
+          const p = paletteFor(c.field);
+          return (
+            <Link
+              key={c.slug}
+              to={`/collections/${c.slug}`}
+              className="group relative flex items-center justify-between gap-3 overflow-hidden rounded-xl px-5 py-5 sm:py-6 transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{ backgroundColor: c.field, outlineColor: p.trim }}
+            >
+              {/* Same bandhani surface as the placard, so a tile reads as a small
+                  piece of that category's plate. */}
+              <span
+                className="pointer-events-none absolute inset-0"
+                aria-hidden="true"
+                style={{
+                  backgroundImage: `radial-gradient(circle at 1px 1px, ${p.dots} 1px, transparent 0)`,
+                  backgroundSize: "22px 22px",
+                }}
+              />
+              <span
+                className="font-display relative text-lg sm:text-xl"
+                style={{ color: p.text, fontWeight: 700, letterSpacing: "-0.01em" }}
+              >
+                {c.label}
+              </span>
+              {/* Same colour as the label beside it, which also means it inherits
+                  that label's contrast on whichever ground the tile carries. */}
+              <ArrowRight
+                className="relative h-5 w-5 shrink-0 transition-transform group-hover:translate-x-0.5"
+                style={{ color: p.text }}
+              />
+            </Link>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
