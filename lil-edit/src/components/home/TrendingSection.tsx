@@ -110,7 +110,7 @@ const TrendingSection = ({
                   )}
                 </div>
                 <div className="px-1 pb-0.5 flex justify-between items-start gap-2">
-                  <h3 className="font-display text-xs md:text-sm font-medium text-foreground leading-snug">{card.name}</h3>
+                  <h3 className="font-display text-xs md:text-sm font-medium text-foreground leading-snug line-clamp-2">{card.name}</h3>
                   <p className="font-body text-xs font-semibold text-[#0F766E] shrink-0">₹{card.price}</p>
                 </div>
               </div>
