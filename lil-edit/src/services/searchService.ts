@@ -118,7 +118,24 @@ export interface CollectionCounts {
   occasion: number | null;
 }
 
-export async function fetchCollectionCounts(signal?: AbortSignal): Promise<CollectionCounts | null> {
+// Every distinct wear type (product category) a collection actually holds, most
+// common first — computed server-side off the whole catalog, so a collection with
+// a single odd-one-out product still lists that wear type.
+export interface CollectionWearTypes {
+  newArrivals: string[];
+  girls: string[];
+  boys: string[];
+  trending: string[];
+  occasion: string[];
+}
+
+// wearTypes is optional so a backend that predates it (or a degraded response)
+// still satisfies the type — callers fall back to the preview product's category.
+export interface CollectionCountsResponse extends CollectionCounts {
+  wearTypes?: CollectionWearTypes;
+}
+
+export async function fetchCollectionCounts(signal?: AbortSignal): Promise<CollectionCountsResponse | null> {
   const url = `${getBackendBaseUrl()}/api/products/collection-counts`;
   console.log("[searchService] GET", url);
 
@@ -130,7 +147,7 @@ export async function fetchCollectionCounts(signal?: AbortSignal): Promise<Colle
     return null;
   }
 
-  const data = (await res.json()) as CollectionCounts;
+  const data = (await res.json()) as CollectionCountsResponse;
   console.log("[searchService] collection-counts →", data);
   return data;
 }
