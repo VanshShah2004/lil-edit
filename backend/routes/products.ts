@@ -15,6 +15,7 @@ import {
   searchProducts,
   fetchNewArrivals,
   fetchCollectionCounts,
+  fetchCategoryProducts,
   invalidateSearchCatalog,
   type SuggestionRow,
   type SearchProductRow,
@@ -824,9 +825,11 @@ router.get("/new-arrivals", async (req: Request, res: Response) => {
 });
 
 // ─── GET /api/products/collection-counts — styles per collection ─────────────
-// Powers the "N styles" line on the Collections page placards and tiles. Reads
-// the in-memory search catalog, so it's a cache hit in the common case; a
-// failure degrades to nulls and the frontend simply omits the line.
+// Powers the "N styles · Ethnic Wear, Party Wear" line on the Collections page
+// placards and tiles. Reads the in-memory search catalog, so it's a cache hit in
+// the common case; a failure degrades to nulls and an absent wearTypes, and the
+// frontend simply omits the line (or falls back to the preview product's own
+// category for the wear types).
 router.get("/collection-counts", async (_req: Request, res: Response) => {
   const log = createLog().start("COLLECTION COUNTS");
 
@@ -838,6 +841,39 @@ router.get("/collection-counts", async (_req: Request, res: Response) => {
     log.error("failed — returning nulls", err);
     res.status(200).json({ newArrivals: null, girls: null, boys: null, trending: null, occasion: null });
     log.end("COLLECTION COUNTS");
+  }
+});
+
+// The four categories that have a browsable listing page. Categories are the
+// product taxonomy (every product carries exactly one, set from the AddProduct /
+// EditProduct dropdown); these slugs are what slugify() produces from those
+// display names, and they double as the PDP's own :category URL segment. Kept as
+// an allow-list so an unknown slug 404s instead of rendering an empty page.
+const CATEGORY_SLUGS = new Set<string>(["ethnic-wear", "party-wear", "casual-wear", "accessories"]);
+
+// ─── GET /api/products/category/:slug — one category's listing page ──────────
+// Returns the capped page of cards plus the category's un-capped `total`, so the
+// page can say "42 styles" honestly while rendering at most `limit` of them.
+router.get("/category/:slug", async (req: Request, res: Response) => {
+  const log = createLog().start("CATEGORY LISTING");
+  const slug = String(req.params.slug ?? "").toLowerCase();
+  const rawLimit = Number(req.query.limit);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 100) : 48;
+
+  if (!CATEGORY_SLUGS.has(slug)) {
+    log.warn(`unknown category "${slug}"`).end("CATEGORY LISTING");
+    res.status(404).json({ error: "Unknown category", slug, total: 0, count: 0, products: [] });
+    return;
+  }
+
+  try {
+    const { total, rows } = await fetchCategoryProducts(slug, limit, log);
+    log.success(`${rows.length} of ${total} returned for "${slug}"`).end("CATEGORY LISTING");
+    res.json({ slug, total, count: rows.length, products: rows });
+  } catch (err) {
+    log.error("failed — returning empty list", err);
+    res.status(200).json({ slug, total: 0, count: 0, products: [] });
+    log.end("CATEGORY LISTING");
   }
 });
 

@@ -26,9 +26,12 @@ import Home from "./pages/Home";
 // visible proof that code splitting is live — watch the browser console (F12)
 // as you navigate. A route whose chunk never appears in the log was never
 // downloaded, which is the whole point of splitting it out.
-function lazyWithLog<T extends { default: ComponentType<unknown> }>(
+// Generic over the component type (rather than a bare ComponentType<unknown>) so
+// a split route can still take props — CategoryPage takes its slug that way.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function lazyWithLog<T extends ComponentType<any>>(
   name: string,
-  importFn: () => Promise<T>,
+  importFn: () => Promise<{ default: T }>,
 ) {
   return lazy(() => {
     const start = performance.now();
@@ -61,6 +64,10 @@ const GirlsCollection = lazyWithLog("GirlsCollection", () => import("./pages/Gir
 const BoysCollection  = lazyWithLog("BoysCollection",  () => import("./pages/BoysCollection"));
 const TrendingCollection = lazyWithLog("TrendingCollection", () => import("./pages/TrendingCollection"));
 const OccasionCollection = lazyWithLog("OccasionCollection", () => import("./pages/OccasionCollection"));
+// Category listing pages — the product taxonomy, all four served by one page
+// component. Separate from the collection pages above, which are curated or
+// derived views; see pages/category/categories.ts.
+const CategoryPage = lazyWithLog("CategoryPage", () => import("./pages/category/CategoryPage"));
 const SearchResults  = lazyWithLog("SearchResults",   () => import("./pages/SearchResults"));
 const Orders         = lazyWithLog("Orders",          () => import("./pages/Orders"));
 const AllOrders      = lazyWithLog("AllOrders",       () => import("./pages/AllOrders"));
@@ -135,6 +142,14 @@ const App = () => (
             <Route path="/collections/boys" element={<BoysCollection />} />
             <Route path="/collections/trending" element={<TrendingCollection />} />
             <Route path="/collections/occasion" element={<OccasionCollection />} />
+            {/* Categories. Listed explicitly rather than as /collections/:slug so
+                they can't shadow the collection routes above. The path mirrors the
+                PDP's own :category segment (/collections/<slug>/product/…), which
+                makes each category page the natural parent of its products. */}
+            <Route path="/collections/ethnic-wear" element={<CategoryPage slug="ethnic-wear" />} />
+            <Route path="/collections/party-wear" element={<CategoryPage slug="party-wear" />} />
+            <Route path="/collections/casual-wear" element={<CategoryPage slug="casual-wear" />} />
+            <Route path="/collections/accessories" element={<CategoryPage slug="accessories" />} />
             <Route path="/search" element={<SearchResults />} />
             <Route path="/about" element={<About />} />
             <Route path="/faq" element={<Faq />} />

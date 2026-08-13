@@ -1575,8 +1575,38 @@ export interface NewArrivalRow extends SearchProductRow {
 }
 
 /**
- * Newest published products first — one card per product (primary variant's
- * sku/image, same convention as Spotlight placards). Served from the same
+ * One listing card per product, built from its primary variant's sku/image —
+ * the same convention Spotlight placards use.
+ */
+function toListingRow(entry: SearchCatalogEntry): NewArrivalRow {
+  const primary = entry.variants[0];
+  return {
+    id: entry.id,
+    title: entry.title,
+    slug: entry.slug,
+    sku: primary?.sku ?? entry.base_sku,
+    category: entry.category,
+    categorySlug: entry.category_slug,
+    price: entry.price,
+    originalPrice: entry.original_price,
+    image: primary?.image || entry.image,
+    badges: entry.badges,
+    color: primary
+      ? { name: primary.colorName, hex: primary.colorHex }
+      : { name: "", hex: "#cccccc" },
+    inStock: entry.variants.length === 0 ? true : entry.variants.some((v) => v.inStock),
+    createdAt: entry.created_at,
+    occasion: entry.occasion,
+    isTrending: entry.is_trending ?? false,
+  };
+}
+
+/** Newest first — the ordering every listing defaults to. */
+const byNewest = (a: SearchCatalogEntry, b: SearchCatalogEntry) =>
+  a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0;
+
+/**
+ * Newest published products first — one card per product. Served from the same
  * in-memory search catalog, so it inherits its 10-min TTL + invalidation.
  */
 export async function fetchNewArrivals(
@@ -1599,34 +1629,44 @@ export async function fetchNewArrivals(
   }
   if (trendingOnly) pool = pool.filter((entry) => entry.is_trending);
 
-  const rows: NewArrivalRow[] = pool
-    .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0))
-    .slice(0, limit)
-    .map((entry) => {
-      const primary = entry.variants[0];
-      return {
-        id: entry.id,
-        title: entry.title,
-        slug: entry.slug,
-        sku: primary?.sku ?? entry.base_sku,
-        category: entry.category,
-        categorySlug: entry.category_slug,
-        price: entry.price,
-        originalPrice: entry.original_price,
-        image: primary?.image || entry.image,
-        badges: entry.badges,
-        color: primary
-          ? { name: primary.colorName, hex: primary.colorHex }
-          : { name: "", hex: "#cccccc" },
-        inStock: entry.variants.length === 0 ? true : entry.variants.some((v) => v.inStock),
-        createdAt: entry.created_at,
-        occasion: entry.occasion,
-        isTrending: entry.is_trending ?? false,
-      };
-    });
+  const rows: NewArrivalRow[] = pool.sort(byNewest).slice(0, limit).map(toListingRow);
 
   log.step(`New arrivals - ${rows.length} products (limit=${limit}${gender ? `, gender=${gender}` : ""}${trendingOnly ? ", trending" : ""}) from ${catalog.length} in catalog`);
   return rows;
+}
+
+// ─── fetchCategoryProducts (category listing pages) ──────────────────────────
+
+export interface CategoryListing {
+  /** Every published product in the category, before the page limit is applied. */
+  total: number;
+  rows: NewArrivalRow[];
+}
+
+/**
+ * Every published product filed under one category (`category_slug`), newest
+ * first. Categories are the product taxonomy — each product carries exactly one
+ * — which is why this is its own listing rather than a filter on the collection
+ * strips: a category page is a permanent browse, not a curated or derived view.
+ *
+ * `total` is the un-capped size of the category so the page can label itself
+ * honestly ("42 styles") even when it only renders the first `limit` cards.
+ * Read off the same in-memory catalog the rest of the storefront uses, so it
+ * costs no extra DB round trip and stays in step with search and the PDP.
+ */
+export async function fetchCategoryProducts(
+  categorySlug: string,
+  limit: number,
+  log: OpLogger,
+): Promise<CategoryListing> {
+  const catalog = await loadSearchCatalog(log);
+  const want = categorySlug.trim().toLowerCase();
+
+  const pool = catalog.filter((entry) => entry.category_slug.trim().toLowerCase() === want);
+  const rows = pool.sort(byNewest).slice(0, limit).map(toListingRow);
+
+  log.step(`Category "${want}" - ${rows.length} of ${pool.length} products returned (limit=${limit}) from ${catalog.length} in catalog`);
+  return { total: pool.length, rows };
 }
 
 // ─── fetchCollectionCounts (Collections page placards/tiles) ─────────────────
@@ -1639,10 +1679,50 @@ export interface CollectionCounts {
   occasion: number;
 }
 
+/** Every distinct wear type (product category) each collection actually holds. */
+export interface CollectionWearTypes {
+  newArrivals: string[];
+  girls: string[];
+  boys: string[];
+  trending: string[];
+  occasion: string[];
+}
+
 /**
- * How many published styles sit behind each storefront collection. Counted off
- * the same in-memory catalog the listings themselves read, so a placard's number
- * always agrees with the page it links to, and it costs no extra DB round trip.
+ * Counts stay flat at the top level so the payload keeps its original shape;
+ * wearTypes rides alongside as its own object. An older frontend simply ignores
+ * the extra key.
+ */
+export interface CollectionFacets extends CollectionCounts {
+  wearTypes: CollectionWearTypes;
+}
+
+/**
+ * The distinct wear types in a bucket, most common first (alphabetical on a tie),
+ * so a placard leads with what the collection is mostly made of and a lone
+ * odd-one-out still gets named, just last. Compared case-insensitively but
+ * returned in the catalog's own casing.
+ */
+function wearTypesOf(entries: SearchCatalogEntry[]): string[] {
+  const seen = new Map<string, { label: string; n: number }>();
+  for (const e of entries) {
+    const label = (e.category ?? "").trim();
+    if (!label) continue;
+    const key = label.toLowerCase();
+    const hit = seen.get(key);
+    if (hit) hit.n += 1;
+    else seen.set(key, { label, n: 1 });
+  }
+  return [...seen.values()]
+    .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label))
+    .map((v) => v.label);
+}
+
+/**
+ * How many published styles sit behind each storefront collection, and which wear
+ * types they span. Both are read off the same in-memory catalog the listings
+ * themselves use, so a placard's number and its wear-type list always agree with
+ * the page it links to, and it costs no extra DB round trip.
  *
  * Filters mirror the listing pages exactly: gender uses fetchNewArrivals' rule
  * (unisex/untagged shows on BOTH gendered pages, only an explicit opposite tag
@@ -1650,8 +1730,12 @@ export interface CollectionCounts {
  * "General wear" fold into the catalog tail there, so they aren't occasion
  * styles. Note these are un-capped totals; the listings themselves fetch at
  * most 48, so a catalog past that will show more here than the page renders.
+ *
+ * Because the buckets are built from the WHOLE catalog rather than the handful of
+ * preview products the strip fetches, a collection holding a single product of
+ * some other wear type still lists that type.
  */
-export async function fetchCollectionCounts(log: OpLogger): Promise<CollectionCounts> {
+export async function fetchCollectionCounts(log: OpLogger): Promise<CollectionFacets> {
   const catalog = await loadSearchCatalog(log);
 
   const matchesGender = (entry: SearchCatalogEntry, want: "girls" | "boys") => {
@@ -1659,20 +1743,38 @@ export async function fetchCollectionCounts(log: OpLogger): Promise<CollectionCo
     return g === want || (g !== "girls" && g !== "boys");
   };
 
-  const counts: CollectionCounts = {
-    newArrivals: catalog.length,
-    girls: catalog.filter((e) => matchesGender(e, "girls")).length,
-    boys: catalog.filter((e) => matchesGender(e, "boys")).length,
-    trending: catalog.filter((e) => e.is_trending === true).length,
+  // Bucket once, then derive both the count and the wear types from each — the
+  // two can never drift out of step the way two separate filter passes could.
+  const buckets = {
+    newArrivals: catalog,
+    girls: catalog.filter((e) => matchesGender(e, "girls")),
+    boys: catalog.filter((e) => matchesGender(e, "boys")),
+    trending: catalog.filter((e) => e.is_trending === true),
     occasion: catalog.filter((e) => {
       // First occasion only — same convention the occasions page buckets by.
       const o = ((e.occasion ?? "").split(",")[0] ?? "").trim().toLowerCase();
       return o !== "" && o !== "general wear";
-    }).length,
+    }),
   };
 
-  log.step(`Collection counts - all=${counts.newArrivals} girls=${counts.girls} boys=${counts.boys} trending=${counts.trending} occasion=${counts.occasion}`);
-  return counts;
+  const facets: CollectionFacets = {
+    newArrivals: buckets.newArrivals.length,
+    girls: buckets.girls.length,
+    boys: buckets.boys.length,
+    trending: buckets.trending.length,
+    occasion: buckets.occasion.length,
+    wearTypes: {
+      newArrivals: wearTypesOf(buckets.newArrivals),
+      girls: wearTypesOf(buckets.girls),
+      boys: wearTypesOf(buckets.boys),
+      trending: wearTypesOf(buckets.trending),
+      occasion: wearTypesOf(buckets.occasion),
+    },
+  };
+
+  log.step(`Collection counts - all=${facets.newArrivals} girls=${facets.girls} boys=${facets.boys} trending=${facets.trending} occasion=${facets.occasion}`);
+  log.step(`Collection wear types - all=[${facets.wearTypes.newArrivals.join(", ")}] girls=[${facets.wearTypes.girls.join(", ")}] boys=[${facets.wearTypes.boys.join(", ")}] trending=[${facets.wearTypes.trending.join(", ")}] occasion=[${facets.wearTypes.occasion.join(", ")}]`);
+  return facets;
 }
 
 /**
