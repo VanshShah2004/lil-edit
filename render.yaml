@@ -11,6 +11,22 @@ services:
     staticPublishPath: ./dist
     autoDeploy: true
     routes:
+      # Product pages are proxied to the EC2 backend, which returns this same SPA
+      # shell with per-product Open Graph tags injected — so a shared PDP link
+      # unfurls into a product card in WhatsApp/iMessage/Telegram/Facebook instead
+      # of showing nothing. A static host cannot do this: it serves one generic
+      # index.html for every route, and crawlers don't run JS.
+      #
+      # A rewrite (proxy, not redirect) is what keeps the URL on this domain and
+      # avoids a loop — the backend returns the page rather than redirecting back
+      # here. Assets, and every other route, still come straight off this CDN.
+      # MUST stay above the SPA catch-all: routes match in order.
+      #
+      # NOTE: the API host is hardcoded because Render does not interpolate env
+      # vars into routes. Update it if the backend moves.
+      - type: rewrite
+        source: /collections/:category/product/:productPath
+        destination: https://api.theliledit.com/pdp/:category/:productPath
       - type: rewrite
         source: /*
         destination: /index.html

@@ -22,6 +22,7 @@ import adminReviewsRouter from "./routes/adminReviews.js";
 import curationRouter from "./routes/curation.js";
 import checkoutRouter, { webhookHandler } from "./routes/checkout.js";
 import shareRouter from "./routes/share.js";
+import pdpShellRouter, { warmPdpShell } from "./routes/pdpShell.js";
 import newsletterRouter from "./routes/newsletter.js";
 import maintenanceRouter from "./routes/maintenance.js";
 import trackRouter from "./routes/track.js";
@@ -144,7 +145,13 @@ app.use("/api/track",        trackRouter);
 app.use("/api/admin/analytics", adminAnalyticsRouter);
 
 // Link-preview Open Graph tags for shared PDP URLs (host-agnostic — see routes/share.ts).
+// Kept for links already shared in the wild; new shares use the canonical PDP URL.
 app.use("/share", shareRouter);
+
+// Canonical PDP URLs with OG tags injected. The storefront's static host rewrites
+// /collections/:category/product/:productPath here, so shared links are the real
+// product URL rather than a redirect through this API's host. See routes/pdpShell.ts.
+app.use("/pdp", pdpShellRouter);
 
 // ─── Optional: host the built storefront from this server ─────────────────────
 // Off by default — pure-API deployments (frontend on a separate static host) are
@@ -175,7 +182,7 @@ function setupFrontendServing(): boolean {
   // Catch-all (Express 5 regex route). PDP paths get product OG tags injected;
   // every other route gets the plain SPA shell. /api and /share are excluded.
   app.get(/.*/, async (req: Request, res: Response, next: NextFunction) => {
-    if (req.path.startsWith("/api") || req.path.startsWith("/share")) {
+    if (req.path.startsWith("/api") || req.path.startsWith("/share") || req.path.startsWith("/pdp")) {
       next();
       return;
     }
@@ -298,6 +305,11 @@ app.listen(PORT, () => {
   void warmupStorage();
 
   startDbKeepAlive();
+
+  // Pull the storefront's index.html into cache so the first shopper landing on a
+  // shared PDP link doesn't pay the fetch. Skipped when this process serves the SPA
+  // itself — then the shell is already on disk and /pdp is unused.
+  if (!servingFrontend) warmPdpShell();
 
   // Prime the maintenance flag and keep it fresh (fail-open to live).
   startMaintenanceWatcher();
