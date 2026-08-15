@@ -7,6 +7,8 @@
     "start": "node dist/server.js",
     "dev": "tsx watch server.ts",
     "build": "tsc",
+    "deploy": "bash scripts/deploy.sh",
+    "deploy:remote": "node scripts/deploy-remote.mjs",
     "lint": "eslint .",
     "test": "node --import tsx --test test/mailer.test.ts test/orderEmail.test.ts test/searchRanking.test.ts"
   },
