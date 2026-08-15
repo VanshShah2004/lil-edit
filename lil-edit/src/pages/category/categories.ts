@@ -27,10 +27,15 @@ export interface CategoryDef {
    * listing below it, is identical, so the set reads as a single taxonomy rather
    * than four themed microsites.
    *
-   * Deep grounds for the dressed-up categories, bright pastels for the everyday
-   * ones. Anything legible works: paletteFor() derives the type, trim and texture
-   * colours from this value's luminance, so a ground can be swapped for a lighter
-   * or darker one without hand-editing anything else.
+   * All four are kept DEEP, and at a similar weight, on purpose: paletteFor()
+   * switches type from cream-and-gold to ink once a ground goes light, so mixing
+   * a pastel into the set would give that one page a different-coloured headline
+   * from its three siblings and break the run. Distinguish a category by HUE
+   * here, not by lightness — maroon, plum, denim, charcoal.
+   *
+   * The light-ground branch of paletteFor() stays as a safety net rather than a
+   * style: if someone does set a pastel, the type flips to ink and stays legible
+   * instead of printing cream on cream.
    */
   field: string;
 }
@@ -90,6 +95,75 @@ export function paletteFor(field: string): FieldPalette {
       };
 }
 
+// ─── The page's own palette, derived from the same one hex ───────────────────
+// paletteFor() above dresses the PLACARD — type printed ON the ground. This
+// dresses the PAGE the placard sits on: the paper, the hairlines, the ink and the
+// one tinted fill that marks a selection.
+//
+// Both come from `field` and nothing else, which is the whole point. Four pages
+// that are unmistakably four different rooms, out of four hex values — no
+// per-category stylesheet to keep in step, and a fifth category would arrive
+// fully dressed the moment someone adds its hex to the list below.
+
+/** #rrggbb → HSL, hue in degrees, s/l in percent. */
+function toHsl(hex: string): { h: number; s: number; l: number } {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return { h: 0, s: 0, l: l * 100 };
+
+  const s = d / (1 - Math.abs(2 * l - 1));
+  const h =
+    max === r ? ((g - b) / d + (g < b ? 6 : 0)) :
+    max === g ? ((b - r) / d + 2) :
+                ((r - g) / d + 4);
+  return { h: h * 60, s: s * 100, l: l * 100 };
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
+
+export interface PagePalette {
+  /** Hairline rules and card edges. */
+  edge: string;
+  /** Body-copy black, carrying the category's hue so nothing on the page is neutral. */
+  ink: string;
+  /** Labels and secondary copy — the same ink, stepped back. */
+  inkSoft: string;
+  /** The fill behind a selected age, chip or hovered card. */
+  halo: string;
+  /** Selected states and the page's one accent line. */
+  mark: string;
+}
+
+/**
+ * Only the HUE is taken from the ground. Saturation is clamped at both ends —
+ * charcoal (#2F2D35) sits at 6% and would derive a dead neutral ink, a vivid
+ * ground would derive a mark that shouts — and lightness is fixed per role
+ * rather than scaled from the ground.
+ *
+ * That is what keeps the type consistent across the four pages: ink is 21% on
+ * every one of them, so the same words land at the same weight and the same
+ * contrast whichever category you are standing in.
+ *
+ * Note there is no page background here. The pages are white, like the rest of
+ * the storefront; what this tints is the ink, the hairlines and the marks ON the
+ * white — enough for a category to have a temperature without the paper changing
+ * colour under it.
+ */
+export function pagePaletteFor(field: string): PagePalette {
+  const { h, s } = toHsl(field);
+  const hue = Math.round(h);
+  return {
+    edge:    `hsl(${hue} ${clamp(s * 0.4, 14, 30)}% 88%)`,
+    ink:     `hsl(${hue} ${clamp(s * 0.45, 18, 34)}% 21%)`,
+    inkSoft: `hsl(${hue} ${clamp(s * 0.3, 10, 22)}% 42%)`,
+    halo:    `hsl(${hue} ${clamp(s * 0.5, 22, 44)}% 93%)`,
+    mark:    `hsl(${hue} ${clamp(s * 0.6, 28, 52)}% 32%)`,
+  };
+}
+
 export const CATEGORIES: CategoryDef[] = [
   {
     slug: "ethnic-wear",
@@ -101,13 +175,13 @@ export const CATEGORIES: CategoryDef[] = [
     slug: "party-wear",
     label: "Party Wear",
     blurb: "Dressy outfits for parties and birthdays.",
-    field: "#F7B7C9", // blush pink
+    field: "#512D6D", // deep plum — the brand's violet, taken to evening weight
   },
   {
     slug: "casual-wear",
     label: "Casual Wear",
     blurb: "Comfortable clothes for every day.",
-    field: "#A8D4F2", // sky blue
+    field: "#1F4E6D", // deep denim — the everyday cloth, at full saturation
   },
   {
     slug: "accessories",

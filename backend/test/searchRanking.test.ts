@@ -26,6 +26,7 @@ function entry(overrides: Partial<SearchCatalogEntry> & { title: string }): Sear
     fabric: "",
     fit: "",
     gender: "",
+    sizes: [],
     details: "",
     image: "",
     price: 0,
