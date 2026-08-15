@@ -777,6 +777,8 @@ export interface SearchCatalogEntry {
   fabric: string;
   fit: string;
   gender: string;
+  /** The age sizes the product is cut in ("3-4 Years"), as stored on the product. */
+  sizes: string[];
   is_trending?: boolean;
   details: string;
   image: string;
@@ -809,6 +811,7 @@ interface SearchCatalogDbRow {
   fabric: string | null;
   fit: string | null;
   gender: string | null;
+  sizes: string[] | null;
   is_trending: boolean | null;
   description_points: string[] | null;
   price: number | null;
@@ -828,7 +831,7 @@ interface SearchCatalogDbRow {
 
 const SEARCH_CATALOG_SELECT = `
   id, title, slug, base_sku, category, category_slug,
-  tags, badges, occasion, fabric, fit, gender, is_trending, description_points, price, original_price, created_at,
+  tags, badges, occasion, fabric, fit, gender, sizes, is_trending, description_points, price, original_price, created_at,
   product_images(image_url, is_primary, variant_id, sort_order),
   product_variants(id, color_name, color_hex, variant_sku, stock, is_unlimited, sort_order)
 `.trim();
@@ -887,6 +890,7 @@ async function loadSearchCatalog(log: OpLogger): Promise<SearchCatalogEntry[]> {
       fabric: p.fabric ?? "",
       fit: p.fit ?? "",
       gender: p.gender ?? "",
+      sizes: p.sizes ?? [],
       is_trending: p.is_trending ?? false,
       details: (p.description_points ?? []).join(" "),
       image: productImage,
@@ -1637,36 +1641,434 @@ export async function fetchNewArrivals(
 
 // ─── fetchCategoryProducts (category listing pages) ──────────────────────────
 
-export interface CategoryListing {
-  /** Every published product in the category, before the page limit is applied. */
-  total: number;
-  rows: NewArrivalRow[];
+/**
+ * A category card. Everything a NewArrivalRow carries plus the attributes the
+ * listing filters on, and every colourway rather than only the primary one.
+ */
+export interface CategoryRow extends NewArrivalRow {
+  gender: string;
+  sizes: string[];
+  /**
+   * Every colourway the product ships in, primary first — each with its OWN
+   * photograph, so the listing card can show the colour a shopper points at
+   * rather than only the one the product leads with.
+   */
+  colors: Array<{ name: string; hex: string; inStock: boolean; image: string; sku: string }>;
+  /** Whole percent off, 0 when the product isn't discounted. Drives the "Biggest Saving" sort. */
+  discountPct: number;
+}
+
+export interface CategoryFacetValue {
+  /** The filter's wire value — lowercased, what the query string carries. */
+  value: string;
+  /** How it is spelled on the product, for the chip and checkbox labels. */
+  label: string;
+  /** How many products in the WHOLE category match it (not the filtered view). */
+  count: number;
+}
+
+export interface CategoryColorFacet extends CategoryFacetValue {
+  hex: string;
 }
 
 /**
- * Every published product filed under one category (`category_slug`), newest
- * first. Categories are the product taxonomy — each product carries exactly one
- * — which is why this is its own listing rather than a filter on the collection
+ * Which family a size belongs to. The page treats them differently: age bands
+ * are ordered and continuous, so they get the age rail, while garment letters and
+ * one-offs like "Free Size" are an unordered set and stay in the filter drawer.
+ * Classified here rather than on the page so both ends agree on what an age is.
+ */
+export type SizeKind = "age" | "garment" | "other";
+
+export interface CategorySizeFacet extends CategoryFacetValue {
+  kind: SizeKind;
+}
+
+/**
+ * The price bands the listing offers, matching the search page's exactly so a
+ * shopper who has used one filter panel already knows this one. Ids are the wire
+ * values; the frontend renders its own labels off the same ids.
+ */
+const CATEGORY_PRICE_BUCKETS: Array<{ id: string; label: string; test: (price: number) => boolean }> = [
+  { id: "lt1500",    label: "Under ₹1,500",    test: (p) => p < 1500 },
+  { id: "1500-3000", label: "₹1,500 – ₹3,000", test: (p) => p >= 1500 && p < 3000 },
+  { id: "3000-5000", label: "₹3,000 – ₹5,000", test: (p) => p >= 3000 && p < 5000 },
+  { id: "gt5000",    label: "Over ₹5,000",     test: (p) => p >= 5000 },
+];
+
+/**
+ * Everything the filter panel can offer for one category, with the size of each
+ * option. Computed over the WHOLE category rather than the filtered result, so
+ * options keep their place (and their count) as selections are made instead of
+ * vanishing under the cursor.
+ */
+export interface CategoryFacets {
+  genders: CategoryFacetValue[];
+  occasions: CategoryFacetValue[];
+  tags: CategoryFacetValue[];
+  sizes: CategorySizeFacet[];
+  colors: CategoryColorFacet[];
+  badges: CategoryFacetValue[];
+  priceBuckets: CategoryFacetValue[];
+  /** Size of the "on sale" and "in stock" toggles, 0 when the toggle is pointless. */
+  onSale: number;
+  inStock: number;
+  /** Cheapest piece in the category, for the placard's "from" price. 0 when empty. */
+  priceFrom: number;
+}
+
+export type CategorySort = "newest" | "price-asc" | "price-desc" | "discount";
+
+/** Every filter the listing understands. All lists are lowercased wire values, empty = no constraint. */
+export interface CategoryQuery {
+  limit: number;
+  offset: number;
+  sort: CategorySort;
+  genders: string[];
+  occasions: string[];
+  tags: string[];
+  sizes: string[];
+  colors: string[];
+  badges: string[];
+  priceBuckets: string[];
+  onSale: boolean;
+  inStockOnly: boolean;
+}
+
+export const DEFAULT_CATEGORY_QUERY: CategoryQuery = {
+  limit: 24,
+  offset: 0,
+  sort: "newest",
+  genders: [],
+  occasions: [],
+  tags: [],
+  sizes: [],
+  colors: [],
+  badges: [],
+  priceBuckets: [],
+  onSale: false,
+  inStockOnly: false,
+};
+
+export interface CategoryListing {
+  /** Every published product in the category, before ANY filter — what the placard prints. */
+  total: number;
+  /** How many survive the filters, before the page window — what the toolbar counts. */
+  matched: number;
+  /** True when `offset + rows.length < matched`, i.e. there is another page to load. */
+  hasMore: boolean;
+  rows: CategoryRow[];
+  facets: CategoryFacets;
+}
+
+const norm = (s: string) => s.trim().toLowerCase();
+
+/**
+ * Values that exist on a product but say nothing about it — the defaults
+ * AddProduct writes into a blank field, and the usual hand-typed stand-ins.
+ * A filter offering "Not specified" is a filter for products the admin hasn't
+ * finished describing, which is not a thing a shopper is ever looking for.
+ */
+const PLACEHOLDER_VALUES = new Set(["general wear", "not specified", "unspecified", "n/a", "na", "none", "-", "--", "other", "others"]);
+
+const isMeaningful = (s: string) => s.trim().length > 0 && !PLACEHOLDER_VALUES.has(norm(s));
+
+/**
+ * Occasion is one free-text field on the product ("Festive, Wedding, Diwali"),
+ * so a single product usually names several. Split it, or the whole string
+ * becomes one unusable filter option that matches exactly one product.
+ */
+function occasionsOf(entry: SearchCatalogEntry): string[] {
+  return entry.occasion.split(/[,;/|]+/).map((s) => s.trim()).filter(isMeaningful);
+}
+
+/**
+ * Occasions are common nouns typed by hand, so they arrive spelled every which
+ * way ("festive", "Festive", "FESTIVE"). Title-casing them is safe here and stops
+ * the filter panel looking like three different fields.
+ */
+function titleCase(s: string): string {
+  return s.replace(/\S+/g, (w) => (w[0] ?? "").toUpperCase() + w.slice(1).toLowerCase());
+}
+
+/**
+ * Tags are the admin's own words and can be deliberately styled ("LilEdit",
+ * "BFF"), so they are only touched when they carry no capitals at all — enough
+ * to keep "lehenga" from sitting in a chip row as a lowercase orphan, without
+ * flattening a name someone cased on purpose.
+ */
+function sentenceCase(s: string): string {
+  return s === s.toLowerCase() ? titleCase(s) : s;
+}
+
+/**
+ * Whether a product belongs on a gendered filter. Mirrors the gendered
+ * collection pages exactly: unisex, blank and unrecognised values show under
+ * BOTH Girls and Boys, and only an explicit opposite tag excludes a product.
+ * Without that a unisex kurta would disappear the moment a shopper narrowed to
+ * Girls, which is not how the rest of the storefront behaves.
+ */
+function matchesGender(entryGender: string, want: string): boolean {
+  const g = norm(entryGender);
+  return g === want || (g !== "girls" && g !== "boys");
+}
+
+function entryInStock(entry: SearchCatalogEntry): boolean {
+  return entry.variants.length === 0 || entry.variants.some((v) => v.inStock);
+}
+
+function discountPctOf(entry: SearchCatalogEntry): number {
+  if (entry.original_price <= entry.price || entry.original_price <= 0) return 0;
+  return Math.round(((entry.original_price - entry.price) / entry.original_price) * 100);
+}
+
+/** A category card — the listing row plus the attributes the filter panel reads. */
+function toCategoryRow(entry: SearchCatalogEntry): CategoryRow {
+  return {
+    ...toListingRow(entry),
+    gender: entry.gender,
+    sizes: entry.sizes,
+    colors: entry.variants.map((v) => ({
+      name: v.colorName, hex: v.colorHex, inStock: v.inStock, image: v.image, sku: v.sku,
+    })),
+    discountPct: discountPctOf(entry),
+  };
+}
+
+/**
+ * Counts one attribute across the pool, most common first (alphabetical on a
+ * tie). Keyed case-insensitively but labelled in the catalog's own casing, so
+ * "cotton" and "Cotton" on two products come out as one option spelled the way
+ * the admin typed it.
+ */
+function countFacet(
+  pool: SearchCatalogEntry[],
+  valuesOf: (entry: SearchCatalogEntry) => string[],
+  labelOf: (raw: string) => string = (raw) => raw,
+): CategoryFacetValue[] {
+  const seen = new Map<string, CategoryFacetValue>();
+  for (const entry of pool) {
+    // A product counts once per distinct value, even if it lists it twice.
+    for (const raw of new Set(valuesOf(entry).map((v) => v.trim()).filter(isMeaningful))) {
+      const key = norm(raw);
+      const hit = seen.get(key);
+      if (hit) {
+        hit.count += 1;
+        // Two products spelling it differently: keep whichever spelling actually
+        // capitalises something, so an all-lowercase entry doesn't win the label.
+        if (hit.label === hit.label.toLowerCase() && raw !== raw.toLowerCase()) hit.label = labelOf(raw);
+      } else {
+        seen.set(key, { value: key, label: labelOf(raw), count: 1 });
+      }
+    }
+  }
+  return [...seen.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+}
+
+/**
+ * Sizes sort in the order a size chart runs, never alphabetically — "10-11
+ * Years" landing between "1-2" and "2-3" is the classic size-list bug, and
+ * L/M/S/XL/XS is the same bug wearing letters.
+ *
+ * Three families exist on these products and they sort in this order: age sizes
+ * first (parsed from the label, so a size the admin adds later still lands in the
+ * right place), then garment sizes in chart order, then anything else — "Free
+ * Size" and typos — alphabetically at the end.
+ */
+const GARMENT_SIZE_ORDER = ["xxs", "xs", "s", "m", "l", "xl", "xxl", "xxxl", "2xl", "3xl"];
+
+function sizeRank(label: string): number {
+  const years = parseFloat(label);
+  if (Number.isFinite(years)) {
+    // Age band: rank is its start in years, so months sort ahead of year 1.
+    return /month/i.test(label) ? years / 12 : years;
+  }
+  const garment = GARMENT_SIZE_ORDER.indexOf(norm(label));
+  // Offset past any plausible age (kidswear tops out around 16) so the two
+  // families never interleave.
+  if (garment >= 0) return 100 + garment;
+  return Number.POSITIVE_INFINITY;
+}
+
+function sizeKind(rank: number): SizeKind {
+  if (rank === Number.POSITIVE_INFINITY) return "other";
+  return rank >= 100 ? "garment" : "age";
+}
+
+function sortSizeFacets(sizes: CategoryFacetValue[]): CategorySizeFacet[] {
+  return sizes
+    .map((s) => ({ ...s, rank: sizeRank(s.label) }))
+    .sort((a, b) => {
+      if (a.rank !== b.rank && Number.isFinite(a.rank - b.rank)) return a.rank - b.rank;
+      // Both unranked (or equal): fall back to alphabetical.
+      if (a.rank === Number.POSITIVE_INFINITY && b.rank !== Number.POSITIVE_INFINITY) return 1;
+      if (b.rank === Number.POSITIVE_INFINITY && a.rank !== Number.POSITIVE_INFINITY) return -1;
+      return a.label.localeCompare(b.label);
+    })
+    .map(({ rank, ...facet }) => ({ ...facet, kind: sizeKind(rank) }));
+}
+
+function colorFacets(pool: SearchCatalogEntry[]): CategoryColorFacet[] {
+  const seen = new Map<string, CategoryColorFacet>();
+  for (const entry of pool) {
+    const named = new Map<string, string>();
+    for (const v of entry.variants) {
+      const name = v.colorName.trim();
+      if (name && !named.has(norm(name))) named.set(norm(name), v.colorHex);
+    }
+    for (const [key, hex] of named) {
+      const hit = seen.get(key);
+      if (hit) hit.count += 1;
+      else {
+        const label = entry.variants.find((v) => norm(v.colorName) === key)?.colorName.trim() ?? key;
+        seen.set(key, { value: key, label, hex, count: 1 });
+      }
+    }
+  }
+  return [...seen.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+}
+
+function buildFacets(pool: SearchCatalogEntry[]): CategoryFacets {
+  // Gender is the one facet NOT read straight off the products: it is counted
+  // through matchesGender(), so an option's count is exactly what selecting it
+  // will show — a category of unisex-only stock reports every product under both.
+  const genders: CategoryFacetValue[] = [
+    { value: "girls", label: "Girls", count: 0 },
+    { value: "boys",  label: "Boys",  count: 0 },
+  ];
+  for (const entry of pool) {
+    for (const g of genders) if (matchesGender(entry.gender, g.value)) g.count += 1;
+  }
+
+  return {
+    // Both options or neither: offering only "Girls" on a girls-only category is
+    // a filter that can't change anything.
+    genders: genders.every((g) => g.count > 0) ? genders : [],
+    // Fabric and fit are deliberately NOT facets: both are free-text description
+    // fields on the product form ("Silk blend with soft inner lining"), so every
+    // product writes its own unique sentence and every option would match exactly
+    // one thing. Tags are the field the admin enters as discrete chips, so they
+    // are the one that actually groups products.
+    occasions: countFacet(pool, occasionsOf, titleCase),
+    tags:      countFacet(pool, (e) => e.tags, sentenceCase),
+    sizes:     sortSizeFacets(countFacet(pool, (e) => e.sizes)),
+    colors:    colorFacets(pool),
+    badges:    countFacet(pool, (e) => e.badges),
+    priceBuckets: CATEGORY_PRICE_BUCKETS
+      .map((b) => ({ value: b.id, label: b.label, count: pool.filter((e) => b.test(e.price)).length }))
+      .filter((b) => b.count > 0),
+    onSale:  pool.filter((e) => discountPctOf(e) > 0).length,
+    inStock: pool.filter(entryInStock).length,
+    // Reduced rather than Math.min(...spread): the spread would put one argument
+    // on the stack per product, which is a call-size limit waiting to be hit the
+    // day a category gets big.
+    priceFrom: pool.reduce((min, e) => (min === 0 || e.price < min ? e.price : min), 0),
+  };
+}
+
+function passesFilters(entry: SearchCatalogEntry, q: CategoryQuery): boolean {
+  if (q.genders.length && !q.genders.some((g) => matchesGender(entry.gender, g))) return false;
+  if (q.occasions.length && !occasionsOf(entry).some((o) => q.occasions.includes(norm(o)))) return false;
+  if (q.tags.length && !entry.tags.some((t) => q.tags.includes(norm(t)))) return false;
+  if (q.sizes.length && !entry.sizes.some((s) => q.sizes.includes(norm(s)))) return false;
+  if (q.colors.length && !entry.variants.some((v) => q.colors.includes(norm(v.colorName)))) return false;
+  if (q.badges.length && !entry.badges.some((b) => q.badges.includes(norm(b)))) return false;
+  if (q.priceBuckets.length) {
+    const buckets = CATEGORY_PRICE_BUCKETS.filter((b) => q.priceBuckets.includes(b.id));
+    // Bands are OR'd against each other (a shopper ticking two wants both), but
+    // AND'd against every other filter group.
+    if (!buckets.some((b) => b.test(entry.price))) return false;
+  }
+  if (q.onSale && discountPctOf(entry) === 0) return false;
+  if (q.inStockOnly && !entryInStock(entry)) return false;
+  return true;
+}
+
+function sortPool(pool: SearchCatalogEntry[], sort: CategorySort): SearchCatalogEntry[] {
+  switch (sort) {
+    case "price-asc":  return [...pool].sort((a, b) => a.price - b.price || byNewest(a, b));
+    case "price-desc": return [...pool].sort((a, b) => b.price - a.price || byNewest(a, b));
+    case "discount":   return [...pool].sort((a, b) => discountPctOf(b) - discountPctOf(a) || byNewest(a, b));
+    default:           return [...pool].sort(byNewest);
+  }
+}
+
+/**
+ * One page of a category's products, filtered and sorted server-side.
+ *
+ * Categories are the product taxonomy — each product carries exactly one —
+ * which is why this is its own listing rather than a filter on the collection
  * strips: a category page is a permanent browse, not a curated or derived view.
  *
- * `total` is the un-capped size of the category so the page can label itself
- * honestly ("42 styles") even when it only renders the first `limit` cards.
- * Read off the same in-memory catalog the rest of the storefront uses, so it
- * costs no extra DB round trip and stays in step with search and the PDP.
+ * Filtering and sorting happen HERE rather than in the page for one reason:
+ * the page renders a window (`limit`/`offset`), and sorting a window client-side
+ * would make "Price: Low to High" mean "cheapest of the 24 already downloaded"
+ * rather than of the category. The whole category is in memory already (same
+ * catalog search and the PDP read), so doing it here costs no DB round trip and
+ * makes every count on the page true.
+ *
+ * Three numbers come back and they mean different things: `total` is the whole
+ * category (the placard's "42 styles"), `matched` is what survives the filters
+ * (the toolbar's count), and `rows.length` is the window actually rendered.
  */
 export async function fetchCategoryProducts(
   categorySlug: string,
-  limit: number,
+  query: Partial<CategoryQuery>,
   log: OpLogger,
 ): Promise<CategoryListing> {
+  const q: CategoryQuery = { ...DEFAULT_CATEGORY_QUERY, ...query };
   const catalog = await loadSearchCatalog(log);
-  const want = categorySlug.trim().toLowerCase();
+  const want = norm(categorySlug);
 
-  const pool = catalog.filter((entry) => entry.category_slug.trim().toLowerCase() === want);
-  const rows = pool.sort(byNewest).slice(0, limit).map(toListingRow);
+  const pool = catalog.filter((entry) => norm(entry.category_slug) === want);
+  const filtered = pool.filter((entry) => passesFilters(entry, q));
+  const rows = sortPool(filtered, q.sort)
+    .slice(q.offset, q.offset + q.limit)
+    .map(toCategoryRow);
 
-  log.step(`Category "${want}" - ${rows.length} of ${pool.length} products returned (limit=${limit}) from ${catalog.length} in catalog`);
-  return { total: pool.length, rows };
+  log.step(
+    `Category "${want}" - ${rows.length} rows  matched=${filtered.length}  total=${pool.length}  ` +
+    `sort=${q.sort}  offset=${q.offset}  limit=${q.limit}  from ${catalog.length} in catalog`,
+  );
+
+  return {
+    total: pool.length,
+    matched: filtered.length,
+    hasMore: q.offset + rows.length < filtered.length,
+    rows,
+    // Facets come off the un-filtered pool so the panel is stable while it's used.
+    facets: buildFacets(pool),
+  };
+}
+
+// ─── fetchCategoryCounts (the "More categories" tiles) ───────────────────────
+
+/** How many published products each category holds, keyed by category_slug. */
+export type CategoryCounts = Record<string, number>;
+
+/**
+ * Every category's size in one pass.
+ *
+ * A category page knows how big IT is — that is its own listing's `total` — but
+ * the tiles at its foot link to the other three, and a tile that says how many
+ * pieces are behind it is the difference between a link and a reason to follow
+ * it. One request for the set beats three listing requests the page would
+ * otherwise throw away everything but the count from.
+ *
+ * Counts every slug the catalog actually holds rather than a fixed list, so the
+ * caller decides which ones it cares about and a category that gains products
+ * before it gains a page still counts correctly.
+ */
+export async function fetchCategoryCounts(log: OpLogger): Promise<CategoryCounts> {
+  const catalog = await loadSearchCatalog(log);
+
+  const counts: CategoryCounts = {};
+  for (const entry of catalog) {
+    const key = norm(entry.category_slug);
+    if (key) counts[key] = (counts[key] ?? 0) + 1;
+  }
+
+  log.step(`Category counts - ${Object.keys(counts).length} categories across ${catalog.length} products`);
+  return counts;
 }
 
 // ─── fetchCollectionCounts (Collections page placards/tiles) ─────────────────

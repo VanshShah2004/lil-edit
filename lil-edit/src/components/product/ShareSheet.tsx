@@ -14,7 +14,7 @@ import {
 } from "react-icons/fa";
 import { IoChatbubbleEllipses } from "react-icons/io5";
 import { toast } from "sonner";
-import { getBackendBaseUrl } from "@/lib/backend";
+import { buildPdpUrl } from "@/lib/pdpUrl";
 
 export interface ShareSheetProduct {
   categorySlug: string;
@@ -57,13 +57,15 @@ const ShareSheet = ({ open, onClose, product }: ShareSheetProps) => {
     typeof window !== "undefined" ? window.innerWidth >= 768 : false,
   );
 
-  // Share the backend /share/product URL, NOT the SPA PDP URL: link-preview
-  // crawlers (WhatsApp/iMessage/Telegram/FB…) don't run JS, so the SPA page gives
-  // them an empty shell and no card renders. The /share route serves OG tags —
-  // primary image (variant-aware), product name, description, price — so the
-  // message shows the product card; humans who tap it are bounced to the PDP.
+  // Share the canonical PDP URL itself. Link-preview crawlers (WhatsApp/iMessage/
+  // Telegram/FB…) don't run JS, so a plain SPA shell would give them nothing to
+  // render — the static host rewrites this exact path to the backend, which returns
+  // the same shell with OG tags injected (primary image (variant-aware), product
+  // name, description, price). See render.yaml + backend/routes/pdpShell.ts.
+  // Result: the shared link unfurls into a product card AND is the real product URL
+  // — no redirect hop and no api.* host in the message.
   const shareUrl = product
-    ? `${getBackendBaseUrl()}/share/product/${product.categorySlug}/${product.slug}$${product.sku}`
+    ? buildPdpUrl(product.categorySlug, product.slug, product.sku)
     : "";
   const websiteUrl = typeof window !== "undefined" ? window.location.origin : "";
   const discountPercent =

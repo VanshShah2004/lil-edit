@@ -16,9 +16,11 @@ import {
   fetchNewArrivals,
   fetchCollectionCounts,
   fetchCategoryProducts,
+  fetchCategoryCounts,
   invalidateSearchCatalog,
   type SuggestionRow,
   type SearchProductRow,
+  type CategorySort,
 } from "../lib/persistCatalog.js";
 import type { ProductRow, ImageRow, VariantRow } from "../lib/catalogRowTypes.js";
 import { fetchProductsBySkus } from "../lib/productsBySku.js";
@@ -851,28 +853,83 @@ router.get("/collection-counts", async (_req: Request, res: Response) => {
 // an allow-list so an unknown slug 404s instead of rendering an empty page.
 const CATEGORY_SLUGS = new Set<string>(["ethnic-wear", "party-wear", "casual-wear", "accessories"]);
 
+/** A repeated/comma-joined filter param → its lowercased values, deduped and capped. */
+function filterList(raw: unknown): string[] {
+  const parts = (Array.isArray(raw) ? raw : [raw])
+    .flatMap((v) => String(v ?? "").split(","))
+    .map((v) => v.trim().toLowerCase())
+    .filter(Boolean);
+  // Capped so a hand-crafted URL can't make the filter pass walk an unbounded list.
+  return [...new Set(parts)].slice(0, 40);
+}
+
+const CATEGORY_SORTS = new Set<CategorySort>(["newest", "price-asc", "price-desc", "discount"]);
+
+function intParam(raw: unknown, fallback: number, min: number, max: number): number {
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.min(Math.max(Math.trunc(n), min), max) : fallback;
+}
+
+// ─── GET /api/products/category-counts — styles per category ─────────────────
+// Powers the "More categories" tiles at the foot of a category page, which link
+// to the other three and say how big each one is. Restricted to the four slugs
+// that have a page, so the payload can't grow a key the frontend has nowhere to
+// put. A failure degrades to an empty object and the tiles simply omit the line.
+router.get("/category-counts", async (_req: Request, res: Response) => {
+  const log = createLog().start("CATEGORY COUNTS");
+
+  try {
+    const all = await fetchCategoryCounts(log);
+    const counts: Record<string, number> = {};
+    for (const slug of CATEGORY_SLUGS) counts[slug] = all[slug] ?? 0;
+
+    log.success("counts returned").end("CATEGORY COUNTS");
+    res.json({ counts });
+  } catch (err) {
+    log.error("failed — returning empty counts", err);
+    res.status(200).json({ counts: {} });
+    log.end("CATEGORY COUNTS");
+  }
+});
+
 // ─── GET /api/products/category/:slug — one category's listing page ──────────
-// Returns the capped page of cards plus the category's un-capped `total`, so the
-// page can say "42 styles" honestly while rendering at most `limit` of them.
+// Filtering, sorting and paging all happen server-side (see fetchCategoryProducts
+// for why), so the response carries three different counts: `total` is the whole
+// category, `matched` is what survives the filters, and `products` is the window.
+// `facets` describes every filter the category can offer, with option counts.
 router.get("/category/:slug", async (req: Request, res: Response) => {
   const log = createLog().start("CATEGORY LISTING");
   const slug = String(req.params.slug ?? "").toLowerCase();
-  const rawLimit = Number(req.query.limit);
-  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 100) : 48;
+
+  const rawSort = String(req.query.sort ?? "newest") as CategorySort;
+  const query = {
+    limit:  intParam(req.query.limit, 24, 1, 100),
+    offset: intParam(req.query.offset, 0, 0, 5000),
+    sort:   CATEGORY_SORTS.has(rawSort) ? rawSort : ("newest" as CategorySort),
+    genders:      filterList(req.query.gender),
+    occasions:    filterList(req.query.occasion),
+    tags:         filterList(req.query.tag),
+    sizes:        filterList(req.query.size),
+    colors:       filterList(req.query.color),
+    badges:       filterList(req.query.badge),
+    priceBuckets: filterList(req.query.price),
+    onSale:      req.query.sale === "1",
+    inStockOnly: req.query.stock === "1",
+  };
 
   if (!CATEGORY_SLUGS.has(slug)) {
     log.warn(`unknown category "${slug}"`).end("CATEGORY LISTING");
-    res.status(404).json({ error: "Unknown category", slug, total: 0, count: 0, products: [] });
+    res.status(404).json({ error: "Unknown category", slug, total: 0, matched: 0, count: 0, hasMore: false, products: [], facets: null });
     return;
   }
 
   try {
-    const { total, rows } = await fetchCategoryProducts(slug, limit, log);
-    log.success(`${rows.length} of ${total} returned for "${slug}"`).end("CATEGORY LISTING");
-    res.json({ slug, total, count: rows.length, products: rows });
+    const { total, matched, hasMore, rows, facets } = await fetchCategoryProducts(slug, query, log);
+    log.success(`${rows.length} rows  matched=${matched}  total=${total}  for "${slug}"`).end("CATEGORY LISTING");
+    res.json({ slug, total, matched, count: rows.length, offset: query.offset, hasMore, products: rows, facets });
   } catch (err) {
     log.error("failed — returning empty list", err);
-    res.status(200).json({ slug, total: 0, count: 0, products: [] });
+    res.status(200).json({ slug, total: 0, matched: 0, count: 0, offset: 0, hasMore: false, products: [], facets: null });
     log.end("CATEGORY LISTING");
   }
 });
