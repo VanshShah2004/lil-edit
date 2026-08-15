@@ -2040,6 +2040,37 @@ export async function fetchCategoryProducts(
   };
 }
 
+// ─── fetchCategoryCounts (the "More categories" tiles) ───────────────────────
+
+/** How many published products each category holds, keyed by category_slug. */
+export type CategoryCounts = Record<string, number>;
+
+/**
+ * Every category's size in one pass.
+ *
+ * A category page knows how big IT is — that is its own listing's `total` — but
+ * the tiles at its foot link to the other three, and a tile that says how many
+ * pieces are behind it is the difference between a link and a reason to follow
+ * it. One request for the set beats three listing requests the page would
+ * otherwise throw away everything but the count from.
+ *
+ * Counts every slug the catalog actually holds rather than a fixed list, so the
+ * caller decides which ones it cares about and a category that gains products
+ * before it gains a page still counts correctly.
+ */
+export async function fetchCategoryCounts(log: OpLogger): Promise<CategoryCounts> {
+  const catalog = await loadSearchCatalog(log);
+
+  const counts: CategoryCounts = {};
+  for (const entry of catalog) {
+    const key = norm(entry.category_slug);
+    if (key) counts[key] = (counts[key] ?? 0) + 1;
+  }
+
+  log.step(`Category counts - ${Object.keys(counts).length} categories across ${catalog.length} products`);
+  return counts;
+}
+
 // ─── fetchCollectionCounts (Collections page placards/tiles) ─────────────────
 
 export interface CollectionCounts {

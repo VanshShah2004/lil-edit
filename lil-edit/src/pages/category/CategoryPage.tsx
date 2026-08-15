@@ -17,8 +17,10 @@ import { useWishlist } from "@/contexts/WishlistContext";
 import { buildPdpPath } from "@/lib/pdpUrl";
 import {
   fetchCategoryProducts,
+  fetchCategoryCounts,
   activeFilterCount,
   EMPTY_FACETS,
+  type CategoryCounts,
   type CategoryProduct,
   type CategoryFacets,
   type CategorySort,
@@ -255,6 +257,15 @@ export default function CategoryPage({ slug }: { slug: string }) {
         @supports not (text-box-edge: cap alphabetic) {
           .cat-figure { margin-top: -0.19em; margin-bottom: -0.08em; }
         }
+
+        /* Each "more categories" tile carries its own colour in --tile, so the
+           hover border can be that category's rather than one shared accent.
+           A rule rather than an inline style because :hover cannot be written
+           into a style attribute. */
+        /* The resting border is a plain grey set on the element (border-gray-400);
+           this only owns the hover, where it swaps to that tile's own colour. */
+        .cat-tile { transition: border-color 0.2s, transform 0.2s; }
+        .cat-tile:hover { border-color: var(--tile); transform: translateY(-2px); }
 
 
         @media (prefers-reduced-motion: reduce) {
@@ -1239,10 +1250,37 @@ function ProductCard({ product: p, index }: { product: CategoryProduct; index: n
 // These pages have no entry point anywhere else in the storefront by design —
 // they are not in the nav, the Browse Collections strip or the Spotlight — so
 // without this a shopper who lands on one has no way to reach the other three.
-// Each tile is printed on that category's own placard ground, which is what makes
-// the four colourways legible as one set rather than four unrelated pages.
+//
+// The tiles used to be small copies of the placard: each printed on its own deep
+// ground, bandhani texture and all, with cream type over it. That looked like the
+// set but read badly — a name and a count in pale type over a dot pattern is the
+// worst surface on the page for small text, and three saturated blocks closed a
+// white page with a thud.
+//
+// So they are plain now: dark type on white, ordinary sentence case, and each
+// category's colour reduced to a single bar down the left edge and the border it
+// takes on hover. The set still reads as a set, because the colours are still the
+// four grounds — they have just stopped competing with the words in front of them.
 function OtherCategories({ current }: { current: string }) {
   const others = CATEGORIES.filter((c) => c.slug !== current);
+
+  // One request for all four sizes, rather than three listing requests this would
+  // throw away everything but the count from. Counts are what turn these from
+  // three links into three decisions.
+  const [counts, setCounts] = useState<CategoryCounts | null>(null);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetchCategoryCounts(ctrl.signal)
+      .then(setCounts)
+      .catch((err) => {
+        if ((err as Error).name === "AbortError") return;
+        console.error("[CategoryPage] category counts failed:", err);
+        setCounts({});
+      });
+    return () => ctrl.abort();
+  }, []);
+
   if (others.length === 0) return null;
 
   return (
@@ -1257,38 +1295,37 @@ function OtherCategories({ current }: { current: string }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         {others.map((c) => {
-          // Each tile carries a different ground, so it needs its own derived
-          // palette rather than the page's — otherwise a pastel tile on a deep
-          // page would inherit cream type and vanish into its own background.
-          const p = paletteFor(c.field);
+          const count = counts?.[c.slug];
           return (
             <Link
               key={c.slug}
               to={`/collections/${c.slug}`}
-              className="group relative flex items-center justify-between gap-3 overflow-hidden px-6 py-7 transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-              style={{ backgroundColor: c.field, outlineColor: p.trim }}
+              className="cat-tile group flex items-stretch gap-4 border border-gray-400 bg-white pr-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{ ["--tile" as string]: c.field, outlineColor: c.field }}
             >
-              {/* Same bandhani surface as the placard, so a tile reads as a small
-                  piece of that category's plate. */}
-              <span
-                className="pointer-events-none absolute inset-0"
-                aria-hidden="true"
-                style={{
-                  backgroundImage: `radial-gradient(circle at 1px 1px, ${p.dots} 1px, transparent 0)`,
-                  backgroundSize: "22px 22px",
-                }}
-              />
-              <span
-                className="font-display relative text-xl sm:text-2xl"
-                style={{ color: p.text, fontWeight: 700, letterSpacing: "-0.015em" }}
-              >
-                {c.label}
+              {/* The whole of the category's colour on this tile: one bar, full
+                  height, nothing printed on top of it. */}
+              <span aria-hidden="true" className="w-1.5 shrink-0" style={{ backgroundColor: c.field }} />
+
+              <span className="min-w-0 flex-1 py-4">
+                <span
+                  className="font-display block text-lg sm:text-xl"
+                  style={{ color: "var(--cat-ink)", fontWeight: 600, letterSpacing: "-0.01em" }}
+                >
+                  {c.label}
+                </span>
+                {/* Sentence case at 13px, not tracked-out micro-caps: this is a
+                    number someone reads, not a label. An em dash holds the line
+                    while the counts are in flight so three tiles don't jump when
+                    they land. */}
+                <span className="cat-nums mt-0.5 block font-body text-[13px]" style={{ color: "var(--cat-ink-soft)" }}>
+                  {counts === null ? "—" : `${count ?? 0} ${count === 1 ? "style" : "styles"}`}
+                </span>
               </span>
-              {/* Same colour as the label beside it, which also means it inherits
-                  that label's contrast on whichever ground the tile carries. */}
+
               <ArrowRight
-                className="relative h-5 w-5 shrink-0 transition-transform group-hover:translate-x-1"
-                style={{ color: p.text }}
+                className="h-4 w-4 shrink-0 self-center transition-transform group-hover:translate-x-1"
+                style={{ color: "var(--cat-ink-soft)" }}
               />
             </Link>
           );

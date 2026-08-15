@@ -111,6 +111,34 @@ export interface CategoryListing {
   facets: CategoryFacets;
 }
 
+/** How many published styles each category holds, keyed by category slug. */
+export type CategoryCounts = Record<string, number>;
+
+/**
+ * Every category's size in one request — what the "More categories" tiles at the
+ * foot of a listing print, so a tile says how much is behind it rather than only
+ * where it goes.
+ *
+ * Degrades to an empty object on any failure: the tiles are a navigation aid, and
+ * one that renders without its counts is far better than a page that doesn't.
+ */
+export async function fetchCategoryCounts(signal?: AbortSignal): Promise<CategoryCounts> {
+  const url = `${getBackendBaseUrl()}/api/products/category-counts`;
+  console.log("[categoryService] GET", url);
+
+  const res = await fetch(url, { signal });
+  console.log("[categoryService] GET", url, "→", res.status);
+
+  if (!res.ok) {
+    console.error("[categoryService] category-counts error:", res.status);
+    return {};
+  }
+
+  const data = (await res.json()) as { counts?: CategoryCounts };
+  console.log("[categoryService] category-counts →", data.counts);
+  return data.counts ?? {};
+}
+
 /** The listing's filters as URL query params, omitting anything at its default. */
 function toQuery(filters: CategoryFilters, limit: number, offset: number): string {
   const p = new URLSearchParams();

@@ -16,6 +16,7 @@ import {
   fetchNewArrivals,
   fetchCollectionCounts,
   fetchCategoryProducts,
+  fetchCategoryCounts,
   invalidateSearchCatalog,
   type SuggestionRow,
   type SearchProductRow,
@@ -868,6 +869,28 @@ function intParam(raw: unknown, fallback: number, min: number, max: number): num
   const n = Number(raw);
   return Number.isFinite(n) ? Math.min(Math.max(Math.trunc(n), min), max) : fallback;
 }
+
+// ─── GET /api/products/category-counts — styles per category ─────────────────
+// Powers the "More categories" tiles at the foot of a category page, which link
+// to the other three and say how big each one is. Restricted to the four slugs
+// that have a page, so the payload can't grow a key the frontend has nowhere to
+// put. A failure degrades to an empty object and the tiles simply omit the line.
+router.get("/category-counts", async (_req: Request, res: Response) => {
+  const log = createLog().start("CATEGORY COUNTS");
+
+  try {
+    const all = await fetchCategoryCounts(log);
+    const counts: Record<string, number> = {};
+    for (const slug of CATEGORY_SLUGS) counts[slug] = all[slug] ?? 0;
+
+    log.success("counts returned").end("CATEGORY COUNTS");
+    res.json({ counts });
+  } catch (err) {
+    log.error("failed — returning empty counts", err);
+    res.status(200).json({ counts: {} });
+    log.end("CATEGORY COUNTS");
+  }
+});
 
 // ─── GET /api/products/category/:slug — one category's listing page ──────────
 // Filtering, sorting and paging all happen server-side (see fetchCategoryProducts
