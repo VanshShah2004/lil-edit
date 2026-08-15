@@ -9,6 +9,7 @@ import { logAdminAction } from "../lib/adminAudit.js";
 
 const router = Router();
 
+
 // Same regex the backend uses elsewhere (auth.ts) and the DB mirrors in
 // admin_set_account_admin — keep all three in sync.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
