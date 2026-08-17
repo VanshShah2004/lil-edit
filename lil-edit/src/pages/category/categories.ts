@@ -3,9 +3,13 @@
 // These are the TAXONOMY — every product carries exactly one, chosen from the
 // dropdown in AddProduct/EditProduct — and are deliberately separate from the
 // storefront "collections" (New Arrivals, Girls, Boys, Trending, By Occasion),
-// which are curated or derived views. Categories intentionally have no presence
-// in the Browse Collections strip, the nav, or the Spotlight curation engine;
-// they are reached by their own URLs only.
+// which are curated or derived views.
+//
+// The Collections page reaches them through its own "Shop by Category" section
+// (components/collections/CategoryStrip), kept apart from the Browse Collections
+// strip above it so the two aren't presented as the same kind of thing. They are
+// still absent from the nav and from the Spotlight curation engine: nothing here
+// is admin-editable, and adding a category means adding a hex to this list.
 //
 // `slug` must match what backend/lib/productMapper.ts slugify() produces from
 // the category's display name, since it is also the :category segment of every

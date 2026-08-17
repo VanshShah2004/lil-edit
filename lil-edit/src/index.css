@@ -189,6 +189,25 @@
     padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
   }
 
+  /* Optically centres a numeral inside a circle, pill or any other symmetrical
+     badge.
+     Lining digits use neither the font's ascender nor its descender — they stop
+     at the cap line and sit on the baseline — so a line box centred by flex or
+     grid centres the FONT'S box rather than the digits, and they ride a fraction
+     off. Loose in a paragraph that fraction is invisible; inside a circle, which
+     hands the eye a perfect symmetry reference, it reads as "not quite centred".
+     text-box trims the box down to cap-line-to-baseline, so centring the box
+     centres what you can actually see.
+     Deliberately no fallback: the alternative is a hand-guessed nudge in ems,
+     which is wrong the moment the face changes. Browsers without text-box keep
+     today's behaviour instead of a guess that might tip it the other way. */
+  .numeral-centered {
+    line-height: 1;
+    text-box-trim: trim-both;
+    text-box-edge: cap alphabetic;
+    text-box: trim-both cap alphabetic;
+  }
+
   .with-mobile-sticky-bar {
     padding-bottom: calc(env(safe-area-inset-bottom) + 5.5rem);
   }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import RouteFallback from "@/components/RouteFallback";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
 import BrowseCollections from "@/components/collections/BrowseCollections";
+import CategoryStrip from "@/components/collections/CategoryStrip";
+import SectionHeading from "@/components/collections/SectionHeading";
 import Footer from "@/components/layout/Footer";
 import { getBackendBaseUrl } from "@/lib/backend";
 import { authHeader } from "@/lib/apiAuth";
@@ -171,6 +173,12 @@ export default function Collections() {
                 admin-curatable via the Spotlight (collections_browse). */}
             <BrowseCollections />
 
+            {/* SHOP BY CATEGORY — the four wear types. Sits under the collections
+                rather than among them because it is the taxonomy, not an edit:
+                every product carries exactly one of these, while a piece drifts in
+                and out of the strip above. */}
+            <CategoryStrip />
+
             {/* STYLED BY OUR COMMUNITY — bento mosaic */}
             <section>
               <SectionHeading
@@ -258,29 +266,3 @@ export default function Collections() {
   );
 }
 
-// Section heading in the arrivals language: title + count, blurb underneath,
-// optional "View all" on the right.
-function SectionHeading({
-  label, count, blurb, to,
-}: { label: string; count?: number; blurb: string; to?: string }) {
-  return (
-    <>
-      <div className="flex items-end justify-between gap-3 mb-1">
-        <div className="flex items-baseline gap-3">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">{label}</h2>
-          {count !== undefined && <span className="text-xs font-semibold text-gray-400">{count}</span>}
-        </div>
-        {to && (
-          <Link
-            to={to}
-            className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-brand-teal hover:underline shrink-0"
-          >
-            View All
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        )}
-      </div>
-      <p className="text-xs sm:text-sm text-gray-500 mb-5">{blurb}</p>
-    </>
-  );
-}
