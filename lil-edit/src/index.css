@@ -189,6 +189,36 @@
     padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
   }
 
+  /* The bandhani dot grid printed on a category's ground, so the colour reads as
+     dyed cloth rather than a flat fill. Both colours come from paletteFor() via
+     --bandhani / --bandhani-strong, so one rule serves every ground.
+
+     Phones get the tighter, stronger grid FIRST and desktop overrides it, rather
+     than the other way round: a phone shows less ground and holds fewer dots, and
+     a small dot at low opacity antialiases away to nothing on a high-DPI screen,
+     so the ground read as a flat block. Dots on a large plate can afford to
+     whisper; on a small one they have to speak up to say the same thing.
+
+     Both breakpoints are pitched to actually READ as dotted cloth. Worth knowing
+     before turning them up further: a letter crossing a dot loses contrast
+     against it, so the strength here is capped by the small copy on the placard
+     rather than by taste. `dotsStrong` and `dots` in pages/category/categories.ts
+     hold the two opacities; the sizes are here.
+
+     Lives in CSS rather than inline because a texture that changes at a
+     breakpoint cannot be written into a style attribute. */
+  .bandhani {
+    background-image: radial-gradient(circle at 1px 1px, var(--bandhani-strong) 3px, transparent 0);
+    background-size: 18px 18px;
+  }
+
+  @media (min-width: 640px) {
+    .bandhani {
+      background-image: radial-gradient(circle at 1px 1px, var(--bandhani) 2px, transparent 0);
+      background-size: 20px 20px;
+    }
+  }
+
   /* Optically centres a numeral inside a circle, pill or any other symmetrical
      badge.
      Lining digits use neither the font's ascender nor its descender — they stop

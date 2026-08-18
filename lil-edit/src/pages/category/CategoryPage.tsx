@@ -218,6 +218,7 @@ export default function CategoryPage({ slug }: { slug: string }) {
         ["--cat-text-muted" as string]: pal.textMuted,
         ["--cat-trim" as string]: pal.trim,
         ["--cat-dots" as string]: pal.dots,
+        ["--cat-dots-strong" as string]: pal.dotsStrong,
         ["--cat-edge" as string]: page.edge,
         ["--cat-ink" as string]: page.ink,
         ["--cat-ink-soft" as string]: page.inkSoft,
@@ -426,13 +427,15 @@ function CategoryPlacard({
       style={{ backgroundColor: "var(--cat-field)" }}
     >
       {/* Bandhani — a dot grid at very low opacity, so the ground reads as dyed
-          cloth rather than a flat fill. Purely a surface, never content. */}
+          cloth rather than a flat fill. Purely a surface, never content. Tightens
+          and strengthens below sm, where the plate is phone-width — see .bandhani
+          in index.css. */}
       <div
-        className="pointer-events-none absolute inset-0"
+        className="bandhani pointer-events-none absolute inset-0"
         aria-hidden="true"
         style={{
-          backgroundImage: "radial-gradient(circle at 1px 1px, var(--cat-dots) 1px, transparent 0)",
-          backgroundSize: "22px 22px",
+          ["--bandhani" as string]: "var(--cat-dots)",
+          ["--bandhani-strong" as string]: "var(--cat-dots-strong)",
         }}
       />
 

@@ -98,13 +98,15 @@ function CategoryTile({
       style={{ backgroundColor: field }}
     >
       {/* Bandhani — the same dot grid the placard carries, so the ground reads as
-          dyed cloth rather than a flat swatch. */}
+          dyed cloth rather than a flat swatch. The grid tightens and the dot
+          strengthens below sm, where these tiles are half the width — see
+          .bandhani in index.css. */}
       <span
-        className="pointer-events-none absolute inset-0"
+        className="bandhani pointer-events-none absolute inset-0"
         aria-hidden="true"
         style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, ${p.dots} 1px, transparent 0)`,
-          backgroundSize: "22px 22px",
+          ["--bandhani" as string]: p.dots,
+          ["--bandhani-strong" as string]: p.dotsStrong,
         }}
       />
 

@@ -74,6 +74,15 @@ export interface FieldPalette {
   trim: string;
   /** The bandhani dot texture — white on deep grounds, ink on pastel ones. */
   dots: string;
+  /**
+   * The same dot, for phones. A texture has to survive the screen it is printed
+   * on: on a large plate the grid is wide and there are dozens of dots to read as
+   * cloth, but the tiles on a phone are half the width and hold only a handful,
+   * and a 1px dot at 13% white on a high-DPI display antialiases down to nothing.
+   * Below the sm breakpoint the grid tightens and the dot takes this value
+   * instead, so the ground still reads as dyed rather than flat.
+   */
+  dotsStrong: string;
 }
 
 /**
@@ -87,15 +96,21 @@ export function paletteFor(field: string): FieldPalette {
   return luminance(field) < 0.3
     ? {
         text: CATEGORY_CREAM,
-        textMuted: "rgba(250, 246, 240, 0.78)",
+        // Not 0.78: the phone-sized dot grid is a much busier ground than the
+        // desktop one, and secondary copy at 78% went muddy wherever it crossed a
+        // dot. Hierarchy still holds — the name is full cream at several times
+        // this size — but the small type now survives the texture behind it.
+        textMuted: "rgba(250, 246, 240, 0.92)",
         trim: CATEGORY_TRIM,
-        dots: "rgba(255, 255, 255, 0.13)",
+        dots: "rgba(255, 255, 255, 0.22)",
+        dotsStrong: "rgba(255, 255, 255, 0.40)",
       }
     : {
         text: CATEGORY_INK,
         textMuted: "rgba(42, 34, 51, 0.72)",
         trim: CATEGORY_INK,
-        dots: "rgba(42, 34, 51, 0.07)",
+        dots: "rgba(42, 34, 51, 0.12)",
+        dotsStrong: "rgba(42, 34, 51, 0.22)",
       };
 }
 
