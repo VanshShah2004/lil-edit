@@ -75,14 +75,15 @@ export interface FieldPalette {
   /** The bandhani dot texture — white on deep grounds, ink on pastel ones. */
   dots: string;
   /**
-   * The same dot, for phones. A texture has to survive the screen it is printed
-   * on: on a large plate the grid is wide and there are dozens of dots to read as
-   * cloth, but the tiles on a phone are half the width and hold only a handful,
-   * and a 1px dot at 13% white on a high-DPI display antialiases down to nothing.
-   * Below the sm breakpoint the grid tightens and the dot takes this value
-   * instead, so the ground still reads as dyed rather than flat.
+   * The same dot, for phones — WEAKER than the value above, and paired with a
+   * wider grid in .bandhani. A phone shows the ground small enough that the dots
+   * repeat across the whole of it in one glance, and at that point the eye reads
+   * a printed polka pattern rather than a dyed texture. Desktop is spread wide
+   * enough that it never happens. Held at roughly two-thirds of `dots`, which is
+   * as far down as it goes before the dot antialiases away on a high-DPI screen
+   * and the layer stops doing anything at all.
    */
-  dotsStrong: string;
+  dotsPhone: string;
 }
 
 /**
@@ -96,21 +97,22 @@ export function paletteFor(field: string): FieldPalette {
   return luminance(field) < 0.3
     ? {
         text: CATEGORY_CREAM,
-        // Not 0.78: the phone-sized dot grid is a much busier ground than the
-        // desktop one, and secondary copy at 78% went muddy wherever it crossed a
-        // dot. Hierarchy still holds — the name is full cream at several times
-        // this size — but the small type now survives the texture behind it.
+        // Not 0.78: secondary copy at 78% went muddy wherever it crossed a dot,
+        // and the placard sets its blurb at 13px on a phone, where a lost stroke
+        // costs more than it does at 15px. Hierarchy still holds — the name is
+        // full cream at several times this size — but the small type survives
+        // the texture behind it.
         textMuted: "rgba(250, 246, 240, 0.92)",
         trim: CATEGORY_TRIM,
         dots: "rgba(255, 255, 255, 0.22)",
-        dotsStrong: "rgba(255, 255, 255, 0.40)",
+        dotsPhone: "rgba(255, 255, 255, 0.14)",
       }
     : {
         text: CATEGORY_INK,
         textMuted: "rgba(42, 34, 51, 0.72)",
         trim: CATEGORY_INK,
         dots: "rgba(42, 34, 51, 0.12)",
-        dotsStrong: "rgba(42, 34, 51, 0.22)",
+        dotsPhone: "rgba(42, 34, 51, 0.08)",
       };
 }
 

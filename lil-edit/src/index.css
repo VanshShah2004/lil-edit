@@ -191,25 +191,36 @@
 
   /* The bandhani dot grid printed on a category's ground, so the colour reads as
      dyed cloth rather than a flat fill. Both colours come from paletteFor() via
-     --bandhani / --bandhani-strong, so one rule serves every ground.
+     --bandhani / --bandhani-phone, so one rule serves every ground.
 
-     Phones get the tighter, stronger grid FIRST and desktop overrides it, rather
-     than the other way round: a phone shows less ground and holds fewer dots, and
-     a small dot at low opacity antialiases away to nothing on a high-DPI screen,
-     so the ground read as a flat block. Dots on a large plate can afford to
-     whisper; on a small one they have to speak up to say the same thing.
+     Phones come FIRST and desktop overrides, and the phone cut is the QUIETER of
+     the two — sparser and fainter — which is the opposite of what it looks like
+     it should be. The reasoning that argued for a louder phone dot (a small
+     screen holds fewer dots, and a faint one antialiases away on high-DPI) is
+     real but it is about a single dot's survival, not about the pattern. What
+     actually happens at phone width is that the grid stops reading as dye and
+     starts reading as POLKA DOTS: the ground is small, the dots repeat across
+     all of it, and the eye takes them as a print rather than a texture. Desktop
+     never has that problem, because there the same dots are spread over a plate
+     wide enough that no run of them lands in one glance.
 
-     Both breakpoints are pitched to actually READ as dotted cloth. Worth knowing
-     before turning them up further: a letter crossing a dot loses contrast
-     against it, so the strength here is capped by the small copy on the placard
-     rather than by taste. `dotsStrong` and `dots` in pages/category/categories.ts
-     hold the two opacities; the sizes are here.
+     So the phone grid opens to 26px — wider than the desktop cut, not tighter —
+     and the colour drops to `dotsPhone`, roughly two-thirds of the desktop
+     alpha. Up close the ground is still visibly dyed; at arm's length it is a
+     flat jewel field, which is what it is supposed to be.
+
+     This is the floor. Below roughly a 0.12 alpha a 2px dot antialiases away on
+     a high-DPI screen and the layer stops doing anything at all — at which point
+     delete it rather than pay for a texture nobody can see. The ceiling is the
+     small copy set over it on the placard: a letter crossing a dot loses
+     contrast against it. `dotsPhone` and `dots` in pages/category/categories.ts
+     hold the two alphas; the sizes are here.
 
      Lives in CSS rather than inline because a texture that changes at a
      breakpoint cannot be written into a style attribute. */
   .bandhani {
-    background-image: radial-gradient(circle at 1px 1px, var(--bandhani-strong) 3px, transparent 0);
-    background-size: 18px 18px;
+    background-image: radial-gradient(circle at 1px 1px, var(--bandhani-phone) 2px, transparent 0);
+    background-size: 26px 26px;
   }
 
   @media (min-width: 640px) {
