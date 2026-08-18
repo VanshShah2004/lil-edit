@@ -1,17 +1,18 @@
 import { getBackendBaseUrl } from "@/lib/backend";
 import type { SearchProduct } from "@/services/searchService";
 
-// A category listing card. The search card's fields plus what a category browse
-// needs that a search result doesn't: createdAt, the attributes the filter panel
-// reads back (so an active chip can be labelled off the product itself), and
-// every colourway rather than only the primary one.
+// A category listing card: ONE COLOURWAY of one product. A kurta cut in three
+// colours arrives as three of these, each with its own sku, photograph, colour
+// and stock — the same unit the search results page uses.
+//
+// Fields beyond the search card are what a category browse needs and a search
+// result doesn't: createdAt, and the attributes the filter panel reads back so an
+// active chip can be labelled off the product itself.
 export interface CategoryProduct extends SearchProduct {
   createdAt: string;
   occasion: string;
   gender: string;
   sizes: string[];
-  /** Every colourway, each with its own photograph — the card swaps to it on hover. */
-  colors: Array<{ name: string; hex: string; inStock: boolean; image: string; sku: string }>;
   /** Whole percent off, 0 when undiscounted. */
   discountPct: number;
   isTrending?: boolean;
@@ -111,7 +112,7 @@ export interface CategoryListing {
   facets: CategoryFacets;
 }
 
-/** How many published styles each category holds, keyed by category slug. */
+/** How many published colourways each category holds, keyed by category slug. */
 export type CategoryCounts = Record<string, number>;
 
 /**

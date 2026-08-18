@@ -133,11 +133,14 @@ function CategoryTile({
 
       {/* The arrow is always here, so this row holds its height whether or not the
           count has landed — the name above it doesn't shift when the request
-          resolves. A missing count prints nothing rather than "0 styles", which
-          would be a claim rather than a gap. */}
+          resolves. A missing count prints nothing rather than "0 pieces", which
+          would be a claim rather than a gap.
+
+          "Pieces" counts colourways, matching the listing page this tile opens:
+          a tile promising 12 that lands on 18 cards is a tile that lied. */}
       <span className="relative mt-2.5 flex items-center justify-between gap-2">
         <span className="font-body text-[11px] sm:text-[13px]" style={{ color: p.textMuted }}>
-          {count === undefined ? "" : `${count} ${count === 1 ? "style" : "styles"}`}
+          {count === undefined ? "" : `${count} ${count === 1 ? "piece" : "pieces"}`}
         </span>
         <ArrowRight
           className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"

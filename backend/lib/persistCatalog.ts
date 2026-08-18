@@ -1645,15 +1645,25 @@ export async function fetchNewArrivals(
  * A category card. Everything a NewArrivalRow carries plus the attributes the
  * listing filters on, and every colourway rather than only the primary one.
  */
+/**
+ * One CARD on a category listing — a product in ONE of its colourways.
+ *
+ * The unit is the colourway, not the product: a kurta cut in three colours is
+ * three rows, each carrying its own sku, its own photograph and its own stock,
+ * and each linking to its own PDP. A shopper browsing a category is choosing
+ * between colours as much as between garments, and a colour hidden behind a
+ * hover swatch on someone else's photograph is a colour they never saw.
+ *
+ * Every count on the page therefore counts colourways too — see buildFacets and
+ * fetchCategoryCounts, which are both fed the same expanded list, so the number
+ * on the placard is the number of cards under it.
+ *
+ * Search already works this way (expandVariantRows), so the two listings now
+ * agree on what a card is.
+ */
 export interface CategoryRow extends NewArrivalRow {
   gender: string;
   sizes: string[];
-  /**
-   * Every colourway the product ships in, primary first — each with its OWN
-   * photograph, so the listing card can show the colour a shopper points at
-   * rather than only the one the product leads with.
-   */
-  colors: Array<{ name: string; hex: string; inStock: boolean; image: string; sku: string }>;
   /** Whole percent off, 0 when the product isn't discounted. Drives the "Biggest Saving" sort. */
   discountPct: number;
 }
@@ -1750,7 +1760,7 @@ export const DEFAULT_CATEGORY_QUERY: CategoryQuery = {
 };
 
 export interface CategoryListing {
-  /** Every published product in the category, before ANY filter — what the placard prints. */
+  /** Every colourway in the category, before ANY filter — what the placard prints. */
   total: number;
   /** How many survive the filters, before the page window — what the toolbar counts. */
   matched: number;
@@ -1812,24 +1822,60 @@ function matchesGender(entryGender: string, want: string): boolean {
   return g === want || (g !== "girls" && g !== "boys");
 }
 
-function entryInStock(entry: SearchCatalogEntry): boolean {
-  return entry.variants.length === 0 || entry.variants.some((v) => v.inStock);
-}
-
 function discountPctOf(entry: SearchCatalogEntry): number {
   if (entry.original_price <= entry.price || entry.original_price <= 0) return 0;
   return Math.round(((entry.original_price - entry.price) / entry.original_price) * 100);
 }
 
+/**
+ * One product paired with one of its colourways — the unit a category listing
+ * filters, sorts, pages and counts in.
+ *
+ * The pair is carried around rather than flattened early because the two halves
+ * answer different questions: price, size and occasion are facts about the
+ * PRODUCT, while colour, photograph and stock are facts about the COLOURWAY, and
+ * a filter has to know which it is asking about (see passesFilters).
+ */
+interface CategoryCard {
+  entry: SearchCatalogEntry;
+  /** Null only for a product with no variants at all — one card, on the base sku. */
+  variant: SearchCatalogVariant | null;
+}
+
+/**
+ * Every colourway in the pool as its own card, each product's colours in the
+ * order the admin sorted them.
+ *
+ * A product with no variants still yields one card: it is a real product with a
+ * real photograph, and dropping it would make it unreachable from its own
+ * category page.
+ */
+function expandCategoryCards(pool: SearchCatalogEntry[]): CategoryCard[] {
+  const cards: CategoryCard[] = [];
+  for (const entry of pool) {
+    if (entry.variants.length === 0) cards.push({ entry, variant: null });
+    else for (const variant of entry.variants) cards.push({ entry, variant });
+  }
+  return cards;
+}
+
+/** Whether THIS colourway can be bought — not whether the product has any colour left. */
+function cardInStock(card: CategoryCard): boolean {
+  return card.variant ? card.variant.inStock : true;
+}
+
 /** A category card — the listing row plus the attributes the filter panel reads. */
-function toCategoryRow(entry: SearchCatalogEntry): CategoryRow {
+function toCategoryRow({ entry, variant }: CategoryCard): CategoryRow {
   return {
+    // toListingRow() builds the product's PRIMARY colourway; everything that
+    // differs per colour is then overwritten with this card's own.
     ...toListingRow(entry),
+    sku: variant?.sku ?? entry.base_sku,
+    image: variant?.image || entry.image,
+    color: variant ? { name: variant.colorName, hex: variant.colorHex } : { name: "", hex: "#cccccc" },
+    inStock: variant ? variant.inStock : true,
     gender: entry.gender,
     sizes: entry.sizes,
-    colors: entry.variants.map((v) => ({
-      name: v.colorName, hex: v.colorHex, inStock: v.inStock, image: v.image, sku: v.sku,
-    })),
     discountPct: discountPctOf(entry),
   };
 }
@@ -1907,27 +1953,39 @@ function sortSizeFacets(sizes: CategoryFacetValue[]): CategorySizeFacet[] {
     .map(({ rank, ...facet }) => ({ ...facet, kind: sizeKind(rank) }));
 }
 
-function colorFacets(pool: SearchCatalogEntry[]): CategoryColorFacet[] {
+/**
+ * One option per colour, counted in CARDS — tick "Red" and you get exactly the
+ * number of cards the option printed, because a card is a colourway and each
+ * card carries exactly one colour.
+ */
+function colorFacets(cards: CategoryCard[]): CategoryColorFacet[] {
   const seen = new Map<string, CategoryColorFacet>();
-  for (const entry of pool) {
-    const named = new Map<string, string>();
-    for (const v of entry.variants) {
-      const name = v.colorName.trim();
-      if (name && !named.has(norm(name))) named.set(norm(name), v.colorHex);
-    }
-    for (const [key, hex] of named) {
-      const hit = seen.get(key);
-      if (hit) hit.count += 1;
-      else {
-        const label = entry.variants.find((v) => norm(v.colorName) === key)?.colorName.trim() ?? key;
-        seen.set(key, { value: key, label, hex, count: 1 });
-      }
-    }
+  for (const { variant } of cards) {
+    const label = variant?.colorName.trim() ?? "";
+    if (!label) continue;
+    const key = norm(label);
+    const hit = seen.get(key);
+    if (hit) hit.count += 1;
+    else seen.set(key, { value: key, label, hex: variant!.colorHex, count: 1 });
   }
   return [...seen.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 }
 
-function buildFacets(pool: SearchCatalogEntry[]): CategoryFacets {
+/**
+ * Every option the panel can offer, counted over CARDS rather than products.
+ *
+ * That distinction is the whole point: the grid holds one card per colourway, so
+ * a size that three colours of the same kurta are cut in has to report 3, or the
+ * count on the checkbox and the number of cards it produces disagree.
+ *
+ * The product-level facets get there by counting `entries` — the parent product
+ * of each card, so a three-colour product is simply present three times, and
+ * countFacet's own "once per distinct value" rule still stops one product
+ * double-counting a value it lists twice.
+ */
+function buildFacets(cards: CategoryCard[]): CategoryFacets {
+  const pool = cards.map((c) => c.entry);
+
   // Gender is the one facet NOT read straight off the products: it is counted
   // through matchesGender(), so an option's count is exactly what selecting it
   // will show — a category of unisex-only stock reports every product under both.
@@ -1951,13 +2009,15 @@ function buildFacets(pool: SearchCatalogEntry[]): CategoryFacets {
     occasions: countFacet(pool, occasionsOf, titleCase),
     tags:      countFacet(pool, (e) => e.tags, sentenceCase),
     sizes:     sortSizeFacets(countFacet(pool, (e) => e.sizes)),
-    colors:    colorFacets(pool),
+    colors:    colorFacets(cards),
     badges:    countFacet(pool, (e) => e.badges),
     priceBuckets: CATEGORY_PRICE_BUCKETS
       .map((b) => ({ value: b.id, label: b.label, count: pool.filter((e) => b.test(e.price)).length }))
       .filter((b) => b.count > 0),
     onSale:  pool.filter((e) => discountPctOf(e) > 0).length,
-    inStock: pool.filter(entryInStock).length,
+    // Per COLOURWAY: a red kurta whose blue sibling is stocked is still a sold-out
+    // card, and the toggle counts what it will leave on screen.
+    inStock: cards.filter(cardInStock).length,
     // Reduced rather than Math.min(...spread): the spread would put one argument
     // on the stack per product, which is a call-size limit waiting to be hit the
     // day a category gets big.
@@ -1965,12 +2025,21 @@ function buildFacets(pool: SearchCatalogEntry[]): CategoryFacets {
   };
 }
 
-function passesFilters(entry: SearchCatalogEntry, q: CategoryQuery): boolean {
+/**
+ * Which filters read the product and which read the colourway.
+ *
+ * Price, size, gender, occasion, tag and badge are facts about the GARMENT, so
+ * every colourway of a matching product matches. Colour and stock are facts about
+ * the COLOURWAY in hand, so they are tested against this card alone — ticking
+ * "Red" leaves the red cards and takes the blue ones away, rather than leaving
+ * every product that happens to be made in red showing its blue photograph.
+ */
+function passesFilters({ entry, variant }: CategoryCard, q: CategoryQuery): boolean {
   if (q.genders.length && !q.genders.some((g) => matchesGender(entry.gender, g))) return false;
   if (q.occasions.length && !occasionsOf(entry).some((o) => q.occasions.includes(norm(o)))) return false;
   if (q.tags.length && !entry.tags.some((t) => q.tags.includes(norm(t)))) return false;
   if (q.sizes.length && !entry.sizes.some((s) => q.sizes.includes(norm(s)))) return false;
-  if (q.colors.length && !entry.variants.some((v) => q.colors.includes(norm(v.colorName)))) return false;
+  if (q.colors.length && !q.colors.includes(norm(variant?.colorName ?? ""))) return false;
   if (q.badges.length && !entry.badges.some((b) => q.badges.includes(norm(b)))) return false;
   if (q.priceBuckets.length) {
     const buckets = CATEGORY_PRICE_BUCKETS.filter((b) => q.priceBuckets.includes(b.id));
@@ -1979,16 +2048,30 @@ function passesFilters(entry: SearchCatalogEntry, q: CategoryQuery): boolean {
     if (!buckets.some((b) => b.test(entry.price))) return false;
   }
   if (q.onSale && discountPctOf(entry) === 0) return false;
-  if (q.inStockOnly && !entryInStock(entry)) return false;
+  if (q.inStockOnly && !cardInStock({ entry, variant })) return false;
   return true;
 }
 
-function sortPool(pool: SearchCatalogEntry[], sort: CategorySort): SearchCatalogEntry[] {
+/**
+ * Every colourway of a product carries the same price and the same date, so a
+ * three-colour product puts three rows in the list that no sort key can tell
+ * apart. That matters because the page is served in windows: if two requests
+ * order a tie differently, "Load more" can repeat a card it already showed and
+ * drop one it never did.
+ *
+ * So every comparator ends on the sku, which is globally unique — a TOTAL order,
+ * stable across requests whatever order the catalog itself came back in.
+ */
+function sortCards(cards: CategoryCard[], sort: CategorySort): CategoryCard[] {
+  const bySku = (a: CategoryCard, b: CategoryCard) =>
+    (a.variant?.sku ?? a.entry.base_sku).localeCompare(b.variant?.sku ?? b.entry.base_sku);
+  const newest = (a: CategoryCard, b: CategoryCard) => byNewest(a.entry, b.entry) || bySku(a, b);
+
   switch (sort) {
-    case "price-asc":  return [...pool].sort((a, b) => a.price - b.price || byNewest(a, b));
-    case "price-desc": return [...pool].sort((a, b) => b.price - a.price || byNewest(a, b));
-    case "discount":   return [...pool].sort((a, b) => discountPctOf(b) - discountPctOf(a) || byNewest(a, b));
-    default:           return [...pool].sort(byNewest);
+    case "price-asc":  return [...cards].sort((a, b) => a.entry.price - b.entry.price || newest(a, b));
+    case "price-desc": return [...cards].sort((a, b) => b.entry.price - a.entry.price || newest(a, b));
+    case "discount":   return [...cards].sort((a, b) => discountPctOf(b.entry) - discountPctOf(a.entry) || newest(a, b));
+    default:           return [...cards].sort(newest);
   }
 }
 
@@ -2007,8 +2090,13 @@ function sortPool(pool: SearchCatalogEntry[], sort: CategorySort): SearchCatalog
  * makes every count on the page true.
  *
  * Three numbers come back and they mean different things: `total` is the whole
- * category (the placard's "42 styles"), `matched` is what survives the filters
- * (the toolbar's count), and `rows.length` is the window actually rendered.
+ * category (the placard's figure), `matched` is what survives the filters (the
+ * toolbar's count), and `rows.length` is the window actually rendered.
+ *
+ * All three count COLOURWAYS, because that is what a card is here — see
+ * CategoryRow. The expansion happens before filtering rather than after, so a
+ * colour filter can drop one colourway of a product and keep another, and every
+ * count downstream is a count of things actually on screen.
  */
 export async function fetchCategoryProducts(
   categorySlug: string,
@@ -2020,29 +2108,31 @@ export async function fetchCategoryProducts(
   const want = norm(categorySlug);
 
   const pool = catalog.filter((entry) => norm(entry.category_slug) === want);
-  const filtered = pool.filter((entry) => passesFilters(entry, q));
-  const rows = sortPool(filtered, q.sort)
+  const cards = expandCategoryCards(pool);
+  const filtered = cards.filter((card) => passesFilters(card, q));
+  const rows = sortCards(filtered, q.sort)
     .slice(q.offset, q.offset + q.limit)
     .map(toCategoryRow);
 
   log.step(
-    `Category "${want}" - ${rows.length} rows  matched=${filtered.length}  total=${pool.length}  ` +
+    `Category "${want}" - ${rows.length} rows  matched=${filtered.length}  total=${cards.length}  ` +
+    `colourways=${cards.length} from ${pool.length} products  ` +
     `sort=${q.sort}  offset=${q.offset}  limit=${q.limit}  from ${catalog.length} in catalog`,
   );
 
   return {
-    total: pool.length,
+    total: cards.length,
     matched: filtered.length,
     hasMore: q.offset + rows.length < filtered.length,
     rows,
-    // Facets come off the un-filtered pool so the panel is stable while it's used.
-    facets: buildFacets(pool),
+    // Facets come off the un-filtered cards so the panel is stable while it's used.
+    facets: buildFacets(cards),
   };
 }
 
 // ─── fetchCategoryCounts (the "More categories" tiles) ───────────────────────
 
-/** How many published products each category holds, keyed by category_slug. */
+/** How many published colourways each category holds, keyed by category_slug. */
 export type CategoryCounts = Record<string, number>;
 
 /**
@@ -2057,6 +2147,10 @@ export type CategoryCounts = Record<string, number>;
  * Counts every slug the catalog actually holds rather than a fixed list, so the
  * caller decides which ones it cares about and a category that gains products
  * before it gains a page still counts correctly.
+ *
+ * Counts COLOURWAYS, not products, because that is what the listing page behind
+ * the tile is made of: a tile promising 12 that opens onto 18 cards is a tile
+ * that lied. A product with no variants counts once — it is still one card.
  */
 export async function fetchCategoryCounts(log: OpLogger): Promise<CategoryCounts> {
   const catalog = await loadSearchCatalog(log);
@@ -2064,10 +2158,11 @@ export async function fetchCategoryCounts(log: OpLogger): Promise<CategoryCounts
   const counts: CategoryCounts = {};
   for (const entry of catalog) {
     const key = norm(entry.category_slug);
-    if (key) counts[key] = (counts[key] ?? 0) + 1;
+    if (key) counts[key] = (counts[key] ?? 0) + Math.max(entry.variants.length, 1);
   }
 
-  log.step(`Category counts - ${Object.keys(counts).length} categories across ${catalog.length} products`);
+  const cards = Object.values(counts).reduce((n, c) => n + c, 0);
+  log.step(`Category counts - ${Object.keys(counts).length} categories, ${cards} colourways across ${catalog.length} products`);
   return counts;
 }
 

@@ -39,6 +39,15 @@ import { CATEGORIES, categoryBySlug, paletteFor, pagePaletteFor } from "./catego
  * belongs to the collection pages, where recency is the story; here every piece
  * is equally in the category, so the ordering is one the shopper picked.
  *
+ * ── What a card is ──────────────────────────────────────────────────────────
+ * A COLOURWAY, not a product. A kurta cut in three colours fills three cards,
+ * each with its own photograph, sku, stock and PDP. Colour is one of the two
+ * things a shopper is actually choosing between in a category (the other is the
+ * garment), and a colour that only appears when you hover a 12px dot is a colour
+ * most shoppers never see. Every count on the page follows that unit — the
+ * placard, the toolbar, the age rail and the tiles all count colourways, which is
+ * why they say "pieces".
+ *
  * ── The one idea the design is built on ─────────────────────────────────────
  * Age is the organising fact of children's clothing. A parent does not arrive
  * knowing a size code; they know their child is four. So age is not a checkbox
@@ -75,7 +84,8 @@ import { CATEGORIES, categoryBySlug, paletteFor, pagePaletteFor } from "./catego
  * the 24 already downloaded", and the drawer would only ever offer the options
  * present in that window. So every response carries three counts — `total` (the
  * category), `matched` (after filters) and the rows — plus `facets` describing
- * every filter the whole category can offer, each with its size.
+ * every filter the whole category can offer, each with its size. All of them
+ * count colourways, because that is what a card is.
  *
  * Filter state lives in the URL (see useCategoryFilters), because a filtered
  * listing is something shoppers send each other and something the Back button
@@ -528,7 +538,11 @@ function CategoryPlacard({
                 // word sits half a space left of the numeral above it.
                 style={{ letterSpacing: "0.24em", marginRight: "-0.24em", color: "var(--cat-text-muted)" }}
               >
-                {total === 1 ? "style" : "styles"}
+                {/* "Pieces", not "styles": the grid holds one card per colourway,
+                    so this counts colourways too and the word has to mean what is
+                    actually under it. A garment cut in three colours is three
+                    pieces here — and three cards. */}
+                {total === 1 ? "piece" : "pieces"}
               </span>
             </p>
 
@@ -760,7 +774,7 @@ function Toolbar({
               <span className="font-semibold" style={{ color: "var(--cat-ink)" }}>
                 {matched}
               </span>
-              {matched === total ? " styles" : ` of ${total} styles`}
+              {matched === total ? " pieces" : ` of ${total} pieces`}
               {/* Only worth saying once the grid is a window onto something larger. */}
               {shown < matched && <span className="hidden sm:inline"> · showing {shown}</span>}
             </>
@@ -1081,48 +1095,48 @@ function ActiveChip({ label, onRemove }: { label: string; onRemove: () => void }
 // boxes on a tinted page is forty frames competing with the clothes inside them.
 // The frame arrives on hover, along with the QuickAdd.
 //
-// The one interaction worth having here: pointing at a colourway swaps the
-// photograph to that colourway, and clicking it opens THAT colour's product page.
-// A category browse is where a shopper chooses between colours — on the search
-// page they are still checking whether anything matched at all — so the swatches
-// are live rather than decorative.
+// ONE CARD IS ONE COLOURWAY. A kurta cut in three colours is three cards, each
+// showing its own photograph. It was one card carrying swatches that swapped the
+// picture on hover, and that buried two thirds of the shop: a colour only exists
+// to a shopper once they have seen it, and a swatch is not a garment. Scanning a
+// grid is how a category gets shopped, so every colourway is in the grid to be
+// scanned. It also makes the colour filter honest (see passesFilters on the
+// server), and it is what the search results page has always done.
+//
+// Everything below therefore addresses THIS colourway: its sku opens its own PDP,
+// the heart saves it — the server stores a variant sku as given, and only
+// rewrites a base sku — the QuickAdd adds it, and "Sold out" is about this colour
+// rather than about whether any colour of the garment is left.
 function ProductCard({ product: p, index }: { product: CategoryProduct; index: number }) {
   const navigate = useNavigate();
   const { isWishlisted, addToWishlist, removeFromWishlist, wishlistItems } = useWishlist();
 
-  const colors = p.colors ?? [];
-  // Which colourway the card is currently showing. Null means the product's own
-  // primary — the state only ever holds a deliberate hover.
-  const [preview, setPreview] = useState<number | null>(null);
-  const shown = preview !== null ? colors[preview] : null;
-
-  const sku = shown?.sku ?? p.sku;
-  const image = shown?.image || p.image;
+  const sku = p.sku;
   const onSale = p.originalPrice > p.price;
   const href = buildPdpPath(p.categorySlug, p.slug, sku);
+  const colorName = p.color?.name?.trim() ?? "";
+  // Two colourways of one garment carry the same title, so the colour is what
+  // tells the cards apart — in the accessible name as much as on screen.
+  const cardLabel = colorName ? `${p.title} in ${colorName}` : p.title;
 
-  // The heart stays bound to the product's primary variant even while another
-  // colourway is being previewed. Saving is a per-product act here (the server
-  // rewrites an added sku to the base one anyway), so following the hover would
-  // only make a filled heart blink empty as the cursor crossed the swatches.
-  const wishlisted = isWishlisted(p.slug, p.sku);
+  const wishlisted = isWishlisted(p.slug, sku);
 
   const toggleWishlist = () => {
-    const existing = wishlistItems.find((i) => i.slug === p.slug && i.sku === p.sku);
+    const existing = wishlistItems.find((i) => i.slug === p.slug && i.sku === sku);
     if (existing) void removeFromWishlist(existing.id);
-    else void addToWishlist(p.slug, p.sku);
+    else void addToWishlist(p.slug, sku);
   };
 
   return (
     <div
       onClick={() => navigate(href)}
-      // A div rather than an anchor: the card holds a heart, live swatches and the
-      // QuickAdd popover, and nesting those in an <a> is invalid. role/tabIndex/
-      // Enter keep it reachable without one.
+      // A div rather than an anchor: the card holds a heart and the QuickAdd
+      // popover, and nesting those in an <a> is invalid. role/tabIndex/Enter keep
+      // it reachable without one.
       role="link"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === "Enter") navigate(href); }}
-      aria-label={p.title}
+      aria-label={cardLabel}
       className="cat-card group cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
       style={{
         outlineColor: "var(--cat-mark)",
@@ -1135,10 +1149,10 @@ function ProductCard({ product: p, index }: { product: CategoryProduct; index: n
         className="relative overflow-hidden aspect-[4/5] transition-shadow duration-300 group-hover:shadow-[0_18px_40px_-24px_rgba(0,0,0,0.45)]"
         style={{ backgroundColor: "var(--cat-halo)" }}
       >
-        {image ? (
+        {p.image ? (
           <img
-            src={image}
-            alt={shown ? `${p.title} in ${shown.name}` : p.title}
+            src={p.image}
+            alt={cardLabel}
             loading="lazy"
             onError={(e) => { e.currentTarget.src = "/fallback-product.webp"; }}
             className={`w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-[1.04] ${
@@ -1162,7 +1176,7 @@ function ProductCard({ product: p, index }: { product: CategoryProduct; index: n
           onClick={(e) => { e.stopPropagation(); toggleWishlist(); }}
           className="absolute top-2 right-2 w-8 h-8 bg-white/85 backdrop-blur-sm rounded-full flex items-center justify-center transition-all hover:bg-white"
           style={{ color: wishlisted ? "var(--cat-mark)" : "var(--cat-ink-soft)" }}
-          aria-label={wishlisted ? `Remove ${p.title} from wishlist` : `Save ${p.title} to wishlist`}
+          aria-label={wishlisted ? `Remove ${cardLabel} from wishlist` : `Save ${cardLabel} to wishlist`}
         >
           <Heart className="w-4 h-4" fill={wishlisted ? "currentColor" : "none"} />
         </button>
@@ -1198,40 +1212,21 @@ function ProductCard({ product: p, index }: { product: CategoryProduct; index: n
         </div>
 
         <div className="mt-1.5 flex items-center justify-between gap-3">
-          {/* Live swatches: hover previews the colourway, click opens it. Shown
-              only when there is a choice to make — a single-colour product gets
-              its colour named instead, which is the more useful half of the pair
-              when there is nothing to compare it against. */}
-          {colors.length > 1 ? (
-            <span className="flex items-center gap-1.5" onMouseLeave={() => setPreview(null)}>
-              {colors.slice(0, 5).map((c, i) => (
-                <button
-                  key={`${c.sku}-${i}`}
-                  onMouseEnter={() => setPreview(i)}
-                  onFocus={() => setPreview(i)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log("[CategoryPage] colourway picked", c.name, c.sku);
-                    navigate(buildPdpPath(p.categorySlug, p.slug, c.sku));
-                  }}
-                  aria-label={`View ${p.title} in ${c.name}`}
-                  className="w-3.5 h-3.5 rounded-full transition-transform hover:scale-125"
-                  style={{
-                    backgroundColor: c.hex,
-                    border: "1px solid rgba(0,0,0,0.18)",
-                    boxShadow: preview === i ? "0 0 0 1.5px var(--cat-mark)" : undefined,
-                  }}
-                />
-              ))}
-              {colors.length > 5 && (
-                <span className="cat-nums text-[10px]" style={{ color: "var(--cat-ink-soft)" }}>
-                  +{colors.length - 5}
-                </span>
-              )}
-            </span>
-          ) : p.color?.name ? (
-            <span className="text-[11px] truncate" style={{ color: "var(--cat-ink-soft)" }}>
-              {p.color.name}
+          {/* The colour, named and swatched. It carries more weight than its size
+              suggests: it is the only thing telling two cards of the same garment
+              apart, so it is set as a line of text and not a bare dot — a shopper
+              can read "Mustard" but can only guess at a 12px circle, and the pair
+              survives both a colour-blind reader and a badly lit photograph. */}
+          {colorName ? (
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className="w-3 h-3 shrink-0 rounded-full"
+                style={{ backgroundColor: p.color.hex, border: "1px solid rgba(0,0,0,0.18)" }}
+              />
+              <span className="truncate text-[11px]" style={{ color: "var(--cat-ink-soft)" }}>
+                {colorName}
+              </span>
             </span>
           ) : (
             <span />
@@ -1322,7 +1317,7 @@ function OtherCategories({ current }: { current: string }) {
                     while the counts are in flight so three tiles don't jump when
                     they land. */}
                 <span className="cat-nums mt-0.5 block font-body text-[13px]" style={{ color: "var(--cat-ink-soft)" }}>
-                  {counts === null ? "—" : `${count ?? 0} ${count === 1 ? "style" : "styles"}`}
+                  {counts === null ? "—" : `${count ?? 0} ${count === 1 ? "piece" : "pieces"}`}
                 </span>
               </span>
 
