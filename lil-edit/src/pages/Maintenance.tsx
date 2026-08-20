@@ -189,12 +189,12 @@ const MaintenancePage = ({ message }: { message?: string | null }) => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Your email address"
                   disabled={submitting}
-                  className="w-full rounded-full border border-gray-400 bg-white px-4 py-2.5 text-sm text-[#2A2440] placeholder:text-[#A99FC0] outline-none transition focus:border-[#B19CD9] focus:ring-2 focus:ring-[#B19CD9]/25 disabled:opacity-60"
+                  className="w-full rounded-md border border-gray-400 bg-white px-4 py-2.5 text-sm text-[#2A2440] placeholder:text-[#A99FC0] outline-none transition focus:border-[#B19CD9] focus:ring-2 focus:ring-[#B19CD9]/25 disabled:opacity-60"
                 />
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="shrink-0 rounded-full bg-[#B19CD9] px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-[#9A82C9] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="shrink-0 rounded-md bg-[#B19CD9] px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-[#9A82C9] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {submitting ? "Sending…" : "Notify me"}
                 </button>
