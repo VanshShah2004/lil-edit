@@ -234,12 +234,12 @@ const MaintenanceControl = () => {
                 onChange={(e) => setMessage(e.target.value)}
                 rows={3}
                 maxLength={400}
-                placeholder="Leave blank to use the default message."
+                placeholder="Optional — a line under the headline. Leave blank to show none."
                 className="w-full rounded-md border border-gray-400 px-4 py-2.5 text-sm text-gray-900 outline-none transition-colors focus:border-[#B19CD9] focus:ring-2 focus:ring-[#B19CD9]/30 resize-none"
               />
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[11px] text-gray-500 leading-relaxed">
-                  Shown on the coming-soon page. Blank falls back to the built-in copy.
+                  Shown under the coming-soon headline. Blank shows no message at all.
                 </p>
                 <button
                   type="button"

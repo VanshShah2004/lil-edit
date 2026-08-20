@@ -71,9 +71,8 @@ const MaintenancePage = ({ message }: { message?: string | null }) => {
     }
   };
 
-  const body =
-    (message && message.trim()) ||
-    "We're building something lovely for your little ones. The boutique will be live again very soon — thank you for your patience.";
+  // No default copy: the paragraph appears only when an admin has written one.
+  const body = message?.trim() || null;
 
   return (
     <div className="le-maint relative flex min-h-screen flex-col overflow-hidden bg-white text-[#2A2440] font-sans">
@@ -144,20 +143,25 @@ const MaintenancePage = ({ message }: { message?: string | null }) => {
             </h1>
 
             {/* Signature: the stitched seam */}
-            <div className="relative mx-auto my-5 h-6 w-[220px] md:my-8 md:mx-0" aria-hidden="true">
+            <div
+              className={`relative mx-auto mt-5 h-6 w-[220px] md:mx-0 md:mt-8 ${body ? "mb-5 md:mb-8" : ""}`}
+              aria-hidden="true"
+            >
               <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-[#DFD3F1]" />
               <span className="le-maint-seam-bead absolute top-1/2 h-2.5 w-2.5 rounded-full bg-[#B19CD9] shadow-[0_0_0_5px_rgba(177,156,217,0.18)]" />
             </div>
 
-            <p className="mx-auto max-w-md text-pretty text-[15px] leading-relaxed text-[#6B6480] md:mx-0">
-              {body}
-            </p>
+            {body && (
+              <p className="mx-auto max-w-md text-pretty text-[15px] leading-relaxed text-[#6B6480] md:mx-0">
+                {body}
+              </p>
+            )}
           </div>
 
           {/* Divider — horizontal rule on mobile, vertical rule on desktop. */}
           <div
             aria-hidden="true"
-            className="mx-auto h-px w-full max-w-md bg-gradient-to-r from-transparent via-[#9A82C9] to-transparent md:h-72 md:w-px md:max-w-none md:via-[#B7A4DD] md:bg-gradient-to-b"
+            className="mx-auto h-px w-full max-w-md self-center bg-gradient-to-r from-transparent via-[#9A82C9] to-transparent md:h-auto md:w-px md:max-w-none md:self-stretch md:via-[#B7A4DD] md:bg-gradient-to-b"
           />
 
           {/* Right panel — the ask. */}
@@ -200,13 +204,19 @@ const MaintenancePage = ({ message }: { message?: string | null }) => {
         </div>
       </main>
 
-      <footer className="relative z-10 px-6 pb-5 pt-3 text-center md:pb-8 md:pt-4">
-        <p className="text-base tracking-wide text-[#6B5B95]">
-          &copy; {new Date().getFullYear()} The Lil Edit
-          <span className="hidden md:inline"> &middot; </span>
-          <br className="md:hidden" />
-          Curated fashion for little ones
-        </p>
+      {/* Same bottom bar as the storefront's Footer — copy, type and rule match,
+          minus the link columns and newsletter box (the store is closed). */}
+      <footer className="relative z-10 border-t border-gray-400 bg-card">
+        <div className="container mx-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <div className="flex flex-col-reverse items-center justify-center gap-3 text-center sm:flex-row sm:justify-between sm:gap-4">
+            <p className="font-display text-base text-muted-foreground">
+              &copy; {new Date().getFullYear()} The Lil Edit. All rights reserved.
+            </p>
+            <p className="flex items-center gap-1 font-display text-base text-muted-foreground">
+              Made with <Heart className="h-4 w-4 fill-primary text-primary" /> for little ones
+            </p>
+          </div>
+        </div>
       </footer>
     </div>
   );
