@@ -123,6 +123,8 @@ test(`every real field match clears the inclusion floor (score > ${MIN_RESULT_SC
     [entry({ title: "Tee", fabric: "Cotton" }), "cotton"],      // fabric
     [entry({ title: "Tee", variants: [variant(true, "Maroon")] }), "maroon"], // color
     [entry({ title: "Tee", gender: "girls" }), "girls"],        // gender
+    [entry({ title: "Tee", sizes: ["3-4 Years"] }), "3-4 Years"], // size, exact
+    [entry({ title: "Tee", sizes: ["3-4 Years"] }), "3-4"],       // size, prefix
     [entry({ title: "Krta Top" }), "kurta"],                    // fuzzy = 30
     [entry({ title: "Tee", details: "breathable cotton lining" }), "breathable"], // details = 10, the floor tier
   ];
@@ -130,6 +132,32 @@ test(`every real field match clears the inclusion floor (score > ${MIN_RESULT_SC
     const { score } = scoreEntry(e, q.toLowerCase());
     assert.ok(score > MIN_RESULT_SCORE, `"${q}" against "${e.title}" scored ${score}, expected > ${MIN_RESULT_SCORE}`);
   }
+});
+
+test("a size matches only when the query is specific enough to be one", () => {
+  const e = entry({ title: "Tee", sizes: ["6-12 Months", "3-4 Years"] });
+
+  // The two shapes a shopper actually types.
+  assert.equal(scoreEntry(e, "3-4 years").field, "size");
+  assert.equal(scoreEntry(e, "3-4").field, "size");
+  assert.equal(scoreEntry(e, "6-12 months").field, "size");
+
+  // Bare unit words are in EVERY size on EVERY product — matching them would
+  // hand back the whole catalog, so they must not reach the size tier at all.
+  assert.equal(scoreEntry(e, "years").score, 0);
+  assert.equal(scoreEntry(e, "months").score, 0);
+
+  // A size the product isn't cut in stays out of the results entirely.
+  assert.equal(scoreEntry(e, "9-10 years").score, 0);
+});
+
+test("an exact size outranks a prefix, and both outrank a badge", () => {
+  const exact  = scoreEntry(entry({ title: "Tee", sizes: ["3-4 Years"] }), "3-4 years");
+  const prefix = scoreEntry(entry({ title: "Tee", sizes: ["3-4 Years"] }), "3-4");
+  const badge  = scoreEntry(entry({ title: "Tee", badges: ["3-4 Years"] }), "3-4 years");
+
+  assert.ok(exact.score > prefix.score);
+  assert.ok(prefix.score > badge.score);
 });
 
 test("color matches score in the same tier as fabric", () => {

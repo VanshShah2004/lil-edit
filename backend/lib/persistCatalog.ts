@@ -946,15 +946,17 @@ const FIELD_SCORES = {
   "tag": 65,
   "occasion:starts": 63,
   "occasion": 60,
-  "badge:starts": 58,
-  "badge": 55,
-  "fabric:starts": 53,
-  "fabric": 50,
-  "color:starts": 53,
-  "color": 50,
-  "fit:starts": 50,
-  "fit": 48,
-  "gender": 45,
+  "size:exact": 58,
+  "size": 56,
+  "badge:starts": 54,
+  "badge": 52,
+  "fabric:starts": 50,
+  "fabric": 48,
+  "color:starts": 50,
+  "color": 48,
+  "fit:starts": 46,
+  "fit": 44,
+  "gender": 42,
   "fuzzy": 30,
   "details": 10,
 };
@@ -1094,6 +1096,21 @@ function scoreFields(
   const occ = entry.occasion.toLowerCase();
   if (occ.startsWith(lower)) return { score: FIELD_SCORES["occasion:starts"] + matchQuality(occ, lower), field: "occasion", titleRank: NO_TITLE_MATCH };
   if (occ.includes(lower)) return { score: FIELD_SCORES["occasion"] + matchQuality(occ, lower), field: "occasion", titleRank: NO_TITLE_MATCH };
+
+  // Sizes ("3-4 Years") are matched only when the query is specific enough to BE
+  // a size: an exact hit, or a prefix like "3-4". A bare "years" or "months"
+  // would otherwise match every product in the catalog, so anything without a
+  // digit has to match a size in full. Ranked above badges because a shopper
+  // typing an age range has stated a hard requirement, not a preference.
+  const sizeHasDigit = /\d/.test(lower);
+  let bestSize = 0;
+  for (const size of entry.sizes) {
+    const sl = size.toLowerCase();
+    if (sl === lower) bestSize = Math.max(bestSize, FIELD_SCORES["size:exact"]);
+    else if (sizeHasDigit && lower.length >= 2 && sl.startsWith(lower))
+      bestSize = Math.max(bestSize, FIELD_SCORES["size"] + matchQuality(sl, lower));
+  }
+  if (bestSize > 0) return { score: bestSize, field: "size", titleRank: NO_TITLE_MATCH };
 
   let bestBadge = 0;
   for (const badge of entry.badges) {

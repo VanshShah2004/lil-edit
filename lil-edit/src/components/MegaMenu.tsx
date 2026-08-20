@@ -9,39 +9,187 @@ const megaMenuItems = [
   "BY OCCASION",
 ];
 
+/**
+ * One row in a mega-menu column.
+ *
+ * `label` is the merchandising copy; `q` is what actually gets searched. They
+ * are deliberately separate — "Lehengas" reads better in the menu than the
+ * singular "Lehenga" that matches the titles, and "All" under GIRLS has to
+ * carry its column's context ("Girls Ethnic Wear") or it would return the whole
+ * catalog. Where a label has no vocabulary behind it yet (Lookbook, Quick
+ * Picks, Super-hero), `q` is the label itself: the link fills in on its own the
+ * moment a product is tagged that way in the admin, with no code change here.
+ */
+interface MegaLink {
+  label: string;
+  q: string;
+}
+
+/** Same destination the search bar submits to (see SearchPanel). */
+const searchPath = (q: string) => `/search?q=${encodeURIComponent(q)}`;
+
+/** Shorthand for the common case: the label IS the query. */
+const same = (label: string): MegaLink => ({ label, q: label });
+
 const megaMenuContent: Record<
   string,
-  { title: string; links: string[] }[]
+  { title: string; links: MegaLink[] }[]
 > = {
   "NEW ARRIVALS": [
-    { title: "JUST IN", links: ["All", "Daily New", "Ready To Ship", "Bestsellers", "Latest Sets"] },
-    { title: "TRENDING", links: ["Ethnic Wear", "Western Wear", "Fusion Looks", "Party Wear", "Lookbook"] },
-    { title: "SHOP BY AGE", links: ["0-2 Years", "2-4 Years", "4-6 Years", "6-8 Years", "8+ Years"] },
-    { title: "MORE", links: ["Accessories", "Shoes", "Bags", "Hair Essentials", "Stationery"] },
+    { title: "JUST IN", links: [
+      { label: "All", q: "New Arrivals" },
+      same("Daily New"),
+      same("Ready To Ship"),
+      same("Bestsellers"),
+      { label: "Latest Sets", q: "Set" },
+    ] },
+    { title: "TRENDING", links: [
+      same("Ethnic Wear"),
+      same("Western Wear"),
+      { label: "Fusion Looks", q: "Indo-Western" },
+      same("Party Wear"),
+      same("Lookbook"),
+    ] },
+    // The age ranges are the SIZES list from AddProduct verbatim — a size only
+    // matches search when the query IS one, so invented buckets ("0-2 Years")
+    // would find nothing. All twelve are listed rather than a sample, since any
+    // size left out of the menu is a size no shopper can reach from the nav.
+    { title: "SHOP BY AGE", links: [
+      same("6-12 Months"),
+      same("1-2 Years"),
+      same("2-3 Years"),
+      same("3-4 Years"),
+      same("4-5 Years"),
+      same("5-6 Years"),
+      same("6-7 Years"),
+      same("7-8 Years"),
+      same("8-9 Years"),
+      same("9-10 Years"),
+      same("10-11 Years"),
+      same("11-12 Years"),
+    ] },
+    { title: "MORE", links: [
+      same("Accessories"),
+      same("Shoes"),
+      same("Bags"),
+      same("Hair Essentials"),
+      same("Stationery"),
+    ] },
   ],
   "GIRLS": [
-    { title: "ETHNIC WEAR", links: ["All", "Lehengas", "Kurtis", "Shararas", "Sarees", "Sets"] },
-    { title: "TRENDING", links: ["New Arrivals", "Ready To Ship", "Wedding", "Reels", "Lookbook"] },
-    { title: "DRESSES & SETS", links: ["All", "Dresses", "Gowns", "Jumpsuits", "Co-ords", "Party Looks"] },
-    { title: "MORE", links: ["Hair Accessories", "Sleepwear", "Shoes", "Bags", "Jewellery", "Other Apparel"] },
+    { title: "ETHNIC WEAR", links: [
+      { label: "All", q: "Girls Ethnic Wear" },
+      { label: "Lehengas", q: "Lehenga" },
+      { label: "Kurtis", q: "Kurti" },
+      { label: "Shararas", q: "Sharara" },
+      { label: "Sarees", q: "Saree" },
+      { label: "Sets", q: "Girls Set" },
+    ] },
+    { title: "TRENDING", links: [
+      same("New Arrivals"),
+      same("Ready To Ship"),
+      same("Wedding"),
+      same("Reels"),
+      same("Lookbook"),
+    ] },
+    { title: "DRESSES & SETS", links: [
+      { label: "All", q: "Girls Dress" },
+      { label: "Dresses", q: "Dress" },
+      { label: "Gowns", q: "Gown" },
+      { label: "Jumpsuits", q: "Jumpsuit" },
+      { label: "Co-ords", q: "Co-ord Set" },
+      { label: "Party Looks", q: "Girls Party Wear" },
+    ] },
+    { title: "MORE", links: [
+      same("Hair Accessories"),
+      { label: "Sleepwear", q: "Nightwear" },
+      same("Shoes"),
+      same("Bags"),
+      same("Jewellery"),
+      { label: "Other Apparel", q: "Girls" },
+    ] },
   ],
   "BOYS": [
-    { title: "◈ CLASSIC ETHNIC", links: ["All", "Kurta Pajama", "Kurta Dhoti", "Pathani", "Angarakha "] },
-    { title: "✧ ROYAL VIBES", links: ["Sherwani", "Indo-Western", "Bandhgala Sets", "Nawabi Sets"] },
-    { title: "⟡ COOL & TRENDY", links: ["Co-ord Sets", "Printed Shirts", "Smart Casuals", "Mini Mahrajas"] },
-    { title: "❖ THE LIL GENTLEMEN", links: ["Shirts & Suspenders", "Blazers", "Waistcoat Sets", "Tuxedos"] },
+    { title: "◈ CLASSIC ETHNIC", links: [
+      { label: "All", q: "Boys Ethnic Wear" },
+      same("Kurta Pajama"),
+      { label: "Kurta Dhoti", q: "Dhoti Kurta" },
+      same("Pathani"),
+      same("Angarakha"),
+    ] },
+    { title: "✧ ROYAL VIBES", links: [
+      same("Sherwani"),
+      same("Indo-Western"),
+      { label: "Bandhgala Sets", q: "Bandhgala" },
+      { label: "Nawabi Sets", q: "Nawabi" },
+    ] },
+    { title: "⟡ COOL & TRENDY", links: [
+      { label: "Co-ord Sets", q: "Co-ord Set" },
+      { label: "Printed Shirts", q: "Printed Shirt" },
+      { label: "Smart Casuals", q: "Boys Casual Wear" },
+      same("Mini Mahrajas"),
+    ] },
+    { title: "❖ THE LIL GENTLEMEN", links: [
+      { label: "Shirts & Suspenders", q: "Shirt" },
+      { label: "Blazers", q: "Blazer" },
+      { label: "Waistcoat Sets", q: "Waistcoat" },
+      { label: "Tuxedos", q: "Tuxedo" },
+    ] },
   ],
   "TRENDING": [
-    { title: "HOT RIGHT NOW", links: ["Instagram Reels", "Celebrity Picks", "Top Rated", "Festive Edits", "Wedding Edit"] },
-    { title: "SEASONAL", links: ["Summer Picks", "Monsoon Ready", "Winter Layers", "Spring Colors"] },
-    { title: "SHOP BY LOOK", links: ["Traditional", "Modern Ethnic", "Streetwear", "Elegant", "Minimal"] },
-    { title: "THEME-BASED", links: ["Super-hero Edit", "Safari Style", "Space Explorer"] },
+    { title: "HOT RIGHT NOW", links: [
+      same("Instagram Reels"),
+      same("Celebrity Picks"),
+      same("Top Rated"),
+      { label: "Festive Edits", q: "Festive" },
+      { label: "Wedding Edit", q: "Wedding" },
+    ] },
+    { title: "SEASONAL", links: [
+      { label: "Summer Picks", q: "Summer" },
+      { label: "Monsoon Ready", q: "Monsoon" },
+      { label: "Winter Layers", q: "Winter" },
+      { label: "Spring Colors", q: "Spring" },
+    ] },
+    { title: "SHOP BY LOOK", links: [
+      { label: "Traditional", q: "Ethnic Wear" },
+      { label: "Modern Ethnic", q: "Indo-Western" },
+      { label: "Streetwear", q: "Casual Wear" },
+      same("Elegant"),
+      same("Minimal"),
+    ] },
+    { title: "THEME-BASED", links: [
+      { label: "Super-hero Edit", q: "Super-hero" },
+      { label: "Safari Style", q: "Safari" },
+      same("Space Explorer"),
+    ] },
   ],
   "BY OCCASION": [
-    { title: "EVENTS", links: ["Birthday", "Wedding", "Festive", "School Events", "Family Function"] },
-    { title: "STYLE TYPE", links: ["Traditional", "Contemporary", "Comfort Wear", "Party Wear", "Premium Edit"] },
-    { title: "SHOP FAST", links: ["Ready To Ship", "Under 1999", "Matching Siblings", "Quick Picks"] },
-    { title: "DISCOVER", links: ["Top Collections", "Gift Sets", "Accessories", "New In"] },
+    { title: "EVENTS", links: [
+      same("Birthday"),
+      same("Wedding"),
+      same("Festive"),
+      { label: "School Events", q: "School" },
+      same("Family Function"),
+    ] },
+    { title: "STYLE TYPE", links: [
+      { label: "Traditional", q: "Ethnic Wear" },
+      { label: "Contemporary", q: "Western Wear" },
+      { label: "Comfort Wear", q: "Casual Wear" },
+      same("Party Wear"),
+      { label: "Premium Edit", q: "Premium" },
+    ] },
+    { title: "SHOP FAST", links: [
+      same("Ready To Ship"),
+      same("Under 1999"),
+      same("Matching Siblings"),
+      same("Quick Picks"),
+    ] },
+    { title: "DISCOVER", links: [
+      same("Top Collections"),
+      same("Gift Sets"),
+      same("Accessories"),
+      { label: "New In", q: "New Arrivals" },
+    ] },
   ],
 };
 
@@ -106,16 +254,19 @@ const MegaMenu = () => {
                   </h3>
                   <ul className="space-y-1.5 md:space-y-2">
                     {section.links.map((link) => (
-                      <li key={`link-${section.title}-${link}`}>
+                      <li key={`link-${section.title}-${link.label}`}>
                         <Link
-                          to="/products"
-                          onClick={() => setActiveMegaTab(null)}
+                          to={searchPath(link.q)}
+                          onClick={() => {
+                            console.log("[MegaMenu]", activeMegaTab, "›", section.title, "›", link.label, "→ search:", link.q);
+                            setActiveMegaTab(null);
+                          }}
                           className="group flex items-center gap-1.5 text-sm lg:text-base text-gray-800 hover:text-teal-600 active:text-teal-700 transition-colors"
                         >
                           <svg className="w-2 h-2 text-gray-400 group-hover:text-teal-600 transition-colors fill-current mt-px" viewBox="0 0 24 24">
                             <path d="M5 3l14 9-14 9V3z" />
                           </svg>
-                          {link}
+                          {link.label}
                         </Link>
                       </li>
                     ))}
