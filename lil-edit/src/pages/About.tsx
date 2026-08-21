@@ -3,7 +3,7 @@ import RouteFallback from "@/components/RouteFallback";
 import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/layout/Footer";
-import CategoriesSection from "@/components/landing/CategoriesSection";
+import CategoryStrip from "@/components/collections/CategoryStrip";
 import FeaturesBar from "@/components/landing/FeaturesBar";
 import CtaBanner from "@/components/landing/CtaBanner";
 import BrandCardFlip from "@/components/landing/BrandCardFlip";
@@ -56,8 +56,41 @@ const About = () => {
             </div>
           </div>
         </section>
-        <FeaturesBar />
-        <CategoriesSection />
+        {/* SHOP BY CATEGORY — the same section the Collections page carries
+            (components/collections/CategoryStrip): the four real wear types, on
+            their own placard grounds, with live counts. It replaces a hand-rolled
+            three-card grid whose names ("Ethnic Elegance", "Cozy Essentials")
+            weren't the taxonomy any product actually carries and whose links
+            pointed at /collections/clothing and /collections/essentials, neither
+            of which is a route we serve.
+
+            It sits directly under the story, ahead of the trust bar: the shopper
+            has just been told what the brand is, and the next thing to hand them
+            is a way in. Delivery and gift wrapping answer a question nobody has
+            asked yet at this point on the page.
+
+            The white ground comes from Collections — it is also what keeps the
+            blurb, set in gray-500, above contrast, which it would lose on the
+            lavender bands either side of it.
+
+            The MEASURE is About's, not Collections': `container mx-auto px-4
+            lg:px-8`, character for character what FeaturesBar and CtaBanner below
+            use, so every band on the page shares one left and right edge at every
+            width. Collections' max-w-5xl would stop this one 1024px wide against
+            their 1336 on a 1440 laptop, and page-container — the story band's
+            measure — still parts company past 1400px, where the container config
+            opens to 1400 and max-w-7xl holds at 1280. */}
+        <section className="bg-white border-y border-border/60">
+          <div className="container mx-auto px-4 lg:px-8 py-12 md:py-16">
+            <CategoryStrip />
+          </div>
+        </section>
+
+        {/* Lavender, so the page alternates story → categories → trust → CTA as
+            tinted, white, tinted, white. On white it would run into the category
+            band above and the CTA below as one undifferentiated stretch. Index
+            keeps the white default — see the note in FeaturesBar. */}
+        <FeaturesBar tone="lavender" />
         <CtaBanner />
       </main>
       <Footer />

@@ -22,9 +22,9 @@ const CtaBanner = () => {
             onMouseLeave={() => setIsLoginHovered(false)}
           >
             <Link to="/signup">
-              <Button size="lg" className={`font-body w-full sm:w-auto rounded-full px-6 sm:px-8 transition-all duration-300 border-2 ${
+              <Button size="lg" className={`font-body w-full sm:w-auto rounded-xl px-6 sm:px-8 transition-all duration-300 border-2 ${
                 isLoginHovered
-                  ? "bg-primary/10 text-primary border-primary"
+                  ? "bg-white text-primary border-primary"
                   : "bg-primary text-primary-foreground border-transparent hover:bg-primary/90"
               }`}>
                 Create Account
@@ -36,10 +36,10 @@ const CtaBanner = () => {
             onMouseLeave={() => setIsLoginHovered(false)}
           >
             <Link to="/login">
-              <Button size="lg" className={`font-body w-full sm:w-auto rounded-full px-6 sm:px-8 transition-all duration-300 border-2 ${
+              <Button size="lg" className={`font-body w-full sm:w-auto rounded-xl px-6 sm:px-8 transition-all duration-300 border-2 ${
                 isLoginHovered
                   ? "bg-primary text-primary-foreground border-transparent"
-                  : "bg-primary/10 text-primary border-primary hover:text-primary-foreground hover:bg-primary"
+                  : "bg-white text-primary border-primary hover:text-primary-foreground hover:bg-primary"
               }`}>
                 Log In
               </Button>
