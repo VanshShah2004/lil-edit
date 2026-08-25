@@ -235,16 +235,25 @@ export default function Checkout() {
   const [paying, setPaying] = useState(false);
 
   // Phone gate — a verified phone is required to pay (enforced again server-side on /initiate).
-  // Seeded synchronously when the profile is already in context (no verify-UI flash for
-  // returning users); the effect below latches it for profiles that load after mount.
-  const [phoneVerified, setPhoneVerified] = useState(() => Boolean(profile?.is_phone_number_verified));
+  // DERIVED from the profile on every render rather than latched into state: a row that already
+  // carries a verified number satisfies the gate on every visit, so a returning user is never
+  // asked to verify again. Only a profile with no linked number (or one whose verification was
+  // never recorded) falls through to the OTP flow.
   const [editingPhone, setEditingPhone] = useState(false);
-  // Holds the number confirmed this session, so the masked display is correct immediately
-  // (before the shared profile has refetched). Falls back to the persisted profile number.
+  // The number confirmed in THIS session, so the gate opens and the masked display is correct
+  // immediately — before the shared auth profile has refetched.
   const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
-  useEffect(() => {
-    if (profile?.is_phone_number_verified) setPhoneVerified(true);
-  }, [profile?.is_phone_number_verified]);
+  const savedPhone = profile?.phone_number ?? "";
+  // Both halves matter: the flag alone can be true on a legacy row with no number (nothing to
+  // send Razorpay / the courier), and a number alone is not proof it was ever verified — the
+  // server gate on /initiate checks the flag, so accepting a bare number here would only push
+  // the failure to the Pay click.
+  const phoneVerified =
+    Boolean(verifiedPhone) || Boolean(profile?.is_phone_number_verified && savedPhone);
+  // The gate can only be judged once the profile row has settled. Until then show a loading
+  // line, never the verify UI — otherwise a signed-in user whose number is already verified
+  // sees "Verify your number to continue" while their profile is still in flight.
+  const phoneGateSettled = !user || profileLoaded;
 
   const userId = user?.id ?? null;
 
@@ -879,7 +888,7 @@ export default function Checkout() {
                 <h2 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2">
                   <Phone className="w-4 h-4 text-brand-teal" /> Contact Number
                 </h2>
-                {phoneVerified && (
+                {phoneGateSettled && phoneVerified && (
                   <button
                     type="button"
                     onClick={() => setEditingPhone((v) => !v)}
@@ -890,7 +899,7 @@ export default function Checkout() {
                 )}
               </div>
 
-              {user && !profileLoaded ? (
+              {!phoneGateSettled ? (
                 <p className="text-sm text-gray-500">Loading your contact details…</p>
               ) : phoneVerified && !editingPhone ? (
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
@@ -901,15 +910,18 @@ export default function Checkout() {
                 <>
                   <p className="text-xs text-gray-500 mb-3">
                     We'll use this for order and delivery updates.{" "}
-                    {phoneVerified ? "Enter a new number and verify it to switch." : "Verify your number to continue."}
+                    {phoneVerified
+                      ? "Enter a new number and verify it to switch."
+                      : savedPhone
+                        ? "Confirm this number with a one-time code to continue."
+                        : "Add and verify your number to continue."}
                   </p>
                   <PhoneVerify
-                    savedPhone={profile?.phone_number || ""}
+                    savedPhone={savedPhone}
                     compact
                     label={null}
                     onVerified={(fullPhone) => {
                       setVerifiedPhone(fullPhone);
-                      setPhoneVerified(true);
                       setEditingPhone(false);
                     }}
                   />
@@ -1231,7 +1243,7 @@ export default function Checkout() {
               {!selectedAddressId && addresses.length > 0 && (
                 <p className="order-6 text-xs text-rose-600 text-center -mt-2">Select a delivery address to continue.</p>
               )}
-              {selectedAddressId && !phoneVerified && (
+              {phoneGateSettled && selectedAddressId && !phoneVerified && (
                 <p className="order-6 text-xs text-rose-600 text-center -mt-2">Verify your phone number to continue.</p>
               )}
 
