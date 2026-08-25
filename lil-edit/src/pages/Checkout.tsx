@@ -234,22 +234,19 @@ export default function Checkout() {
 
   const [paying, setPaying] = useState(false);
 
-  // Phone gate — a verified phone is required to pay (enforced again server-side on /initiate).
-  // DERIVED from the profile on every render rather than latched into state: a row that already
-  // carries a verified number satisfies the gate on every visit, so a returning user is never
-  // asked to verify again. Only a profile with no linked number (or one whose verification was
-  // never recorded) falls through to the OTP flow.
+  // Phone gate — the profile must carry a contact number to pay (enforced again server-side
+  // on /initiate). A LINKED NUMBER IS THE GATE, not the is_phone_number_verified flag: the OTP
+  // flow is the only thing in the app that ever writes profiles.phone_number, so a number being
+  // present already means it cleared verification when it was saved. Re-checking the flag on
+  // every visit only re-asks people who are already done — and the flag can drift out of sync
+  // with reality (a DB-side column lock silently dropped it on write), which stranded real
+  // customers on the checkout page with no way through.
   const [editingPhone, setEditingPhone] = useState(false);
   // The number confirmed in THIS session, so the gate opens and the masked display is correct
   // immediately — before the shared auth profile has refetched.
   const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
   const savedPhone = profile?.phone_number ?? "";
-  // Both halves matter: the flag alone can be true on a legacy row with no number (nothing to
-  // send Razorpay / the courier), and a number alone is not proof it was ever verified — the
-  // server gate on /initiate checks the flag, so accepting a bare number here would only push
-  // the failure to the Pay click.
-  const phoneVerified =
-    Boolean(verifiedPhone) || Boolean(profile?.is_phone_number_verified && savedPhone);
+  const phoneVerified = Boolean(verifiedPhone) || Boolean(savedPhone);
   // The gate can only be judged once the profile row has settled. Until then show a loading
   // line, never the verify UI — otherwise a signed-in user whose number is already verified
   // sees "Verify your number to continue" while their profile is still in flight.
@@ -912,9 +909,7 @@ export default function Checkout() {
                     We'll use this for order and delivery updates.{" "}
                     {phoneVerified
                       ? "Enter a new number and verify it to switch."
-                      : savedPhone
-                        ? "Confirm this number with a one-time code to continue."
-                        : "Add and verify your number to continue."}
+                      : "Add and verify your number to continue."}
                   </p>
                   <PhoneVerify
                     savedPhone={savedPhone}

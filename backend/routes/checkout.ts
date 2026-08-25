@@ -651,22 +651,34 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
       return;
     }
 
-    // A verified phone number is required to place an order — mirrors the checkout UI gate
-    // so the requirement holds even if the client is bypassed.
+    // A contact number is required to place an order — mirrors the checkout UI gate so the
+    // requirement holds even if the client is bypassed.
+    //
+    // The gate is the NUMBER, not is_phone_number_verified. The OTP flow is the only writer of
+    // profiles.phone_number, so a stored number already cleared verification when it was saved.
+    // Gating on the flag instead made this endpoint reject customers whose number was on file
+    // and correct: the flag can be dropped on write by a DB-side column lock, leaving a row
+    // that is verified in fact but false on paper, and no amount of re-verifying fixed it.
+    // Orders also need something the courier can actually call, which the flag alone is not.
     const { data: prof, error: profErr } = await db()
       .from("profiles")
-      .select("is_phone_number_verified")
+      .select("phone_number, is_phone_number_verified")
       .eq("id", userId)
       .maybeSingle();
     if (profErr) {
-      log.error("profile phone-verification lookup failed", profErr).end("CHECKOUT INITIATE");
+      log.error("profile phone lookup failed", profErr).end("CHECKOUT INITIATE");
       res.status(500).json({ error: "Could not verify your account details. Please try again." });
       return;
     }
-    if (!prof?.is_phone_number_verified) {
-      log.warn("refusing initiate — phone not verified").end("CHECKOUT INITIATE");
-      res.status(400).json({ error: "Please verify your phone number before checking out." });
+    if (!prof?.phone_number?.trim()) {
+      log.warn("refusing initiate — no phone number on profile").end("CHECKOUT INITIATE");
+      res.status(400).json({ error: "Please add and verify your phone number before checking out." });
       return;
+    }
+    if (!prof.is_phone_number_verified) {
+      // Not fatal — the number is on file and usable. Logged so a drifting flag stays visible
+      // rather than silently becoming normal.
+      log.warn("phone number present but is_phone_number_verified is false");
     }
 
     // Build + validate the source. cart → reads the user's cart; direct → one explicit item;

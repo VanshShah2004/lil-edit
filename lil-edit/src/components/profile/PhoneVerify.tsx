@@ -29,14 +29,13 @@ const parsePhone = (full: string): { code: string; number: string } => {
 };
 
 export default function PhoneVerify({ savedPhone, onVerified, compact = false, label = "Phone Number" }: PhoneVerifyProps) {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, refreshProfile } = useAuth();
 
   const [countryCode, setCountryCode] = useState("+91");
   const [phoneNumber, setPhoneNumber] = useState("");
   // Full phone currently persisted — seeded from the prop, updated after a verify so the
   // "Verify" button correctly disables once the shown number matches what's saved.
   const [savedFull, setSavedFull] = useState("");
-  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [otp, setOtp] = useState("");
   const [mockOtpSent, setMockOtpSent] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
@@ -54,7 +53,6 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
   }, [savedPhone]);
 
   const resetVerification = () => {
-    setIsPhoneVerified(false);
     setMockOtpSent(false);
     setOtp("");
     setOtpError("");
@@ -126,7 +124,6 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
       }
 
       setSavedFull(fullPhone);
-      setIsPhoneVerified(true);
       setMockOtpSent(false);
       toast.success("Phone verified & saved ✅");
       onVerified?.(fullPhone);
@@ -139,14 +136,11 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
 
   const fullPhone = `${countryCode}${phoneNumber}`;
   const isDirty = fullPhone !== savedFull;
-  // The number on screen counts as verified only when it matches the persisted one AND that
-  // number is actually verified — in this session (isPhoneVerified) or per the profile row.
-  // Keying off isDirty alone would wrongly lock out a saved-but-never-verified number: the
-  // Verify button must stay available for it, or checkout's server gate leaves the user stuck.
-  const savedIsVerified =
-    isPhoneVerified ||
-    Boolean(profile?.is_phone_number_verified && (profile.phone_number || "") === savedFull);
-  const showVerified = savedFull !== "" && !isDirty && savedIsVerified;
+  // A number already on the profile is already verified — this OTP flow is the only way one
+  // ever gets there. So the number on screen counts as verified whenever it matches the saved
+  // one, which also covers the "click Change, then type the same number back" case: sending a
+  // fresh code for a number the account already holds would confirm nothing.
+  const showVerified = savedFull !== "" && !isDirty;
   const canSend = phoneNumber.length === 10 && !showVerified;
 
   return (
@@ -180,7 +174,7 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
         </div>
 
         {/* Verify Button inlined with input */}
-        {!mockOtpSent && !showVerified && (
+        {!mockOtpSent && (
           <button
             type="button"
             onClick={handleSendOtp}
