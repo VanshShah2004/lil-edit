@@ -170,8 +170,8 @@ const ForgotPassword = () => {
                 <input
                   type="text"
                   inputMode="numeric"
-                  maxLength={8}
-                  placeholder="Enter 8-digit OTP"
+                  maxLength={6}
+                  placeholder="Enter 6-digit OTP"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
                   disabled={loading}

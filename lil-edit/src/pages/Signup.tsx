@@ -167,7 +167,6 @@ const Signup = () => {
                     <label className="block font-body text-sm text-foreground mb-1.5">First Name</label>
                     <input
                       type="text"
-                      placeholder="Jane"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       disabled={loading}
@@ -178,7 +177,6 @@ const Signup = () => {
                     <label className="block font-body text-sm text-foreground mb-1.5">Last Name</label>
                     <input
                       type="text"
-                      placeholder="Doe"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       disabled={loading}
@@ -191,7 +189,7 @@ const Signup = () => {
                   <label className="block font-body text-sm text-foreground mb-1.5">Email</label>
                   <input
                     type="email"
-                    placeholder="hello@example.com"
+                    placeholder="your@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={loading}
@@ -270,8 +268,8 @@ const Signup = () => {
                 <input
                   type="text"
                   inputMode="numeric"
-                  maxLength={8}
-                  placeholder="Enter 8-digit OTP"
+                  maxLength={6}
+                  placeholder="Enter 6-digit OTP"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
                   disabled={loading}
