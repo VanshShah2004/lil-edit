@@ -21,6 +21,7 @@ import {
   ShieldOff,
   Ticket,
   Trash2,
+  Wallet,
 } from "lucide-react";
 
 import UserNavbar from "@/components/home/UserNavbar";
@@ -142,6 +143,8 @@ function visualFor(action: AdminActionType): Visual {
       return { Icon: PowerOff, ...RED };
     case "maintenance_disabled":
       return { Icon: Power, ...GREEN };
+    case "store_charges_updated":
+      return { Icon: Wallet, color: "#D97706", bg: "rgba(217,119,6,0.12)" };
     default:
       return { Icon: ShieldAlert, color: "#6B7280", bg: "rgba(107,114,128,0.12)" };
   }
@@ -184,6 +187,17 @@ function chipsFor(item: AuditActionItem): string[] {
       const dv = asNum(m.discount_value);
       if (!dt) return [];
       return [dt === "percentage" ? `${dv}% off` : `₹${dv} off`];
+    }
+    case "store_charges_updated": {
+      // before/after are written by routes/storeCharges.ts; show only what moved.
+      const before = (m.before ?? {}) as Record<string, unknown>;
+      const after = (m.after ?? {}) as Record<string, unknown>;
+      const chips: string[] = [];
+      const money = (v: unknown) => `₹${asNum(v).toLocaleString("en-IN")}`;
+      if (asNum(before.deliveryFee) !== asNum(after.deliveryFee)) chips.push(`Delivery ${money(before.deliveryFee)} → ${money(after.deliveryFee)}`);
+      if (asNum(before.freeDeliveryThreshold) !== asNum(after.freeDeliveryThreshold)) chips.push(`Free above ${money(before.freeDeliveryThreshold)} → ${money(after.freeDeliveryThreshold)}`);
+      if (asNum(before.giftWrapFee) !== asNum(after.giftWrapFee)) chips.push(`Gift wrap ${money(before.giftWrapFee)} → ${money(after.giftWrapFee)}`);
+      return chips;
     }
     default:
       return [];

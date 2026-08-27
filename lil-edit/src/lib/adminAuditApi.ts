@@ -19,7 +19,8 @@ export type AdminActionType =
   | "admin_access_granted"
   | "admin_access_revoked"
   | "maintenance_enabled"
-  | "maintenance_disabled";
+  | "maintenance_disabled"
+  | "store_charges_updated";
 
 // The filter categories the feed offers — each maps to a set of actions server-side
 // (see ACTION_CATEGORIES in backend/routes/adminAuditLog.ts). "merchandising" covers

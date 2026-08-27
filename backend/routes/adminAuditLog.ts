@@ -29,12 +29,14 @@ const ACTION_CATEGORIES: Record<string, readonly string[]> = {
     "size_chart_deleted",
   ],
   orders: ["order_status_changed", "payment_status_changed"],
-  // Platform = admin-access changes + site maintenance toggles (both platform-level).
+  // Platform = admin-access changes, site maintenance toggles, and store-charge
+  // edits (all platform-level, and all affecting the whole storefront at once).
   platform: [
     "admin_access_granted",
     "admin_access_revoked",
     "maintenance_enabled",
     "maintenance_disabled",
+    "store_charges_updated",
   ],
 };
 
