@@ -50,6 +50,8 @@ export interface OrderSummary {
   subtotal: number;
   discount: number;
   shippingFee: number;
+  /** Gift wrapping charged on this order. 0 = not gift wrapped. */
+  giftWrapFee: number;
   total: number;
   itemCount: number;
   createdAt: string;

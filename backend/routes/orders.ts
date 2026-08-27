@@ -54,6 +54,7 @@ interface OrderRow {
   subtotal: number | string;
   discount: number | string;
   shipping_fee: number | string;
+  gift_wrap_fee: number | string | null;
   total: number | string;
   item_count: number;
   created_at: string;
@@ -94,6 +95,7 @@ function mapOrder(row: OrderRow, includeAddress: boolean) {
     subtotal: Number(row.subtotal) || 0,
     discount: Number(row.discount) || 0,
     shippingFee: Number(row.shipping_fee) || 0,
+    giftWrapFee: Number(row.gift_wrap_fee) || 0,
     total: Number(row.total) || 0,
     itemCount: row.item_count,
     createdAt: row.created_at,
@@ -135,7 +137,7 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
       .from("orders")
       .select(`
         id, order_number, status, payment_method, payment_status,
-        subtotal, discount, shipping_fee, total, item_count, created_at,
+        subtotal, discount, shipping_fee, gift_wrap_fee, total, item_count, created_at,
         order_items(${ORDER_ITEMS_SELECT})
       `)
       .eq("user_id", userId)
@@ -226,7 +228,7 @@ router.get("/:id", requireAuth, async (req: Request, res: Response) => {
       .from("orders")
       .select(`
         id, order_number, status, payment_method, payment_status,
-        subtotal, discount, shipping_fee, total, item_count, created_at, shipping_address,
+        subtotal, discount, shipping_fee, gift_wrap_fee, total, item_count, created_at, shipping_address,
         order_items(${ORDER_ITEMS_SELECT}),
         order_status_history(id, from_status, to_status, created_at)
       `)

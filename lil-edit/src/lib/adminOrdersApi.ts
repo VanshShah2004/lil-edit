@@ -26,6 +26,8 @@ export interface AdminOrderSummary {
   subtotal: number;
   discount: number;
   shippingFee: number;
+  /** Gift wrapping charged on this order. 0 = not gift wrapped. */
+  giftWrapFee: number;
   tax: number;
   total: number;
   itemCount: number;

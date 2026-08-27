@@ -34,7 +34,8 @@ const order = {
   discount: 450,
   couponCode: "FIRST10",
   shippingFee: 0,
-  total: 4047,
+  giftWrapFee: 300,
+  total: 4347,
   address: {
     line1: "1302, Akruti Aditya Tower",
     line2: "Grant Road",
@@ -49,6 +50,7 @@ const totalsRows: Array<{ label: string; value: string; strong?: boolean; green?
   { label: "Subtotal", value: inr(order.subtotal) },
   ...(order.discount > 0 ? [{ label: `COUPON${order.couponCode ? ` (${order.couponCode})` : ""}`, value: `- ${inr(order.discount)}`, green: true }] : []),
   { label: "Delivery", value: order.shippingFee > 0 ? inr(order.shippingFee) : "Free" },
+  ...(order.giftWrapFee > 0 ? [{ label: "Gift Wrapping", value: inr(order.giftWrapFee) }] : []),
   { label: "Total", value: inr(order.total), strong: true },
 ];
 

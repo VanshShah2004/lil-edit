@@ -16,7 +16,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { supabase } from "@/lib/supabase";
 import type { Address } from "@/components/profile/AddressManager";
-import { computeCartTotals } from "@/lib/pricing";
+import { computeCartTotals, computeGiftWrapFee } from "@/lib/pricing";
+import { useStoreCharges } from "@/hooks/useStoreCharges";
 import {
   initiateCheckout,
   verifyCheckout,
@@ -442,12 +443,15 @@ export default function Checkout() {
     [summaryLines],
   );
   const discount = coupon?.discount ?? 0;
-  const totals = computeCartTotals(lineInputs, discount);
+  // Delivery + gift-wrap rates are admin-set (General Settings) and fetched from the
+  // backend, which prices /initiate off the very same numbers — so this preview and
+  // the amount Razorpay actually charges agree.
+  const { charges } = useStoreCharges();
+  const totals = computeCartTotals(lineInputs, discount, charges);
 
   const [giftWrap, setGiftWrap] = useState(false);
-  const GIFT_WRAP_PER_ITEM = 100;
   const giftWrapItemCount = summaryLines.reduce((sum, l) => sum + l.quantity, 0);
-  const giftWrapFee = giftWrap ? giftWrapItemCount * GIFT_WRAP_PER_ITEM : 0;
+  const giftWrapFee = giftWrap ? computeGiftWrapFee(giftWrapItemCount, charges) : 0;
   const grandTotal = totals.total + giftWrapFee;
 
   const applyCoupon = async (codeToApply?: string) => {
@@ -521,7 +525,7 @@ export default function Checkout() {
       return;
     }
 
-    console.log(`[Checkout] Pay clicked  mode=${mode}  addressId=${selectedAddressId}  coupon=${coupon?.code ?? "none"}  total=₹${totals.total}`);
+    console.log(`[Checkout] Pay clicked  mode=${mode}  addressId=${selectedAddressId}  coupon=${coupon?.code ?? "none"}  giftWrap=${giftWrap}  total=₹${grandTotal}`);
     setPaying(true);
     try {
       const scriptOk = await loadRazorpayScript();
@@ -536,6 +540,10 @@ export default function Checkout() {
         mode,
         addressId: selectedAddressId,
         ...(coupon ? { couponCode: coupon.code } : {}),
+        // The CHOICE travels; the RATE does not. The backend applies its own per-item
+        // rate to the units it actually prices, so an out-of-stock line that gets
+        // dropped isn't wrapped or charged for.
+        ...(giftWrap ? { giftWrap: true } : {}),
         ...(mode === "cart" && selectedItemIds ? { itemIds: selectedItemIds } : {}),
         ...(mode === "direct" && directItem
           ? {
@@ -559,7 +567,7 @@ export default function Checkout() {
           : {}),
       };
       const init = await initiateCheckout(payload);
-      console.log(`[Checkout] initiated  rzpOrder=${init.razorpayOrderId}  amount=${init.amount}p  total=₹${init.pricing.total}  → opening Razorpay modal`);
+      console.log(`[Checkout] initiated  rzpOrder=${init.razorpayOrderId}  amount=${init.amount}p  total=₹${init.pricing.total}  giftWrap=₹${init.pricing.giftWrapFee}  → opening Razorpay modal`);
 
       // The backend drops any cart line it can no longer fully stock and prices only the
       // rest (so one out-of-stock item never blocks the whole order). Tell the customer why
@@ -973,7 +981,9 @@ export default function Checkout() {
                   </p>
                 </div>
               </div>
-              <span className="text-xs font-medium text-white/85 shrink-0">₹{GIFT_WRAP_PER_ITEM} per item</span>
+              <span className="text-xs font-medium text-white/85 shrink-0">
+                {charges.giftWrapFee > 0 ? `₹${charges.giftWrapFee} per item` : "Free"}
+              </span>
             </label>
 
             {/* Items */}
@@ -1224,7 +1234,7 @@ export default function Checkout() {
                 {giftWrap && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Gift Wrapping</span>
-                    <span className="font-medium">{inr(giftWrapFee)}</span>
+                    <span className="font-medium">{giftWrapFee > 0 ? inr(giftWrapFee) : "Free"}</span>
                   </div>
                 )}
               </div>

@@ -81,6 +81,8 @@ export interface CheckoutPricing {
   subtotal: number;
   discount: number;
   shippingFee: number;
+  /** Gift wrapping actually charged (per-item rate × the units being charged for). */
+  giftWrapFee: number;
   total: number;
   itemCount: number;
   couponApplied: string | null;
@@ -101,6 +103,8 @@ export interface InitiatePayload {
   items?: CheckoutItemInput[];
   addressId: string;
   couponCode?: string;
+  /** Gift-wrap this order. The per-item rate is admin-set and applied server-side. */
+  giftWrap?: boolean;
   /** Cart mode only — checkout just these cart_items ids instead of the whole cart. */
   itemIds?: string[];
 }

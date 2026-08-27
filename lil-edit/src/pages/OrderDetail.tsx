@@ -519,6 +519,11 @@ const OrderDetailPage = () => {
                     <span>Shipping</span>
                     <span>{order.shippingFee > 0 ? inr(order.shippingFee) : "Free"}</span>
                   </div>
+                  {order.giftWrapFee > 0 && (
+                    <div className="flex justify-between text-gray-600">
+                      <span>Gift Wrapping</span><span>{inr(order.giftWrapFee)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between pt-3 mt-1">
                     <span className="text-base font-semibold text-gray-900">Total</span>
                     <span className="text-lg font-bold text-brand-teal">{inr(order.total)}</span>

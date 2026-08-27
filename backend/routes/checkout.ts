@@ -18,6 +18,7 @@ import { sendReceiptIfMissing } from "../lib/orderReceipt.js";
 import { validateCoupon, type CouponRow } from "../lib/coupons.js";
 import { fetchProductsBySkus } from "../lib/productsBySku.js";
 import { logActivity } from "../lib/activityLog.js";
+import { getStoreCharges, computeDeliveryFee, computeGiftWrapFee, type StoreCharges } from "../lib/storeCharges.js";
 import type { ProductRow, VariantRow, ImageRow } from "../lib/catalogRowTypes.js";
 
 // ─── Razorpay-prepaid checkout: cart → order placement ──────────────────────────
@@ -53,12 +54,17 @@ function getRazorpay(): Razorpay {
   return _razorpay;
 }
 
-// ─── Pricing (authoritative; the frontend lib/pricing.ts mirrors the shipping rule) ─
-// ₹199 shipping when 0 < subtotal ≤ 5000, free otherwise.
-const FREE_SHIPPING_THRESHOLD = 5000;
-const SHIPPING_FEE = 199;
-function computeShipping(subtotal: number): number {
-  return subtotal > 0 && subtotal <= FREE_SHIPPING_THRESHOLD ? SHIPPING_FEE : 0;
+// ─── Pricing (authoritative) ──────────────────────────────────────────────────────
+// The delivery fee, the subtotal above which delivery is free, and the per-item
+// gift-wrapping rate are all admin-set in General Settings and cached by
+// lib/storeCharges.ts (migration 20260827_store_charges.sql). They used to be
+// hardcoded here AND in the frontend, hand-synced; the frontend now reads the same
+// values from GET /api/store-charges, so what a customer is shown and what this
+// route charges come from one source.
+//
+// Rule (unchanged in shape): delivery fee applies when 0 < subtotal <= threshold.
+function computeShipping(subtotal: number, charges: StoreCharges = getStoreCharges()): number {
+  return computeDeliveryFee(subtotal, charges);
 }
 
 // Coupons are fully table-driven (admin-managed in the `coupons` table) and validated
@@ -123,6 +129,10 @@ interface CheckoutSnapshot {
   subtotal: number;
   discount: number;
   shippingFee: number;
+  // Gift wrapping, priced server-side at the admin's per-item rate × the priced unit
+  // count. 0 when the customer didn't ask for it. Carried on the snapshot so /verify
+  // and the webhook place EXACTLY what was quoted and paid.
+  giftWrapFee: number;
   total: number;
   itemCount: number;
   // The coupon code applied to this order, or null. Carried so placement records it on
@@ -171,6 +181,52 @@ function guestItemsFromNotes(notes: Record<string, string | number>): RawLine[] 
   }
 }
 
+// ─── Charges + gift-wrap choice, carried in the Razorpay notes ───────────────────
+// The charges are ADMIN-EDITABLE now, so "re-price it later with the current rates"
+// is no longer safe: recoverSnapshot asserts the recomputed total equals the amount
+// Razorpay captured, and an admin changing the delivery fee while a payment was in
+// flight would break that assert and leave a paid customer with no order. Stamping
+// the exact rates used at /initiate into the notes makes the recomputation
+// deterministic. One compact key, far inside Razorpay's 256-char-per-note limit.
+//   d = delivery fee   f = free-delivery threshold
+//   g = gift-wrap rate per item   w = 1 when the customer chose gift wrapping
+interface ChargeNote {
+  charges: StoreCharges;
+  giftWrap: boolean;
+}
+
+function chargeNoteToNotes(notes: Record<string, string>, charges: StoreCharges, giftWrap: boolean): void {
+  notes.chg = JSON.stringify({
+    d: charges.deliveryFee,
+    f: charges.freeDeliveryThreshold,
+    g: charges.giftWrapFee,
+    w: giftWrap ? 1 : 0,
+  });
+}
+
+// Returns null when the note is absent or unparseable (an order created before this
+// existed, or a truncated note) — the caller then falls back to the live charges,
+// which is exactly the old behaviour.
+function chargeNoteFromNotes(notes: Record<string, string | number>): ChargeNote | null {
+  const raw = typeof notes.chg === "string" ? notes.chg : "";
+  if (!raw) return null;
+  try {
+    const c = JSON.parse(raw) as { d?: unknown; f?: unknown; g?: unknown; w?: unknown };
+    const num = (v: unknown): number | null => {
+      const n = Number(v);
+      return Number.isFinite(n) && n >= 0 ? n : null;
+    };
+    const d = num(c.d), f = num(c.f), g = num(c.g);
+    if (d === null || f === null || g === null) return null;
+    return {
+      charges: { deliveryFee: d, freeDeliveryThreshold: f, giftWrapFee: g },
+      giftWrap: Number(c.w) === 1,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Small typed error so the pricing helpers can signal an HTTP status to the route.
 class PriceError extends Error {
   constructor(public status: number, message: string) {
@@ -199,6 +255,11 @@ async function priceOrder(
   userId: string,
   source: Source,
   log: OpLogger,
+  // The charges to price with. Defaults to whatever is configured RIGHT NOW, which is
+  // correct for /initiate. The post-payment recovery path passes the charges recorded
+  // in the Razorpay notes instead, so an admin changing the delivery fee mid-flight
+  // can't make a captured payment fail its total assert (see recoverSnapshot).
+  charges: StoreCharges = getStoreCharges(),
 ): Promise<{ items: PricedLine[]; subtotal: number; shippingFee: number; itemCount: number; unavailable: UnavailableLine[]; oversoldExcluded: number; missingSize: string[] }> {
   let rawLines: RawLine[];
   if (source.mode === "cart") {
@@ -337,7 +398,7 @@ async function priceOrder(
 
   const subtotal = items.reduce((s, it) => s + it.line_total, 0);
   const itemCount = items.reduce((s, it) => s + it.quantity, 0);
-  const shippingFee = computeShipping(subtotal);
+  const shippingFee = computeShipping(subtotal, charges);
   log.step(`priced: ${items.length} line(s)  units=${itemCount}  subtotal=₹${subtotal}  shipping=₹${shippingFee}  unavailable=${unavailable.length}  oversoldExcluded=${oversoldExcluded}  missingSize=${missingSize.length}`);
   return { items, subtotal, shippingFee, itemCount, unavailable, oversoldExcluded, missingSize };
 }
@@ -388,6 +449,7 @@ async function callPlaceOrder(
     p_subtotal: snap.subtotal,
     p_discount: snap.discount,
     p_shipping_fee: snap.shippingFee,
+    p_gift_wrap_fee: snap.giftWrapFee,
     p_total: snap.total,
     p_item_count: snap.itemCount,
     p_payment_method: "online",
@@ -398,7 +460,7 @@ async function callPlaceOrder(
     p_coupon_code: snap.couponCode ?? null,
   };
 
-  log.step(`RPC place_order →  user=${snap.userId}  items=${args.p_items.length}  total=₹${snap.total}  txn=${paymentId}  clearCart=${args.p_clear_cart}  coupon=${snap.couponCode ?? "none"}`);
+  log.step(`RPC place_order →  user=${snap.userId}  items=${args.p_items.length}  total=₹${snap.total}  txn=${paymentId}  clearCart=${args.p_clear_cart}  coupon=${snap.couponCode ?? "none"}  giftWrap=₹${snap.giftWrapFee}`);
   const t0 = performance.now();
   const { data, error } = await db().rpc("place_order", args);
   if (error) { log.error(`place_order RPC failed  ${error.message}`, error); throw new Error(`place_order failed: ${error.message}`); }
@@ -456,6 +518,7 @@ async function afterPlacement(snap: CheckoutSnapshot, razorpayOrderId: string, r
         discount: snap.discount,
         couponCode: snap.couponCode ?? undefined,
         shippingFee: snap.shippingFee,
+        giftWrapFee: snap.giftWrapFee,
         total: snap.total,
         itemCount: snap.itemCount,
         paymentMethod: "online",
@@ -543,7 +606,15 @@ async function recoverSnapshot(razorpayOrderId: string, capturedPaise: number, l
     source = { mode: "cart", itemIds };
   }
 
-  const priced = await priceOrder(userId, source, log);
+  // Price with the EXACT charges stamped at /initiate, not today's. An admin who
+  // edits the delivery fee while a payment is in flight must not be able to break the
+  // total assert below and strand a captured payment with no order. Pre-`chg` orders
+  // (and an unparseable note) fall back to the live charges — the old behaviour.
+  const chargeNote = chargeNoteFromNotes(notes);
+  const charges = chargeNote?.charges ?? getStoreCharges();
+  if (!chargeNote) log.warn("notes fallback — no charge note on the order; pricing with the CURRENT store charges");
+
+  const priced = await priceOrder(userId, source, log, charges);
   if (priced.items.length === 0) { log.error("notes fallback — nothing to price"); return null; }
   if (priced.unavailable.length > 0) { log.error(`notes fallback — ${priced.unavailable.length} line(s) now unavailable; refusing to place`); return null; }
   // Missing sizes never block post-payment placement — the money is captured, the order
@@ -562,10 +633,12 @@ async function recoverSnapshot(razorpayOrderId: string, capturedPaise: number, l
     const v = await validateCoupon(db(), notesCoupon, priced.subtotal, userId, log);
     if (v.valid) { discount = v.discount; couponCode = notesCoupon; }
   }
-  const total = priced.subtotal + priced.shippingFee - discount;
+  // Gift wrapping is priced off the units that actually ship, same as /initiate did.
+  const giftWrapFee = chargeNote?.giftWrap ? computeGiftWrapFee(priced.itemCount, charges) : 0;
+  const total = priced.subtotal + priced.shippingFee + giftWrapFee - discount;
 
   if (Math.round(total * 100) !== capturedPaise) {
-    log.error(`notes fallback — recomputed total ₹${total} (${Math.round(total * 100)}p) ≠ captured ${capturedPaise}p; refusing to place`);
+    log.error(`notes fallback — recomputed total ₹${total} (subtotal ₹${priced.subtotal} + delivery ₹${priced.shippingFee} + gift ₹${giftWrapFee} - discount ₹${discount} = ${Math.round(total * 100)}p) ≠ captured ${capturedPaise}p; refusing to place`);
     return null;
   }
 
@@ -573,7 +646,7 @@ async function recoverSnapshot(razorpayOrderId: string, capturedPaise: number, l
     userId, mode, address,
     item: directItem,
     items: priced.items, subtotal: priced.subtotal, discount,
-    shippingFee: priced.shippingFee, total, itemCount: priced.itemCount,
+    shippingFee: priced.shippingFee, giftWrapFee, total, itemCount: priced.itemCount,
     couponCode,
   };
 }
@@ -630,12 +703,25 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
     return;
   }
 
-  const body = req.body as { mode?: unknown; item?: unknown; items?: unknown; addressId?: unknown; couponCode?: unknown; itemIds?: unknown };
+  const body = req.body as { mode?: unknown; item?: unknown; items?: unknown; addressId?: unknown; couponCode?: unknown; itemIds?: unknown; giftWrap?: unknown };
   const mode = body.mode === "direct" ? "direct" : body.mode === "guest" ? "guest" : "cart";
   const addressId = typeof body.addressId === "string" ? body.addressId : "";
   const couponCode = typeof body.couponCode === "string" ? body.couponCode.trim().toUpperCase() : "";
   const itemIds = Array.isArray(body.itemIds) ? body.itemIds.filter((id): id is string => typeof id === "string") : undefined;
-  log.step(`user=${userId}  mode=${mode}  addressId=${addressId || "none"}  coupon=${couponCode || "none"}  itemIds=${itemIds ? itemIds.length : "all"}`);
+  // The customer's gift-wrapping choice is the ONLY thing they get a say in here — the
+  // RATE is server-side (admin-set), never taken from the request.
+  const giftWrap = body.giftWrap === true;
+  // One consistent set of charges for this whole request, so the amount quoted, the
+  // amount sent to Razorpay and the note stamped on the order can't disagree even if
+  // an admin saves new charges halfway through.
+  const snap = getStoreCharges();
+  const charges: StoreCharges = {
+    deliveryFee: snap.deliveryFee,
+    freeDeliveryThreshold: snap.freeDeliveryThreshold,
+    giftWrapFee: snap.giftWrapFee,
+  };
+  log.step(`user=${userId}  mode=${mode}  addressId=${addressId || "none"}  coupon=${couponCode || "none"}  itemIds=${itemIds ? itemIds.length : "all"}  giftWrap=${giftWrap}`);
+  log.step(`charges: delivery ₹${charges.deliveryFee} (free above ₹${charges.freeDeliveryThreshold})  giftWrap ₹${charges.giftWrapFee}/item`);
 
   if (!addressId) {
     log.warn("missing addressId").end("CHECKOUT INITIATE");
@@ -729,7 +815,7 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
       source = { mode: "cart", itemIds };
     }
 
-    const priced = await priceOrder(userId, source, log);
+    const priced = await priceOrder(userId, source, log, charges);
 
     // Some cart lines no longer resolve to a live product (deleted product, or a removed/
     // renamed variant SKU). The cart GET hides these exact lines via the SAME skuToProduct
@@ -832,9 +918,12 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
       }
     }
 
-    const total = priced.subtotal + priced.shippingFee - discount;
+    // Gift wrapping is charged per UNIT, and priced.itemCount is the count AFTER
+    // out-of-stock lines were dropped — so the customer only pays to wrap what ships.
+    const giftWrapFee = giftWrap ? computeGiftWrapFee(priced.itemCount, charges) : 0;
+    const total = priced.subtotal + priced.shippingFee + giftWrapFee - discount;
     log.step(`coupon "${couponCode || "none"}" → ${appliedCode ? `APPLIED (${appliedCode}, -₹${discount})` : couponCode ? "rejected" : "none"}`);
-    log.step(`subtotal=₹${priced.subtotal}  shipping=₹${priced.shippingFee}  discount=₹${discount}  total=₹${total}`);
+    log.step(`subtotal=₹${priced.subtotal}  shipping=₹${priced.shippingFee}  giftWrap=₹${giftWrapFee}${giftWrap ? ` (${priced.itemCount}×₹${charges.giftWrapFee})` : ""}  discount=₹${discount}  total=₹${total}`);
 
     // Create the Razorpay order. Notes are the durable fallback the webhook can read
     // even if Redis evicted the snapshot (direct item stashed as JSON).
@@ -843,6 +932,7 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
     if (mode === "guest") guestItemsToNotes(notes, guestItems);
     if (itemIds && itemIds.length > 0) notes.itemIds = JSON.stringify(itemIds);
     if (appliedCode) notes.coupon = appliedCode;
+    chargeNoteToNotes(notes, charges, giftWrap);
     const amountPaise = Math.round(total * 100);
     log.step(`creating Razorpay order  amount=${amountPaise}p  notes=[${Object.keys(notes).join(",")}]`);
     const t0Rzp = performance.now();
@@ -854,7 +944,7 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
       userId, mode, address,
       item: directItem,
       items: priced.items, subtotal: priced.subtotal, discount,
-      shippingFee: priced.shippingFee, total, itemCount: priced.itemCount,
+      shippingFee: priced.shippingFee, giftWrapFee, total, itemCount: priced.itemCount,
       couponCode: appliedCode,
     };
     await redisSet(checkoutKey(rzpOrder.id), snapshot, CHECKOUT_TTL_S, log);
@@ -871,6 +961,7 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
         subtotal: priced.subtotal,
         discount,
         shipping_fee: priced.shippingFee,
+        gift_wrap_fee: giftWrapFee,
         total,
         item_count: priced.itemCount,
         coupon_code: appliedCode,
@@ -889,6 +980,7 @@ router.post("/initiate", requireAuth, mutationLimiter, async (req: Request, res:
         subtotal: priced.subtotal,
         discount,
         shippingFee: priced.shippingFee,
+        giftWrapFee,
         total,
         itemCount: priced.itemCount,
         couponApplied: appliedCode,

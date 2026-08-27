@@ -553,6 +553,7 @@ const AdminOrderDetailPage = () => {
             <tr><td style="padding:6px 12px;color:#888;border-bottom:1px solid #f0f0f0;">Subtotal</td><td style="padding:6px 12px;text-align:right;border-bottom:1px solid #f0f0f0;">${inr(order.subtotal)}</td></tr>
             ${order.discount > 0 ? `<tr><td style="padding:6px 12px;color:#888;border-bottom:1px solid #f0f0f0;">Discount</td><td style="padding:6px 12px;text-align:right;border-bottom:1px solid #f0f0f0;">−${inr(order.discount)}</td></tr>` : ""}
             <tr><td style="padding:6px 12px;color:#888;border-bottom:1px solid #f0f0f0;">Shipping</td><td style="padding:6px 12px;text-align:right;border-bottom:1px solid #f0f0f0;">${order.shippingFee > 0 ? inr(order.shippingFee) : "Free"}</td></tr>
+            ${order.giftWrapFee > 0 ? `<tr><td style="padding:6px 12px;color:#888;border-bottom:1px solid #f0f0f0;">Gift Wrapping</td><td style="padding:6px 12px;text-align:right;border-bottom:1px solid #f0f0f0;">${inr(order.giftWrapFee)}</td></tr>` : ""}
             ${order.tax > 0 ? `<tr><td style="padding:6px 12px;color:#888;border-bottom:1px solid #f0f0f0;">Tax</td><td style="padding:6px 12px;text-align:right;border-bottom:1px solid #f0f0f0;">${inr(order.tax)}</td></tr>` : ""}
             <tr><td style="padding:8px 12px;font-weight:800;">Total</td><td style="padding:8px 12px;text-align:right;font-weight:800;">${inr(order.total)}</td></tr>
           </tbody>

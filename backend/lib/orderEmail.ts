@@ -53,6 +53,9 @@ export interface OrderConfirmationPayload {
   discount: number;
   couponCode?: string | undefined;
   shippingFee: number;
+  /** Gift wrapping charged on this order. Omitted/0 = not gift wrapped, and the
+   *  receipt then shows no wrapping line at all. */
+  giftWrapFee?: number | undefined;
   total: number;
   itemCount: number;
   paymentMethod?: string | undefined;
@@ -99,6 +102,7 @@ export function buildConfirmationEmail(order: OrderConfirmationPayload): { subje
     totalLine("Subtotal", inr(order.subtotal)),
     order.discount > 0 ? totalLine(`COUPON${order.couponCode ? ` (${order.couponCode})` : ""}`, `- ${inr(order.discount)}`, { green: true }) : "",
     totalLine("Delivery", order.shippingFee > 0 ? inr(order.shippingFee) : "Free"),
+    (order.giftWrapFee ?? 0) > 0 ? totalLine("Gift Wrapping", inr(order.giftWrapFee ?? 0)) : "",
     totalLine("Total", inr(order.total), { strong: true }),
   ].join("");
 
@@ -174,6 +178,7 @@ export function buildConfirmationEmail(order: OrderConfirmationPayload): { subje
     `Subtotal: ${inr(order.subtotal)}`,
     order.discount > 0 ? `Coupon${order.couponCode ? ` (${order.couponCode})` : ""}: - ${inr(order.discount)}` : null,
     `Delivery: ${order.shippingFee > 0 ? inr(order.shippingFee) : "Free"}`,
+    (order.giftWrapFee ?? 0) > 0 ? `Gift Wrapping: ${inr(order.giftWrapFee ?? 0)}` : null,
     `Total: ${inr(order.total)}`,
     textAddr ? "" : null,
     textAddr || null,

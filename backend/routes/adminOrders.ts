@@ -69,6 +69,7 @@ interface OrderRow {
   discount: number | string;
   coupon_code?: string | null;
   shipping_fee: number | string;
+  gift_wrap_fee: number | string | null;
   tax: number | string | null;
   total: number | string;
   item_count: number;
@@ -154,6 +155,7 @@ function mapOrder(row: OrderRow, profile: ProfileRow | undefined, includeDetail:
     subtotal: Number(row.subtotal) || 0,
     discount: Number(row.discount) || 0,
     shippingFee: Number(row.shipping_fee) || 0,
+    giftWrapFee: Number(row.gift_wrap_fee) || 0,
     tax: Number(row.tax) || 0,
     total: Number(row.total) || 0,
     itemCount: row.item_count,
@@ -329,7 +331,7 @@ router.get("/", async (req: Request, res: Response) => {
       .select(
         `
         id, user_id, order_number, status, payment_method, payment_status,
-        subtotal, discount, shipping_fee, tax, total, item_count, created_at,
+        subtotal, discount, shipping_fee, gift_wrap_fee, tax, total, item_count, created_at,
         order_items(${ORDER_ITEMS_SELECT})
       `,
         { count: "exact" },
@@ -395,7 +397,7 @@ router.get("/:id", async (req: Request, res: Response) => {
       .select(
         `
         id, user_id, order_number, status, payment_method, payment_status,
-        subtotal, discount, shipping_fee, tax, total, item_count, created_at,
+        subtotal, discount, shipping_fee, gift_wrap_fee, tax, total, item_count, created_at,
         transaction_id, shipping_address,
         order_items(${ORDER_ITEMS_SELECT}),
         order_status_history(
@@ -721,7 +723,7 @@ router.post("/:id/resend-receipt", adminMutationLimiter, async (req: Request, re
     const { data, error } = await db()
       .from("orders")
       .select(`
-        id, user_id, order_number, subtotal, discount, coupon_code, shipping_fee, total, item_count,
+        id, user_id, order_number, subtotal, discount, coupon_code, shipping_fee, gift_wrap_fee, total, item_count,
         payment_method, status, created_at, shipping_address,
         order_items(${ORDER_ITEMS_SELECT})
       `)
@@ -781,6 +783,7 @@ router.post("/:id/resend-receipt", adminMutationLimiter, async (req: Request, re
       discount: Number(row.discount) || 0,
       couponCode: row.coupon_code || undefined,
       shippingFee: Number(row.shipping_fee) || 0,
+      giftWrapFee: Number(row.gift_wrap_fee) || 0,
       total: Number(row.total) || 0,
       itemCount: row.item_count,
       paymentMethod: row.payment_method,

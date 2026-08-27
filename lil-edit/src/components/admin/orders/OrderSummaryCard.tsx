@@ -21,6 +21,8 @@ export function OrderSummaryCard({ order }: { order: AdminOrderDetail }) {
       <Row label="Subtotal" value={inr(order.subtotal)} />
       {order.discount > 0 && <Row label="Discount" value={`−${inr(order.discount)}`} accent />}
       <Row label="Shipping Cost" value={order.shippingFee > 0 ? inr(order.shippingFee) : "Free"} />
+      {/* Only shown when the customer paid for it — an unwrapped order says nothing. */}
+      {order.giftWrapFee > 0 && <Row label="Gift Wrapping" value={inr(order.giftWrapFee)} />}
       <Row label="Tax" value={order.tax > 0 ? inr(order.tax) : "—"} />
       <div className="border-t border-gray-200 pt-3 mt-1">
         <Row label="Grand Total" value={inr(order.total)} strong />
