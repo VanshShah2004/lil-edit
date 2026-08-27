@@ -22,9 +22,28 @@ export interface RazorpayOptions {
   modal?: { ondismiss?: () => void };
 }
 
+// Payload of Razorpay's `payment.failed` event. `description` is written for the
+// customer ("Payment processing failed because of incorrect OTP") so it's safe to
+// surface verbatim; `reason`/`step` are machine codes kept for the console trail.
+export interface RazorpayFailure {
+  error: {
+    code?: string;
+    description?: string;
+    source?: string;
+    step?: string;
+    reason?: string;
+    metadata?: { payment_id?: string; order_id?: string };
+  };
+}
+
 interface RazorpayInstance {
   open: () => void;
-  on: (event: string, handler: (response: unknown) => void) => void;
+  // Overloaded so `payment.failed` gets a typed payload while any other event
+  // still type-checks against the loose signature.
+  on: {
+    (event: "payment.failed", handler: (response: RazorpayFailure) => void): void;
+    (event: string, handler: (response: unknown) => void): void;
+  };
 }
 
 declare global {

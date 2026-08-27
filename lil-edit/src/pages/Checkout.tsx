@@ -11,6 +11,7 @@ import RouteFallback from "@/components/RouteFallback";
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
 import PhoneVerify from "@/components/profile/PhoneVerify";
+import PaymentIssueDialog, { type PaymentIssueKind } from "@/components/checkout/PaymentIssueDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { supabase } from "@/lib/supabase";
@@ -233,6 +234,12 @@ export default function Checkout() {
   }, []);
 
   const [paying, setPaying] = useState(false);
+  // Which payment-issue dialog to show (null = none), plus the bank's own wording.
+  const [issue, setIssue] = useState<{ kind: PaymentIssueKind; detail?: string | undefined } | null>(null);
+  // Set by the `payment.failed` handler so the `ondismiss` that follows it doesn't
+  // overwrite a real failure with "cancelled". A ref, not state: both callbacks fire
+  // within the same tick and a state update wouldn't be visible to the second one.
+  const failedRef = useRef(false);
 
   // Phone gate — the profile must carry a contact number to pay (enforced again server-side
   // on /initiate). A LINKED NUMBER IS THE GATE, not the is_phone_number_verified flag: the OTP
@@ -488,7 +495,10 @@ export default function Checkout() {
       navigate(`/orders/${orderId}?placed=1`);
     } catch (e) {
       console.error("[Checkout] verify failed", e);
-      toast.error(e instanceof Error ? e.message : "Payment verification failed");
+      // The payment itself may well have succeeded — only our confirmation of it failed.
+      // The webhook backstop places the order server-side moments later, so this dialog
+      // sends them to Orders rather than back to Pay (a retry here double-charges).
+      setIssue({ kind: "unverified", detail: e instanceof Error ? e.message : undefined });
       setPaying(false);
     }
   };
@@ -581,10 +591,33 @@ export default function Checkout() {
           ondismiss: () => {
             console.log("[Checkout] razorpay modal dismissed");
             setPaying(false);
-            toast("Payment cancelled");
+            // Razorpay fires `payment.failed` BEFORE the customer closes the modal, so a
+            // dismissal that follows a failure is not a cancellation — without this guard
+            // a declined card would report itself as "Payment cancelled", which is both
+            // wrong and hides the bank's actual reason.
+            if (failedRef.current) {
+              console.log("[Checkout] dismiss followed a payment.failed — keeping the failure dialog");
+              failedRef.current = false;
+              return;
+            }
+            setIssue({ kind: "cancelled" });
           },
         },
       });
+
+      // Razorpay surfaces declines/timeouts through this event, never through `handler`
+      // (which only ever fires on success). Without it a failed payment is invisible to us.
+      rzp.on("payment.failed", (resp) => {
+        const err = resp?.error ?? {};
+        console.error(
+          `[Checkout] payment.failed  reason=${err.reason ?? "?"}  step=${err.step ?? "?"}  code=${err.code ?? "?"}  payment=${err.metadata?.payment_id ?? "—"}`,
+          resp,
+        );
+        failedRef.current = true;
+        setPaying(false);
+        setIssue({ kind: "failed", detail: err.description });
+      });
+
       rzp.open();
       console.log("[Checkout] Razorpay modal opened — awaiting payment");
     } catch (e) {
@@ -1266,6 +1299,13 @@ export default function Checkout() {
           </aside>
         </section>
       </main>
+
+      <PaymentIssueDialog
+        kind={issue?.kind ?? null}
+        detail={issue?.detail}
+        onClose={() => setIssue(null)}
+        onRetry={() => { void handlePay(); }}
+      />
 
       <Footer />
     </div>
