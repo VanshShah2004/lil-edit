@@ -1028,12 +1028,10 @@ export default function Checkout() {
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-bold text-brand-teal">{inr(line.price * line.quantity)}</p>
+                        <p className="text-sm font-bold text-brand-teal">{line.quantity} × {inr(line.price)}</p>
                         {line.originalPrice > line.price && (
-                          <p className="text-[11px] text-gray-500 line-through">{inr(line.originalPrice * line.quantity)}</p>
+                          <p className="text-[11px] text-gray-500 line-through">{line.quantity} × {inr(line.originalPrice)}</p>
                         )}
-                        {/* Spell out the maths behind the line total: units x unit price. */}
-                        <p className="text-[11px] text-gray-500">{line.quantity} × {inr(line.price)}</p>
                       </div>
                     </div>
                   ))}
