@@ -1032,6 +1032,8 @@ export default function Checkout() {
                         {line.originalPrice > line.price && (
                           <p className="text-[11px] text-gray-500 line-through">{inr(line.originalPrice * line.quantity)}</p>
                         )}
+                        {/* Spell out the maths behind the line total: units x unit price. */}
+                        <p className="text-[11px] text-gray-500">{line.quantity} × {inr(line.price)}</p>
                       </div>
                     </div>
                   ))}
