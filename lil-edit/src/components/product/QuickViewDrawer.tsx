@@ -443,17 +443,17 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
         variant="default"
         onClick={handleViewFull}
         disabled={productUnavailable}
-        className={`h-11 rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 bg-primary hover:bg-primary/90 text-primary-foreground ${soleViewButton ? "px-10" : "flex-1"}`}
+        className={`h-11 rounded-lg font-semibold text-base gap-1.5 disabled:opacity-60 bg-primary hover:bg-primary/90 text-primary-foreground ${soleViewButton ? "px-10" : "flex-1"}`}
       >
         <ExternalLink size={15} /> {productUnavailable ? "Product Unavailable" : "View Product"}
       </Button>
       {product.source === "wishlist" && (
-        <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base gap-1.5 disabled:opacity-60">
+        <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-lg font-semibold text-base gap-1.5 disabled:opacity-60">
           <ShoppingBag size={15} /> Move to Cart
         </Button>
       )}
       {!hideBuyNow && (
-        <Button onClick={handleBuyNow} disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base disabled:opacity-60">
+        <Button onClick={handleBuyNow} disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-lg font-semibold text-base disabled:opacity-60">
           Buy Now
         </Button>
       )}
@@ -463,12 +463,12 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
   const ctaDesktop = () => (
     <div className={`flex gap-2 ${hideBuyNow ? "justify-center" : ""}`}>
       {product.source === "wishlist" && (
-        <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base gap-1.5 disabled:opacity-60">
+        <Button onClick={() => void handleMoveToCart()} disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-lg font-semibold text-base gap-1.5 disabled:opacity-60">
           <ShoppingBag size={15} /> Move to Cart
         </Button>
       )}
       {!hideBuyNow && (
-        <Button onClick={handleBuyNow} disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-full font-semibold text-base disabled:opacity-60">
+        <Button onClick={handleBuyNow} disabled={!inStock} className="flex-1 h-11 bg-brand-teal hover:bg-[#0C5D53] text-white rounded-lg font-semibold text-base disabled:opacity-60">
           Buy Now
         </Button>
       )}
@@ -476,7 +476,7 @@ export default function QuickViewDrawer({ open, product, onClose, hideBuyNow = f
         variant="default"
         onClick={handleViewFull}
         disabled={productUnavailable}
-        className={`h-11 rounded-full font-semibold text-base gap-1.5 disabled:opacity-60 bg-primary hover:bg-primary/90 text-primary-foreground ${soleViewButton ? "min-w-[20rem]" : "flex-1"}`}
+        className={`h-11 rounded-lg font-semibold text-base gap-1.5 disabled:opacity-60 bg-primary hover:bg-primary/90 text-primary-foreground ${soleViewButton ? "min-w-[20rem]" : "flex-1"}`}
       >
         <ExternalLink size={15} /> {productUnavailable ? "Product Unavailable" : "View Product"}
       </Button>
