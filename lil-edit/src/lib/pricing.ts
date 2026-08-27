@@ -1,13 +1,20 @@
-// Shared cart/checkout pricing math — one source of truth for subtotal, savings, and
-// the shipping fee, so Cart and Checkout never drift.
+// Shared cart/checkout pricing math — one source of truth for subtotal, savings,
+// the delivery fee and gift wrapping, so Cart and Checkout never drift.
 //
-// NOTE: the shipping rule is ALSO implemented authoritatively in the backend
-// (backend/routes/checkout.ts). The frontend and backend are separate packages that
-// can't share code, so the rule is duplicated and must be kept in sync by hand:
-// ₹199 when 0 < subtotal ≤ 5000, free otherwise.
+// The RULE lives here; the NUMBERS do not. The delivery fee, the subtotal above
+// which delivery is free, and the per-item gift-wrap rate are admin-set in
+// General Settings and fetched from the backend (GET /api/store-charges, via
+// useStoreCharges). They used to be hardcoded constants here AND in
+// backend/routes/checkout.ts, kept in sync by hand.
+//
+// The backend still prices authoritatively (backend/routes/checkout.ts +
+// lib/storeCharges.ts) — everything here is display. But both sides now read the
+// same values from the same place, so the amount shown and the amount charged
+// agree instead of depending on two copies of a constant matching.
 
-export const FREE_SHIPPING_THRESHOLD = 5000;
-export const SHIPPING_FEE = 199;
+import { DEFAULT_STORE_CHARGES, type StoreCharges } from "@/lib/storeChargesApi";
+
+export type { StoreCharges };
 
 export interface PricedLineInput {
   price: number;
@@ -23,12 +30,23 @@ export function computeOriginalTotal(items: PricedLineInput[]): number {
   return items.reduce((sum, it) => sum + it.originalPrice * it.quantity, 0);
 }
 
-export function computeShippingFee(subtotal: number): number {
-  return subtotal > 0 && subtotal <= FREE_SHIPPING_THRESHOLD ? SHIPPING_FEE : 0;
+/** Delivery fee when 0 < subtotal <= threshold; free above it, and free on an empty cart. */
+export function computeShippingFee(subtotal: number, charges: StoreCharges = DEFAULT_STORE_CHARGES): number {
+  return subtotal > 0 && subtotal <= charges.freeDeliveryThreshold ? charges.deliveryFee : 0;
 }
 
-export function freeShippingRemaining(subtotal: number): number {
-  return Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
+/** How much more the customer must spend to unlock free delivery (0 once they have). */
+export function freeShippingRemaining(subtotal: number, charges: StoreCharges = DEFAULT_STORE_CHARGES): number {
+  return Math.max(0, charges.freeDeliveryThreshold - subtotal);
+}
+
+/**
+ * Gift wrapping for a whole order: the per-item rate × the number of UNITS.
+ * Rounded to paise so a fractional rate can't produce a long float in the UI.
+ */
+export function computeGiftWrapFee(itemCount: number, charges: StoreCharges = DEFAULT_STORE_CHARGES): number {
+  if (itemCount <= 0) return 0;
+  return Math.max(0, Math.round(itemCount * charges.giftWrapFee * 100) / 100);
 }
 
 export interface CartTotals {
@@ -41,11 +59,19 @@ export interface CartTotals {
   freeShippingRemaining: number;
 }
 
-/** Full totals for a set of priced lines, with an optional coupon discount applied. */
-export function computeCartTotals(items: PricedLineInput[], discount = 0): CartTotals {
+/**
+ * Full totals for a set of priced lines, with an optional coupon discount applied.
+ * Gift wrapping is NOT included — it's a checkout-only opt-in, so Checkout adds it
+ * on top of `total` rather than having every caller pass a flag it doesn't use.
+ */
+export function computeCartTotals(
+  items: PricedLineInput[],
+  discount = 0,
+  charges: StoreCharges = DEFAULT_STORE_CHARGES,
+): CartTotals {
   const subtotal = computeSubtotal(items);
   const originalTotal = computeOriginalTotal(items);
-  const shippingFee = computeShippingFee(subtotal);
+  const shippingFee = computeShippingFee(subtotal, charges);
   return {
     subtotal,
     originalTotal,
@@ -53,6 +79,6 @@ export function computeCartTotals(items: PricedLineInput[], discount = 0): CartT
     shippingFee,
     discount,
     total: subtotal + shippingFee - discount,
-    freeShippingRemaining: freeShippingRemaining(subtotal),
+    freeShippingRemaining: freeShippingRemaining(subtotal, charges),
   };
 }

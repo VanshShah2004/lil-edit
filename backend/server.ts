@@ -25,10 +25,12 @@ import shareRouter from "./routes/share.js";
 import pdpShellRouter, { warmPdpShell } from "./routes/pdpShell.js";
 import newsletterRouter from "./routes/newsletter.js";
 import maintenanceRouter from "./routes/maintenance.js";
+import storeChargesRouter from "./routes/storeCharges.js";
 import trackRouter from "./routes/track.js";
 import adminAnalyticsRouter from "./routes/adminAnalytics.js";
 import { maintenanceGate } from "./middleware/maintenanceGate.js";
 import { startMaintenanceWatcher } from "./lib/maintenance.js";
+import { startStoreChargesWatcher } from "./lib/storeCharges.js";
 import { startReceiptSweep } from "./lib/orderReceipt.js";
 import { startAutoProcessNotifySweep } from "./lib/processingNotify.js";
 import { buildProductOgMeta, injectOgIntoHtml } from "./lib/ogTags.js";
@@ -137,6 +139,10 @@ app.use("/api/curation",     curationRouter);
 // service-role client + the place_order RPC.
 app.use("/api/checkout",     checkoutRouter);
 app.use("/api/newsletter",   mutationLimiter, newsletterRouter);
+// Delivery + gift-wrapping charges. GET / is PUBLIC (Cart and Checkout must show the
+// same numbers /initiate will charge); the admin read + write are gated by
+// requireAuth + requireAdmin inside the router, with the tight write-limiter on POST.
+app.use("/api/store-charges", storeChargesRouter);
 // Analytics beacons (views/heartbeats): public, write-only, fire-and-forget.
 // Rides the global limiter only — beacons are frequent by design and always 204.
 app.use("/api/track",        trackRouter);
@@ -313,6 +319,10 @@ app.listen(PORT, () => {
 
   // Prime the maintenance flag and keep it fresh (fail-open to live).
   startMaintenanceWatcher();
+
+  // Prime the admin-set delivery/gift-wrap charges and keep them fresh (falls back
+  // to the built-in defaults, which are the constants they replaced).
+  startStoreChargesWatcher();
 
   // Self-healing receipt recovery: periodically re-send confirmation receipts that were
   // lost at placement (works even when the Razorpay webhook isn't configured).

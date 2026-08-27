@@ -45,6 +45,7 @@ import QuickAddButton from "@/components/home/QuickAddButton";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import type { CartItem } from "@/lib/cartApi";
 import { computeCartTotals } from "@/lib/pricing";
+import { useStoreCharges } from "@/hooks/useStoreCharges";
 import { useRecommendations, type RecommendationAnchor } from "@/hooks/useRecommendations";
 import { validateCoupon, fetchActiveCoupons, formatCouponSavings, formatCouponOffer, computeCouponSavings, type ActiveCoupon } from "@/lib/checkoutApi";
 import { fetchWishlist } from "@/lib/wishlistApi";
@@ -160,10 +161,12 @@ export default function Cart() {
   const couponContainerRef = useRef<HTMLDivElement>(null);
   const [fallbackAnchor, setFallbackAnchor] = useState<RecommendationAnchor | null>(null);
 
-  // Shared pricing math (Checkout + backend use the same rule); deliveryFee keeps its
-  // local name for the JSX below.
+  // Shared pricing math (Checkout + backend use the same rule); the delivery fee and
+  // the free-delivery threshold are admin-set and fetched once per session.
+  // deliveryFee keeps its local name for the JSX below.
+  const { charges } = useStoreCharges();
   const { subtotal, originalTotal, totalSavings, shippingFee: deliveryFee, discount, total, freeShippingRemaining } =
-    computeCartTotals(selectedItems, coupon?.discount ?? 0);
+    computeCartTotals(selectedItems, coupon?.discount ?? 0, charges);
 
   useEffect(() => {
     if (!user) return;
@@ -608,8 +611,9 @@ export default function Cart() {
               </div>
             )}
 
-            {/* Free shipping progress */}
-            {!cartLoading && cartItems.length > 0 && freeShippingRemaining > 0 && (
+            {/* Free shipping progress. Hidden when the admin has set the delivery charge
+                to 0 — there is no "free shipping" to unlock if it's already free. */}
+            {!cartLoading && cartItems.length > 0 && charges.deliveryFee > 0 && freeShippingRemaining > 0 && (
               <div className="p-3 sm:p-4 bg-gradient-to-r from-[#E6FFFA] to-[#F0FDF4] rounded-xl border border-brand-teal/10">
                 <p className="text-xs sm:text-sm font-medium text-gray-800">
                   You're ₹{freeShippingRemaining} away from free shipping!
@@ -618,7 +622,8 @@ export default function Cart() {
                   <div
                     className="h-full bg-brand-teal rounded-full transition-all duration-500"
                     style={{
-                      width: `${Math.min((subtotal / 5000) * 100, 100)}%`,
+                      // Progress toward the admin-set threshold, not a hardcoded ₹5000.
+                      width: `${Math.min((subtotal / Math.max(charges.freeDeliveryThreshold, 1)) * 100, 100)}%`,
                     }}
                   />
                 </div>

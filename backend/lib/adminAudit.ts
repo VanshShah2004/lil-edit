@@ -23,6 +23,7 @@ export type AdminActionType =
   | "admin_access_revoked"
   | "maintenance_enabled"
   | "maintenance_disabled"
+  | "store_charges_updated"
   | "review_verified"
   | "review_unverified"
   | "review_deleted"

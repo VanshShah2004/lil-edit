@@ -18,6 +18,7 @@ import CouponsManager from "@/components/admin/CouponsManager";
 import ReviewsManager from "@/components/admin/ReviewsManager";
 import EmailPreviews from "@/components/admin/EmailPreviews";
 import MaintenanceControl from "@/components/admin/MaintenanceControl";
+import StoreChargesManager from "@/components/admin/StoreChargesManager";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -166,7 +167,9 @@ const GeneralSettings = () => {
               </p>
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">General Settings</h1>
-            <p className="text-sm text-gray-500">Manage who has administrator access to the platform.</p>
+            <p className="text-sm text-gray-500">
+              Manage administrator access, the charges customers pay, coupons and site availability.
+            </p>
           </div>
           <hr className="-mx-3 lg:-mx-6 h-1 border-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
         </div>
@@ -343,6 +346,8 @@ const GeneralSettings = () => {
 
             </div>
           </section>
+
+          <StoreChargesManager />
 
           <CouponsManager />
 
