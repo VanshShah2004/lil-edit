@@ -341,6 +341,8 @@ function EditorialTileModal({
   // Only the collage carousel sections read meta.desktop_image_url today —
   // offering the field elsewhere would be a dead control.
   const showDesktopImage = sectionKey === "home_collage" || sectionKey === "home_hero_plus";
+  // Home collage tiles are image-only — no title, subtitle, or badge.
+  const imageOnly = sectionKey === "home_collage";
 
   const handleUpload = async (file: File) => {
     setUploading(true);
@@ -410,13 +412,13 @@ function EditorialTileModal({
       // anything a tile carried from before so the saved row matches what the form can
       // express. The sub-heading IS editable, and empty there means "not overridden",
       // not "blank" — the storefront falls back to the copy it ships with.
-      customTitle: imageAndLinkOnly ? null : title.trim() || null,
-      customSubtitle: subtitle.trim() || null,
+      customTitle: imageOnly ? null : imageAndLinkOnly ? null : title.trim() || null,
+      customSubtitle: imageOnly ? null : subtitle.trim() || null,
       customImageUrl: mobileImage || null,
-      linkUrl: imageAndLinkOnly ? null : link.trim() || null,
+      linkUrl: imageOnly ? null : imageAndLinkOnly ? null : link.trim() || null,
       // Sections without a badge slot (Shop the Look) also clear any badge a tile
-      // may have carried from before.
-      badge: showBadge ? badge.trim() || null : null,
+      // may have carried from before. Image-only sections (home_collage) also clear badge.
+      badge: imageOnly ? null : showBadge ? badge.trim() || null : null,
       meta,
       isActive: initial?.isActive ?? true,
       product: null,
@@ -563,25 +565,29 @@ function EditorialTileModal({
             </div>
           )}
 
-          {imageAndLinkOnly ? (
-            /* The name and the destination are both fixed in SUB_COLLECTIONS, so the
-               picture above and this sub-heading are the whole form. The placeholder
-               carries the shipped copy, making an empty field read as "keep the
-               default" — which is exactly what saving empty does. */
-            <Field
-              label="Sub-heading"
-              value={subtitle}
-              onChange={setSubtitle}
-              placeholder={placardDefaults?.blurb ?? "Leave empty for the default sub-heading"}
-            />
-          ) : (
+          {!imageOnly && (
             <>
-              <Field label="Title" value={title} onChange={setTitle} placeholder="e.g. Celebration Look" />
-              <Field label="Subtitle / label" value={subtitle} onChange={setSubtitle} placeholder="e.g. FESTIVE EDIT" />
-              <Field label="Link URL" value={link} onChange={setLink} placeholder="/collections" />
+              {imageAndLinkOnly ? (
+                /* The name and the destination are both fixed in SUB_COLLECTIONS, so the
+                   picture above and this sub-heading are the whole form. The placeholder
+                   carries the shipped copy, making an empty field read as "keep the
+                   default" — which is exactly what saving empty does. */
+                <Field
+                  label="Sub-heading"
+                  value={subtitle}
+                  onChange={setSubtitle}
+                  placeholder={placardDefaults?.blurb ?? "Leave empty for the default sub-heading"}
+                />
+              ) : (
+                <>
+                  <Field label="Title" value={title} onChange={setTitle} placeholder="e.g. Celebration Look" />
+                  <Field label="Subtitle / label" value={subtitle} onChange={setSubtitle} placeholder="e.g. FESTIVE EDIT" />
+                  <Field label="Link URL" value={link} onChange={setLink} placeholder="/collections" />
+                </>
+              )}
+              {showBadge && <Field label="Badge" value={badge} onChange={setBadge} placeholder="e.g. New, Trending" />}
             </>
           )}
-          {showBadge && <Field label="Badge" value={badge} onChange={setBadge} placeholder="e.g. New, Trending" />}
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100">
