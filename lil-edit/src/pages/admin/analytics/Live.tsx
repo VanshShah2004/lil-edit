@@ -1,4 +1,4 @@
-import { Eye, Heart, Package, Radio, Search, ShoppingCart, Star, Wallet } from "lucide-react";
+import { Eye, Heart, Package, Radio, Search, ShoppingCart, Star, Ticket, UserPlus, Wallet } from "lucide-react";
 import { AnalyticsLayout, KpiGrid, Section } from "@/components/analytics/AnalyticsLayout";
 import { ErrorState, isMigrationError } from "@/components/analytics/states";
 import { inr, num, prettySlug, timeAgo } from "@/components/analytics/format";
@@ -19,6 +19,8 @@ function visual(type: string) {
     case "checkout_started": return { Icon: Wallet, color: "#D97706", bg: "rgba(217,119,6,0.12)" };
     case "review_submitted": return { Icon: Star, color: "#D97706", bg: "rgba(217,119,6,0.12)" };
     case "search": return { Icon: Search, color: "#6B7280", bg: "rgba(107,114,128,0.12)" };
+    case "coupon_applied": return { Icon: Ticket, color: "#16A34A", bg: "rgba(22,163,74,0.1)" };
+    case "signup": return { Icon: UserPlus, color: "#16A34A", bg: "rgba(22,163,74,0.1)" };
     default: return { Icon: Radio, color: "#6B7280", bg: "rgba(107,114,128,0.12)" };
   }
 }
@@ -36,6 +38,14 @@ function describe(item: FeedItem): string {
     case "checkout_started": return `${who} started checkout${item.metadata.total ? ` — ${inr(Number(item.metadata.total))}` : ""}`;
     case "review_submitted": return `${who} reviewed ${product}${item.metadata.rating ? ` (${item.metadata.rating}★)` : ""}`;
     case "search": return `${who} searched “${asStr(item.metadata.query)}”`;
+    case "coupon_applied": {
+      const code = asStr(item.metadata.code);
+      // A refused code is the more interesting of the two, so say so plainly.
+      return item.metadata.valid === true
+        ? `${who} applied coupon ${code}`
+        : `${who} was refused coupon ${code}${item.metadata.reason ? ` — ${asStr(item.metadata.reason)}` : ""}`;
+    }
+    case "signup": return `${who} created an account`;
     default: return `${who} did something`;
   }
 }

@@ -364,7 +364,13 @@ export interface CouponsPayload {
     code: string; discount_type: string; discount_value: number; status: string;
     lifetime_uses: number; expires_at: string | null; orders: number; revenue: number;
     discount: number; aov: number | null; roi: number | null; new_customers: number; cancelled: number;
+    // Attempt counts from the coupon_applied activity events (20260828). Optional:
+    // a database still running the pre-20260828 analytics_coupons omits them.
+    attempts?: number; failed?: number;
   }[];
+  // Why codes were refused, busiest reason first. Same caveat as above - absent
+  // until 20260828_analytics_activity_coverage.sql is applied.
+  failures?: { reason: string; count: number; codes: string[] }[];
 }
 
 export interface InventoryPayload {
