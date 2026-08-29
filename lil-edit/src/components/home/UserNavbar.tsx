@@ -16,7 +16,9 @@ import {
   Info,
   ChevronRight,
   MessageSquare,
+  MessageSquareText,
   ScrollText,
+  Tag,
   BarChart3,
   Plus,
   ClipboardList,
@@ -426,6 +428,9 @@ const UserNavbar = () => {
                 <SideLink to="/admin/orders" icon={ClipboardList} label="Manage Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
                 <SideLink to="/admin/spotlight" icon={LayoutGrid} label="The Spotlight" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
                 <SideLink to="/admin/general-settings" icon={Settings} label="General Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/newsletter" icon={Mail} label="Newsletter" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/coupons" icon={Tag} label="Coupons" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/reviews" icon={MessageSquareText} label="Reviews" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               </SideSection>
 
               <SideSection label="Backstage">

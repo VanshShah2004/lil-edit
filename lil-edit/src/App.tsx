@@ -87,6 +87,9 @@ const AdminActivity    = lazyWithLog("AdminActivity",    () => import("./pages/a
 const AdminAuditLog    = lazyWithLog("AdminAuditLog",    () => import("./pages/admin/AuditLog"));
 const AdminSpotlight   = lazyWithLog("AdminSpotlight",   () => import("./pages/admin/Spotlight"));
 const AdminSizeCharts  = lazyWithLog("AdminSizeCharts",  () => import("./pages/admin/SizeCharts"));
+const AdminNewsletter  = lazyWithLog("AdminNewsletter",  () => import("./pages/admin/Newsletter"));
+const AdminCoupons     = lazyWithLog("AdminCoupons",     () => import("./pages/admin/Coupons"));
+const AdminReviews     = lazyWithLog("AdminReviews",     () => import("./pages/admin/Reviews"));
 const AdminSettings    = lazyWithLog("AdminSettings",    () => import("./pages/admin/AdminSettings"));
 const AdminGeneralSettings = lazyWithLog("AdminGeneralSettings", () => import("./pages/admin/GeneralSettings"));
 const AdminSpotlightPreview = lazyWithLog("AdminSpotlightPreview", () => import("./pages/admin/SpotlightPreview"));
@@ -170,6 +173,9 @@ const App = () => (
             <Route path="/admin/audit-log" element={<AdminRoute><AdminAuditLog /></AdminRoute>} />
             <Route path="/admin/spotlight" element={<AdminRoute><AdminSpotlight /></AdminRoute>} />
             <Route path="/admin/size-charts" element={<AdminRoute><AdminSizeCharts /></AdminRoute>} />
+            <Route path="/admin/newsletter" element={<AdminRoute><AdminNewsletter /></AdminRoute>} />
+            <Route path="/admin/coupons" element={<AdminRoute><AdminCoupons /></AdminRoute>} />
+            <Route path="/admin/reviews" element={<AdminRoute><AdminReviews /></AdminRoute>} />
             <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
             <Route path="/admin/general-settings" element={<AdminRoute><AdminGeneralSettings /></AdminRoute>} />
             {/* Analytics platform */}

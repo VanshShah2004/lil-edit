@@ -4,12 +4,15 @@ import {
   BarChart3,
   ClipboardList,
   LayoutGrid,
+  Mail,
+  MessageSquareText,
   Plus,
   ScrollText,
   Settings,
   Shirt,
   ShieldCheck,
   SlidersHorizontal,
+  Tag,
   User,
 } from "lucide-react";
 
@@ -39,7 +42,17 @@ const sections: AdminMenuSection[] = [
   },
   {
     title: "Content Management",
-    items: [{ to: "/admin/spotlight", label: "The Spotlight", icon: LayoutGrid }],
+    items: [
+      { to: "/admin/spotlight", label: "The Spotlight", icon: LayoutGrid },
+      { to: "/admin/reviews", label: "Reviews", icon: MessageSquareText },
+    ],
+  },
+  {
+    title: "Marketing",
+    items: [
+      { to: "/admin/newsletter", label: "Newsletter", icon: Mail },
+      { to: "/admin/coupons", label: "Coupons", icon: Tag },
+    ],
   },
   {
     title: "Platform",

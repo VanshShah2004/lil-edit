@@ -1,6 +1,9 @@
 import { Router, type Request, type Response } from "express";
 import { resolveMx } from "node:dns/promises";
 import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
+import { requireAuth } from "../middleware/requireAuth.js";
+import { requireAdmin } from "../middleware/requireAdmin.js";
+import { mutationLimiter } from "../middleware/rateLimiters.js";
 import { logActivity } from "../lib/activityLog.js";
 import { createLog, fms } from "../lib/logger.js";
 import { performance } from "perf_hooks";
@@ -54,7 +57,7 @@ async function domainCanReceiveMail(domain: string): Promise<boolean> {
 // A logged-in caller may only subscribe THEIR OWN account email, never someone
 // else's, even though this route writes via the service-role client (which bypasses
 // the matching DB-level RLS policy) — so the check has to be re-done here in app code.
-router.post("/subscribe", async (req: Request, res: Response) => {
+router.post("/subscribe", mutationLimiter, async (req: Request, res: Response) => {
   const log = createLog().start("NEWSLETTER SUBSCRIBE");
   const { email } = req.body as { email?: string };
 
@@ -142,6 +145,110 @@ router.post("/subscribe", async (req: Request, res: Response) => {
     res.status(201).json({ ok: true, action: "subscribed" });
   } catch (err) {
     log.error("unhandled error", err).end("NEWSLETTER SUBSCRIBE");
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+// ─── GET /api/newsletter/subscribers ───────────────────────────────────────────
+// Admin-only read of the mailing list, for the General Settings panel and its
+// Excel/CSV export. newsletter_subscribers is RLS-locked to anon INSERT only —
+// there is no client-readable policy — so this deliberately reads through the
+// service-role client, with requireAuth + requireAdmin as the actual gate.
+//
+// Each subscriber is matched back to a profile (by email) so the panel can show a
+// name and tell an account holder apart from a guest who only ever used the footer
+// form. A subscriber with no profile row is not an error: the footer form takes any
+// email, account or not.
+router.get("/subscribers", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
+  const log = createLog().start("NEWSLETTER LIST");
+
+  // The read needs the service role: RLS exposes no SELECT policy to any client role,
+  // so the anon fallback would silently return zero rows rather than fail loudly.
+  if (!supabaseAdmin) {
+    log.error("SUPABASE_SERVICE_ROLE_KEY not configured — subscriber list unreadable").end("NEWSLETTER LIST");
+    res.status(503).json({
+      error:
+        "The subscriber list can't be read: the backend is missing SUPABASE_SERVICE_ROLE_KEY. Set it in backend/.env and restart.",
+    });
+    return;
+  }
+
+  try {
+    const t0 = performance.now();
+    const { data: rows, error } = await supabaseAdmin
+      .from("newsletter_subscribers")
+      .select("id, email, created_at")
+      .order("created_at", { ascending: false });
+    log.step(`DB subscribers: ${rows?.length ?? 0} rows  ${fms(performance.now() - t0)}`);
+
+    if (error) {
+      if (error.code === "42P01" || error.code === "PGRST205") {
+        log.warn("newsletter_subscribers missing — migration not applied").end("NEWSLETTER LIST");
+        res.status(503).json({
+          error:
+            "The newsletter table doesn't exist yet. Run lil-edit/supabase/migrations/20260705_newsletter_subscribers.sql in Supabase.",
+        });
+        return;
+      }
+      log.error(`select failed  code=${error.code}  msg=${error.message}`, error).end("NEWSLETTER LIST");
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    const subscribers = rows ?? [];
+    const emails = subscribers.map((r) => r.email);
+
+    // Match to profiles in chunks — a single .in() with thousands of emails builds a
+    // URL long enough for PostgREST to reject, so never let the list size decide.
+    const CHUNK = 200;
+    const profileByEmail = new Map<string, { first_name: string | null; last_name: string | null }>();
+    const t1 = performance.now();
+    for (let i = 0; i < emails.length; i += CHUNK) {
+      const slice = emails.slice(i, i + CHUNK);
+      const { data: profs, error: profErr } = await supabaseAdmin
+        .from("profiles")
+        .select("email, first_name, last_name")
+        .in("email", slice);
+      if (profErr) {
+        // A failed name lookup must not cost the admin the whole list — the emails
+        // (the part that actually matters for a mailout) are already in hand.
+        log.warn(`profile chunk ${i}-${i + slice.length} failed: ${profErr.message}`);
+        continue;
+      }
+      for (const p of profs ?? []) {
+        profileByEmail.set(String(p.email).trim().toLowerCase(), {
+          first_name: p.first_name,
+          last_name: p.last_name,
+        });
+      }
+    }
+    log.step(`DB profiles: ${profileByEmail.size} matched  ${fms(performance.now() - t1)}`);
+
+    const list = subscribers.map((r) => {
+      const prof = profileByEmail.get(r.email.trim().toLowerCase());
+      return {
+        id: r.id,
+        email: r.email,
+        createdAt: r.created_at,
+        firstName: prof?.first_name ?? null,
+        lastName: prof?.last_name ?? null,
+        hasAccount: Boolean(prof),
+      };
+    });
+
+    const withAccount = list.filter((s) => s.hasAccount).length;
+    log
+      .success(`${list.length} subscribers  withAccount=${withAccount}  guests=${list.length - withAccount}  total=${fms(log.elapsed())}`)
+      .end("NEWSLETTER LIST");
+
+    res.json({
+      subscribers: list,
+      total: list.length,
+      withAccount,
+      guests: list.length - withAccount,
+    });
+  } catch (err) {
+    log.error("unhandled error", err).end("NEWSLETTER LIST");
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });

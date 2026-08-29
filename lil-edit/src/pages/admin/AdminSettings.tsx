@@ -6,12 +6,15 @@ import {
   ChevronRight,
   ClipboardList,
   LayoutGrid,
+  Mail,
+  MessageSquareText,
   Plus,
   Ruler,
   Settings,
   ShieldCheck,
   Shirt,
   SlidersHorizontal,
+  Tag,
 } from "lucide-react";
 
 import UserNavbar from "@/components/home/UserNavbar";
@@ -36,7 +39,14 @@ const groups: AdminSettingsGroup[] = [
   {
     title: "Platform",
     tiles: [
-      { to: "/admin/general-settings", label: "General Settings", description: "Manage admin access and coupons", icon: Settings },
+      { to: "/admin/general-settings", label: "General Settings", description: "Admin access, charges and site availability", icon: Settings },
+    ],
+  },
+  {
+    title: "Marketing",
+    tiles: [
+      { to: "/admin/newsletter", label: "Newsletter", description: "View subscribers and download the list", icon: Mail },
+      { to: "/admin/coupons", label: "Coupons", description: "Create and manage discount codes", icon: Tag },
     ],
   },
   {
@@ -57,6 +67,7 @@ const groups: AdminSettingsGroup[] = [
     tiles: [
       { to: "/admin/spotlight", label: "The Spotlight", description: "Curate storefront sections and tiles", icon: LayoutGrid },
       { to: "/admin/size-charts", label: "Sizing Chart Setup", description: "Create and edit sizing charts", icon: Ruler },
+      { to: "/admin/reviews", label: "Reviews", description: "Moderate customer reviews", icon: MessageSquareText },
     ],
   },
   {

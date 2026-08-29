@@ -138,7 +138,10 @@ app.use("/api/curation",     curationRouter);
 // webhook above and the /coupon GET aren't throttled). Placement runs through the
 // service-role client + the place_order RPC.
 app.use("/api/checkout",     checkoutRouter);
-app.use("/api/newsletter",   mutationLimiter, newsletterRouter);
+// Newsletter: the public POST /subscribe carries mutationLimiter inside the router,
+// so the admin-only GET /subscribers read rides the global limiter instead of
+// sharing the guest-signup write budget.
+app.use("/api/newsletter",   newsletterRouter);
 // Delivery + gift-wrapping charges. GET / is PUBLIC (Cart and Checkout must show the
 // same numbers /initiate will charge); the admin read + write are gated by
 // requireAuth + requireAdmin inside the router, with the tight write-limiter on POST.

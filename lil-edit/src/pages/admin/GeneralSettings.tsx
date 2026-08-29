@@ -14,8 +14,6 @@ import {
 
 import UserNavbar from "@/components/home/UserNavbar";
 import Footer from "@/components/layout/Footer";
-import CouponsManager from "@/components/admin/CouponsManager";
-import ReviewsManager from "@/components/admin/ReviewsManager";
 import EmailPreviews from "@/components/admin/EmailPreviews";
 import MaintenanceControl from "@/components/admin/MaintenanceControl";
 import StoreChargesManager from "@/components/admin/StoreChargesManager";
@@ -168,7 +166,7 @@ const GeneralSettings = () => {
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">General Settings</h1>
             <p className="text-sm text-gray-500">
-              Manage administrator access, the charges customers pay, coupons and site availability.
+              Manage administrator access, the charges customers pay and site availability.
             </p>
           </div>
           <hr className="-mx-3 lg:-mx-6 h-1 border-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />
@@ -348,10 +346,6 @@ const GeneralSettings = () => {
           </section>
 
           <StoreChargesManager />
-
-          <CouponsManager />
-
-          <ReviewsManager />
 
           <EmailPreviews />
 
