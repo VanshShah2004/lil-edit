@@ -342,9 +342,13 @@ function EditorialTileModal({
   // The copy this placard ships with, used as the fields' placeholders so an empty
   // input visibly reads as "leave the default" rather than "erase the words".
   const placardDefaults = SUB_COLLECTIONS.find((c) => c.key === collection);
-  // Shop the Look cards never render a badge (label/title/link only), so don't
+  // Shop the Look cards never render a badge (title and link only), so don't
   // offer the field there — it would be a dead input.
   const showBadge = sectionKey !== "home_shop_the_look" && !imageAndLinkOnly;
+  // For the same reason, and in the same section: a Shop the Look card renders its
+  // title and nothing else (see components/home/ShopTheLook), so a sub-heading typed
+  // here would land nowhere. Drop the field rather than leave it as a dead input.
+  const showSubtitle = sectionKey !== "home_shop_the_look";
   // Only the collage carousel sections read meta.desktop_image_url today —
   // offering the field elsewhere would be a dead control.
   const showDesktopImage = sectionKey === "home_collage" || sectionKey === "home_hero_plus";
@@ -430,7 +434,7 @@ function EditorialTileModal({
       // express. The sub-heading IS editable, and empty there means "not overridden",
       // not "blank" — the storefront falls back to the copy it ships with.
       customTitle: imageOnly ? null : imageAndLinkOnly ? null : title.trim() || null,
-      customSubtitle: imageOnly ? null : subtitle.trim() || null,
+      customSubtitle: imageOnly || !showSubtitle ? null : subtitle.trim() || null,
       customImageUrl: mobileImage || null,
       linkUrl: imageOnly ? null : imageAndLinkOnly ? null : link.trim() || null,
       // Sections without a badge slot (Shop the Look) also clear any badge a tile
@@ -611,7 +615,9 @@ function EditorialTileModal({
               ) : (
                 <>
                   <Field label="Title" value={title} onChange={setTitle} placeholder="e.g. Celebration Look" />
-                  <Field label="Subtitle / label" value={subtitle} onChange={setSubtitle} placeholder="e.g. FESTIVE EDIT" />
+                  {showSubtitle && (
+                    <Field label="Subtitle / label" value={subtitle} onChange={setSubtitle} placeholder="e.g. FESTIVE EDIT" />
+                  )}
                   <Field label="Link URL" value={link} onChange={setLink} placeholder="/collections" />
                 </>
               )}
@@ -808,6 +814,7 @@ function ItemRow({
   index,
   total,
   showBadge = true,
+  showSubtitle = true,
   namesItsPlacard = false,
   onMove,
   onRemove,
@@ -819,6 +826,8 @@ function ItemRow({
   total: number;
   /** Sections whose storefront card has no badge slot (Shop the Look) hide the chip. */
   showBadge?: boolean;
+  /** Sections whose storefront card renders no sub-heading (Shop the Look). */
+  showSubtitle?: boolean;
   /** Tiles that name their own placard (IMAGE_AND_LINK_ONLY): drop the reorder
       arrows and the slot number, since position drives nothing for them. */
   namesItsPlacard?: boolean;
@@ -844,11 +853,15 @@ function ItemRow({
   const title = isProduct
     ? item.product?.title ?? item.productBaseSku ?? "Unknown product"
     : item.customTitle ?? (namesItsPlacard ? placard ?? "⚠ No collection set" : "Untitled tile");
+  // A tile whose section renders no sub-heading has none to show here either, so the
+  // row's second line becomes where the tile GOES — otherwise it would sit blank.
   const sub = isProduct
     ? item.productBaseSku ?? ""
-    : item.customSubtitle ?? (namesItsPlacard
-      ? metaStr(item.meta, "link_product_title") || item.linkUrl || "Opens this collection"
-      : "");
+    : !showSubtitle
+      ? item.linkUrl ?? ""
+      : item.customSubtitle ?? (namesItsPlacard
+        ? metaStr(item.meta, "link_product_title") || item.linkUrl || "Opens this collection"
+        : "");
 
   // Chips are rendered in two places (inline with the title on desktop, on their own
   // row on mobile), so the styles live here once.
@@ -1571,6 +1584,7 @@ const SpotlightPage = () => {
                             index={i}
                             total={draft.length}
                             showBadge={selected.key !== "home_shop_the_look"}
+                            showSubtitle={selected.key !== "home_shop_the_look"}
                             namesItsPlacard={namesItsPlacard}
                             onMove={(dir) => move(i, dir)}
                             onRemove={() => removeAt(i)}

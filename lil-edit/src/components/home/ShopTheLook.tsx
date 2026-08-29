@@ -7,9 +7,12 @@ import le1 from "@/assets/searchbar-frequent_searches/le-1.png";
 import le3 from "@/assets/searchbar-frequent_searches/le-3.png";
 import le4 from "@/assets/searchbar-frequent_searches/le-4.png";
 
+// A card is a picture, a name and a destination. There is deliberately no
+// sub-heading: the glass panel holds the title and the Explore button, and the
+// panel's collapsed height is what makes the four cards line up — a second line
+// of copy has nowhere to go without breaking that.
 interface Look {
   id: string;
-  label: string;
   title: string;
   img: string;
   to: string;
@@ -17,10 +20,10 @@ interface Look {
 
 // Local content shown until the curation engine returns tiles.
 const FALLBACK: Look[] = [
-  { id: "1", label: "FESTIVE EDIT", title: "Celebration Look", img: le3, to: "/collections" },
-  { id: "2", label: "EVERYDAY CHIC", title: "School Day Look", img: le0, to: "/collections" },
-  { id: "3", label: "PARTY READY", title: "Birthday Look", img: le4, to: "/collections" },
-  { id: "4", label: "BOHO BABY", title: "Weekend Look", img: le1, to: "/collections" },
+  { id: "1", title: "Celebration Look", img: le3, to: "/collections" },
+  { id: "2", title: "School Day Look", img: le0, to: "/collections" },
+  { id: "3", title: "Birthday Look", img: le4, to: "/collections" },
+  { id: "4", title: "Weekend Look", img: le1, to: "/collections" },
 ];
 
 const ShopTheLook = ({
@@ -48,7 +51,6 @@ const ShopTheLook = ({
 
   const curated: Look[] = editorials.map((it) => ({
     id: it.id,
-    label: it.subtitle ?? "",
     title: it.title ?? "",
     img: it.image ?? "",
     to: it.link ?? "/collections",
