@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/layout/Navbar";
 import RouteFallback from "@/components/RouteFallback";
 import UserNavbar from "@/components/home/UserNavbar";
+import GuestLoginBar from "@/components/layout/GuestLoginBar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import Footer from "@/components/layout/Footer";
@@ -314,6 +315,9 @@ const WishlistPage = () => {
               <p className="text-sm text-gray-500 mt-1">Save it today, love it forever ✨</p>
             </div>
           </div>
+
+          {/* Guest reminder — the bag/wishlist is full but the login step is still open. */}
+          <GuestLoginBar />
 
           {/* Two-column row — left items + right order summary */}
           <div className="flex flex-col lg:flex-row gap-10 sm:gap-6 lg:gap-10">

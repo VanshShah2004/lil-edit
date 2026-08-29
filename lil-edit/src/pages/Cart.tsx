@@ -40,6 +40,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useAuthPrompt } from "@/contexts/AuthPromptContext";
 import Footer from "@/components/layout/Footer";
+import GuestLoginBar from "@/components/layout/GuestLoginBar";
 import QuickAddButton from "@/components/home/QuickAddButton";
 
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
@@ -356,6 +357,9 @@ export default function Cart() {
               </p>
             </div>
           </div>
+
+          {/* Guest reminder — the bag/wishlist is full but the login step is still open. */}
+          <GuestLoginBar />
 
           {/* Two-column row — left items + right order summary */}
           <div className="flex flex-col lg:flex-row gap-10 sm:gap-6 lg:gap-10">
