@@ -7,13 +7,22 @@ import {
   ChevronRight,
   Heart,
   Loader2,
+  LogIn,
+  Mail,
+  MapPin,
   Package,
   Pause,
+  Pencil,
   Play,
   RefreshCw,
   Search,
+  ShieldCheck,
   ShoppingCart,
   Star,
+  Ticket,
+  Trash2,
+  UserCog,
+  UserPlus,
 } from "lucide-react";
 
 import UserNavbar from "@/components/home/UserNavbar";
@@ -33,6 +42,7 @@ import { composeProductBadges } from "@/lib/productBadges";
 import { getBackendBaseUrl } from "@/lib/backend";
 import {
   fetchActivity,
+  type ActivityCategory,
   type ActivityItem,
   type ActivityType,
   type ActivityUser,
@@ -41,15 +51,18 @@ import {
 const ACCENT = "#0F766E";
 const POLL_MS = 20_000; // refresh the newest page every 20s while "live"
 
-type FilterKey = ActivityType | "all";
+// Pills select a CATEGORY, not a single kind — otherwise every event type added in
+// 20260828_activity_coverage.sql (nine account kinds alone) would need its own pill.
+type FilterKey = ActivityCategory | "all";
 
 const TYPE_FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "cart_add", label: "Cart" },
-  { key: "wishlist_add", label: "Wishlist" },
-  { key: "order_placed", label: "Orders" },
-  { key: "review_submitted", label: "Reviews" },
+  { key: "cart", label: "Cart" },
+  { key: "wishlist", label: "Wishlist" },
+  { key: "orders", label: "Orders" },
+  { key: "reviews", label: "Reviews" },
   { key: "search", label: "Searches" },
+  { key: "account", label: "Account" },
 ];
 
 // ── metadata readers (metadata is Record<string, unknown> — read defensively) ──
@@ -78,6 +91,22 @@ function userName(user: ActivityUser | null): string {
 
 function inr(n: number): string {
   return `₹${n.toLocaleString("en-IN")}`;
+}
+
+// "is_default" -> "is default"; used for the changed-field chips on profile/address edits.
+const prettyField = (f: string): string => f.replace(/_/g, " ");
+
+const fieldChips = (v: unknown): string[] =>
+  Array.isArray(v) ? (v as unknown[]).map(asStr).filter(Boolean).slice(0, 4).map(prettyField) : [];
+
+// Addresses are labelled by type ('home' | 'work' | 'other'), with a free-text label
+// only when the type is 'other'.
+function addressName(metadata: Record<string, unknown>): string {
+  const label = asStr(metadata.label).trim();
+  const type = asStr(metadata.type).trim();
+  if (label) return label;
+  if (type && type !== "other") return type;
+  return "";
 }
 
 function timeAgo(iso: string): string {
@@ -124,6 +153,29 @@ function visualFor(type: ActivityType): Visual {
       return { Icon: Star, color: "#D97706", bg: "rgba(217,119,6,0.12)" };
     case "search":
       return { Icon: Search, color: "#6B7280", bg: "rgba(107,114,128,0.12)" };
+    case "review_updated":
+      return { Icon: Pencil, color: "#D97706", bg: "rgba(217,119,6,0.12)" };
+    case "review_removed":
+      return { Icon: Trash2, color: "#DC2626", bg: "rgba(220,38,38,0.10)" };
+    case "coupon_applied":
+      return { Icon: Ticket, color: "#16A34A", bg: "rgba(22,163,74,0.10)" };
+    // -- account --
+    case "signup":
+      return { Icon: UserPlus, color: "#16A34A", bg: "rgba(22,163,74,0.10)" };
+    case "login":
+      return { Icon: LogIn, color: "#6B7280", bg: "rgba(107,114,128,0.12)" };
+    case "profile_updated":
+      return { Icon: UserCog, color: "#7C3AED", bg: "rgba(124,58,237,0.10)" };
+    case "phone_verified":
+      return { Icon: ShieldCheck, color: "#16A34A", bg: "rgba(22,163,74,0.10)" };
+    case "address_added":
+    case "address_updated":
+    case "address_default_changed":
+      return { Icon: MapPin, color: "#0EA5E9", bg: "rgba(14,165,233,0.10)" };
+    case "address_removed":
+      return { Icon: MapPin, color: "#DC2626", bg: "rgba(220,38,38,0.10)" };
+    case "newsletter_subscribed":
+      return { Icon: Mail, color: "#DB2777", bg: "rgba(219,39,119,0.10)" };
     default:
       return { Icon: ActivityIcon, color: "#6B7280", bg: "rgba(107,114,128,0.12)" };
   }
@@ -165,6 +217,78 @@ function describe(item: ActivityItem): { line: React.ReactNode; chips: string[];
       const results = asNum(item.metadata.result_count);
       const chips = [`${results} result${results === 1 ? "" : "s"}`];
       return { line: <>{who} searched for “{<span className="font-semibold text-gray-900">{q}</span>}”</>, chips };
+    }
+    case "review_updated": {
+      const rating = asNum(item.metadata.rating);
+      const from = asNum(item.metadata.from_rating);
+      // The rating move is the whole point of an edit - show it when it actually moved.
+      const tag = rating ? (from && from !== rating ? `${from}★ → ${rating}★` : `${rating}★`) : undefined;
+      return { line: <>{who} edited their review of {product}</>, chips: [], tag };
+    }
+    case "review_removed": {
+      const rating = asNum(item.metadata.rating);
+      return { line: <>{who} deleted their review of {product}</>, chips: [], tag: rating ? `${rating}★` : undefined };
+    }
+    case "coupon_applied": {
+      const code = asStr(item.metadata.code);
+      const valid = item.metadata.valid === true;
+      const discount = asNum(item.metadata.discount);
+      const codeEl = <span className="font-semibold text-gray-900">{code}</span>;
+      return valid
+        ? { line: <>{who} applied coupon {codeEl}</>, chips: discount ? [`${inr(discount)} off`] : [] }
+        : { line: <>{who} tried coupon {codeEl}</>, chips: [asStr(item.metadata.reason) || "Rejected"] };
+    }
+    case "signup": {
+      const provider = asStr(item.metadata.provider);
+      const email = asStr(item.metadata.email);
+      return {
+        line: <>{who} created an account</>,
+        chips: provider ? [provider === "google" ? "Google" : "Email"] : [],
+        // The row already prints user.email when a profile resolves; fall back to the
+        // address captured on the event itself when it doesn't (deleted account, or a
+        // signup logged before its profile row existed).
+        tag: item.user?.email ? undefined : email || undefined,
+      };
+    }
+    case "login":
+      return { line: <>{who} signed in</>, chips: [] };
+    case "profile_updated":
+      return { line: <>{who} updated their profile</>, chips: fieldChips(item.metadata.fields) };
+    case "phone_verified": {
+      const phone = asStr(item.metadata.phone_number);
+      return { line: <>{who} verified their phone number</>, chips: [], tag: phone || undefined };
+    }
+    case "address_added":
+    case "address_updated":
+    case "address_default_changed":
+    case "address_removed": {
+      const name = addressName(item.metadata);
+      const where = name
+        ? <> their <span className="font-semibold text-gray-900">{name}</span> address</>
+        : <> an address</>;
+      const city = asStr(item.metadata.city);
+      // "made ... their default" reads better than "set-as-defaulted an address".
+      const line =
+        item.type === "address_added" ? <>{who} added{where}</> :
+        item.type === "address_removed" ? <>{who} removed{where}</> :
+        item.type === "address_default_changed" ? <>{who} made{where} their default</> :
+        <>{who} updated{where}</>;
+      return {
+        line,
+        chips: [
+          ...(city ? [city] : []),
+          ...(item.type === "address_updated" ? fieldChips(item.metadata.fields) : []),
+        ],
+      };
+    }
+    case "newsletter_subscribed": {
+      const email = asStr(item.metadata.email);
+      const source = asStr(item.metadata.source);
+      return {
+        line: <>{who} subscribed to the newsletter</>,
+        chips: source === "guest" ? ["Guest"] : [],
+        tag: email || undefined,
+      };
     }
     default:
       return { line: <>{who} did something</>, chips: [] };
@@ -294,14 +418,14 @@ const Activity = () => {
     document.title = "User Activity | Lil Edit";
   }, []);
 
-  const typeParam = filter === "all" ? undefined : filter;
+  const categoryParam = filter === "all" ? undefined : filter;
 
-  // Initial load / full reset (also runs when the type filter changes).
+  // Initial load / full reset (also runs when the category filter changes).
   const load = useCallback(async () => {
     setLoadError(null);
     setLoading(true);
     try {
-      const data = await fetchActivity({ type: typeParam, limit: 50 });
+      const data = await fetchActivity({ category: categoryParam, limit: 50 });
       setItems(data.activity);
       setNextCursor(data.nextCursor);
     } catch (err) {
@@ -311,7 +435,7 @@ const Activity = () => {
     } finally {
       setLoading(false);
     }
-  }, [typeParam]);
+  }, [categoryParam]);
 
   useEffect(() => {
     void load();
@@ -322,7 +446,7 @@ const Activity = () => {
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const data = await fetchActivity({ type: typeParam, limit: 50 });
+      const data = await fetchActivity({ category: categoryParam, limit: 50 });
       setItems((prev) => {
         const seen = new Set(prev.map((i) => i.id));
         const fresh = data.activity.filter((i) => !seen.has(i.id));
@@ -335,7 +459,7 @@ const Activity = () => {
     } finally {
       setRefreshing(false);
     }
-  }, [typeParam]);
+  }, [categoryParam]);
 
   // Live polling — restart whenever the toggle or filter changes.
   useEffect(() => {
@@ -348,7 +472,7 @@ const Activity = () => {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const data = await fetchActivity({ type: typeParam, limit: 50, before: nextCursor });
+      const data = await fetchActivity({ category: categoryParam, limit: 50, before: nextCursor });
       setItems((prev) => {
         const seen = new Set(prev.map((i) => i.id));
         return [...prev, ...data.activity.filter((i) => !seen.has(i.id))];
@@ -359,7 +483,7 @@ const Activity = () => {
     } finally {
       setLoadingMore(false);
     }
-  }, [nextCursor, loadingMore, typeParam]);
+  }, [nextCursor, loadingMore, categoryParam]);
 
   // Fetch the live product for a cart/wishlist row and open the quick-view drawer on
   // the exact variant (matched by sku). Rendered as source "order" with Buy Now hidden,
@@ -481,7 +605,7 @@ const Activity = () => {
   // Content-box bounds (first segment's left → last segment's right) + the shared
   // segment width, captured once per drag so they stay stable while dragging even
   // as `filter` (and thus which button is "active") changes mid-gesture.
-  const dragMetricsRef = useRef<{ contentLeft: number; contentWidth: number; segmentWidth: number } | null>(null);
+  const dragMetricsRef = useRef<{ contentLeft: number; contentWidth: number; segments: { left: number; width: number }[] } | null>(null);
 
   // Slide the active-segment indicator over the selected option and re-measure on
   // resize. Skipped while dragging — the pointer handlers own the indicator then.
@@ -504,12 +628,27 @@ const Activity = () => {
   // once at the start of a drag/press.
   const captureDragMetrics = () => {
     const track = filterTrackRef.current;
-    const first = filterBtnRefs.current[0];
-    const last = filterBtnRefs.current[TYPE_FILTERS.length - 1];
-    if (!track || !first || !last) return;
-    const contentLeft = first.offsetLeft - track.clientLeft;
-    const contentWidth = last.offsetLeft - track.clientLeft + last.offsetWidth - contentLeft;
-    dragMetricsRef.current = { contentLeft, contentWidth, segmentWidth: contentWidth / TYPE_FILTERS.length };
+    if (!track) return;
+    // Measure EVERY segment rather than deriving one shared width. The segments are
+    // `flex-1`, which only makes them equal while the labels still fit; once they
+    // don't (a phone-width screen with this many pills), each falls back to its own
+    // content width and any `contentWidth / count` arithmetic lands on the wrong
+    // pill — including on a plain tap, since onPointerDown calls followPointer.
+    const segs: { left: number; width: number }[] = [];
+    for (let i = 0; i < TYPE_FILTERS.length; i++) {
+      const el = filterBtnRefs.current[i];
+      if (!el) return;
+      segs.push({ left: el.offsetLeft - track.clientLeft, width: el.offsetWidth });
+    }
+    const first = segs[0];
+    const last = segs[segs.length - 1];
+    if (!first || !last) return;
+    const contentLeft = first.left;
+    dragMetricsRef.current = {
+      contentLeft,
+      contentWidth: last.left + last.width - contentLeft,
+      segments: segs,
+    };
   };
 
   // Move the indicator to directly track the pointer (clamped to the track), and
@@ -522,18 +661,22 @@ const Activity = () => {
     const metrics = dragMetricsRef.current;
     if (!track || !metrics) return;
     const trackRect = track.getBoundingClientRect();
-    const rawLeft = clientX - trackRect.left - metrics.segmentWidth / 2;
-    const left = Math.min(
-      Math.max(rawLeft, metrics.contentLeft),
-      metrics.contentLeft + metrics.contentWidth - metrics.segmentWidth,
-    );
-    setIndicator({ left, width: metrics.segmentWidth });
+    const segs = metrics.segments;
+    const maxX = metrics.contentLeft + metrics.contentWidth;
+    // Hit-test the pointer against the real measured boxes, so the pill under the
+    // finger is the pill that gets selected whatever the segments actually measure.
+    const x = Math.min(Math.max(clientX - trackRect.left, metrics.contentLeft), maxX - 1);
+    let idx = segs.length - 1;
+    for (let i = 0; i < segs.length; i++) {
+      if (x < segs[i].left + segs[i].width) { idx = i; break; }
+    }
+    const seg = segs[idx];
 
-    const centerX = left + metrics.segmentWidth / 2;
-    const idx = Math.min(
-      TYPE_FILTERS.length - 1,
-      Math.max(0, Math.floor((centerX - metrics.contentLeft) / metrics.segmentWidth)),
-    );
+    // The indicator still tracks the raw pointer (so mid-drag it straddles two
+    // segments) but takes the width of whichever segment it is currently over.
+    const left = Math.min(Math.max(x - seg.width / 2, metrics.contentLeft), maxX - seg.width);
+    setIndicator({ left, width: seg.width });
+
     const key = TYPE_FILTERS[idx]?.key;
     if (key && key !== filter) {
       setFilter(key);
@@ -564,7 +707,8 @@ const Activity = () => {
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">User Activity</h1>
             <p className="text-sm text-gray-500">
-              A live feed of what shoppers are doing — carts, wishlists, orders, reviews and searches.
+              A live feed of what shoppers are doing — carts, wishlists, orders, reviews, searches
+              and account activity.
             </p>
           </div>
           <hr className="-mx-3 lg:-mx-6 h-1 border-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />

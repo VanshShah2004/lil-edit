@@ -17,6 +17,8 @@ export type AdminActionType =
   | "size_chart_deleted"
   | "order_status_changed"
   | "payment_status_changed"
+  | "order_notification_sent"
+  | "order_receipt_resent"
   | "curation_updated"
   | "curation_section_updated"
   | "admin_access_granted"

@@ -1215,7 +1215,13 @@ router.get("/coupon", requireAuth, async (req: Request, res: Response) => {
   const userId = (req as AuthenticatedRequest).userId;
   const code = String((req.query.code as string) ?? "").trim().toUpperCase();
   const subtotal = Math.max(0, Number(req.query.subtotal) || 0);
-  log.step(`user=${userId}  code=${code}  subtotal=₹${subtotal}`);
+  // ?auto=1 marks a BACKGROUND re-validation rather than the customer pressing
+  // Apply (Checkout re-checks the coupon carried over from the Cart against the
+  // checkout subtotal). Those must not be logged as customer activity: one apply
+  // would otherwise produce two identical coupon_applied rows seconds apart, and
+  // every back/forward into Checkout would add another.
+  const auto = req.query.auto === "1";
+  log.step(`user=${userId}  code=${code}  subtotal=₹${subtotal}${auto ? "  (auto re-check)" : ""}`);
 
   try {
     if (!code) {
@@ -1227,6 +1233,24 @@ router.get("/coupon", requireAuth, async (req: Request, res: Response) => {
     // All coupons are admin-managed rows validated against the table (incl. per-user rules).
     const v = await validateCoupon(db(), code, subtotal, userId, log);
     log.success(`${v.valid ? `valid  discount=₹${v.discount}` : `invalid: ${v.reason}`}`).end("CHECKOUT COUPON");
+    // Only REDEEMED coupons were visible anywhere before (via orders.coupon_code), so a
+    // code that customers keep trying and keep being refused left no trace at all.
+    // Fire-and-forget; the empty-code branch above returns early, so this is a real attempt.
+    // `code` is caller-supplied and otherwise unbounded, so it is capped before it
+    // reaches the JSONB column and the admin feed that renders it.
+    if (!auto) {
+      void logActivity({
+        type: "coupon_applied",
+        userId,
+        metadata: {
+          code: code.slice(0, 64),
+          valid: v.valid,
+          discount: v.discount,
+          subtotal,
+          ...(v.valid ? {} : { reason: v.reason }),
+        },
+      });
+    }
     res.json({ valid: v.valid, discount: v.discount, reason: v.reason });
   } catch (err) {
     if (err instanceof PriceError) {

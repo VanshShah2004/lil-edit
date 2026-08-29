@@ -16,7 +16,16 @@ router.use(requireAuth, requireAdmin);
 // action strings below. Keeps the ?category= param a small, validated allowlist and
 // means adding a new action only touches the relevant array.
 const ACTION_CATEGORIES: Record<string, readonly string[]> = {
-  products: ["product_launched", "product_draft_saved", "product_deleted"],
+  // Reviews live on products and are moderated from the product side, so they file
+  // under Products rather than earning a pill of their own.
+  products: [
+    "product_launched",
+    "product_draft_saved",
+    "product_deleted",
+    "review_verified",
+    "review_unverified",
+    "review_deleted",
+  ],
   // Merchandising = coupons/promotions + Spotlight (curation) sections.
   merchandising: [
     "coupon_created",
@@ -28,7 +37,12 @@ const ACTION_CATEGORIES: Record<string, readonly string[]> = {
     "size_chart_updated",
     "size_chart_deleted",
   ],
-  orders: ["order_status_changed", "payment_status_changed"],
+  orders: [
+    "order_status_changed",
+    "payment_status_changed",
+    "order_notification_sent",
+    "order_receipt_resent",
+  ],
   // Platform = admin-access changes, site maintenance toggles, and store-charge
   // edits (all platform-level, and all affecting the whole storefront at once).
   platform: [
@@ -37,8 +51,21 @@ const ACTION_CATEGORIES: Record<string, readonly string[]> = {
     "maintenance_enabled",
     "maintenance_disabled",
     "store_charges_updated",
+    // Analytics dashboard layout is global (shared by every admin), so a hidden or
+    // reordered card is a platform-level change, not a personal preference.
+    "dashboard_widget_hidden",
+    "dashboard_widget_shown",
+    "dashboard_widgets_reordered",
   ],
 };
+
+// Every AdminActionType must appear in exactly one category above — an action missing
+// from all of them is written to the table but unreachable behind any pill except "All".
+// (That was the case for review_* and dashboard_widget_* before 2026-08-28.)
+
+// hasOwnProperty rather than `in`: `in` also walks the prototype chain, so
+// ?category=constructor would pass the check and hand a function to .in().
+const isCategory = (k: string): boolean => Object.prototype.hasOwnProperty.call(ACTION_CATEGORIES, k);
 
 // Reading the trail needs the service role: admin_action_log is RLS-locked (no anon/
 // authenticated policies), so the anon fallback would return nothing. Fail loudly
@@ -125,7 +152,7 @@ router.get("/", async (req: Request, res: Response) => {
 
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
   const rawCategory = (req.query.category as string | undefined)?.trim();
-  const category = rawCategory && rawCategory in ACTION_CATEGORIES ? rawCategory : null;
+  const category = rawCategory && isCategory(rawCategory) ? rawCategory : null;
   const before = (req.query.before as string | undefined)?.trim() || null;
   log.step(`admin=${adminId}  limit=${limit}  category=${category ?? "all"}  before=${before ?? "none"}`);
 

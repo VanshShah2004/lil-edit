@@ -200,7 +200,9 @@ export default function Checkout() {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await validateCoupon(carriedCoupon.code, couponSubtotal);
+        // auto: the customer already applied this in the Cart — re-checking it
+        // against the checkout subtotal is our doing, not a second apply.
+        const res = await validateCoupon(carriedCoupon.code, couponSubtotal, { auto: true });
         if (cancelled) return;
         if (res.valid) {
           setCouponInput(carriedCoupon.code);

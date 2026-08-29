@@ -697,6 +697,17 @@ router.post("/:id/notify", adminMutationLimiter, async (req: Request, res: Respo
     }
 
     log.success(`notify  order=${orderId}  status=${o.status}  emailed=${mail.sent}${mail.reason ? `  reason=${mail.reason}` : ""}`).end("ADMIN ORDER NOTIFY");
+    // Audit: this endpoint puts an email in a customer's inbox on an admin's say-so, and
+    // (unlike the status PATCH) leaves no other trace of who triggered it. `confirm` marks a
+    // deliberate resend past the duplicate guard, so repeated nudges are visible in the trail.
+    void logAdminAction({
+      adminId,
+      action: "order_notification_sent",
+      targetType: "order",
+      targetId: orderId,
+      summary: `Re-sent the "${o.status}" notification for order ${o.order_number ? `#${o.order_number}` : orderId}`,
+      metadata: { orderId, orderNumber: o.order_number, status: o.status, resend: confirm, emailed: mail.sent, ...(mail.reason ? { reason: mail.reason } : {}) },
+    });
     res.json({ emailed: mail.sent, status: o.status, ...(mail.reason ? { reason: mail.reason } : {}) });
   } catch (err) {
     log.error("unhandled error", err).end("ADMIN ORDER NOTIFY");
@@ -820,6 +831,16 @@ router.post("/:id/resend-receipt", adminMutationLimiter, async (req: Request, re
     }
 
     log.success(`receipt resend  order=${orderId}  emailed=${mail.sent}${mail.reason ? `  reason=${mail.reason}` : ""}`).end("ADMIN ORDER RESEND RECEIPT");
+    // Audit: same reasoning as /notify — an admin-triggered email to a customer, with the
+    // full itemized receipt in it. Logged whether or not the mailer accepted it.
+    void logAdminAction({
+      adminId,
+      action: "order_receipt_resent",
+      targetType: "order",
+      targetId: orderId,
+      summary: `Re-sent the confirmation receipt for order ${row.order_number ? `#${row.order_number}` : orderId}`,
+      metadata: { orderId, orderNumber: row.order_number, status: row.status, resend: confirm, emailed: mail.sent, ...(mail.reason ? { reason: mail.reason } : {}) },
+    });
     res.json({ emailed: mail.sent, ...(mail.reason ? { reason: mail.reason } : {}) });
   } catch (err) {
     log.error("unhandled error", err).end("ADMIN ORDER RESEND RECEIPT");

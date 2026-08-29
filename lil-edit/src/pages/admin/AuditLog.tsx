@@ -3,17 +3,24 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
   AlertCircle,
+  BadgeCheck,
   ChevronRight,
   ClipboardList,
   CreditCard,
+  Eye,
+  EyeOff,
   FileText,
+  LayoutDashboard,
   LayoutGrid,
   Loader2,
+  Mail,
+  MessageSquare,
   Package,
   Pause,
   Play,
   Power,
   PowerOff,
+  Receipt,
   RefreshCw,
   Ruler,
   ShieldAlert,
@@ -145,6 +152,24 @@ function visualFor(action: AdminActionType): Visual {
       return { Icon: Power, ...GREEN };
     case "store_charges_updated":
       return { Icon: Wallet, color: "#D97706", bg: "rgba(217,119,6,0.12)" };
+    // Admin-triggered customer emails — same blue/indigo family as the order and
+    // payment rows they sit beside under the Orders pill.
+    case "order_notification_sent":
+      return { Icon: Mail, color: "#2563EB", bg: "rgba(37,99,235,0.10)" };
+    case "order_receipt_resent":
+      return { Icon: Receipt, color: "#4F46E5", bg: "rgba(79,70,229,0.10)" };
+    case "review_verified":
+      return { Icon: BadgeCheck, ...GREEN };
+    case "review_unverified":
+      return { Icon: MessageSquare, color: "#6B7280", bg: "rgba(107,114,128,0.12)" };
+    case "review_deleted":
+      return { Icon: Trash2, ...RED };
+    case "dashboard_widget_hidden":
+      return { Icon: EyeOff, color: "#6B7280", bg: "rgba(107,114,128,0.12)" };
+    case "dashboard_widget_shown":
+      return { Icon: Eye, ...TEAL };
+    case "dashboard_widgets_reordered":
+      return { Icon: LayoutDashboard, ...TEAL };
     default:
       return { Icon: ShieldAlert, color: "#6B7280", bg: "rgba(107,114,128,0.12)" };
   }
@@ -199,6 +224,32 @@ function chipsFor(item: AuditActionItem): string[] {
       if (asNum(before.giftWrapFee) !== asNum(after.giftWrapFee)) chips.push(`Gift wrap ${money(before.giftWrapFee)} → ${money(after.giftWrapFee)}`);
       return chips;
     }
+    case "order_notification_sent":
+    case "order_receipt_resent": {
+      // The summary already names the order; chips carry what the summary can't —
+      // whether it was a deliberate resend past the duplicate guard, and whether the
+      // mailer actually accepted it (a logged row does NOT prove delivery).
+      const chips: string[] = [];
+      if (m.resend === true) chips.push("Sent again");
+      if (m.emailed === false) chips.push("Not delivered");
+      return chips;
+    }
+    case "review_verified":
+    case "review_unverified":
+    case "review_deleted": {
+      const slug = asStr(m.productSlug);
+      return slug ? [slug] : [];
+    }
+    case "dashboard_widget_hidden":
+    case "dashboard_widget_shown": {
+      const page = asStr(m.page);
+      return page ? [`${page} dashboard`] : [];
+    }
+    case "dashboard_widgets_reordered": {
+      const page = asStr(m.page);
+      const n = Array.isArray(m.orderedIds) ? (m.orderedIds as unknown[]).length : 0;
+      return [...(page ? [`${page} dashboard`] : []), ...(n ? [`${n} card${n === 1 ? "" : "s"}`] : [])];
+    }
     default:
       return [];
   }
@@ -227,9 +278,17 @@ function splitSummary(item: AuditActionItem): { text: string; sku: string | null
   return { text: item.summary, sku: null };
 }
 
-// Order actions deep-link to the admin order detail (targetId is the order id).
+// Order actions deep-link to the admin order detail (targetId is the order id) — the
+// two email actions included, since they carry the same targetId.
+const ORDER_LINK_ACTIONS = new Set<AdminActionType>([
+  "order_status_changed",
+  "payment_status_changed",
+  "order_notification_sent",
+  "order_receipt_resent",
+]);
+
 function linkFor(item: AuditActionItem): string | undefined {
-  if ((item.action === "order_status_changed" || item.action === "payment_status_changed") && item.targetId) {
+  if (ORDER_LINK_ACTIONS.has(item.action) && item.targetId) {
     return `/admin/orders/${item.targetId}`;
   }
   return undefined;
@@ -607,7 +666,7 @@ const AuditLog = () => {
   // Content-box bounds (first segment's left → last segment's right) + the shared
   // segment width, captured once per drag so they stay stable while dragging even
   // as `filter` (and thus which button is "active") changes mid-gesture.
-  const dragMetricsRef = useRef<{ contentLeft: number; contentWidth: number; segmentWidth: number } | null>(null);
+  const dragMetricsRef = useRef<{ contentLeft: number; contentWidth: number; segments: { left: number; width: number }[] } | null>(null);
 
   // Slide the active-segment indicator over the selected option and re-measure on
   // resize. Skipped while dragging — the pointer handlers own the indicator then.
@@ -630,12 +689,27 @@ const AuditLog = () => {
   // once at the start of a drag/press.
   const captureDragMetrics = () => {
     const track = filterTrackRef.current;
-    const first = filterBtnRefs.current[0];
-    const last = filterBtnRefs.current[CATEGORY_FILTERS.length - 1];
-    if (!track || !first || !last) return;
-    const contentLeft = first.offsetLeft - track.clientLeft;
-    const contentWidth = last.offsetLeft - track.clientLeft + last.offsetWidth - contentLeft;
-    dragMetricsRef.current = { contentLeft, contentWidth, segmentWidth: contentWidth / CATEGORY_FILTERS.length };
+    if (!track) return;
+    // Measure EVERY segment rather than deriving one shared width. The segments are
+    // `flex-1`, which only makes them equal while the labels still fit; once they
+    // don't (a phone-width screen with this many pills), each falls back to its own
+    // content width and any `contentWidth / count` arithmetic lands on the wrong
+    // pill — including on a plain tap, since onPointerDown calls followPointer.
+    const segs: { left: number; width: number }[] = [];
+    for (let i = 0; i < CATEGORY_FILTERS.length; i++) {
+      const el = filterBtnRefs.current[i];
+      if (!el) return;
+      segs.push({ left: el.offsetLeft - track.clientLeft, width: el.offsetWidth });
+    }
+    const first = segs[0];
+    const last = segs[segs.length - 1];
+    if (!first || !last) return;
+    const contentLeft = first.left;
+    dragMetricsRef.current = {
+      contentLeft,
+      contentWidth: last.left + last.width - contentLeft,
+      segments: segs,
+    };
   };
 
   // Move the indicator to directly track the pointer (clamped to the track), and
@@ -648,18 +722,22 @@ const AuditLog = () => {
     const metrics = dragMetricsRef.current;
     if (!track || !metrics) return;
     const trackRect = track.getBoundingClientRect();
-    const rawLeft = clientX - trackRect.left - metrics.segmentWidth / 2;
-    const left = Math.min(
-      Math.max(rawLeft, metrics.contentLeft),
-      metrics.contentLeft + metrics.contentWidth - metrics.segmentWidth,
-    );
-    setIndicator({ left, width: metrics.segmentWidth });
+    const segs = metrics.segments;
+    const maxX = metrics.contentLeft + metrics.contentWidth;
+    // Hit-test the pointer against the real measured boxes, so the pill under the
+    // finger is the pill that gets selected whatever the segments actually measure.
+    const x = Math.min(Math.max(clientX - trackRect.left, metrics.contentLeft), maxX - 1);
+    let idx = segs.length - 1;
+    for (let i = 0; i < segs.length; i++) {
+      if (x < segs[i].left + segs[i].width) { idx = i; break; }
+    }
+    const seg = segs[idx];
 
-    const centerX = left + metrics.segmentWidth / 2;
-    const idx = Math.min(
-      CATEGORY_FILTERS.length - 1,
-      Math.max(0, Math.floor((centerX - metrics.contentLeft) / metrics.segmentWidth)),
-    );
+    // The indicator still tracks the raw pointer (so mid-drag it straddles two
+    // segments) but takes the width of whichever segment it is currently over.
+    const left = Math.min(Math.max(x - seg.width / 2, metrics.contentLeft), maxX - seg.width);
+    setIndicator({ left, width: seg.width });
+
     const key = CATEGORY_FILTERS[idx]?.key;
     if (key && key !== filter) {
       setFilter(key);

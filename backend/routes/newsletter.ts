@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { resolveMx } from "node:dns/promises";
 import { supabaseAdmin, supabaseAnon } from "../lib/supabase.js";
+import { logActivity } from "../lib/activityLog.js";
 import { createLog, fms } from "../lib/logger.js";
 import { performance } from "perf_hooks";
 
@@ -86,6 +87,10 @@ router.post("/subscribe", async (req: Request, res: Response) => {
     return;
   }
 
+  // Attribution for the activity feed. Stays null for the logged-out footer form —
+  // a guest subscribe is still worth a row, just an anonymous one.
+  let subscriberId: string | null = null;
+
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
@@ -103,6 +108,7 @@ router.post("/subscribe", async (req: Request, res: Response) => {
       res.status(403).json({ error: "You can only subscribe your own account email" });
       return;
     }
+    subscriberId = user.id;
   }
 
   try {
@@ -124,6 +130,15 @@ router.post("/subscribe", async (req: Request, res: Response) => {
     }
 
     log.success(`subscribed  email=${normalized}  total=${fms(log.elapsed())}`).end("NEWSLETTER SUBSCRIBE");
+    // Only a genuinely NEW subscription is logged — the 23505 branch above returns
+    // early, so re-submitting the form doesn't add a row each time. The signup
+    // auto-subscribe (handle_new_user_profile) isn't logged here either; it shows up
+    // as the 'signup' event instead.
+    void logActivity({
+      type: "newsletter_subscribed",
+      userId: subscriberId,
+      metadata: { email: normalized, source: subscriberId ? "account" : "guest" },
+    });
     res.status(201).json({ ok: true, action: "subscribed" });
   } catch (err) {
     log.error("unhandled error", err).end("NEWSLETTER SUBSCRIBE");

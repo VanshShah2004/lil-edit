@@ -11,12 +11,41 @@ const router = Router();
 // Every endpoint requires a valid token AND an admin role (server-side).
 router.use(requireAuth, requireAdmin);
 
-// The event kinds the feed understands. Used to validate the ?type= filter AND
-// as the default whitelist for unfiltered reads: activity_log also carries
-// analytics-only kinds (cart_remove / wishlist_remove / checkout_started — see
-// 20260711_analytics_foundation.sql) that this feed deliberately does not show;
-// they surface in the admin Analytics platform instead.
-const KNOWN_TYPES = ["cart_add", "wishlist_add", "order_placed", "review_submitted", "search"] as const;
+// The feed groups its event kinds into CATEGORIES, one per filter pill — the same
+// shape adminAuditLog.ts uses. Grouping (rather than one pill per kind) is what lets
+// the account and review-lifecycle events added in 20260828_activity_coverage.sql
+// appear at all without the pill row growing without bound.
+//
+// activity_log also carries analytics-only kinds (cart_remove / wishlist_remove /
+// checkout_started — see 20260711_analytics_foundation.sql) which are deliberately in
+// NO category here: they surface in the admin Analytics platform instead.
+const FEED_CATEGORIES: Record<string, readonly string[]> = {
+  cart: ["cart_add"],
+  wishlist: ["wishlist_add"],
+  // A coupon attempt is part of the buying flow, so it files with orders.
+  orders: ["order_placed", "coupon_applied"],
+  reviews: ["review_submitted", "review_updated", "review_removed"],
+  search: ["search"],
+  // Everything about the account itself: auth, profile, addresses, newsletter.
+  account: [
+    "signup",
+    "login",
+    "profile_updated",
+    "phone_verified",
+    "address_added",
+    "address_updated",
+    "address_default_changed",
+    "address_removed",
+    "newsletter_subscribed",
+  ],
+};
+
+// Flattened whitelist — the default set for an unfiltered read.
+const KNOWN_TYPES = Object.values(FEED_CATEGORIES).flat();
+
+// hasOwnProperty rather than `in`: `in` also walks the prototype chain, so
+// ?category=constructor would pass the check and hand a function to .in().
+const isCategory = (k: string): boolean => Object.prototype.hasOwnProperty.call(FEED_CATEGORIES, k);
 
 // Reading the feed needs the service role: activity_log is RLS-locked (no anon/
 // authenticated policies), so the anon fallback would return nothing. Fail loudly
@@ -88,10 +117,14 @@ function userOf(userId: string | null, profile: ProfileRow | undefined) {
 
 // ─── GET /api/admin/activity — newest-first activity feed ─────────────────────
 // Query params:
-//   • limit  — page size (default 50, max 100)
-//   • type   — restrict to one event kind (must be a KNOWN_TYPE, else ignored)
-//   • before — ISO timestamp cursor; returns rows strictly OLDER than it (paging
-//              down / "load more"). Omit to get the most recent page.
+//   • limit     — page size (default 50, max 100)
+//   • category  — restrict to one pill's group of kinds (cart|wishlist|orders|
+//                 reviews|search|account); anything else is ignored (= all).
+//   • type      — restrict to ONE exact event kind (must be a KNOWN_TYPE). Kept for
+//                 back-compat with callers that predate `category`; when both are
+//                 sent, `type` wins because it is the narrower filter.
+//   • before    — ISO timestamp cursor; returns rows strictly OLDER than it (paging
+//                 down / "load more"). Omit to get the most recent page.
 // Polling for new activity = just re-fetch the first page and merge by id client-side.
 router.get("/", async (req: Request, res: Response) => {
   const log = createLog().start("ADMIN ACTIVITY");
@@ -101,9 +134,11 @@ router.get("/", async (req: Request, res: Response) => {
 
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
   const rawType = (req.query.type as string | undefined)?.trim();
-  const type = rawType && (KNOWN_TYPES as readonly string[]).includes(rawType) ? rawType : null;
+  const type = rawType && KNOWN_TYPES.includes(rawType) ? rawType : null;
+  const rawCategory = (req.query.category as string | undefined)?.trim();
+  const category = rawCategory && isCategory(rawCategory) ? rawCategory : null;
   const before = (req.query.before as string | undefined)?.trim() || null;
-  log.step(`admin=${adminId}  limit=${limit}  type=${type ?? "all"}  before=${before ?? "none"}`);
+  log.step(`admin=${adminId}  limit=${limit}  category=${category ?? "all"}  type=${type ?? "any"}  before=${before ?? "none"}`);
 
   try {
     const t0 = performance.now();
@@ -113,10 +148,11 @@ router.get("/", async (req: Request, res: Response) => {
       .from("activity_log")
       .select("id, user_id, type, product_slug, sku, metadata, created_at");
 
-    // One kind when filtered; otherwise the curated feed kinds only, so the
-    // analytics-only event types never appear here.
+    // Narrowest wins: one exact kind, else one category's kinds, else the whole
+    // curated set — so the analytics-only event types never appear here either way.
     if (type) filter = filter.eq("type", type);
-    else filter = filter.in("type", [...KNOWN_TYPES]);
+    else if (category) filter = filter.in("type", FEED_CATEGORIES[category] as string[]);
+    else filter = filter.in("type", KNOWN_TYPES);
     if (before) filter = filter.lt("created_at", before);
 
     // created_at is the primary sort; id breaks ties so pagination is stable when

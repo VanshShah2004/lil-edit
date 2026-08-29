@@ -167,8 +167,13 @@ export async function verifyCheckout(payload: RazorpaySuccess): Promise<{ orderI
   return { orderId: data.orderId as string, orderNumber: data.orderNumber as string };
 }
 
-export async function validateCoupon(code: string, subtotal: number): Promise<CouponResult> {
-  const res = await authFetch(`/api/checkout/coupon?code=${encodeURIComponent(code)}&subtotal=${Math.round(subtotal)}`);
+// `auto` marks a background re-check (not a customer pressing Apply). It is passed
+// through so the server can skip writing a coupon_applied activity row — see the
+// note on GET /api/checkout/coupon in backend/routes/checkout.ts.
+export async function validateCoupon(code: string, subtotal: number, opts?: { auto?: boolean }): Promise<CouponResult> {
+  const res = await authFetch(
+    `/api/checkout/coupon?code=${encodeURIComponent(code)}&subtotal=${Math.round(subtotal)}${opts?.auto ? "&auto=1" : ""}`,
+  );
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { error?: string }).error ?? `Coupon check failed (${res.status})`);

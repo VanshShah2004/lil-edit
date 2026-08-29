@@ -11,16 +11,41 @@ import { supabaseAdmin, supabaseAnon } from "./supabase.js";
 // (size/color merges, post-checkout clears, self-heal rewrites must not count):
 //   cart_remove / wishlist_remove / checkout_started, plus cart_add rows for
 //   quantity-increment re-adds the INSERT trigger can't see (metadata.via).
+// The account + lifecycle kinds (20260828_activity_coverage.sql and its optional
+// auth companion) are DB triggers again, for the same reason reviews were: the
+// browser writes `addresses` / `profiles` / `product_reviews` straight to PostgREST
+// under the customer's own JWT, so no Express route ever sees those writes. Each of
+// those triggers guards on auth.uid() = the row owner, so admin/service-role writes
+// and cascade deletes never show up as customer activity.
+//
 // The admin Activity feed only displays the curated FEED kinds (adminActivity.ts).
 export type ActivityType =
+  // ── shopping (triggers) ──
   | "cart_add"
   | "wishlist_add"
   | "order_placed"
   | "review_submitted"
+  // ── app-code ──
   | "search"
+  | "newsletter_subscribed"
+  | "coupon_applied"
+  // ── analytics-only (app-code; hidden from the feed) ──
   | "cart_remove"
   | "wishlist_remove"
-  | "checkout_started";
+  | "checkout_started"
+  // ── review lifecycle (triggers, 20260828) ──
+  | "review_updated"
+  | "review_removed"
+  // ── account (triggers, 20260828) ──
+  | "address_added"
+  | "address_updated"
+  | "address_default_changed"
+  | "address_removed"
+  | "profile_updated"
+  | "phone_verified"
+  // ── auth (triggers, 20260828 optional) ──
+  | "signup"
+  | "login";
 
 interface ActivityEntry {
   userId: string | null;

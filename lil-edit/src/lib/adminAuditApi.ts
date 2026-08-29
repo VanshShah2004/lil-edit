@@ -20,11 +20,21 @@ export type AdminActionType =
   | "admin_access_revoked"
   | "maintenance_enabled"
   | "maintenance_disabled"
-  | "store_charges_updated";
+  | "store_charges_updated"
+  | "order_notification_sent"
+  | "order_receipt_resent"
+  | "review_verified"
+  | "review_unverified"
+  | "review_deleted"
+  | "dashboard_widget_hidden"
+  | "dashboard_widget_shown"
+  | "dashboard_widgets_reordered";
 
 // The filter categories the feed offers — each maps to a set of actions server-side
-// (see ACTION_CATEGORIES in backend/routes/adminAuditLog.ts). "merchandising" covers
-// coupons + Spotlight curation; "platform" covers admin-access + site maintenance.
+// (see ACTION_CATEGORIES in backend/routes/adminAuditLog.ts). "products" also covers
+// review moderation (reviews live on products); "merchandising" covers coupons +
+// Spotlight curation + size charts; "platform" covers admin-access, site maintenance,
+// store charges and the shared analytics-dashboard layout.
 export type AuditCategory = "products" | "merchandising" | "orders" | "platform";
 
 export interface AuditAdmin {
