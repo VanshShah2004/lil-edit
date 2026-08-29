@@ -12,6 +12,7 @@ import {
   type SearchCatalogEntry,
   type SearchCatalogVariant,
 } from "../lib/persistCatalog.js";
+import { generateColorSku } from "../utils/skuCodes.js";
 
 function entry(overrides: Partial<SearchCatalogEntry> & { title: string }): SearchCatalogEntry {
   return {
@@ -38,7 +39,13 @@ function entry(overrides: Partial<SearchCatalogEntry> & { title: string }): Sear
 }
 
 function variant(inStock: boolean, colorName = ""): SearchCatalogVariant {
-  return { sku: colorName, colorName, colorHex: "", image: "", inStock };
+  // Build the SKU the way production does (utils/skuCodes.ts): `${baseSku}-${first
+  // three letters of the colour}` — e.g. "Maroon" -> "TEE-001-MAR". It is NEVER the
+  // colour name itself. Using the colour name here made these fixtures impossible:
+  // once SKU matching entered the scorer (a74974d), a query like "maroon" hit the
+  // SKU branch at title tier and these tests were asserting colour behaviour while
+  // actually exercising the SKU path.
+  return { sku: generateColorSku("TEE-001", colorName), colorName, colorHex: "", image: "", inStock };
 }
 
 // Mirrors the fetchSuggestions/searchProducts pipeline: score → floor → rank.

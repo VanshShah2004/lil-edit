@@ -39,11 +39,17 @@ test("confirmation receipt: items, totals, discount line, address, CTA", () => {
     orderUrl: "https://shop.test/orders/o1",
     address: { line1: "12 MG Road", city: "Bengaluru", state: "Karnataka", country: "India", pincode: "560001" },
   });
-  assert.match(subject, /LE42 confirmed/);
+  // The subject is marketing copy and has been reworded before (11b1f22), so assert
+  // the contract — it names the order and says it is confirmed — not the exact words.
+  assert.match(subject, /LE42/);
+  assert.match(subject, /confirmed/i);
   assert.match(html, /Floral Frock/);
   assert.match(html, /Striped Romper/);
   assert.match(html, /Bengaluru/);
-  assert.match(html, /Discount/);              // discount row present when > 0
+  // The discount row is labelled COUPON (with the code when there is one), not
+  // "Discount" — assert both that the row exists and that it shows the amount off.
+  assert.match(html, /COUPON/);
+  assert.match(html, /- ₹350/);
   assert.match(html, /₹3,346/);                // total is rupee-formatted
   assert.match(html, /View your order/);
   assert.match(text, /- Floral Frock \(2-3Y, Red\) x2/);
