@@ -49,3 +49,6 @@ Thumbs.db
 *.sw?
 
 backend/.env
+
+# Screenshots dropped in the project root for a chat, not part of the app
+/image.png
