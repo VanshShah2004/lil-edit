@@ -284,8 +284,8 @@ function CollectionsPlacardCarousel({
             const image = curatedImage(key) || "";
             // Admin's sub-heading wins; otherwise the words this placard ships with.
             // The name and the route are never curated — see curatedSubtitle's note.
-            // Strip leading " -- " or " - " from the subheading.
-            const subheading = (curatedSubtitle(key) || blurb).replace(/^\s*[-–—]+\s*/, "");
+            // Strip " -- ", " - ", and " — " from the subheading.
+            const subheading = (curatedSubtitle(key) || blurb).replace(/\s*[-–—]+\s*/g, " ").trim();
             return (
               <CarouselItem key={to} className="pl-0">
                 <div className="h-full px-0.5">
