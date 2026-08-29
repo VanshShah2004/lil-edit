@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { useCuratedSection, metaStr } from "@/hooks/useCuratedSection";
 import type { ResolvedItem, ResolvedEditorialItem } from "@/lib/curationApi";
 import img1 from "@/assets/collage/collage-main-mobile-01.jpg";
@@ -14,6 +15,20 @@ import lecD002 from "@/assets/collage/collage-slide-desktop-02.png";
 import lecD003 from "@/assets/collage/collage-slide-desktop-03.png";
 
 const AUTO_SWIPE_MS = 4500;
+
+// Where a collage tile goes when the admin hasn't said otherwise. The collections
+// index is the safe landing for a photo carrying no copy — it can't go stale the
+// way a link to one product does once that product is unpublished.
+const DEFAULT_TILE_LINK = "/collections";
+
+// A tile's destination. Admin-entered links are storefront paths, but an absolute
+// URL still has to leave the router rather than be resolved as a route.
+function TileLink({ to, className, children }: { to: string; className?: string; children: ReactNode }) {
+  if (to.startsWith("http://") || to.startsWith("https://")) {
+    return <a href={to} className={className}>{children}</a>;
+  }
+  return <Link to={to} className={className}>{children}</Link>;
+}
 
 // Bundled defaults for the full-bleed slides that follow the grid page. Admins
 // curate up to MAX_EXTRA_SLIDES of them in the HeroSection+ section; these pad
@@ -65,9 +80,16 @@ const HomeCollage = ({
     // (custom_image_url), desktop uses meta.desktop_image_url, and whichever a
     // breakpoint lacks falls back to its OWN bundled default — so uploading just
     // one of the two leaves the other showing the default (not the uploaded one).
+    // The DESTINATIONS split per breakpoint for the same reason the pictures do:
+    // the two can be different crops of different things, so they can want
+    // different landings. Each falls back on its own — through the tile's single
+    // link, for any row saved before the split — to the collections index, so a
+    // tile always goes somewhere.
     const slot = (it: ResolvedEditorialItem | undefined, mob: string, desk: string) => ({
       mobile: it?.image || mob,
       desktop: metaStr(it?.meta, "desktop_image_url") || desk,
+      mobileLink: metaStr(it?.meta, "mobile_link_url") || it?.link || DEFAULT_TILE_LINK,
+      desktopLink: metaStr(it?.meta, "desktop_link_url") || it?.link || DEFAULT_TILE_LINK,
     });
     const s0 = slot(editorials[0], img1, img1Desktop);
     const s1 = slot(editorials[1], img2, img2Desktop);
@@ -100,47 +122,61 @@ const HomeCollage = ({
     return [
       <div key="part-collage" className="w-full h-full grid grid-cols-7 md:grid-cols-5 grid-rows-2 gap-2 md:gap-1.5 px-2 sm:px-4">
         <div className="col-span-3 md:col-span-2 row-span-1 overflow-hidden rounded-none">
-          <img
-            src={s0.mobile}
-            alt="Collage 1 Mobile"
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-in-out md:hidden"
-          />
-          <img
-            src={s0.desktop}
-            alt="Collage 1 Desktop"
-            className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-700 ease-in-out hidden md:block"
-          />
+          <TileLink to={s0.mobileLink} className="block w-full h-full md:hidden">
+            <img
+              src={s0.mobile}
+              alt="Collage 1 Mobile"
+              className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-in-out"
+            />
+          </TileLink>
+          <TileLink to={s0.desktopLink} className="hidden md:block w-full h-full">
+            <img
+              src={s0.desktop}
+              alt="Collage 1 Desktop"
+              className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-700 ease-in-out"
+            />
+          </TileLink>
         </div>
         <div className="col-span-4 md:col-span-3 row-span-1 overflow-hidden rounded-none">
-          <img
-            src={s1.mobile}
-            alt="Collage 2 Mobile"
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-in-out md:hidden"
-          />
-          <img
-            src={s1.desktop}
-            alt="Collage 2 Desktop"
-            className="w-full h-full object-cover object-[50%_35%] hover:scale-105 transition-transform duration-700 ease-in-out hidden md:block"
-          />
+          <TileLink to={s1.mobileLink} className="block w-full h-full md:hidden">
+            <img
+              src={s1.mobile}
+              alt="Collage 2 Mobile"
+              className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-in-out"
+            />
+          </TileLink>
+          <TileLink to={s1.desktopLink} className="hidden md:block w-full h-full">
+            <img
+              src={s1.desktop}
+              alt="Collage 2 Desktop"
+              className="w-full h-full object-cover object-[50%_35%] hover:scale-105 transition-transform duration-700 ease-in-out"
+            />
+          </TileLink>
         </div>
         <div className="col-span-4 md:col-span-3 row-span-1 overflow-hidden rounded-none">
-          <img
-            src={s2.mobile}
-            alt="Collage 3 Mobile"
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-in-out md:hidden"
-          />
-          <img
-            src={s2.desktop}
-            alt="Collage 3 Desktop"
-            className="w-full h-full object-cover object-[50%_55%] hover:scale-105 transition-transform duration-700 ease-in-out hidden md:block"
-          />
+          <TileLink to={s2.mobileLink} className="block w-full h-full md:hidden">
+            <img
+              src={s2.mobile}
+              alt="Collage 3 Mobile"
+              className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-in-out"
+            />
+          </TileLink>
+          <TileLink to={s2.desktopLink} className="hidden md:block w-full h-full">
+            <img
+              src={s2.desktop}
+              alt="Collage 3 Desktop"
+              className="w-full h-full object-cover object-[50%_55%] hover:scale-105 transition-transform duration-700 ease-in-out"
+            />
+          </TileLink>
         </div>
         <div className="col-span-3 md:col-span-2 row-span-1 overflow-hidden rounded-none">
-          <img
-            src={isDesktop ? s3.desktop : s3.mobile}
-            alt="Collage 4"
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-in-out"
-          />
+          <TileLink to={isDesktop ? s3.desktopLink : s3.mobileLink} className="block w-full h-full">
+            <img
+              src={isDesktop ? s3.desktop : s3.mobile}
+              alt="Collage 4"
+              className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-in-out"
+            />
+          </TileLink>
         </div>
       </div>,
       ...extraParts,

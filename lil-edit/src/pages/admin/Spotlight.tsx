@@ -52,6 +52,9 @@ import {
 } from "@/lib/curationApi";
 
 const ACCENT = "#B19CD9";
+// Where a Home Collage tile points when the admin leaves the field empty. Mirrors
+// DEFAULT_TILE_LINK in components/home/HomeCollage — keep the two in step.
+const DEFAULT_TILE_LINK = "/collections";
 const TEAL = "#0F766E";
 
 // Storefront pages, each grouping the sections that live on it. The sidebar shows
@@ -319,6 +322,10 @@ function EditorialTileModal({
   const [imageUrl, setImageUrl] = useState(initial?.customImageUrl ?? "");
   const [desktopImageUrl, setDesktopImageUrl] = useState(metaStr(initial?.meta, "desktop_image_url"));
   const [link, setLink] = useState(initial?.linkUrl ?? "");
+  // Seeded with the default rather than blank so the field always shows where the
+  // tile actually goes — an empty box would read as "goes nowhere".
+  const [mobileLink, setMobileLink] = useState(metaStr(initial?.meta, "mobile_link_url") || DEFAULT_TILE_LINK);
+  const [desktopLink, setDesktopLink] = useState(metaStr(initial?.meta, "desktop_link_url") || DEFAULT_TILE_LINK);
   const [badge, setBadge] = useState(initial?.badge ?? "");
   // Which placard this tile fronts. Chosen first — everything below it is "what
   // that placard shows", so the form reads top-down as one decision then its detail.
@@ -341,7 +348,10 @@ function EditorialTileModal({
   // Only the collage carousel sections read meta.desktop_image_url today —
   // offering the field elsewhere would be a dead control.
   const showDesktopImage = sectionKey === "home_collage" || sectionKey === "home_hero_plus";
-  // Home collage tiles are image-only — no title, subtitle, or badge.
+  // A Home Collage tile is a PHOTO and where it goes — the collage renders no copy
+  // over it, so a title, sub-heading or badge here would be typed into nothing.
+  // What it does get, in place of the single link, is one destination PER
+  // BREAKPOINT, matching the per-breakpoint pictures above.
   const imageOnly = sectionKey === "home_collage";
 
   const handleUpload = async (file: File) => {
@@ -396,6 +406,13 @@ function EditorialTileModal({
     if (showDesktopImage) {
       if (desktopImage) meta.desktop_image_url = desktopImage;
       else delete meta.desktop_image_url;
+    }
+    // Each breakpoint carries its own destination. Cleared to empty, a field falls
+    // back to the collections index rather than being stored blank, so a tile is
+    // never saved pointing nowhere.
+    if (imageOnly) {
+      meta.mobile_link_url = mobileLink.trim() || DEFAULT_TILE_LINK;
+      meta.desktop_link_url = desktopLink.trim() || DEFAULT_TILE_LINK;
     }
     if (imageAndLinkOnly) {
       meta.collection = collection;
@@ -563,6 +580,19 @@ function EditorialTileModal({
                 </div>
               </div>
             </div>
+          )}
+
+          {/* One destination per breakpoint — the phone crop and the desktop crop
+              can be different pictures, so they can want different landings. */}
+          {imageOnly && (
+            <>
+              <Field label="Mobile link" value={mobileLink} onChange={setMobileLink} placeholder={DEFAULT_TILE_LINK} />
+              <Field label="Desktop link" value={desktopLink} onChange={setDesktopLink} placeholder={DEFAULT_TILE_LINK} />
+              <p className="-mt-2 text-[11px] text-gray-400">
+                A storefront path like <code>/collections/girls</code>. Left empty, the tile
+                opens <code>{DEFAULT_TILE_LINK}</code>.
+              </p>
+            </>
           )}
 
           {!imageOnly && (
