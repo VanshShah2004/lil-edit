@@ -280,8 +280,8 @@ function CollectionsPlacardCarousel({
             // (older backend, or a degraded counts response), so the row never empties.
             const wears = wearTypes?.[countKey] ?? [];
             const wearLabel = wears.length > 0 ? wears.join(", ") : p?.category ?? "";
-            // Admin's picture wins; otherwise the collection's newest product.
-            const image = curatedImage(key) || p?.image || "";
+            // Only show the admin's curated picture; no product fallback.
+            const image = curatedImage(key) || "";
             // Admin's sub-heading wins; otherwise the words this placard ships with.
             // The name and the route are never curated — see curatedSubtitle's note.
             const subheading = curatedSubtitle(key) || blurb;
