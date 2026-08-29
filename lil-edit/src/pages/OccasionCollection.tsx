@@ -17,7 +17,7 @@ const OCCASION_THEME: ArrivalsTheme = {
   accentHoverText: "hover:text-violet-700",
   freshBadgeBg: "bg-violet-600",
   tickerWords: ["Festive", "Weddings", "Birthdays", "Playdates", "Every Moment Covered", "The Lil Edit"],
-  heroTagline: "Weddings, festivals, birthdays or just Tuesday — find the perfect outfit for every moment.",
+  heroTagline: "Weddings, festivals, birthdays or just Tuesday find the perfect outfit for every moment.",
   emptyTitle: "Nothing here just yet",
   emptyBlurb: "Occasion-ready styles are on their way. Explore our collections while you wait.",
   spotlightLabel: "Moment Maker",

@@ -15,7 +15,7 @@ const BOYS_THEME: ArrivalsTheme = {
   accentHoverText: "hover:text-blue-700",
   freshBadgeBg: "bg-blue-600",
   tickerWords: ["For the Boys", "Adventure-Ready", "New Drop", "Fresh Styles", "Little Legends", "The Lil Edit"],
-  heroTagline: "Sharp kurtas, cool co-ords and playground-proof picks — the latest for your little guy.",
+  heroTagline: "Sharp kurtas, cool co-ords and playground-proof picks the latest for your little guy.",
   emptyTitle: "Nothing here just yet",
   emptyBlurb: "New boys' styles are on their way. Explore our collections while you wait.",
   spotlightLabel: "Fresh for Boys",

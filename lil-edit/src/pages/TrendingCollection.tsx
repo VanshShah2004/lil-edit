@@ -18,7 +18,7 @@ const TRENDING_THEME: ArrivalsTheme = {
   accentHoverText: "hover:text-orange-600",
   freshBadgeBg: "bg-orange-500",
   tickerWords: ["Hot Right Now", "Most Wanted", "Everyone's Wearing It", "Trending", "Don't Miss Out", "The Lil Edit"],
-  heroTagline: "The pieces everyone's talking about — most-loved styles, flying off the shelves.",
+  heroTagline: "The pieces everyone's talking about most-loved styles, flying off the shelves.",
   emptyTitle: "Nothing trending just yet",
   emptyBlurb: "The next big thing is loading. Explore our collections while you wait.",
   spotlightLabel: "Trending Hardest",

@@ -15,7 +15,7 @@ const GIRLS_THEME: ArrivalsTheme = {
   accentHoverText: "hover:text-rose-600",
   freshBadgeBg: "bg-rose-500",
   tickerWords: ["For the Girls", "Twirl-Ready", "New Drop", "Fresh Styles", "Little Icons", "The Lil Edit"],
-  heroTagline: "Dresses, twirls and everything in between — the latest styles for your little girl.",
+  heroTagline: "Dresses, twirls and everything in between the latest styles for your little girl.",
   emptyTitle: "Nothing here just yet",
   emptyBlurb: "New girls' styles are on their way. Explore our collections while you wait.",
   spotlightLabel: "Fresh for Girls",
