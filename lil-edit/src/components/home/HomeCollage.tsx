@@ -109,11 +109,13 @@ const HomeCollage = ({
       return (
         <div key={`part-extra-${i}`} className="w-full h-full px-2 md:px-0">
           <div className="w-full h-full overflow-hidden rounded-none">
-            <img
-              src={isDesktop ? s.desktop : s.mobile}
-              alt={`Collage slide ${i + 2}`}
-              className="w-full h-full object-cover"
-            />
+            <TileLink to={isDesktop ? s.desktopLink : s.mobileLink} className="block w-full h-full">
+              <img
+                src={isDesktop ? s.desktop : s.mobile}
+                alt={`Collage slide ${i + 2}`}
+                className="w-full h-full object-cover"
+              />
+            </TileLink>
           </div>
         </div>
       );

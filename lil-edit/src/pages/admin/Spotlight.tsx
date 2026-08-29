@@ -108,10 +108,17 @@ const PRODUCTS_ONLY = new Set<SectionKey>(["search_discover"]);
 // these rather than offering a box that writes to nothing.
 const NO_SECTION_SUBHEADING = new Set<SectionKey>(["search_discover"]);
 
-// Sections that render NO heading at all. The HeroSection+ slides are full-bleed
-// pictures edge to edge — HomeCollage doesn't even take a title prop — so there is
-// nowhere for a heading to land and the button is hidden rather than left dead.
-const NO_SECTION_HEADING = new Set<SectionKey>(["home_hero_plus"]);
+// Sections that render NO heading at all — both halves of the collage carousel.
+// The grid page and the HeroSection+ slides are pictures edge to edge, and
+// HomeCollage doesn't even take a title prop, so there is nowhere for a heading to
+// land and the button is hidden rather than left dead.
+const NO_SECTION_HEADING = new Set<SectionKey>(["home_collage", "home_hero_plus"]);
+
+// The collage carousel's two sections. A tile here is a PHOTO and where it goes:
+// the carousel lays no copy over the picture, so a title, sub-heading or badge
+// would be typed into nothing. Both take a picture PER BREAKPOINT, and so — in
+// place of one link — a destination per breakpoint as well.
+const IMAGE_AND_BREAKPOINT_LINKS = new Set<SectionKey>(["home_collage", "home_hero_plus"]);
 
 /** The collection a tile fronts, or "" if it names none. */
 function tileCollection(item: DraftItem): string {
@@ -369,12 +376,9 @@ function EditorialTileModal({
   const showSubtitle = sectionKey !== "home_shop_the_look";
   // Only the collage carousel sections read meta.desktop_image_url today —
   // offering the field elsewhere would be a dead control.
-  const showDesktopImage = sectionKey === "home_collage" || sectionKey === "home_hero_plus";
-  // A Home Collage tile is a PHOTO and where it goes — the collage renders no copy
-  // over it, so a title, sub-heading or badge here would be typed into nothing.
-  // What it does get, in place of the single link, is one destination PER
-  // BREAKPOINT, matching the per-breakpoint pictures above.
-  const imageOnly = sectionKey === "home_collage";
+  const showDesktopImage = IMAGE_AND_BREAKPOINT_LINKS.has(sectionKey);
+  // ...and those same sections are the picture-and-destination-only ones.
+  const imageOnly = IMAGE_AND_BREAKPOINT_LINKS.has(sectionKey);
 
   const handleUpload = async (file: File) => {
     setUploading(true);
@@ -456,7 +460,7 @@ function EditorialTileModal({
       customImageUrl: mobileImage || null,
       linkUrl: imageOnly ? null : imageAndLinkOnly ? null : link.trim() || null,
       // Sections without a badge slot (Shop the Look) also clear any badge a tile
-      // may have carried from before. Image-only sections (home_collage) also clear badge.
+      // may have carried from before. The collage sections clear the badge too.
       badge: imageOnly ? null : showBadge ? badge.trim() || null : null,
       meta,
       isActive: initial?.isActive ?? true,
