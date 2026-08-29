@@ -45,7 +45,7 @@ const PREVIEW_RENDERERS: Record<SectionKey, (items: ResolvedItem[], title: strin
   home_trending: (items, title, subtitle) => <TrendingSection previewItems={items} previewTitle={title} previewSubtitle={subtitle} />,
   home_recommended: (items, title, subtitle) => <RecommendedForYou previewItems={items} previewTitle={title} previewSubtitle={subtitle} />,
   search_popular: (items, title, subtitle) => <FrequentSearches previewItems={items} previewTitle={title} previewSubtitle={subtitle} onSelect={() => {}} />,
-  search_discover: (items, title, subtitle) => <CollageGrid previewItems={items} previewTitle={title} previewSubtitle={subtitle} />,
+  search_discover: (items, title) => <CollageGrid previewItems={items} previewTitle={title} />,
   home_shop_the_look: (items, title, subtitle) => <ShopTheLook previewItems={items} previewTitle={title} previewSubtitle={subtitle} />,
   home_featured_categories: (items) => <FeaturedCategories previewItems={items} />,
   home_collage: (items) => <HomeCollage previewItems={items} />,

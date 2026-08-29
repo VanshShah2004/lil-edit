@@ -95,6 +95,24 @@ function groupOf(key: SectionKey): string | null {
 // hidden. The backend enforces the same two rules on save.
 const IMAGE_AND_LINK_ONLY = new Set<SectionKey>(["collections_browse"]);
 
+// Sections stored as "mixed" that are curated as PRODUCTS ONLY. Discover More has
+// a tile path in the schema and its grid still renders one, but what belongs in a
+// search-results rail is catalog product — so the editor offers only that. Any tile
+// already curated there keeps rendering and stays editable; this only stops new
+// ones being made, which is why it lives here rather than in the section's
+// item_type (changing that would also switch on the product top-up).
+const PRODUCTS_ONLY = new Set<SectionKey>(["search_discover"]);
+
+// Sections whose storefront heading is a single line, with no sub-heading rendered
+// under it (see components/search/CollageGrid). "Edit heading" drops the field for
+// these rather than offering a box that writes to nothing.
+const NO_SECTION_SUBHEADING = new Set<SectionKey>(["search_discover"]);
+
+// Sections that render NO heading at all. The HeroSection+ slides are full-bleed
+// pictures edge to edge — HomeCollage doesn't even take a title prop — so there is
+// nowhere for a heading to land and the button is hidden rather than left dead.
+const NO_SECTION_HEADING = new Set<SectionKey>(["home_hero_plus"]);
+
 /** The collection a tile fronts, or "" if it names none. */
 function tileCollection(item: DraftItem): string {
   return metaStr(item.meta, "collection");
@@ -657,6 +675,7 @@ function SectionHeadingModal({
 }) {
   const [title, setTitle] = useState(section.title ?? "");
   const [subtitle, setSubtitle] = useState(section.subtitle ?? "");
+  const showSubheading = !NO_SECTION_SUBHEADING.has(section.key);
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -671,14 +690,18 @@ function SectionHeadingModal({
 
         <div className="p-5 space-y-4">
           <Field label="Heading" value={title} onChange={setTitle} placeholder="e.g. Trending Now" />
-          <Field label="Subheading" value={subtitle} onChange={setSubtitle} placeholder="e.g. What everyone's loving right now" />
+          {showSubheading && (
+            <Field label="Subheading" value={subtitle} onChange={setSubtitle} placeholder="e.g. What everyone's loving right now" />
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100">
           <button onClick={onClose} className="text-sm font-semibold text-gray-600 px-4 py-2 hover:text-gray-900">Cancel</button>
           <button
             disabled={saving}
-            onClick={() => onSave({ title: title.trim(), subtitle: subtitle.trim() })}
+            // Sends empty for a section that renders none, so a sub-heading set before
+            // this became a lone-line heading is cleared rather than left orphaned.
+            onClick={() => onSave({ title: title.trim(), subtitle: showSubheading ? subtitle.trim() : "" })}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-white px-4 py-2 rounded-lg disabled:opacity-50"
             style={{ backgroundColor: TEAL }}
           >
@@ -1324,7 +1347,9 @@ const SpotlightPage = () => {
   }
 
   const canAddProduct = selected && (selected.itemType === "product" || selected.itemType === "mixed");
-  const canAddTile = selected && (selected.itemType === "editorial" || selected.itemType === "mixed");
+  const canAddTile = selected
+    && (selected.itemType === "editorial" || selected.itemType === "mixed")
+    && !PRODUCTS_ONLY.has(selected.key);
 
   // Sections whose tiles name their own placard are edited as a fixed grid of
   // placard cards (PlacardGrid) rather than an add-and-reorder item list.
@@ -1508,7 +1533,12 @@ const SpotlightPage = () => {
                           {selected.itemType === "editorial" && (IMAGE_AND_LINK_ONLY.has(selected.key)
                             ? "One card per collection. Click a card to set that placard's picture and where it points — everything else is fixed on the page."
                             : "Holds custom image/title/link tiles.")}
-                          {selected.itemType === "mixed" && "Holds products and/or custom tiles."}
+                          {/* Deliberately not the product-section wording: a mixed section
+                              is NOT topped up when partly curated (see resolveItems in
+                              backend/routes/curation), so promising a fill would be wrong. */}
+                          {selected.itemType === "mixed" && (PRODUCTS_ONLY.has(selected.key)
+                            ? "Holds catalog products. Empty = random products shown automatically; add any and only those show."
+                            : "Holds products and/or custom tiles.")}
                           {/* The cap is the collection count here, which the grid already
                               makes obvious — restating it as a number reads like a quota. */}
                           {!namesItsPlacard && <>{" "}Max {selected.maxItems}.</>}
@@ -1545,13 +1575,15 @@ const SpotlightPage = () => {
                           <ImagePlus className="w-3.5 h-3.5" /> Add tile
                         </button>
                       )}
-                      <button
-                        onClick={() => setHeadingEditing(true)}
-                        title="Edit heading & subheading"
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-400 rounded-md px-3 py-2 bg-white hover:border-gray-900"
-                      >
-                        <Pencil className="w-3.5 h-3.5" /> Edit heading
-                      </button>
+                      {!NO_SECTION_HEADING.has(selected.key) && (
+                        <button
+                          onClick={() => setHeadingEditing(true)}
+                          title="Edit heading & subheading"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-400 rounded-md px-3 py-2 bg-white hover:border-gray-900"
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> Edit heading
+                        </button>
+                      )}
                       {draft.length > selected.maxItems && (
                         <span className="text-xs text-amber-600 ml-auto">Over the {selected.maxItems}-item cap — only the first {selected.maxItems} will show on the storefront.</span>
                       )}

@@ -45,21 +45,19 @@ const FALLBACK: Tile[] = [
   { key: "9", title: "Shoes", subtitle: "Step Up", image: product_images["product-0001"]["lil-edit-product-0001-1-4.png"], span: SPANS[8] },
 ];
 
+// No previewSubtitle: the heading here is a single line — see the header below.
 export default function CollageGrid({
   previewItems,
   previewTitle,
-  previewSubtitle,
 }: {
   previewItems?: ResolvedItem[];
   previewTitle?: string | null;
-  previewSubtitle?: string | null;
 }) {
   const preview = previewItems !== undefined;
   const navigate = useNavigate();
-  const { items: fetchedItems, title: fetchedTitle, subtitle: fetchedSubtitle } = useCuratedSection("search_discover", { skip: preview });
+  const { items: fetchedItems, title: fetchedTitle } = useCuratedSection("search_discover", { skip: preview });
   const items = preview ? previewItems : fetchedItems;
   const heading = (preview ? previewTitle : fetchedTitle) ?? "Discover More";
-  const subheading = preview ? previewSubtitle : fetchedSubtitle;
 
   const go = (link?: string | null) => {
     if (!link) return;
@@ -106,7 +104,6 @@ export default function CollageGrid({
             {heading}
           </h3>
         </div>
-        {subheading && <p className="text-xs text-muted-foreground mt-0.5">{subheading}</p>}
       </div>
 
       {/* Mobile: swipeable carousel with a peek of the next tile (the 3-col masonry
