@@ -173,8 +173,7 @@ const megaMenuContent: Record<
   ],
   "BY OCCASION": [
     { title: "◆ THE BIG DAY", links: [
-      { label: "Wedding Guest", q: "Wedding" },
-      { label: "Sangeet Ready", q: "Sangeet" },
+      { label: "Wedding & Sangeet", q: "Wedding Sangeet" },
       { label: "Mehndi Edit", q: "Mehndi" },
       same("Party Wear"),
       { label: "Birthday Special", q: "Birthday" },
