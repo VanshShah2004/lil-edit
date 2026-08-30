@@ -1,4 +1,3 @@
-import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCuratedSection, metaStr } from "@/hooks/useCuratedSection";
 import type { ResolvedItem, ResolvedEditorialItem } from "@/lib/curationApi";
@@ -63,20 +62,13 @@ const FeaturedCategories = ({ previewItems }: { previewItems?: ResolvedItem[] })
               />
 
               {/* Content Overlay - Minimal for maximum image vibrancy */}
-              <div className="absolute inset-0 p-6 md:p-10 flex flex-col justify-end items-start bg-black/5 group-hover:bg-black/0 transition-all duration-500">
-                <h2 className="text-3xl md:text-6xl font-bold text-black tracking-tight mb-2 transition-transform duration-500 group-hover:-translate-y-2 drop-shadow-md">
+              <div className="absolute inset-0 px-6 pt-6 pb-4 md:px-10 md:pt-10 md:pb-6 flex flex-col justify-end items-start bg-black/5 group-hover:bg-black/0 transition-all duration-500">
+                <h2 className="text-3xl md:text-6xl font-bold text-black tracking-tight mb-2 drop-shadow-md">
                   {category.title}
                 </h2>
-                <p className="text-[#0F766E] text-xs md:text-sm font-bold tracking-widest mb-3 transition-transform duration-500 group-hover:-translate-y-2 drop-shadow-sm">
+                <p className="text-[#0F766E] text-xs md:text-sm font-bold tracking-widest drop-shadow-sm">
                   {category.sub}
                 </p>
-
-                <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500">
-                  <span className="text-black font-black text-sm uppercase tracking-widest">Discover Collection</span>
-                  <div className="w-10 h-10 rounded-full border border-black/20 flex items-center justify-center bg-white/80 backdrop-blur-md hover:bg-black hover:text-white transition-all">
-                    <ArrowRight className="w-5 h-5" />
-                  </div>
-                </div>
               </div>
 
               {/* Center Divider Line (Desktop only) */}

@@ -29,10 +29,10 @@ const HeroSection = ({ hidePhoto = false }: HeroSectionProps) => {
               Thoughtfully curated baby essentials designed for comfort, crafted with love, and styled for the tiniest trendsetters.
             </p>
             <div className={`flex flex-row gap-3 sm:gap-4 pt-2 justify-center ${!hidePhoto ? "lg:justify-start" : ""}`}>
-              <Link to="/shop">
+              <Link to="/collections">
                 <Button
                   size="lg"
-                  className={`font-body rounded-full w-auto px-5 sm:px-8 gap-1.5 sm:gap-2 transition-all duration-300 border-2 ${isExploreHovered
+                  className={`font-body rounded-lg w-auto px-5 sm:px-8 gap-1.5 sm:gap-2 transition-all duration-300 border-2 ${isExploreHovered
                     ? "bg-primary/10 text-primary border-primary"
                     : "bg-primary text-primary-foreground border-transparent hover:bg-primary/90"
                     }`}
@@ -41,18 +41,18 @@ const HeroSection = ({ hidePhoto = false }: HeroSectionProps) => {
                 </Button>
               </Link>
               <Link
-                to="/collections"
+                to="/collections/new-arrivals"
                 onMouseEnter={() => setIsExploreHovered(true)}
                 onMouseLeave={() => setIsExploreHovered(false)}
               >
                 <Button
                   size="lg"
-                  className={`font-body rounded-full w-auto px-5 sm:px-8 transition-all duration-300 border-2 ${isExploreHovered
+                  className={`font-body rounded-lg w-auto px-5 sm:px-8 transition-all duration-300 border-2 ${isExploreHovered
                     ? "bg-primary text-primary-foreground border-primary"
                     : "border-primary text-primary bg-primary/10 backdrop-blur-[2px] hover:text-primary-foreground hover:bg-primary"
                     }`}
                 >
-                  Explore
+                  Explore Arrivals
                 </Button>
               </Link>
             </div>
