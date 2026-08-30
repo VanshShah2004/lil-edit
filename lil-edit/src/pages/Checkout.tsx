@@ -1037,6 +1037,22 @@ export default function Checkout() {
                       </div>
                     </div>
                   ))}
+                  {giftWrap && (
+                    <div className="flex gap-3 py-3 first:pt-0 last:pb-0">
+                      <div className="w-16 h-16 rounded-md overflow-hidden bg-gradient-to-br from-brand-teal to-emerald-400 shrink-0 border border-brand-teal/30 flex items-center justify-center">
+                        <Gift className="w-8 h-8 text-white fill-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">Gift Wrapping</p>
+                        <div className="mt-1 text-xs text-gray-600">
+                          <span>{giftWrapItemCount} {giftWrapItemCount === 1 ? "item" : "items"}</span>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-bold text-brand-teal">{giftWrapItemCount} × {charges.giftWrapFee > 0 ? inr(charges.giftWrapFee) : "Free"}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1223,16 +1239,16 @@ export default function Checkout() {
                     <span>-{inr(totals.totalSavings)}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Delivery</span>
-                  <span className="font-medium">{totals.shippingFee === 0 ? (totals.subtotal > 0 ? "Free" : "—") : inr(totals.shippingFee)}</span>
-                </div>
                 {totals.discount > 0 && (
                   <div className="flex justify-between text-green-600">
                     <span>COUPON{coupon ? ` (${coupon.code})` : ""}</span>
                     <span>-{inr(totals.discount)}</span>
                   </div>
                 )}
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Delivery</span>
+                  <span className="font-medium">{totals.shippingFee === 0 ? (totals.subtotal > 0 ? "Free" : "—") : inr(totals.shippingFee)}</span>
+                </div>
                 {giftWrap && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Gift Wrapping</span>
