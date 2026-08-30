@@ -75,7 +75,7 @@ const SECTION_GROUPS: { label: string; icon: typeof LayoutGrid; keys: SectionKey
   {
     label: "Collections Page",
     icon: ShoppingBag,
-    keys: ["collections_browse"],
+    keys: ["collections_browse", "collections_gallery"],
   },
   {
     label: "Search Bar",
@@ -109,6 +109,20 @@ const IMAGE_AND_LINK_ONLY = new Set<SectionKey>(["collections_browse"]);
 // ones being made, which is why it lives here rather than in the section's
 // item_type (changing that would also switch on the product top-up).
 const PRODUCTS_ONLY = new Set<SectionKey>(["search_discover"]);
+
+// The mirror of the above: sections an admin curates with TILES ONLY, even though
+// their stored item_type would allow products too.
+//
+// "Styled by Our Community" is seeded 'mixed' deliberately — that is what makes an
+// UNCURATED section fill itself with real published products, which is the whole
+// default for that strip. But products arriving automatically is a different thing
+// from an admin hand-picking them into a community gallery, so the catalog picker
+// is off here and "Add tile" is the only add button.
+//
+// It has to live in the editor rather than the schema: the add buttons otherwise
+// follow item_type, which sits in the database and only moves when a migration is
+// run by hand, so code alone could never hide the button.
+const TILES_ONLY = new Set<SectionKey>(["collections_gallery"]);
 
 // Sections whose storefront heading is a single line, with no sub-heading rendered
 // under it (see components/search/CollageGrid). "Edit heading" drops the field for
@@ -1357,7 +1371,9 @@ const SpotlightPage = () => {
     return <RouteFallback />;
   }
 
-  const canAddProduct = selected && (selected.itemType === "product" || selected.itemType === "mixed");
+  const canAddProduct = selected
+    && (selected.itemType === "product" || selected.itemType === "mixed")
+    && !TILES_ONLY.has(selected.key);
   const canAddTile = selected
     && (selected.itemType === "editorial" || selected.itemType === "mixed")
     && !PRODUCTS_ONLY.has(selected.key);
@@ -1553,7 +1569,9 @@ const SpotlightPage = () => {
                               backend/routes/curation), so promising a fill would be wrong. */}
                           {selected.itemType === "mixed" && (PRODUCTS_ONLY.has(selected.key)
                             ? "Holds catalog products. Empty = random products shown automatically; add any and only those show."
-                            : "Holds products and/or custom tiles.")}
+                            : TILES_ONLY.has(selected.key)
+                              ? "Holds custom image/title/link tiles. Empty = real products shown automatically."
+                              : "Holds products and/or custom tiles.")}
                           {/* The cap is the collection count here, which the grid already
                               makes obvious — restating it as a number reads like a quota. */}
                           {!namesItsPlacard && <>{" "}Max {selected.maxItems}.</>}
@@ -1616,7 +1634,9 @@ const SpotlightPage = () => {
                         <div className="py-14 text-center">
                           <p className="text-sm font-semibold text-gray-700 mb-1">No items yet</p>
                           <p className="text-xs text-gray-500">
-                            {selected.itemType !== "editorial"
+                            {TILES_ONLY.has(selected.key) && selected.itemType !== "editorial"
+                              ? "Empty — the storefront shows real products automatically. Add tiles to put your own photos in front of them."
+                              : selected.itemType !== "editorial"
                               ? "Empty — the storefront will show random products automatically. Add products to curate."
                               : IMAGE_AND_LINK_ONLY.has(selected.key)
                                 ? "Empty — every placard shows its own collection's newest product and opens that collection. Add tiles to override."

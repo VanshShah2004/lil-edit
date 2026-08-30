@@ -10,7 +10,7 @@ import { redisGet, redisSet, redisDel, redisKey, CURATION_TTL_S } from "../lib/r
 const router = Router();
 const db = () => supabaseAdmin ?? supabaseAnon;
 
-// The nine storefront strips this engine drives. The frontend asks for these by key.
+// The ten storefront strips this engine drives. The frontend asks for these by key.
 const KNOWN_SECTION_KEYS = [
   "home_trending",
   "home_recommended",
@@ -21,6 +21,7 @@ const KNOWN_SECTION_KEYS = [
   "home_collage",
   "home_hero_plus",
   "collections_browse",
+  "collections_gallery",
 ] as const;
 
 // Sections whose editorial tiles are pure overrides on top of storefront defaults,

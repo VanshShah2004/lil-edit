@@ -12,6 +12,7 @@ export const SECTION_KEYS = [
   "home_collage",
   "home_hero_plus",
   "collections_browse",
+  "collections_gallery",
 ] as const;
 export type SectionKey = (typeof SECTION_KEYS)[number];
 

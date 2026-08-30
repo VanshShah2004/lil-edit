@@ -8,6 +8,7 @@ import HomeCollage from "@/components/home/HomeCollage";
 import FrequentSearches from "@/components/search/FrequentSearches";
 import CollageGrid from "@/components/search/CollageGrid";
 import BrowseCollections from "@/components/collections/BrowseCollections";
+import CommunityGallery from "@/components/collections/CommunityGallery";
 import { SECTION_KEYS, type ResolvedItem, type SectionKey } from "@/lib/curationApi";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,6 +37,7 @@ const PREVIEW_BACKGROUNDS: Record<SectionKey, string> = {
   home_collage: "bg-[#E8DDF7]",
   home_hero_plus: "bg-[#E8DDF7]",
   collections_browse: "bg-white",
+  collections_gallery: "bg-white",
 };
 
 // One real storefront component per section, fed the draft items as previewItems.
@@ -59,6 +61,10 @@ const PREVIEW_RENDERERS: Record<SectionKey, (items: ResolvedItem[], title: strin
   // exactly as on the page. The placard's name and route stay fixed in code, so those
   // are not previewable.
   collections_browse: (items, title, subtitle) => <BrowseCollections previewItems={items} previewTitle={title} previewSubtitle={subtitle} />,
+  // An empty draft previews the same real-product fill the live page gets, and a
+  // draft with photo tiles previews those — previewSection resolves both through
+  // the very same backend path, so the pane and the page cannot disagree.
+  collections_gallery: (items, title, subtitle) => <CommunityGallery previewItems={items} previewTitle={title} previewSubtitle={subtitle} />,
 };
 
 // The column a section sits inside on its real page. Most strips carry their own
@@ -70,6 +76,7 @@ const PREVIEW_RENDERERS: Record<SectionKey, (items: ResolvedItem[], title: strin
 // inner one, matching the real page's mobile AND desktop gutters.
 const PREVIEW_WRAPPERS: Partial<Record<SectionKey, { outer: string; inner: string }>> = {
   collections_browse: { outer: "px-4 sm:px-8 md:px-12 lg:px-16", inner: "max-w-5xl mx-auto" },
+  collections_gallery: { outer: "px-4 sm:px-8 md:px-12 lg:px-16", inner: "max-w-5xl mx-auto" },
 };
 
 interface PreviewState {

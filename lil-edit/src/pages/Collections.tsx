@@ -10,45 +10,19 @@ import UserNavbar from "@/components/home/UserNavbar";
 import { useAuth } from "@/contexts/AuthContext";
 import BrowseCollections from "@/components/collections/BrowseCollections";
 import CategoryStrip from "@/components/collections/CategoryStrip";
-import SectionHeading from "@/components/collections/SectionHeading";
+import CommunityGallery from "@/components/collections/CommunityGallery";
 import Footer from "@/components/layout/Footer";
 import { getBackendBaseUrl } from "@/lib/backend";
 import { authHeader } from "@/lib/apiAuth";
 
-import img1 from "@/assets/searchbar-frequent_searches/le-1.png";
-import img2 from "@/assets/searchbar-frequent_searches/le-2.png";
-import img3 from "@/assets/searchbar-frequent_searches/le-3.png";
-import img4 from "@/assets/searchbar-frequent_searches/le-4.png";
-import img5 from "@/assets/searchbar-frequent_searches/le-5.png";
-import img6 from "@/assets/searchbar-frequent_searches/le-6.png";
-
 // Visual language borrowed from the New Arrivals page (pages/arrivals/ArrivalsPage):
-// eyebrow + gradient-accent heading, a scrolling ticker under the hero, section
-// headings with a count and blurb, and an image-fill bento mosaic. Kept local to
-// this file so the five ArrivalsPage-driven collection pages stay untouched.
+// eyebrow + gradient-accent heading, a scrolling ticker under the hero, and section
+// headings with a count and blurb. Kept local to this file so the five
+// ArrivalsPage-driven collection pages stay untouched.
 
 const TICKER_WORDS = [
   "Featured Collections",
   "Styled by You", "The Lil Edit",
-];
-
-const galleryImages = [
-  { id: "gal-1", image: img1, caption: "Sunset Vibes", price: "3200" },
-  { id: "gal-2", image: img2, caption: "City Style", price: "4100" },
-  { id: "gal-3", image: img3, caption: "Nature Explorer Into the Space of the Universe", price: "2800" },
-  { id: "gal-4", image: img4, caption: "Party Ready", price: "5500" },
-  { id: "gal-5", image: img5, caption: "Cozy Comfort", price: "3600" },
-  { id: "gal-6", image: img6, caption: "Trendsetter", price: "4800" },
-  { id: "gal-7", image: img3, caption: "Summer Glow", price: "3900" },
-  { id: "gal-8", image: img1, caption: "Mini Chic", price: "2600" },
-];
-
-// Hand-tuned row spans, same mosaic rhythm the arrivals page uses for its
-// "From the Collection" tail. Rows are 90–120px so the shortest tile still
-// reads as a garment rather than a sliver of fabric.
-const BENTO_SPANS = [
-  "row-span-3", "row-span-2", "row-span-3", "row-span-4",
-  "row-span-2", "row-span-3", "row-span-2", "row-span-3",
 ];
 
 export default function Collections() {
@@ -179,40 +153,11 @@ export default function Collections() {
                 and out of the strip above. */}
             <CategoryStrip />
 
-            {/* STYLED BY OUR COMMUNITY — bento mosaic */}
-            <section>
-              <SectionHeading
-                label="Styled by Our Community"
-                count={galleryImages.length}
-                blurb="Real looks, worn by real little people."
-              />
-
-              <div className="grid grid-cols-2 gap-2.5 auto-rows-[90px] sm:grid-cols-3 sm:gap-3 sm:auto-rows-[100px] md:auto-rows-[120px] [grid-auto-flow:dense]">
-                {galleryImages.map((item, idx) => (
-                  <figure
-                    key={item.id}
-                    className={`group relative rounded-xl sm:rounded-2xl overflow-hidden border border-gray-400 shadow-md hover:shadow-xl hover:border-gray-500 transition-all ${BENTO_SPANS[idx % BENTO_SPANS.length]}`}
-                  >
-                    <img
-                      src={item.image}
-                      alt={item.caption}
-                      loading="lazy"
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
-
-                    <figcaption className="absolute inset-x-0 bottom-0 p-3 sm:p-4 flex flex-col items-start justify-end">
-                      <span className="text-[9px] sm:text-[11px] font-semibold tracking-wider text-white/90 uppercase mb-0.5 sm:mb-1 drop-shadow-md">
-                        ₹{item.price}
-                      </span>
-                      <h3 className="text-xs sm:text-sm md:text-base font-bold text-white leading-tight drop-shadow-md line-clamp-2 group-hover:-translate-y-1 transition-transform duration-300">
-                        {item.caption}
-                      </h3>
-                    </figcaption>
-                  </figure>
-                ))}
-              </div>
-            </section>
+            {/* STYLED BY OUR COMMUNITY — the bento mosaic that closes the page.
+                Curated via the Spotlight (collections_gallery). Shows real published
+                products by default; an admin can put their own photo tiles in front
+                of them. Renders nothing at all if curation is unavailable. */}
+            <CommunityGallery />
 
             {/* NEWSLETTER CTA */}
             <section>
