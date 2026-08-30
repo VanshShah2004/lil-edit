@@ -30,18 +30,18 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { to: "/admin/analytics", label: "Overview", icon: LayoutDashboard, end: true },
-  { to: "/admin/analytics/revenue", label: "Revenue", icon: TrendingUp },
-  { to: "/admin/analytics/orders", label: "Orders", icon: Package },
-  { to: "/admin/analytics/products", label: "Products", icon: BarChart3 },
-  { to: "/admin/analytics/customers", label: "Customers", icon: Users },
-  { to: "/admin/analytics/wishlist", label: "Wishlist", icon: Heart },
-  { to: "/admin/analytics/cart", label: "Cart", icon: ShoppingCart },
-  { to: "/admin/analytics/search", label: "Search", icon: Search },
-  { to: "/admin/analytics/reviews", label: "Reviews", icon: MessageSquareText },
-  { to: "/admin/analytics/coupons", label: "Coupons", icon: Ticket },
-  { to: "/admin/analytics/inventory", label: "Inventory", icon: Boxes },
-  { to: "/admin/analytics/live", label: "Live", icon: Radio },
+  { to: "/admin/settings-panel/analytics", label: "Overview", icon: LayoutDashboard, end: true },
+  { to: "/admin/settings-panel/analytics/revenue", label: "Revenue", icon: TrendingUp },
+  { to: "/admin/settings-panel/analytics/orders", label: "Orders", icon: Package },
+  { to: "/admin/settings-panel/analytics/products", label: "Products", icon: BarChart3 },
+  { to: "/admin/settings-panel/analytics/customers", label: "Customers", icon: Users },
+  { to: "/admin/settings-panel/analytics/wishlist", label: "Wishlist", icon: Heart },
+  { to: "/admin/settings-panel/analytics/cart", label: "Cart", icon: ShoppingCart },
+  { to: "/admin/settings-panel/analytics/search", label: "Search", icon: Search },
+  { to: "/admin/settings-panel/analytics/reviews", label: "Reviews", icon: MessageSquareText },
+  { to: "/admin/settings-panel/analytics/coupons", label: "Coupons", icon: Ticket },
+  { to: "/admin/settings-panel/analytics/inventory", label: "Inventory", icon: Boxes },
+  { to: "/admin/settings-panel/analytics/live", label: "Live", icon: Radio },
 ];
 
 export interface Crumb {
@@ -126,7 +126,8 @@ export function AnalyticsLayout({
           <Breadcrumb
             trail={[
               { label: "Home", to: "/" },
-              { label: "Analytics", to: `/admin/analytics${search}` },
+              { label: "Settings Panel", to: "/admin/settings-panel" },
+              { label: "Analytics", to: `/admin/settings-panel/analytics${search}` },
               { label: title },
             ]}
           />

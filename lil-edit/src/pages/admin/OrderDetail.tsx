@@ -613,12 +613,14 @@ const AdminOrderDetailPage = () => {
             <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
               <Link to="/" className="hover:underline">Home</Link>
               <ChevronRight className="w-4 h-4" />
-              <Link to="/admin/orders" className="hover:underline">Order</Link>
+              <Link to="/admin/settings-panel" className="hover:underline">Settings Panel</Link>
+              <ChevronRight className="w-4 h-4" />
+              <Link to="/admin/settings-panel/orders" className="hover:underline">Order</Link>
               <ChevronRight className="w-4 h-4" />
               <span className="text-gray-800 font-medium">{order?.orderNumber ?? "Order"}</span>
             </div>
             <div className="flex flex-wrap items-center gap-3 pb-6">
-              <Link to="/admin/orders" className="inline-flex items-center gap-1.5 text-base font-medium text-gray-600 hover:text-gray-900">
+              <Link to="/admin/settings-panel/orders" className="inline-flex items-center gap-1.5 text-base font-medium text-gray-600 hover:text-gray-900">
                 <ArrowLeft className="w-4 h-4" /> Back to orders
               </Link>
             </div>
@@ -655,7 +657,7 @@ const AdminOrderDetailPage = () => {
             <div className="w-full py-20 flex flex-col items-center justify-center bg-white border border-foreground/50 rounded-xl">
               <p className="text-lg font-semibold text-gray-800 mb-1">Order not found</p>
               <p className="text-sm text-gray-500 mb-6">{error ?? "This order doesn't exist."}</p>
-              <Link to="/admin/orders" className="text-sm font-medium text-gray-900 underline underline-offset-2">View all orders</Link>
+              <Link to="/admin/settings-panel/orders" className="text-sm font-medium text-gray-900 underline underline-offset-2">View all orders</Link>
             </div>
           ) : (
             <div className="grid lg:grid-cols-3 gap-6 items-start">

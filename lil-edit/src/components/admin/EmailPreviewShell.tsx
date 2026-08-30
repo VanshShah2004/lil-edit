@@ -56,7 +56,11 @@ const EmailPreviewShell = ({ title, subtitle, subject, controls, children }: Ema
                 Home
               </Link>
               <ChevronRight className="w-4 h-4" />
-              <Link to="/admin/general-settings" className="hover:underline">
+              <Link to="/admin/settings-panel" className="hover:underline">
+                Settings Panel
+              </Link>
+              <ChevronRight className="w-4 h-4" />
+              <Link to="/admin/settings-panel/general-settings" className="hover:underline">
                 General Settings
               </Link>
               <ChevronRight className="w-4 h-4" />

@@ -89,14 +89,14 @@ export default function ExecutiveDashboard() {
           {/* ── Customers & engagement ────────────────────────────────────── */}
           <Section title="Customers & engagement">
             <KpiGrid groupKey="exec-engagement">
-              <KpiCard label="Customers" value={num(d.kpis.customers)} current={d.kpis.customers} previous={d.previous.customers} onClick={() => navigate(`/admin/analytics/customers${location.search}`)} />
+              <KpiCard label="Customers" value={num(d.kpis.customers)} current={d.kpis.customers} previous={d.previous.customers} onClick={() => navigate(`/admin/settings-panel/analytics/customers${location.search}`)} />
               <KpiCard label="New customers" value={num(d.kpis.new_customers)} current={d.kpis.new_customers} previous={d.previous.new_customers} />
               <GrowthCard label="Customer growth" current={d.kpis.customers} previous={d.previous.customers} />
-              <KpiCard label="Product views" value={num(d.kpis.product_views)} current={d.kpis.product_views} previous={d.previous.product_views} tracksLater onClick={() => navigate(`/admin/analytics/products${location.search}`)} />
+              <KpiCard label="Product views" value={num(d.kpis.product_views)} current={d.kpis.product_views} previous={d.previous.product_views} tracksLater onClick={() => navigate(`/admin/settings-panel/analytics/products${location.search}`)} />
               <KpiCard label="Active visitors" value={num(d.kpis.active_users)} current={d.kpis.active_users} previous={d.previous.active_users} tracksLater hint="Distinct visitors who viewed a product" />
               <KpiCard label="Conversion rate" value={pct(d.kpis.conversion_rate)} current={d.kpis.conversion_rate} previous={d.previous.conversion_rate} tracksLater hint="Orders ÷ distinct visitors" />
-              <KpiCard label="Cart adds" value={num(d.kpis.cart_adds)} current={d.kpis.cart_adds} previous={d.previous.cart_adds} onClick={() => navigate(`/admin/analytics/cart${location.search}`)} />
-              <KpiCard label="Wishlist adds" value={num(d.kpis.wishlist_adds)} current={d.kpis.wishlist_adds} previous={d.previous.wishlist_adds} onClick={() => navigate(`/admin/analytics/wishlist${location.search}`)} />
+              <KpiCard label="Cart adds" value={num(d.kpis.cart_adds)} current={d.kpis.cart_adds} previous={d.previous.cart_adds} onClick={() => navigate(`/admin/settings-panel/analytics/cart${location.search}`)} />
+              <KpiCard label="Wishlist adds" value={num(d.kpis.wishlist_adds)} current={d.kpis.wishlist_adds} previous={d.previous.wishlist_adds} onClick={() => navigate(`/admin/settings-panel/analytics/wishlist${location.search}`)} />
             </KpiGrid>
           </Section>
 

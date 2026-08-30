@@ -55,7 +55,7 @@ export default function CartAnalytics() {
 
           <Section title="By product" hint="Sortable & exportable. Click a row for the product’s full analytics.">
             <DataTable columns={columns} rows={d.table} getRowKey={(r) => r.slug}
-              onRowClick={(r) => navigate(`/admin/analytics/product/${encodeURIComponent(r.slug)}${location.search}`)}
+              onRowClick={(r) => navigate(`/admin/settings-panel/analytics/product/${encodeURIComponent(r.slug)}${location.search}`)}
               searchPlaceholder="Search products…" exportName="cart-analytics" pageSize={15} initialSort={{ key: "adds", dir: "desc" }} />
           </Section>
         </>

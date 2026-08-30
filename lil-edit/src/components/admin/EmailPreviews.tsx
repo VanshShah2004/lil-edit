@@ -8,13 +8,13 @@ const ACCENT = "#B19CD9";
 
 const PREVIEWS: { to: string; title: string; description: string; icon: typeof Mail }[] = [
   {
-    to: "/admin/email-orderconfirmation",
+    to: "/admin/settings-panel/email-orderconfirmation",
     title: "Order Confirmation",
     description: "The itemized receipt emailed the moment an order is placed.",
     icon: Receipt,
   },
   {
-    to: "/admin/status-change",
+    to: "/admin/settings-panel/status-change",
     title: "Order Status Change",
     description: "The update sent when an order moves to processing, shipped, delivered or cancelled.",
     icon: Truck,

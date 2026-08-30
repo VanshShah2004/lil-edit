@@ -717,6 +717,10 @@ const AddProduct = () => {
                   Home
                 </Link>
                 <ChevronRight className="w-4 h-4" />
+                <Link to="/admin/settings-panel" className="hover:underline">
+                  Settings Panel
+                </Link>
+                <ChevronRight className="w-4 h-4" />
                 <span className="text-gray-800 font-medium">Add Product</span>
               </div>
             </div>

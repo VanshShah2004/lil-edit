@@ -40,7 +40,7 @@ function AdminMaintenanceBanner({ onDismiss }: { onDismiss: () => void }) {
           <span className="hidden sm:inline text-[#6B6480]">Customers see the coming-soon page.</span>
         </p>
         <Link
-          to="/admin/general-settings"
+          to="/admin/settings-panel/general-settings"
           className="rounded-full bg-gradient-to-r from-[#B19CD9] to-[#9A82C9] px-3 py-1 text-xs font-semibold text-white transition-opacity hover:opacity-90"
         >
           Manage

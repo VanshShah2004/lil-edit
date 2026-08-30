@@ -176,7 +176,7 @@ export function executiveInsights(
       tone: "info",
       title: "Top performer",
       body: `“${topProduct.title || prettySlug(topProduct.slug)}” led revenue this period. Keep it stocked and featured.`,
-      action: { to: `/admin/analytics/product/${encodeURIComponent(topProduct.slug)}`, label: "View product analytics" },
+      action: { to: `/admin/settings-panel/analytics/product/${encodeURIComponent(topProduct.slug)}`, label: "View product analytics" },
     });
   }
 

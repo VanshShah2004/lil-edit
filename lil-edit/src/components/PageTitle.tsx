@@ -50,13 +50,13 @@ const ROUTE_TITLES: Array<{ pattern: string; label: string }> = [
   { pattern: "/orders",               label: "Orders" },
   { pattern: "/orders/:orderId",      label: "Order Details" },
   { pattern: "/reviews",              label: "My Reviews" },
-  { pattern: "/admin/add-product",    label: "Add Product" },
-  { pattern: "/admin/edit/:productId",label: "Edit Product" },
-  { pattern: "/admin/manage-products",label: "Manage Products" },
-  { pattern: "/admin/orders",         label: "Orders · Admin" },
-  { pattern: "/admin/orders/:orderId",label: "Order · Admin" },
-  { pattern: "/admin/spotlight",         label: "The Spotlight" },
-  { pattern: "/admin/spotlight/preview", label: "The Spotlight" },
+  { pattern: "/admin/settings-panel/add-product",    label: "Add Product" },
+  { pattern: "/admin/settings-panel/edit/:productId",label: "Edit Product" },
+  { pattern: "/admin/settings-panel/manage-products",label: "Manage Products" },
+  { pattern: "/admin/settings-panel/orders",         label: "Orders · Admin" },
+  { pattern: "/admin/settings-panel/orders/:orderId",label: "Order · Admin" },
+  { pattern: "/admin/settings-panel/spotlight",         label: "The Spotlight" },
+  { pattern: "/admin/settings-panel/spotlight/preview", label: "The Spotlight" },
 ];
 
 function labelForPath(pathname: string): string {

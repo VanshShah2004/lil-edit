@@ -94,8 +94,9 @@ export default function ProductAnalyticsDetail() {
           <Breadcrumb
             trail={[
               { label: "Home", to: "/" },
-              { label: "Analytics", to: `/admin/analytics${location.search}` },
-              { label: "Products", to: `/admin/analytics/products${location.search}` },
+              { label: "Settings Panel", to: "/admin/settings-panel" },
+              { label: "Analytics", to: `/admin/settings-panel/analytics${location.search}` },
+              { label: "Products", to: `/admin/settings-panel/analytics/products${location.search}` },
               { label: d?.product.title || prettySlug(slug) },
             ]}
           />

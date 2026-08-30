@@ -21,8 +21,12 @@ const SizeCharts = () => {
         <div className="max-w-screen-2xl mx-auto px-3 lg:px-6">
           <div className="pt-3 pb-2 mt-1.5 mb-1">
             <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
-              <Link to="/admin/settings" className="hover:underline">
-                Admin Settings
+              <Link to="/" className="hover:underline">
+                Home
+              </Link>
+              <ChevronRight className="w-4 h-4" />
+              <Link to="/admin/settings-panel" className="hover:underline">
+                Settings Panel
               </Link>
               <ChevronRight className="w-4 h-4" />
               <span className="text-gray-800 font-medium">Sizing Chart Setup</span>

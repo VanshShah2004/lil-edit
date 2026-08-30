@@ -973,7 +973,7 @@ const ManageProducts = () => {
   };
 
   const handleEditProduct = (product: ProductItem) => {
-    navigate(`/admin/edit/${product.id}`);
+    navigate(`/admin/settings-panel/edit/${product.id}`);
   };
 
   const handleLaunchProduct = async (product: ProductItem) => {
@@ -1343,6 +1343,10 @@ const ManageProducts = () => {
                   Home
                 </Link>
                 <ChevronRight className="w-4 h-4" />
+                <Link to="/admin/settings-panel" className="hover:underline">
+                  Settings Panel
+                </Link>
+                <ChevronRight className="w-4 h-4" />
                 <span className="text-gray-800 font-medium">Manage Products</span>
               </div>
             </div>
@@ -1373,7 +1377,7 @@ const ManageProducts = () => {
                 />
               </div>
               <Link
-                to="/admin/add-product"
+                to="/admin/settings-panel/add-product"
                 className="p-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-all shrink-0"
                 title="Create New Entry"
               >

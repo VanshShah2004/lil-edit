@@ -205,7 +205,7 @@ function describe(item: ActivityItem): { line: React.ReactNode; chips: string[];
       return {
         line: <>{who} placed order <span className="font-semibold text-gray-900">{num ? `#${num}` : ""}</span></>,
         chips,
-        to: orderId ? `/admin/orders/${orderId}` : undefined,
+        to: orderId ? `/admin/settings-panel/orders/${orderId}` : undefined,
       };
     }
     case "review_submitted": {
@@ -694,6 +694,10 @@ const Activity = () => {
             <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
               <Link to="/" className="hover:underline">
                 Home
+              </Link>
+              <ChevronRight className="w-4 h-4" />
+              <Link to="/admin/settings-panel" className="hover:underline">
+                Settings Panel
               </Link>
               <ChevronRight className="w-4 h-4" />
               <span className="text-gray-800 font-medium">User Activity</span>

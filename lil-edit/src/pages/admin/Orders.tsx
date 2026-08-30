@@ -261,6 +261,10 @@ const AdminOrdersPage = () => {
                 Home
               </Link>
               <ChevronRight className="w-4 h-4" />
+              <Link to="/admin/settings-panel" className="hover:underline">
+                Settings Panel
+              </Link>
+              <ChevronRight className="w-4 h-4" />
               <span className="text-gray-800 font-medium">Manage Orders</span>
             </div>
           </div>
@@ -326,7 +330,7 @@ const AdminOrdersPage = () => {
             </div>
           ) : (
             <>
-              <OrdersTable orders={orders} onView={(id) => navigate(`/admin/orders/${id}`)} />
+              <OrdersTable orders={orders} onView={(id) => navigate(`/admin/settings-panel/orders/${id}`)} />
 
               {/* Pagination */}
               <div className="flex items-center justify-between gap-4 pt-1">

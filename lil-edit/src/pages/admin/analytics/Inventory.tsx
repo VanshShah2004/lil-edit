@@ -65,7 +65,7 @@ export default function InventoryAnalytics() {
 
           <Section title="Low & out of stock" hint="Restock priorities — 0 in red, ≤3 in amber. Click a row for the product’s analytics.">
             <DataTable columns={lowCols} rows={d.low_stock_rows} getRowKey={(r) => r.sku}
-              onRowClick={(r) => navigate(`/admin/analytics/product/${encodeURIComponent(r.slug)}${location.search}`)}
+              onRowClick={(r) => navigate(`/admin/settings-panel/analytics/product/${encodeURIComponent(r.slug)}${location.search}`)}
               searchPlaceholder="Search products / SKUs…" exportName="low-stock" pageSize={15} initialSort={{ key: "stock", dir: "asc" }}
               emptyMessage="No low-stock variants — inventory looks healthy." />
           </Section>

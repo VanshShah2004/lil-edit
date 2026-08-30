@@ -64,7 +64,7 @@ export default function ReviewsAnalytics() {
 
           <Section title="By product" hint="Watch the 1–2★ column — concentrated low ratings flag a quality or fit issue.">
             <DataTable columns={columns} rows={d.by_product} getRowKey={(r) => r.slug}
-              onRowClick={(r) => navigate(`/admin/analytics/product/${encodeURIComponent(r.slug)}${location.search}`)}
+              onRowClick={(r) => navigate(`/admin/settings-panel/analytics/product/${encodeURIComponent(r.slug)}${location.search}`)}
               searchPlaceholder="Search products…" exportName="reviews-analytics" pageSize={15} initialSort={{ key: "count", dir: "desc" }} />
           </Section>
         </>

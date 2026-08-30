@@ -289,7 +289,7 @@ const ORDER_LINK_ACTIONS = new Set<AdminActionType>([
 
 function linkFor(item: AuditActionItem): string | undefined {
   if (ORDER_LINK_ACTIONS.has(item.action) && item.targetId) {
-    return `/admin/orders/${item.targetId}`;
+    return `/admin/settings-panel/orders/${item.targetId}`;
   }
   return undefined;
 }
@@ -755,6 +755,10 @@ const AuditLog = () => {
             <div className="flex flex-wrap items-center text-base text-gray-500 gap-1 mb-3">
               <Link to="/" className="hover:underline">
                 Home
+              </Link>
+              <ChevronRight className="w-4 h-4" />
+              <Link to="/admin/settings-panel" className="hover:underline">
+                Settings Panel
               </Link>
               <ChevronRight className="w-4 h-4" />
               <span className="text-gray-800 font-medium">Admin Activity</span>

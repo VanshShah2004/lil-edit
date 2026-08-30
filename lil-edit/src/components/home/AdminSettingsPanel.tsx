@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
-  BarChart3,
   ClipboardList,
   LayoutGrid,
   Mail,
@@ -10,8 +9,6 @@ import {
   ScrollText,
   Settings,
   Shirt,
-  ShieldCheck,
-  SlidersHorizontal,
   Tag,
   User,
 } from "lucide-react";
@@ -32,41 +29,28 @@ const sections: AdminMenuSection[] = [
   {
     title: "Product Management",
     items: [
-      { to: "/admin/add-product", label: "Add Product", icon: Plus },
-      { to: "/admin/manage-products", label: "Manage Products", icon: Shirt },
+      { to: "/admin/settings-panel/add-product", label: "Add Product", icon: Plus },
+      { to: "/admin/settings-panel/manage-products", label: "Manage Products", icon: Shirt },
     ],
   },
   {
     title: "Order Management",
-    items: [{ to: "/admin/orders", label: "Manage Orders", icon: ClipboardList }],
+    items: [{ to: "/admin/settings-panel/orders", label: "Manage Orders", icon: ClipboardList }],
   },
   {
-    title: "Content Management",
+    title: "Content & Marketing",
     items: [
-      { to: "/admin/spotlight", label: "The Spotlight", icon: LayoutGrid },
-      { to: "/admin/reviews", label: "Reviews", icon: MessageSquareText },
-    ],
-  },
-  {
-    title: "Marketing",
-    items: [
-      { to: "/admin/newsletter", label: "Newsletter", icon: Mail },
-      { to: "/admin/coupons", label: "Coupons", icon: Tag },
+      { to: "/admin/settings-panel/spotlight", label: "The Spotlight", icon: LayoutGrid },
+      { to: "/admin/settings-panel/reviews", label: "Reviews", icon: MessageSquareText },
+      { to: "/admin/settings-panel/newsletter", label: "Newsletter", icon: Mail },
+      { to: "/admin/settings-panel/coupons", label: "Coupons", icon: Tag },
     ],
   },
   {
     title: "Platform",
     items: [
-      { to: "/admin/general-settings", label: "General Settings", icon: Settings },
-      { to: "/admin/audit-log", label: "Admin Activity", icon: ScrollText },
-    ],
-  },
-  {
-    title: "Future Expansion",
-    items: [
-      { to: "#", label: "Roles & Permissions", icon: ShieldCheck, comingSoon: true },
-      { to: "#", label: "Analytics", icon: BarChart3, comingSoon: true },
-      { to: "#", label: "Site Configuration", icon: SlidersHorizontal, comingSoon: true },
+      { to: "/admin/settings-panel/general-settings", label: "General Settings", icon: Settings },
+      { to: "/admin/settings-panel/audit-log", label: "Admin Activity", icon: ScrollText },
     ],
   },
 ];
@@ -84,7 +68,7 @@ const AdminSettingsPanel = ({ onBack, onNavigate }: AdminSettingsPanelProps) => 
         onClick={onBack}
         className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-secondary transition-colors sticky top-0 bg-background z-10 border-b border-border/70"
       >
-        <ArrowLeft className="w-4 h-4" /> Admin Settings
+        <ArrowLeft className="w-4 h-4" /> Settings Panel
       </button>
 
       {sections.map((section) => (

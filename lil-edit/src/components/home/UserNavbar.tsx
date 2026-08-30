@@ -16,13 +16,10 @@ import {
   Info,
   ChevronRight,
   MessageSquare,
-  MessageSquareText,
   ScrollText,
-  Tag,
   BarChart3,
   Plus,
   ClipboardList,
-  LayoutGrid,
   Settings,
   Sparkles,
   Star,
@@ -66,7 +63,7 @@ const UserNavbar = () => {
   const role = profile?.role ?? "customer";
   const isAdmin = role === "admin";
   // Level 1 stays minimal: everyday account actions, an admin entry point
-  // that navigates to the full Admin Settings page, then logout.
+  // that navigates to the full Settings Panel page, then logout.
   const accountMenuItems = [
     { to: "/profile", label: "Profile", icon: User },
     { to: "/orders", label: "Your Orders", icon: Package },
@@ -285,28 +282,28 @@ const UserNavbar = () => {
                         Admin
                       </div>
                       <Link
-                        to="/admin/settings"
+                        to="/admin/settings-panel"
                         onClick={closeProfileMenu}
                         className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
                       >
-                        <ShieldCheck className="w-4 h-4" /> Admin Settings
+                        <ShieldCheck className="w-4 h-4" /> Settings Panel
                       </Link>
                       <Link
-                        to="/admin/user-activity"
+                        to="/admin/settings-panel/user-activity"
                         onClick={closeProfileMenu}
                         className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
                       >
                         <Activity className="w-4 h-4" /> User Activity
                       </Link>
                       <Link
-                        to="/admin/audit-log"
+                        to="/admin/settings-panel/audit-log"
                         onClick={closeProfileMenu}
                         className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
                       >
                         <ScrollText className="w-4 h-4" /> Admin Activity
                       </Link>
                       <Link
-                        to="/admin/analytics"
+                        to="/admin/settings-panel/analytics"
                         onClick={closeProfileMenu}
                         className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-primary/10 transition-colors"
                       >
@@ -423,21 +420,17 @@ const UserNavbar = () => {
           {isAdmin && (
             <>
               <SideSection label="Workshop">
-                <SideLink to="/admin/add-product" icon={Plus} label="Add Product" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-                <SideLink to="/admin/manage-products" icon={Shirt} label="Manage Products" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-                <SideLink to="/admin/orders" icon={ClipboardList} label="Manage Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-                <SideLink to="/admin/spotlight" icon={LayoutGrid} label="The Spotlight" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-                <SideLink to="/admin/general-settings" icon={Settings} label="General Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-                <SideLink to="/admin/newsletter" icon={Mail} label="Newsletter" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-                <SideLink to="/admin/coupons" icon={Tag} label="Coupons" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-                <SideLink to="/admin/reviews" icon={MessageSquareText} label="Reviews" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/settings-panel" icon={ShieldCheck} label="Settings Panel" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} end />
+                <SideLink to="/admin/settings-panel/add-product" icon={Plus} label="Add Product" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/settings-panel/manage-products" icon={Shirt} label="Manage Products" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/settings-panel/orders" icon={ClipboardList} label="Manage Orders" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/settings-panel/general-settings" icon={Settings} label="General Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               </SideSection>
 
               <SideSection label="Backstage">
-                <SideLink to="/admin/settings" icon={ShieldCheck} label="Admin Settings" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-                <SideLink to="/admin/user-activity" icon={Activity} label="User Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-                <SideLink to="/admin/audit-log" icon={ScrollText} label="Admin Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
-                <SideLink to="/admin/analytics" icon={BarChart3} label="Analytics" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/settings-panel/user-activity" icon={Activity} label="User Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/settings-panel/audit-log" icon={ScrollText} label="Admin Activity" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
+                <SideLink to="/admin/settings-panel/analytics" icon={BarChart3} label="Analytics" pathname={location.pathname} onClick={() => setIsLeftMenuOpen(false)} />
               </SideSection>
 
               <SideSection label="Your Closet">
@@ -499,6 +492,7 @@ function SideLink({
   onClick,
   badge,
   badgeClass = "bg-primary",
+  end = false,
 }: {
   to: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -507,8 +501,12 @@ function SideLink({
   onClick: () => void;
   badge?: number;
   badgeClass?: string;
+  // When true, only an exact pathname match highlights this link — for links
+  // whose `to` is itself a prefix of sibling routes (e.g. "Settings Panel" at
+  // /admin/settings-panel, with every other admin page nested under it).
+  end?: boolean;
 }) {
-  const active = pathname === to || (to !== "/" && pathname.startsWith(to + "/"));
+  const active = pathname === to || (!end && to !== "/" && pathname.startsWith(to + "/"));
   const hasBadge = typeof badge === "number" && badge > 0;
   return (
     <Link

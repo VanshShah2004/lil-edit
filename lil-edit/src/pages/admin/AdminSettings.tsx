@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowUpRight,
-  BarChart3,
   ChevronRight,
   ClipboardList,
   LayoutGrid,
@@ -11,9 +10,7 @@ import {
   Plus,
   Ruler,
   Settings,
-  ShieldCheck,
   Shirt,
-  SlidersHorizontal,
   Tag,
 } from "lucide-react";
 
@@ -39,50 +36,32 @@ const groups: AdminSettingsGroup[] = [
   {
     title: "Platform",
     tiles: [
-      { to: "/admin/general-settings", label: "General Settings", description: "Admin access, charges and site availability", icon: Settings },
+      { to: "/admin/settings-panel/general-settings", label: "General Settings", description: "Admin access, charges and site availability", icon: Settings },
     ],
   },
   {
-    title: "Marketing",
+    title: "Products & Orders",
     tiles: [
-      { to: "/admin/newsletter", label: "Newsletter", description: "View subscribers and download the list", icon: Mail },
-      { to: "/admin/coupons", label: "Coupons", description: "Create and manage discount codes", icon: Tag },
+      { to: "/admin/settings-panel/add-product", label: "Add Product", description: "Create a new listing", icon: Plus },
+      { to: "/admin/settings-panel/manage-products", label: "Manage Products", description: "Edit or remove existing listings", icon: Shirt },
+      { to: "/admin/settings-panel/orders", label: "Manage Orders", description: "Track and fulfill customer orders", icon: ClipboardList },
     ],
   },
   {
-    title: "Product Management",
+    title: "Content & Marketing",
     tiles: [
-      { to: "/admin/add-product", label: "Add Product", description: "Create a new listing", icon: Plus },
-      { to: "/admin/manage-products", label: "Manage Products", description: "Edit or remove existing listings", icon: Shirt },
-    ],
-  },
-  {
-    title: "Order Management",
-    tiles: [
-      { to: "/admin/orders", label: "Manage Orders", description: "Track and fulfill customer orders", icon: ClipboardList },
-    ],
-  },
-  {
-    title: "Content Management",
-    tiles: [
-      { to: "/admin/spotlight", label: "The Spotlight", description: "Curate storefront sections and tiles", icon: LayoutGrid },
-      { to: "/admin/size-charts", label: "Sizing Chart Setup", description: "Create and edit sizing charts", icon: Ruler },
-      { to: "/admin/reviews", label: "Reviews", description: "Moderate customer reviews", icon: MessageSquareText },
-    ],
-  },
-  {
-    title: "Future Expansion",
-    tiles: [
-      { to: "#", label: "Roles & Permissions", description: "Manage staff access levels", icon: ShieldCheck, comingSoon: true },
-      { to: "#", label: "Analytics", description: "Store performance insights", icon: BarChart3, comingSoon: true },
-      { to: "#", label: "Site Configuration", description: "Storefront-wide settings", icon: SlidersHorizontal, comingSoon: true },
+      { to: "/admin/settings-panel/spotlight", label: "The Spotlight", description: "Curate storefront sections and tiles", icon: LayoutGrid },
+      { to: "/admin/settings-panel/size-charts", label: "Sizing Chart Setup", description: "Create and edit sizing charts", icon: Ruler },
+      { to: "/admin/settings-panel/reviews", label: "Reviews", description: "Moderate customer reviews", icon: MessageSquareText },
+      { to: "/admin/settings-panel/newsletter", label: "Newsletter", description: "View subscribers and download the list", icon: Mail },
+      { to: "/admin/settings-panel/coupons", label: "Coupons", description: "Create and manage discount codes", icon: Tag },
     ],
   },
 ];
 
 const AdminSettings = () => {
   useEffect(() => {
-    document.title = "Admin Settings | Lil Edit";
+    document.title = "Settings Panel | Lil Edit";
   }, []);
 
   return (
@@ -97,7 +76,7 @@ const AdminSettings = () => {
                 Home
               </Link>
               <ChevronRight className="w-4 h-4" />
-              <span className="text-gray-800 font-medium">Admin Settings</span>
+              <span className="text-gray-800 font-medium">Settings Panel</span>
             </div>
           </div>
           <div className="space-y-1 mb-8">
@@ -106,7 +85,7 @@ const AdminSettings = () => {
                 Admin
               </p>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Admin Settings</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Settings Panel</h1>
             <p className="text-sm text-gray-500">Manage products, orders, and storefront content from one place.</p>
           </div>
           <hr className="-mx-3 lg:-mx-6 h-1 border-0 bg-gradient-to-r from-brand-teal via-[#B19CD9] to-emerald-400" />

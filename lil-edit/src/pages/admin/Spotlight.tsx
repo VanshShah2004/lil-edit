@@ -1379,6 +1379,10 @@ const SpotlightPage = () => {
                 Home
               </Link>
               <ChevronRight className="w-4 h-4" />
+              <Link to="/admin/settings-panel" className="hover:underline">
+                Settings Panel
+              </Link>
+              <ChevronRight className="w-4 h-4" />
               <span className="text-gray-800 font-medium">The Spotlight</span>
             </div>
           </div>
@@ -1687,7 +1691,7 @@ const SpotlightPage = () => {
                           >
                             <iframe
                               ref={previewFrameRef}
-                              src="/admin/spotlight/preview"
+                              src="/admin/settings-panel/spotlight/preview"
                               title="Section live preview"
                               className="border-0 bg-white"
                               style={{

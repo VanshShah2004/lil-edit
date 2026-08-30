@@ -358,7 +358,7 @@ const EditProduct = () => {
   useEffect(() => {
     const loadProduct = async () => {
       if (!productId) {
-        navigate("/admin/manage-products");
+        navigate("/admin/settings-panel/manage-products");
         return;
       }
 
@@ -377,7 +377,7 @@ const EditProduct = () => {
 
         if (!product) {
           toast.error("Product not found");
-          navigate("/admin/manage-products");
+          navigate("/admin/settings-panel/manage-products");
           return;
         }
 
@@ -885,7 +885,7 @@ const EditProduct = () => {
         toast.success(`"${formData.name}" has been updated and launched!`);
         invalidateAfterMutation(formData.sku || undefined);
         setTimeout(() => {
-          navigate("/admin/manage-products");
+          navigate("/admin/settings-panel/manage-products");
         }, 1500);
       }
     } catch (e) {
@@ -939,7 +939,7 @@ const EditProduct = () => {
       >
         <div className="mx-auto max-w-screen-2xl px-3 lg:px-6 py-2.5">
           <button
-            onClick={() => navigate("/admin/manage-products")}
+            onClick={() => navigate("/admin/settings-panel/manage-products")}
             className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors uppercase tracking-widest"
           >
             <ArrowLeft size={13} /> Back to Catalog

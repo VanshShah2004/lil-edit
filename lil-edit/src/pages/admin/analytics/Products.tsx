@@ -97,7 +97,7 @@ export default function ProductsAnalytics() {
               columns={columns}
               rows={d.products_table}
               getRowKey={(r) => r.slug}
-              onRowClick={(r) => navigate(`/admin/analytics/product/${encodeURIComponent(r.slug)}${location.search}`)}
+              onRowClick={(r) => navigate(`/admin/settings-panel/analytics/product/${encodeURIComponent(r.slug)}${location.search}`)}
               searchPlaceholder="Search products…"
               exportName="products-analytics"
               pageSize={15}

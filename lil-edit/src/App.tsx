@@ -164,38 +164,38 @@ const App = () => (
             <Route path="/orders/all" element={<ProtectedRoute><AllOrders /></ProtectedRoute>} />
             <Route path="/orders/:orderId" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
             <Route path="/reviews" element={<ProtectedRoute><MyReviews /></ProtectedRoute>} />
-            <Route path="/admin/add-product" element={<AdminRoute><AddProduct /></AdminRoute>} />
-            <Route path="/admin/edit/:productId" element={<AdminRoute><EditProduct /></AdminRoute>} />
-            <Route path="/admin/manage-products" element={<AdminRoute><ManageProducts /></AdminRoute>} />
-            <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
-            <Route path="/admin/orders/:orderId" element={<AdminRoute><AdminOrderDetail /></AdminRoute>} />
-            <Route path="/admin/user-activity" element={<AdminRoute><AdminActivity /></AdminRoute>} />
-            <Route path="/admin/audit-log" element={<AdminRoute><AdminAuditLog /></AdminRoute>} />
-            <Route path="/admin/spotlight" element={<AdminRoute><AdminSpotlight /></AdminRoute>} />
-            <Route path="/admin/size-charts" element={<AdminRoute><AdminSizeCharts /></AdminRoute>} />
-            <Route path="/admin/newsletter" element={<AdminRoute><AdminNewsletter /></AdminRoute>} />
-            <Route path="/admin/coupons" element={<AdminRoute><AdminCoupons /></AdminRoute>} />
-            <Route path="/admin/reviews" element={<AdminRoute><AdminReviews /></AdminRoute>} />
-            <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
-            <Route path="/admin/general-settings" element={<AdminRoute><AdminGeneralSettings /></AdminRoute>} />
+            <Route path="/admin/settings-panel" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+            <Route path="/admin/settings-panel/add-product" element={<AdminRoute><AddProduct /></AdminRoute>} />
+            <Route path="/admin/settings-panel/edit/:productId" element={<AdminRoute><EditProduct /></AdminRoute>} />
+            <Route path="/admin/settings-panel/manage-products" element={<AdminRoute><ManageProducts /></AdminRoute>} />
+            <Route path="/admin/settings-panel/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
+            <Route path="/admin/settings-panel/orders/:orderId" element={<AdminRoute><AdminOrderDetail /></AdminRoute>} />
+            <Route path="/admin/settings-panel/user-activity" element={<AdminRoute><AdminActivity /></AdminRoute>} />
+            <Route path="/admin/settings-panel/audit-log" element={<AdminRoute><AdminAuditLog /></AdminRoute>} />
+            <Route path="/admin/settings-panel/spotlight" element={<AdminRoute><AdminSpotlight /></AdminRoute>} />
+            <Route path="/admin/settings-panel/size-charts" element={<AdminRoute><AdminSizeCharts /></AdminRoute>} />
+            <Route path="/admin/settings-panel/newsletter" element={<AdminRoute><AdminNewsletter /></AdminRoute>} />
+            <Route path="/admin/settings-panel/coupons" element={<AdminRoute><AdminCoupons /></AdminRoute>} />
+            <Route path="/admin/settings-panel/reviews" element={<AdminRoute><AdminReviews /></AdminRoute>} />
+            <Route path="/admin/settings-panel/general-settings" element={<AdminRoute><AdminGeneralSettings /></AdminRoute>} />
             {/* Analytics platform */}
-            <Route path="/admin/analytics" element={<AdminRoute><AnExecutive /></AdminRoute>} />
-            <Route path="/admin/analytics/revenue" element={<AdminRoute><AnRevenue /></AdminRoute>} />
-            <Route path="/admin/analytics/orders" element={<AdminRoute><AnOrders /></AdminRoute>} />
-            <Route path="/admin/analytics/products" element={<AdminRoute><AnProducts /></AdminRoute>} />
-            <Route path="/admin/analytics/product/:slug" element={<AdminRoute><AnProductDetail /></AdminRoute>} />
-            <Route path="/admin/analytics/customers" element={<AdminRoute><AnCustomers /></AdminRoute>} />
-            <Route path="/admin/analytics/wishlist" element={<AdminRoute><AnWishlist /></AdminRoute>} />
-            <Route path="/admin/analytics/cart" element={<AdminRoute><AnCart /></AdminRoute>} />
-            <Route path="/admin/analytics/search" element={<AdminRoute><AnSearch /></AdminRoute>} />
-            <Route path="/admin/analytics/reviews" element={<AdminRoute><AnReviews /></AdminRoute>} />
-            <Route path="/admin/analytics/coupons" element={<AdminRoute><AnCoupons /></AdminRoute>} />
-            <Route path="/admin/analytics/inventory" element={<AdminRoute><AnInventory /></AdminRoute>} />
-            <Route path="/admin/analytics/live" element={<AdminRoute><AnLive /></AdminRoute>} />
+            <Route path="/admin/settings-panel/analytics" element={<AdminRoute><AnExecutive /></AdminRoute>} />
+            <Route path="/admin/settings-panel/analytics/revenue" element={<AdminRoute><AnRevenue /></AdminRoute>} />
+            <Route path="/admin/settings-panel/analytics/orders" element={<AdminRoute><AnOrders /></AdminRoute>} />
+            <Route path="/admin/settings-panel/analytics/products" element={<AdminRoute><AnProducts /></AdminRoute>} />
+            <Route path="/admin/settings-panel/analytics/product/:slug" element={<AdminRoute><AnProductDetail /></AdminRoute>} />
+            <Route path="/admin/settings-panel/analytics/customers" element={<AdminRoute><AnCustomers /></AdminRoute>} />
+            <Route path="/admin/settings-panel/analytics/wishlist" element={<AdminRoute><AnWishlist /></AdminRoute>} />
+            <Route path="/admin/settings-panel/analytics/cart" element={<AdminRoute><AnCart /></AdminRoute>} />
+            <Route path="/admin/settings-panel/analytics/search" element={<AdminRoute><AnSearch /></AdminRoute>} />
+            <Route path="/admin/settings-panel/analytics/reviews" element={<AdminRoute><AnReviews /></AdminRoute>} />
+            <Route path="/admin/settings-panel/analytics/coupons" element={<AdminRoute><AnCoupons /></AdminRoute>} />
+            <Route path="/admin/settings-panel/analytics/inventory" element={<AdminRoute><AnInventory /></AdminRoute>} />
+            <Route path="/admin/settings-panel/analytics/live" element={<AdminRoute><AnLive /></AdminRoute>} />
             {/* Loaded inside The Spotlight's preview iframe — not user-navigable UI. */}
-            <Route path="/admin/spotlight/preview" element={<AdminRoute><AdminSpotlightPreview /></AdminRoute>} />
-            <Route path="/admin/email-orderconfirmation" element={<AdminRoute><AdminEmailOrderConfirmation /></AdminRoute>} />
-            <Route path="/admin/status-change" element={<AdminRoute><AdminStatusChange /></AdminRoute>} />
+            <Route path="/admin/settings-panel/spotlight/preview" element={<AdminRoute><AdminSpotlightPreview /></AdminRoute>} />
+            <Route path="/admin/settings-panel/email-orderconfirmation" element={<AdminRoute><AdminEmailOrderConfirmation /></AdminRoute>} />
+            <Route path="/admin/settings-panel/status-change" element={<AdminRoute><AdminStatusChange /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
