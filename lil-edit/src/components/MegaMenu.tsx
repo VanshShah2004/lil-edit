@@ -93,36 +93,29 @@ const megaMenuContent: Record<
     ] },
   ],
   "GIRLS": [
-    { title: "◈ CLASSIC ETHNIC", links: [
-      { label: "All", q: "Girls Ethnic Wear" },
+    { title: "◈ TIMELESS ETHNIC", links: [
       { label: "Lehengas", q: "Lehenga" },
       { label: "Kurtis", q: "Kurti" },
       { label: "Shararas", q: "Sharara" },
+      { label: "Ethnic Sets", q: "Girls Set" },
+    ] },
+    { title: "✧ FRESH & FESTIVE", links: [
       { label: "Sarees", q: "Saree" },
-      { label: "Sets", q: "Girls Set" },
+      { label: "Anarkalis", q: "Anarkali" },
+      { label: "Festive Sets", q: "Festive Set" },
+      { label: "Wedding Edit", q: "Wedding" },
     ] },
-    { title: "✧ ROYAL VIBES", links: [
-      same("New Arrivals"),
-      same("Ready To Ship"),
-      same("Wedding"),
-      same("Reels"),
-      same("Lookbook"),
-    ] },
-    { title: "⟡ COOL & TRENDY", links: [
-      { label: "All", q: "Girls Dress" },
+    { title: "⟡ PARTY & PLAY", links: [
       { label: "Dresses", q: "Dress" },
       { label: "Gowns", q: "Gown" },
       { label: "Jumpsuits", q: "Jumpsuit" },
-      { label: "Co-ords", q: "Co-ord Set" },
-      { label: "Party Looks", q: "Girls Party Wear" },
+      { label: "Co-ord Sets", q: "Co-ord Set" },
     ] },
-    { title: "❖ THE LIL ANGELS", links: [
-      same("Hair Accessories"),
-      { label: "Sleepwear", q: "Nightwear" },
-      same("Shoes"),
-      same("Bags"),
-      same("Jewellery"),
-      { label: "Other Apparel", q: "Girls" },
+    { title: "♡ LIL ANGELS", links: [
+      { label: "Frocks", q: "Frock" },
+      { label: "Tops & Tees", q: "Girls Tops" },
+      { label: "Skirts", q: "Girls Skirt" },
+      { label: "Shorts & Bottoms", q: "Girls Bottoms" },
     ] },
   ],
   "BOYS": [
