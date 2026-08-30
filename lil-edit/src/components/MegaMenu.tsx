@@ -174,15 +174,15 @@ const megaMenuContent: Record<
   "BY OCCASION": [
     { title: "◆ THE BIG DAY", links: [
       { label: "Wedding & Sangeet", q: "Wedding Sangeet" },
-      { label: "Mehndi Edit", q: "Mehndi" },
       same("Party Wear"),
       { label: "Birthday Special", q: "Birthday" },
+      { label: "Ethnic Edit", q: "Ethnic Wear" },
     ] },
     { title: "✺ FESTIVE CALENDAR", links: [
       { label: "Diwali Edit", q: "Diwali" },
       { label: "Navratri & Garba", q: "Navratri" },
       { label: "Raksha Bandhan", q: "Rakhi" },
-      { label: "Holi Edit", q: "Holi" },
+      { label: "Mehendi", q: "Mehndi" },
     ] },
   ],
 };
@@ -190,6 +190,7 @@ const megaMenuContent: Record<
 const MegaMenu = () => {
   const [activeMegaTab, setActiveMegaTab] = useState<string | null>(null);
   const megaMenuRef = useRef<HTMLDivElement | null>(null);
+  const activeSections = activeMegaTab ? megaMenuContent[activeMegaTab] ?? [] : [];
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
@@ -260,8 +261,16 @@ const MegaMenu = () => {
                 </Link>
               </div>
             )}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
-              {(megaMenuContent[activeMegaTab] ?? []).map((section) => (
+            <div
+              className={`grid grid-cols-2 gap-4 sm:gap-6 md:gap-8 ${
+                activeSections.length >= 4
+                  ? "md:grid-cols-4"
+                  : activeSections.length === 3
+                  ? "md:grid-cols-3 md:max-w-4xl md:mx-auto"
+                  : "md:grid-cols-2 md:max-w-2xl md:mx-auto"
+              }`}
+            >
+              {activeSections.map((section) => (
                 <div key={`section-${section.title}`} className="space-y-2.5">
                   <h3 className="text-xs md:text-sm lg:text-base font-semibold tracking-[0.1em] lg:tracking-[0.12em] text-[#7A4A8C] sm:text-[#9a65ad]">
                     {section.title}
