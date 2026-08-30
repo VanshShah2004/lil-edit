@@ -353,7 +353,7 @@ function CollectionsPlacardCarousel({
                             column beside the image and the pill goes back to
                             leading the left margin with the copy. */}
                         <div className="mt-2.5 sm:mt-3 flex justify-end md:justify-start">
-                          <span className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 sm:px-5 h-9 sm:h-10 rounded-full font-semibold text-xs sm:text-sm group-hover:bg-gray-800 transition-colors">
+                          <span className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 sm:px-5 h-9 sm:h-10 rounded-md font-semibold text-xs sm:text-sm group-hover:bg-gray-800 transition-colors">
                             Explore
                             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                           </span>
