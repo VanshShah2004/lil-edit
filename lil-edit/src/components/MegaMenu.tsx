@@ -172,31 +172,18 @@ const megaMenuContent: Record<
     ] },
   ],
   "BY OCCASION": [
-    { title: "EVENTS", links: [
-      same("Birthday"),
-      same("Wedding"),
-      same("Festive"),
-      { label: "School Events", q: "School" },
-      same("Family Function"),
-    ] },
-    { title: "STYLE TYPE", links: [
-      { label: "Traditional", q: "Ethnic Wear" },
-      { label: "Contemporary", q: "Western Wear" },
-      { label: "Comfort Wear", q: "Casual Wear" },
+    { title: "◆ THE BIG DAY", links: [
+      { label: "Wedding Guest", q: "Wedding" },
+      { label: "Sangeet Ready", q: "Sangeet" },
+      { label: "Mehndi Edit", q: "Mehndi" },
       same("Party Wear"),
-      { label: "Premium Edit", q: "Premium" },
+      { label: "Birthday Special", q: "Birthday" },
     ] },
-    { title: "SHOP FAST", links: [
-      same("Ready To Ship"),
-      same("Under 1999"),
-      same("Matching Siblings"),
-      same("Quick Picks"),
-    ] },
-    { title: "DISCOVER", links: [
-      same("Top Collections"),
-      same("Gift Sets"),
-      same("Accessories"),
-      { label: "New In", q: "New Arrivals" },
+    { title: "✺ FESTIVE CALENDAR", links: [
+      { label: "Diwali Edit", q: "Diwali" },
+      { label: "Navratri & Garba", q: "Navratri" },
+      { label: "Raksha Bandhan", q: "Rakhi" },
+      { label: "Holi Edit", q: "Holi" },
     ] },
   ],
 };
