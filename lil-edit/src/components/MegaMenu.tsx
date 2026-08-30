@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 
 const megaMenuItems = [
   "NEW ARRIVALS",
@@ -30,6 +31,21 @@ const searchPath = (q: string) => `/search?q=${encodeURIComponent(q)}`;
 
 /** Shorthand for the common case: the label IS the query. */
 const same = (label: string): MegaLink => ({ label, q: label });
+
+// A "shop everything in this tab" link, shown once above the columns rather
+// than duplicated (and mis-scoped to a single column, as BOYS's old "All"
+// under CLASSIC ETHNIC was — it only searched ethnic wear). Tabs without an
+// entry here simply skip the header row.
+//
+// `to` is a real collection route, not a search query: the curated sub-collection
+// page is a better landing spot than a keyword search when one exists.
+const megaMenuViewAll: Partial<Record<string, { label: string; to: string }>> = {
+  "NEW ARRIVALS": { label: "Shop All New Arrivals", to: "/collections/new-arrivals" },
+  "GIRLS":        { label: "Shop All Girls",        to: "/collections/girls" },
+  "BOYS":         { label: "Shop All Boys",         to: "/collections/boys" },
+  "TRENDING":     { label: "Shop All Trending",     to: "/collections/trending" },
+  "BY OCCASION":  { label: "Shop All Occasions",    to: "/collections/occasion" },
+};
 
 const megaMenuContent: Record<
   string,
@@ -77,7 +93,7 @@ const megaMenuContent: Record<
     ] },
   ],
   "GIRLS": [
-    { title: "ETHNIC WEAR", links: [
+    { title: "◈ CLASSIC ETHNIC", links: [
       { label: "All", q: "Girls Ethnic Wear" },
       { label: "Lehengas", q: "Lehenga" },
       { label: "Kurtis", q: "Kurti" },
@@ -85,14 +101,14 @@ const megaMenuContent: Record<
       { label: "Sarees", q: "Saree" },
       { label: "Sets", q: "Girls Set" },
     ] },
-    { title: "TRENDING", links: [
+    { title: "✧ ROYAL VIBES", links: [
       same("New Arrivals"),
       same("Ready To Ship"),
       same("Wedding"),
       same("Reels"),
       same("Lookbook"),
     ] },
-    { title: "DRESSES & SETS", links: [
+    { title: "⟡ COOL & TRENDY", links: [
       { label: "All", q: "Girls Dress" },
       { label: "Dresses", q: "Dress" },
       { label: "Gowns", q: "Gown" },
@@ -100,7 +116,7 @@ const megaMenuContent: Record<
       { label: "Co-ords", q: "Co-ord Set" },
       { label: "Party Looks", q: "Girls Party Wear" },
     ] },
-    { title: "MORE", links: [
+    { title: "❖ THE LIL ANGELS", links: [
       same("Hair Accessories"),
       { label: "Sleepwear", q: "Nightwear" },
       same("Shoes"),
@@ -111,7 +127,6 @@ const megaMenuContent: Record<
   ],
   "BOYS": [
     { title: "◈ CLASSIC ETHNIC", links: [
-      { label: "All", q: "Boys Ethnic Wear" },
       same("Kurta Pajama"),
       { label: "Kurta Dhoti", q: "Dhoti Kurta" },
       same("Pathani"),
@@ -246,6 +261,26 @@ const MegaMenu = () => {
       {activeMegaTab && (
         <div className="absolute left-0 right-0 top-full border-b border-border/70 bg-background shadow-md max-h-[75vh] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+            {megaMenuViewAll[activeMegaTab] && (
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="h-5 w-1 rounded-full bg-gradient-to-b from-brand-teal to-[#9a65ad] shrink-0" />
+                  <h2 className="font-display text-lg md:text-xl font-black tracking-tight text-foreground truncate">
+                    {activeMegaTab}
+                  </h2>
+                </div>
+                <Link
+                  to={megaMenuViewAll[activeMegaTab]!.to}
+                  onClick={() => setActiveMegaTab(null)}
+                  className="group inline-flex items-center gap-2 rounded-full border border-teal-700/25 bg-teal-700/5 pl-4 pr-1.5 py-1.5 text-xs md:text-sm font-bold uppercase tracking-[0.12em] text-teal-800 shadow-sm transition-all duration-300 hover:border-transparent hover:bg-teal-700 hover:text-white hover:shadow-md"
+                >
+                  {megaMenuViewAll[activeMegaTab]!.label}
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-700 text-white transition-colors duration-300 group-hover:bg-white group-hover:text-teal-700">
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-px" strokeWidth={3} />
+                  </span>
+                </Link>
+              </div>
+            )}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
               {(megaMenuContent[activeMegaTab] ?? []).map((section) => (
                 <div key={`section-${section.title}`} className="space-y-2.5">

@@ -16,7 +16,7 @@ interface Category {
 // Local content shown until the curation engine returns tiles.
 const FALLBACK: Category[] = [
   { id: "boy", title: "LIL GENTLEMEN", sub: "BOLD & BALLER", img: boyImg, objectPos: "center 50%", to: "/collections" },
-  { id: "girl", title: "LIL BEAUTIES", sub: "GRACEFUL & SWEET", img: girlImg, objectPos: "center 15%", to: "/collections" },
+  { id: "girl", title: "LIL ANGELS", sub: "GRACEFUL & SWEET", img: girlImg, objectPos: "center 15%", to: "/collections" },
 ];
 
 const FeaturedCategories = ({ previewItems }: { previewItems?: ResolvedItem[] }) => {
