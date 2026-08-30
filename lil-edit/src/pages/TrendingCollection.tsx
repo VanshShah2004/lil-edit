@@ -22,6 +22,10 @@ const TRENDING_THEME: ArrivalsTheme = {
   emptyTitle: "Nothing trending just yet",
   emptyBlurb: "The next big thing is loading. Explore our collections while you wait.",
   spotlightLabel: "Trending Hardest",
+  // Trending's tagline is the one line that FITS in max-w-xl (564px of 576), so
+  // the hero would sit 24px (one line) shorter than New Arrivals, Boys and
+  // Occasion. Same override, same reason, as the Girls page.
+  heroPadY: "py-28 md:py-[8.75rem]",
 };
 
 export default function TrendingCollection() {
