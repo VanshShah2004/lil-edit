@@ -59,11 +59,18 @@ const TEAL = "#0F766E";
 
 // Storefront pages, each grouping the sections that live on it. The sidebar shows
 // these as expandable groups → click a page to reveal its sections.
+//
+// Within a group the keys are in the order the sections actually appear ON that
+// page, top to bottom, so the sidebar reads as a map of it rather than an
+// arbitrary list. Home Collage and HeroSection+ lead because they are the two
+// halves of the carousel at the top; Shop the Look sits last because that is
+// where pages/Home renders it. Keep this in step with pages/Home if that order
+// ever changes.
 const SECTION_GROUPS: { label: string; icon: typeof LayoutGrid; keys: SectionKey[] }[] = [
   {
     label: "Dashboard",
     icon: LayoutDashboard,
-    keys: ["home_trending", "home_recommended", "home_shop_the_look", "home_featured_categories", "home_collage", "home_hero_plus"],
+    keys: ["home_collage", "home_hero_plus", "home_featured_categories", "home_trending", "home_recommended", "home_shop_the_look"],
   },
   {
     label: "Collections Page",
