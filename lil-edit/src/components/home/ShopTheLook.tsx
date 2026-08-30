@@ -65,7 +65,7 @@ const ShopTheLook = ({
       <div className="container px-4">
         {/* Header */}
         <div className="mb-6 md:mb-8">
-          <p className="text-base font-black tracking-[0.2em] uppercase text-[#0B5B55] mb-0.5 pt-8 sm:pt-12">
+          <p className="text-base font-black tracking-[0.2em] uppercase text-[#0B5B55] mb-0.5 pt-8 sm:pt-12 md:pt-6">
             {eyebrow}
           </p>
           <div className="flex items-center justify-between">
