@@ -171,8 +171,8 @@ const Navbar = () => {
       {/* Login / Signup Bar (mobile) */}
       {isAccountOpen && (
         <div ref={accountBarRef} className="border-b border-border bg-background md:hidden">
-          <div className="max-w-screen-2xl mx-auto flex items-center px-3 lg:px-6 py-3">
-            <div className="flex gap-3 flex-1 max-w-sm"
+          <div className="max-w-screen-2xl mx-auto flex items-center justify-center px-3 lg:px-6 pt-1.5 pb-3">
+            <div className="flex gap-3 w-full max-w-sm"
               onMouseEnter={() => setIsLoginHovered(false)}
               onMouseLeave={() => setIsSignupHovered(false)}
             >
