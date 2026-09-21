@@ -258,8 +258,8 @@ export default function Checkout() {
   const savedPhone = profile?.phone_number ?? "";
   const phoneVerified = Boolean(verifiedPhone) || Boolean(savedPhone);
   // The gate can only be judged once the profile row has settled. Until then show a loading
-  // line, never the verify UI — otherwise a signed-in user whose number is already verified
-  // sees "Verify your number to continue" while their profile is still in flight.
+  // line, never the save UI — otherwise a signed-in user whose number is already saved
+  // sees "Save your number to continue" while their profile is still in flight.
   const phoneGateSettled = !user || profileLoaded;
 
   const userId = user?.id ?? null;
@@ -523,7 +523,7 @@ export default function Checkout() {
       return;
     }
     if (!phoneVerified) {
-      toast.error("Please verify your phone number to continue");
+      toast.error("Please save your phone number to continue");
       return;
     }
 
@@ -922,7 +922,7 @@ export default function Checkout() {
                 </>
               )}
 
-              {/* Contact number — a verified phone is required to place the order */}
+              {/* Contact number — a saved phone is required to place the order */}
               <div className="border-t border-gray-400 mt-4 pt-4">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -944,15 +944,15 @@ export default function Checkout() {
               ) : phoneVerified && !editingPhone ? (
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
                   <ShieldCheck className="w-4 h-4 text-green-600 shrink-0" />
-                  <span>Verified · {maskPhone(verifiedPhone ?? profile?.phone_number)}</span>
+                  <span>Saved · {maskPhone(verifiedPhone ?? profile?.phone_number)}</span>
                 </div>
               ) : (
                 <>
                   <p className="text-xs text-gray-500 mb-3">
                     We'll use this for order and delivery updates.{" "}
                     {phoneVerified
-                      ? "Enter a new number and verify it to switch."
-                      : "Add and verify your number to continue."}
+                      ? "Enter a new number and save it to switch."
+                      : "Add and save your number to continue."}
                   </p>
                   <PhoneVerify
                     savedPhone={savedPhone}
@@ -1300,7 +1300,7 @@ export default function Checkout() {
                 <p className="order-6 text-xs text-rose-600 text-center -mt-2">Select a delivery address to continue.</p>
               )}
               {phoneGateSettled && selectedAddressId && !phoneVerified && (
-                <p className="order-6 text-xs text-rose-600 text-center -mt-2">Verify your phone number to continue.</p>
+                <p className="order-6 text-xs text-rose-600 text-center -mt-2">Save your phone number to continue.</p>
               )}
 
               <div className="order-7 grid grid-cols-3 gap-2 pt-1 sm:pt-2">

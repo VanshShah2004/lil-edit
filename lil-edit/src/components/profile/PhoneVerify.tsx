@@ -6,10 +6,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Mock OTP — any number "verifies" with the code below. Swapping in a real provider
-// (Twilio / MSG91 / Supabase phone auth) is a self-contained change to handleSendOtp +
-// handleVerifyOtp; the rest of this component and its consumers stay the same.
-const MOCK_OTP = "123456";
+// Mock OTP — was checked against handleVerifyOtp below before the OTP step was disabled.
+// Swapping in a real provider (Twilio / MSG91 / Supabase phone auth) is a self-contained
+// change to handleSendOtp + handleVerifyOtp; the rest of this component and its consumers
+// stay the same.
+// const MOCK_OTP = "123456";
 
 interface PhoneVerifyProps {
   /** The full phone (country code + 10 digits) currently persisted on the profile, if any. */
@@ -36,11 +37,11 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
   // Full phone currently persisted — seeded from the prop, updated after a verify so the
   // "Verify" button correctly disables once the shown number matches what's saved.
   const [savedFull, setSavedFull] = useState("");
-  const [otp, setOtp] = useState("");
+  // const [otp, setOtp] = useState("");
   const [mockOtpSent, setMockOtpSent] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
-  const [otpError, setOtpError] = useState("");
+  // const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  // const [otpError, setOtpError] = useState("");
 
   // Sync from the persisted phone whenever it changes (mount + external updates).
   useEffect(() => {
@@ -54,8 +55,8 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
 
   const resetVerification = () => {
     setMockOtpSent(false);
-    setOtp("");
-    setOtpError("");
+    // setOtp("");
+    // setOtpError("");
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,49 +69,21 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
     resetVerification();
   };
 
+  // OTP step temporarily disabled — "Verify" now saves the number directly, no code sent/checked.
+  // To restore, swap this body back for the commented block below and re-enable the OTP UI further down.
   const handleSendOtp = async () => {
     if (phoneNumber.length !== 10) {
       toast.error("Phone number must be 10 digits");
       return;
     }
-
-    try {
-      setIsSendingOtp(true);
-
-      // Simulate network request
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setMockOtpSent(true);
-      setOtp(""); // Clear any existing OTP
-      toast.success("Mock OTP sent! (Use 123456 to verify)");
-    } catch {
-      toast.error("Failed to send OTP");
-    } finally {
-      setIsSendingOtp(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (!otp || !mockOtpSent) return;
     if (!user) {
       toast.error("Please log in to continue");
       return;
     }
 
     try {
-      setIsVerifyingOtp(true);
-      setOtpError("");
+      setIsSendingOtp(true);
 
-      // Simulate network verification
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      if (otp !== MOCK_OTP) {
-        setOtpError("OTP does not match ❌");
-        toast.error("Invalid OTP");
-        return;
-      }
-
-      // Verified — persist the new number immediately.
       const fullPhone = `${countryCode}${phoneNumber}`;
       const { error } = await supabase
         .from("profiles")
@@ -118,21 +91,78 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
         .eq("id", user.id);
       if (error) {
         console.error("[PhoneVerify] persist failed:", error);
-        setOtpError("Verified, but saving failed. Please try again.");
         toast.error(error.message || "Failed to save changes");
         return;
       }
 
       setSavedFull(fullPhone);
-      setMockOtpSent(false);
-      toast.success("Phone verified & saved ✅");
+      toast.success("Phone Number saved");
       onVerified?.(fullPhone);
       // Keep the shared auth profile in sync so other pages (e.g. checkout gate) see it.
       void refreshProfile();
     } finally {
-      setIsVerifyingOtp(false);
+      setIsSendingOtp(false);
     }
   };
+
+  // try {
+  //   setIsSendingOtp(true);
+  //
+  //   // Simulate network request
+  //   await new Promise((resolve) => setTimeout(resolve, 1000));
+  //
+  //   setMockOtpSent(true);
+  //   setOtp(""); // Clear any existing OTP
+  //   toast.success("Mock OTP sent! (Use 123456 to verify)");
+  // } catch {
+  //   toast.error("Failed to send OTP");
+  // } finally {
+  //   setIsSendingOtp(false);
+  // }
+
+  // const handleVerifyOtp = async () => {
+  //   if (!otp || !mockOtpSent) return;
+  //   if (!user) {
+  //     toast.error("Please log in to continue");
+  //     return;
+  //   }
+  //
+  //   try {
+  //     setIsVerifyingOtp(true);
+  //     setOtpError("");
+  //
+  //     // Simulate network verification
+  //     await new Promise((resolve) => setTimeout(resolve, 1000));
+  //
+  //     if (otp !== MOCK_OTP) {
+  //       setOtpError("OTP does not match ❌");
+  //       toast.error("Invalid OTP");
+  //       return;
+  //     }
+  //
+  //     // Verified — persist the new number immediately.
+  //     const fullPhone = `${countryCode}${phoneNumber}`;
+  //     const { error } = await supabase
+  //       .from("profiles")
+  //       .update({ phone_number: fullPhone, is_phone_number_verified: true })
+  //       .eq("id", user.id);
+  //     if (error) {
+  //       console.error("[PhoneVerify] persist failed:", error);
+  //       setOtpError("Verified, but saving failed. Please try again.");
+  //       toast.error(error.message || "Failed to save changes");
+  //       return;
+  //     }
+  //
+  //     setSavedFull(fullPhone);
+  //     setMockOtpSent(false);
+  //     toast.success("Phone verified & saved ✅");
+  //     onVerified?.(fullPhone);
+  //     // Keep the shared auth profile in sync so other pages (e.g. checkout gate) see it.
+  //     void refreshProfile();
+  //   } finally {
+  //     setIsVerifyingOtp(false);
+  //   }
+  // };
 
   const fullPhone = `${countryCode}${phoneNumber}`;
   const isDirty = fullPhone !== savedFull;
@@ -190,14 +220,15 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
                 Wait
               </>
             ) : (
-              "Verify"
+              "Save"
             )}
           </button>
         )}
       </div>
 
-      {/* Verification UI */}
-      {phoneNumber.length === 10 && !showVerified && (
+      {/* Verification UI — commented out along with handleVerifyOtp above; mockOtpSent
+          never becomes true now, so this never rendered anyway. Kept for restoration. */}
+      {/* {phoneNumber.length === 10 && !showVerified && (
         <>
           {mockOtpSent && (
             <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
@@ -245,11 +276,11 @@ export default function PhoneVerify({ savedPhone, onVerified, compact = false, l
 
           {otpError && <p className="text-sm text-destructive mt-1">{otpError}</p>}
         </>
-      )}
+      )} */}
       {/* Persistent verified state — shows on load for an already-verified number and
           immediately after a successful in-session verify (outside the isDirty gate,
-          which goes false the moment the verify saves). */}
-      {showVerified && <p className="text-sm text-green-600 font-medium mt-1">Phone verified ✅</p>}
+          which goes false the moment the verify saves). Text removed per request;
+          showVerified still gates the "Save" button (canSend) and Change flow. */}
     </div>
   );
 }
