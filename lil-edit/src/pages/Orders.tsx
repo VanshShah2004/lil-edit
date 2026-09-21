@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { fetchOrders, type OrderSummary } from "@/lib/ordersApi";
 import { getBackendBaseUrl } from "@/lib/backend";
+import { authHeader } from "@/lib/apiAuth";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import { BuyAgainSection, YouMayLikeSection, ReviewHistorySection, type SidebarProduct } from "@/components/orders/OrdersSidebar";
 import OrderCard from "@/components/orders/OrderCard";
@@ -204,7 +205,8 @@ const OrdersPage = () => {
     const url = `${getBackendBaseUrl()}/api/products/recommendations?slug=${encodeURIComponent(anchor.productSlug)}&category=${encodeURIComponent(anchor.categorySlug)}`;
     console.log(`[OrdersPage] fetching recommendations  anchor=${anchor.productSlug}`);
 
-    fetch(url)
+    authHeader()
+      .then((headers) => fetch(url, { headers }))
       .then((res) => (res.ok ? res.json() : { recommended: [] }))
       .then((data) => {
         if (!cancelled) {
@@ -294,7 +296,8 @@ const OrdersPage = () => {
     if (!item.slug || !item.sku) return;
     const url = `${getBackendBaseUrl()}/api/products/detail?slug=${encodeURIComponent(item.slug)}&sku=${encodeURIComponent(item.sku)}&category=${encodeURIComponent(item.categorySlug)}`;
     console.log(`[OrdersPage] sidebar quick-view fetch  ${url}`);
-    fetch(url)
+    authHeader()
+      .then((headers) => fetch(url, { headers }))
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         const product = data?.product;

@@ -17,6 +17,7 @@ import ProductPreviewView from "@/components/ProductPreviewView";
 import QuickAddButton from "@/components/home/QuickAddButton";
 import type { Product, ReviewsData } from "@/types/product";
 import { getBackendBaseUrl } from "@/lib/backend";
+import { authHeader } from "@/lib/apiAuth";
 import { buildPdpPath } from "@/lib/pdpUrl";
 import { getOptimizedUrlForVariant } from "@/lib/productImage";
 import { PdpClientPerf } from "@/lib/pdpClientPerf";
@@ -122,7 +123,8 @@ function prefetchProductDetail(slug: string, sku: string, categorySlug: string):
   prefetchInFlight.add(sku);
   const base = getBackendBaseUrl();
   const t0 = performance.now();
-  fetch(`${base}/api/products/detail?slug=${encodeURIComponent(slug)}&sku=${encodeURIComponent(sku)}&category=${encodeURIComponent(categorySlug)}`)
+  authHeader()
+    .then((headers) => fetch(`${base}/api/products/detail?slug=${encodeURIComponent(slug)}&sku=${encodeURIComponent(sku)}&category=${encodeURIComponent(categorySlug)}`, { headers }))
     .then(async (res) => {
       if (!res.ok) {
         console.warn(`[Prefetch] FAIL  sku=${sku}  status=${res.status}`);
@@ -300,7 +302,8 @@ export default function ProductDetail() {
 
     console.log(`[AbortController] product fetch START  slug=${productSlug}  sku=${skuId}`);
     perf.mark("fetchStart");
-    fetch(`${base}/api/products/detail?slug=${encodeURIComponent(productSlug)}&sku=${encodeURIComponent(skuId)}&category=${encodeURIComponent(categoryParam ?? "")}`, { signal: controller.signal })
+    authHeader()
+      .then((headers) => fetch(`${base}/api/products/detail?slug=${encodeURIComponent(productSlug)}&sku=${encodeURIComponent(skuId)}&category=${encodeURIComponent(categoryParam ?? "")}`, { signal: controller.signal, headers }))
       .then(async (res) => {
         if (cancelled) return;
         perf.mark("fetchEnd");
@@ -413,7 +416,8 @@ export default function ProductDetail() {
       setReviewsLoading(true);
       setReviewsError(null);
       console.log(`[AbortController] reviews fetch START  skus=${productSkus.join(",")}`);
-      fetch(`${base}/api/products/reviews?skus=${encodeURIComponent(productSkus.join(","))}`, { signal: reviewsController.signal })
+      authHeader()
+        .then((headers) => fetch(`${base}/api/products/reviews?skus=${encodeURIComponent(productSkus.join(","))}`, { signal: reviewsController.signal, headers }))
         .then(async (res) => {
           if (!res.ok) {
             const errMsg = await res.json().catch(() => ({}));
@@ -450,11 +454,12 @@ export default function ProductDetail() {
       setRecommendationsLoading(true);
       setRecommendationsError(null);
       console.log(`[AbortController] recs fetch START  slug=${productSlug}`);
-      fetch(
-        // Pass the anchor's gender + price so the backend can rank without an extra DB lookup
-        `${base}/api/products/recommendations?slug=${encodeURIComponent(productSlug)}&category=${encodeURIComponent(product.categorySlug)}&gender=${encodeURIComponent(product.gender ?? "")}&price=${encodeURIComponent(String(product.price ?? ""))}`,
-        { signal: recsController.signal }
-      )
+      authHeader()
+        .then((headers) => fetch(
+          // Pass the anchor's gender + price so the backend can rank without an extra DB lookup
+          `${base}/api/products/recommendations?slug=${encodeURIComponent(productSlug)}&category=${encodeURIComponent(product.categorySlug)}&gender=${encodeURIComponent(product.gender ?? "")}&price=${encodeURIComponent(String(product.price ?? ""))}`,
+          { signal: recsController.signal, headers }
+        ))
         .then(async (res) => {
           if (!res.ok) {
             const errMsg = await res.json().catch(() => ({}));

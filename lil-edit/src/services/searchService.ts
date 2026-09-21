@@ -19,7 +19,7 @@ export async function fetchSuggestions(q: string, signal?: AbortSignal): Promise
   const url = `${getBackendBaseUrl()}/api/products/suggestions?q=${encodeURIComponent(q)}`;
   console.log("[searchService] GET", url);
 
-  const res = await fetch(url, { signal });
+  const res = await fetch(url, { signal, headers: { ...(await authHeader()) } });
   console.log("[searchService] GET", url, "→", res.status);
 
   if (!res.ok) {
@@ -94,7 +94,7 @@ export async function fetchNewArrivals(
   const url = `${getBackendBaseUrl()}/api/products/new-arrivals?limit=${limit}${gender ? `&gender=${gender}` : ""}${trending ? "&trending=1" : ""}`;
   console.log("[searchService] GET", url);
 
-  const res = await fetch(url, { signal });
+  const res = await fetch(url, { signal, headers: { ...(await authHeader()) } });
   console.log("[searchService] GET", url, "→", res.status);
 
   if (!res.ok) {
@@ -139,7 +139,7 @@ export async function fetchCollectionCounts(signal?: AbortSignal): Promise<Colle
   const url = `${getBackendBaseUrl()}/api/products/collection-counts`;
   console.log("[searchService] GET", url);
 
-  const res = await fetch(url, { signal });
+  const res = await fetch(url, { signal, headers: { ...(await authHeader()) } });
   console.log("[searchService] GET", url, "→", res.status);
 
   if (!res.ok) {

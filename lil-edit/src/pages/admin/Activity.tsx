@@ -40,6 +40,7 @@ import {
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import { composeProductBadges } from "@/lib/productBadges";
 import { getBackendBaseUrl } from "@/lib/backend";
+import { authHeader } from "@/lib/apiAuth";
 import {
   fetchActivity,
   type ActivityCategory,
@@ -517,7 +518,7 @@ const Activity = () => {
     try {
       const url = `${getBackendBaseUrl()}/api/products/detail?slug=${encodeURIComponent(item.productSlug)}&sku=${encodeURIComponent(item.sku)}`;
       console.log(`[Activity] quick-view fetch  ${url}`);
-      const res = await fetch(url);
+      const res = await fetch(url, { headers: { ...(await authHeader()) } });
       if (!res.ok) {
         throw new Error(res.status === 404 ? "This product is no longer available." : `Product lookup failed (${res.status})`);
       }

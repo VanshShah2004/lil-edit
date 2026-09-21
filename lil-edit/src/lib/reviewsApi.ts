@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { getBackendBaseUrl } from "@/lib/backend";
+import { authHeader } from "@/lib/apiAuth";
 
 export interface Review {
   id: string;
@@ -46,7 +47,7 @@ export async function fetchReviewsForProduct(skus: string[]): Promise<ReviewsDat
   const url = `${getBackendBaseUrl()}/api/products/reviews?skus=${encodeURIComponent(skus.join(","))}`;
   console.log(`[reviewsApi] fetching reviews  ${url}`);
 
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: { ...(await authHeader()) } });
   if (!res.ok) {
     console.error("[reviewsApi] fetch failed", res.status);
     return { totalReviews: 0, averageRating: 0, distribution: [], reviews: [] };

@@ -1,4 +1,5 @@
 import { getBackendBaseUrl } from "@/lib/backend";
+import { authHeader } from "@/lib/apiAuth";
 import type { SearchProduct } from "@/services/searchService";
 
 // A category listing card: ONE COLOURWAY of one product. A kurta cut in three
@@ -127,7 +128,7 @@ export async function fetchCategoryCounts(signal?: AbortSignal): Promise<Categor
   const url = `${getBackendBaseUrl()}/api/products/category-counts`;
   console.log("[categoryService] GET", url);
 
-  const res = await fetch(url, { signal });
+  const res = await fetch(url, { signal, headers: { ...(await authHeader()) } });
   console.log("[categoryService] GET", url, "→", res.status);
 
   if (!res.ok) {
@@ -189,7 +190,7 @@ export async function fetchCategoryProducts(
   const url = `${getBackendBaseUrl()}/api/products/category/${encodeURIComponent(slug)}?${toQuery(filters, limit, offset)}`;
   console.log("[categoryService] GET", url);
 
-  const res = await fetch(url, { signal });
+  const res = await fetch(url, { signal, headers: { ...(await authHeader()) } });
   console.log("[categoryService] GET", url, "→", res.status);
 
   if (!res.ok) {

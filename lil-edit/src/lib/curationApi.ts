@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { getBackendBaseUrl } from "@/lib/backend";
+import { authHeader } from "@/lib/apiAuth";
 
 // ─── Section keys (mirror backend KNOWN_SECTION_KEYS) ────────────────────────
 export const SECTION_KEYS = [
@@ -115,7 +116,7 @@ export interface SectionItemInput {
 export async function fetchSections(keys: SectionKey[]): Promise<Record<string, ResolvedSection>> {
   const url = `${getBackendBaseUrl()}/api/curation/sections?keys=${keys.join(",")}`;
   console.log(`[curationApi] GET ${url}`);
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: { ...(await authHeader()) } });
   if (!res.ok) {
     console.error(`[curationApi] fetchSections failed (${res.status})`);
     throw new Error(`Curation fetch failed (${res.status})`);

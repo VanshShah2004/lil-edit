@@ -23,7 +23,10 @@ const megaMenuItems = [
  */
 interface MegaLink {
   label: string;
-  q: string;
+  /** Search query. Omitted when `to` names a real route instead. */
+  q?: string;
+  /** A real route (e.g. a category listing page) instead of a search. */
+  to?: string;
 }
 
 /** Same destination the search bar submits to (see SearchPanel). */
@@ -31,6 +34,9 @@ const searchPath = (q: string) => `/search?q=${encodeURIComponent(q)}`;
 
 /** Shorthand for the common case: the label IS the query. */
 const same = (label: string): MegaLink => ({ label, q: label });
+
+/** For the handful of labels that have their own real listing page. */
+const category = (label: string, slug: string): MegaLink => ({ label, to: `/collections/${slug}` });
 
 // A "shop everything in this tab" link, shown once above the columns rather
 // than duplicated (and mis-scoped to a single column, as BOYS's old "All"
@@ -52,44 +58,17 @@ const megaMenuContent: Record<
   { title: string; links: MegaLink[] }[]
 > = {
   "NEW ARRIVALS": [
-    { title: "JUST IN", links: [
-      { label: "All", q: "New Arrivals" },
-      same("Daily New"),
-      same("Ready To Ship"),
-      same("Bestsellers"),
-      { label: "Latest Sets", q: "Set" },
-    ] },
-    { title: "TRENDING", links: [
-      same("Ethnic Wear"),
+    { title: "◈ LITTLE TRADITIONS", links: [
+      category("Ethnic Wear", "ethnic-wear"),
+      category("Party Wear", "party-wear"),
+      category("Casual Wear", "casual-wear"),
       same("Western Wear"),
-      { label: "Fusion Looks", q: "Indo-Western" },
-      same("Party Wear"),
-      same("Lookbook"),
     ] },
-    // The age ranges are the SIZES list from AddProduct verbatim — a size only
-    // matches search when the query IS one, so invented buckets ("0-2 Years")
-    // would find nothing. All twelve are listed rather than a sample, since any
-    // size left out of the menu is a size no shopper can reach from the nav.
-    { title: "SHOP BY AGE", links: [
-      same("6-12 Months"),
-      same("1-2 Years"),
-      same("2-3 Years"),
-      same("3-4 Years"),
-      same("4-5 Years"),
-      same("5-6 Years"),
-      same("6-7 Years"),
-      same("7-8 Years"),
-      same("8-9 Years"),
-      same("9-10 Years"),
-      same("10-11 Years"),
-      same("11-12 Years"),
-    ] },
-    { title: "MORE", links: [
-      same("Accessories"),
-      same("Shoes"),
-      same("Bags"),
-      same("Hair Essentials"),
-      same("Stationery"),
+    { title: "✧ THE STYLE SPOTLIGHT", links: [
+      same("Bestsellers"),
+      same("Featured"),
+      same("Trendy"),
+      same("New Arrivals"),
     ] },
   ],
   "GIRLS": [
@@ -145,30 +124,17 @@ const megaMenuContent: Record<
     ] },
   ],
   "TRENDING": [
-    { title: "HOT RIGHT NOW", links: [
+    { title: "◆ HOT RIGHT NOW", links: [
       same("Instagram Reels"),
-      same("Celebrity Picks"),
       same("Top Rated"),
       { label: "Festive Edits", q: "Festive" },
-      { label: "Wedding Edit", q: "Wedding" },
+      same("Theme Based"),
     ] },
-    { title: "SEASONAL", links: [
-      { label: "Summer Picks", q: "Summer" },
-      { label: "Monsoon Ready", q: "Monsoon" },
-      { label: "Winter Layers", q: "Winter" },
-      { label: "Spring Colors", q: "Spring" },
-    ] },
-    { title: "SHOP BY LOOK", links: [
-      { label: "Traditional", q: "Ethnic Wear" },
-      { label: "Modern Ethnic", q: "Indo-Western" },
-      { label: "Streetwear", q: "Casual Wear" },
+    { title: "✧ SHOP BY LOOK", links: [
       same("Elegant"),
-      same("Minimal"),
-    ] },
-    { title: "THEME-BASED", links: [
-      { label: "Super-hero Edit", q: "Super-hero" },
-      { label: "Safari Style", q: "Safari" },
-      same("Space Explorer"),
+      { label: "Modern Ethnic", q: "Indo-Western" },
+      { label: "Minimal & Casual", q: "Minimal Casual" },
+      same("Party Perfect"),
     ] },
   ],
   "BY OCCASION": [
@@ -279,9 +245,9 @@ const MegaMenu = () => {
                     {section.links.map((link) => (
                       <li key={`link-${section.title}-${link.label}`}>
                         <Link
-                          to={searchPath(link.q)}
+                          to={link.to ?? searchPath(link.q!)}
                           onClick={() => {
-                            console.log("[MegaMenu]", activeMegaTab, "›", section.title, "›", link.label, "→ search:", link.q);
+                            console.log("[MegaMenu]", activeMegaTab, "›", section.title, "›", link.label, link.to ? "→ page:" : "→ search:", link.to ?? link.q);
                             setActiveMegaTab(null);
                           }}
                           className="group flex items-center gap-1.5 text-sm lg:text-base text-gray-800 hover:text-teal-600 active:text-teal-700 transition-colors"

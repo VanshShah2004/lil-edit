@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { getBackendBaseUrl } from "@/lib/backend";
+import { authHeader } from "@/lib/apiAuth";
 
 // Shape returned by /api/products/recommendations (the subset the cart/wishlist
 // "You May Also Like" grids render).
@@ -55,7 +56,8 @@ export function useRecommendations(anchor: RecommendationAnchor | null, limit = 
     const url = `${getBackendBaseUrl()}/api/products/recommendations?${params.toString()}`;
     console.log(`[useRecommendations] fetching  anchor=${slug}`);
 
-    fetch(url)
+    authHeader()
+      .then((headers) => fetch(url, { headers }))
       .then((res) => (res.ok ? res.json() : { recommended: [] }))
       .then((data) => {
         if (cancelled) return;

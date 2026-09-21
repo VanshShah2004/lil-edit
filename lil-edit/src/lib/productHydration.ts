@@ -1,4 +1,5 @@
 import { getBackendBaseUrl } from "@/lib/backend";
+import { authHeader } from "@/lib/apiAuth";
 
 /**
  * Display view for a single SKU, resolved server-side by GET /api/products/by-skus.
@@ -82,7 +83,7 @@ export async function hydrateSkus(skus: string[]): Promise<Map<string, ResolvedS
   try {
     const url = `${getBackendBaseUrl()}/api/products/by-skus?skus=${encodeURIComponent(misses.join(","))}`;
     console.log(`[productHydration] GET ${url}`);
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: { ...(await authHeader()) } });
     if (!res.ok) {
       console.error(`[productHydration] by-skus failed (${res.status})`);
       return map;

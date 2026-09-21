@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { getBackendBaseUrl } from "@/lib/backend";
+import { authHeader } from "@/lib/apiAuth";
 import { composeProductBadges } from "@/lib/productBadges";
 import type { SidebarProduct } from "@/components/orders/OrdersSidebar";
 
@@ -16,7 +17,8 @@ export function useBuyAgainBadges(items: SidebarProduct[]): SidebarProduct[] {
       if (!item.slug || !item.sku) return;
       const key = `${item.slug}-${item.sku}`;
       const url = `${getBackendBaseUrl()}/api/products/detail?slug=${encodeURIComponent(item.slug)}&sku=${encodeURIComponent(item.sku)}&category=${encodeURIComponent(item.categorySlug)}`;
-      fetch(url)
+      authHeader()
+        .then((headers) => fetch(url, { headers }))
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           const product = data?.product;

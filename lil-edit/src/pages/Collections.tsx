@@ -185,12 +185,12 @@ export default function Collections() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Enter your email"
-                      className="px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-lg sm:rounded-full bg-white/20 border border-white/30 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white transition-all"
+                      className="px-4 py-2.5 sm:py-3 text-xs sm:text-sm rounded-md bg-white/20 border border-white/30 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white transition-all"
                     />
                     <Button
                       type="submit"
                       disabled={submitting}
-                      className="bg-white text-gray-900 hover:bg-gray-100 px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-full font-semibold text-xs sm:text-sm flex-shrink-0 transition-colors disabled:opacity-60"
+                      className="bg-white text-gray-900 hover:bg-gray-100 px-5 sm:px-6 py-2.5 sm:py-3 rounded-md font-semibold text-xs sm:text-sm flex-shrink-0 transition-colors disabled:opacity-60"
                     >
                       {submitting ? "Joining..." : "Subscribe"}
                     </Button>

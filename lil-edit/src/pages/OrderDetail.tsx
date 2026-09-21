@@ -13,6 +13,7 @@ import { useCart } from "@/contexts/CartContext";
 import { fetchOrderById, fetchBoughtItems, type OrderDetail, type OrderItem, type OrderStatus } from "@/lib/ordersApi";
 import QuickViewDrawer, { type QuickViewProduct } from "@/components/product/QuickViewDrawer";
 import { getBackendBaseUrl } from "@/lib/backend";
+import { authHeader } from "@/lib/apiAuth";
 import { BuyAgainSection, YouMayLikeSection, type SidebarProduct } from "@/components/orders/OrdersSidebar";
 import OrderTimeline from "@/components/orders/OrderTimeline";
 import { useBuyAgainBadges } from "@/hooks/useBuyAgainBadges";
@@ -165,7 +166,8 @@ const OrderDetailPage = () => {
     if (!item.productSlug || !item.sku) return;
     const url = `${getBackendBaseUrl()}/api/products/detail?slug=${encodeURIComponent(item.productSlug)}&sku=${encodeURIComponent(item.sku)}&category=${encodeURIComponent(item.categorySlug)}`;
     console.log(`[OrderDetailPage] quick-view gallery fetch  ${url}`);
-    fetch(url)
+    authHeader()
+      .then((headers) => fetch(url, { headers }))
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         const product = data?.product;
@@ -213,7 +215,8 @@ const OrderDetailPage = () => {
     if (!item.slug || !item.sku) return;
     const url = `${getBackendBaseUrl()}/api/products/detail?slug=${encodeURIComponent(item.slug)}&sku=${encodeURIComponent(item.sku)}&category=${encodeURIComponent(item.categorySlug)}`;
     console.log(`[OrderDetailPage] sidebar quick-view fetch  ${url}`);
-    fetch(url)
+    authHeader()
+      .then((headers) => fetch(url, { headers }))
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         const product = data?.product;
@@ -274,7 +277,8 @@ const OrderDetailPage = () => {
     const url = `${getBackendBaseUrl()}/api/products/recommendations?slug=${encodeURIComponent(anchor.productSlug)}&category=${encodeURIComponent(anchor.categorySlug)}`;
     console.log(`[OrderDetailPage] fetching recommendations  anchor=${anchor.productSlug}`);
 
-    fetch(url)
+    authHeader()
+      .then((headers) => fetch(url, { headers }))
       .then((res) => (res.ok ? res.json() : { recommended: [] }))
       .then((data) => {
         if (!cancelled) {
