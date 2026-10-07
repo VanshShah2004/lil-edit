@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { invalidateAfterMutation } from "@/lib/catalogCache";
+import { resolveFormPrices, resolvePreviewPrices } from "@/lib/buildProductPayload";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -137,8 +138,7 @@ function buildCurationPayload(formData: FormData, imagePreviews: string[], isSto
     categorySlug: formData.categorySlug,
     category: formData.category,
     gender: formData.gender,
-    price: formData.price,
-    originalPrice: formData.originalPrice,
+    ...resolveFormPrices(formData.price, formData.originalPrice),
     fabric: formData.fabric,
     fit: formData.fit,
     occasion: formData.occasion,
@@ -226,8 +226,7 @@ const mapFormDataToProduct = (formData: FormData, imagePreviews: string[], isSto
     sku: formData.sku || "SKU-CAT",
     category: formData.category || "General",
     gender: formData.gender || "Unisex",
-    price: Number(formData.price) || 0,
-    originalPrice: Number(formData.originalPrice) || 0,
+    ...resolvePreviewPrices(formData.price, formData.originalPrice),
     tags: formData.tags,
     badges: formData.customBadges,
     descriptionPoints: formData.descriptionPoints,
@@ -840,7 +839,8 @@ const EditProduct = () => {
 
     setIsSaving(true);
     try {
-      const updatedFormData = { ...formData };
+      // Only one of Selling Price / MRP filled → it's saved as the selling price; the form shows it there too.
+      const updatedFormData = { ...formData, ...resolveFormPrices(formData.price, formData.originalPrice) };
 
       const { database } = await sendCurationToBackend("DRAFT", updatedFormData, imagePreviews, isStockUnlimited);
       const mappedProduct = mapFormDataToProduct(updatedFormData, imagePreviews, isStockUnlimited);
@@ -873,7 +873,8 @@ const EditProduct = () => {
 
     setIsPublishing(true);
     try {
-      const updatedFormData = { ...formData };
+      // Only one of Selling Price / MRP filled → it's saved as the selling price; the form shows it there too.
+      const updatedFormData = { ...formData, ...resolveFormPrices(formData.price, formData.originalPrice) };
 
       const { database } = await sendCurationToBackend("PUBLISHED", updatedFormData, imagePreviews, isStockUnlimited);
       const mappedProduct = mapFormDataToProduct(updatedFormData, imagePreviews, isStockUnlimited);

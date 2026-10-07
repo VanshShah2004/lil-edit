@@ -27,6 +27,18 @@ function asNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/**
+ * Selling price / MRP from the admin form. When only one of the two is filled in,
+ * that value is the selling price and there is no MRP (original_price NULL).
+ */
+function resolvePrices(rawPrice: unknown, rawOriginal: unknown): { price: number; original_price: number | null } {
+  const price = asNum(rawPrice);
+  const originalGiven = asString(rawOriginal).trim() !== "";
+  const original = asNum(rawOriginal);
+  if (price <= 0 && original > 0) return { price: original, original_price: null };
+  return { price, original_price: originalGiven ? original : null };
+}
+
 function asBool(v: unknown): boolean {
   return Boolean(v);
 }
@@ -126,8 +138,7 @@ export function mapCurationPayloadToCatalog(data: CurationPayload): {
 
   const variants = asColorVariants(data.selectedColors);
 
-  const original = asString(data.originalPrice).trim();
-  const original_price = original === "" ? null : asNum(data.originalPrice);
+  const { price, original_price } = resolvePrices(data.price, data.originalPrice);
 
   const is_unlimited = asBool(data.isStockUnlimited) || variants.some(v => v.isUnlimited);
 
@@ -139,7 +150,7 @@ export function mapCurationPayloadToCatalog(data: CurationPayload): {
     category,
     category_slug,
     gender: asString(data.gender, "Unisex").trim() || "Unisex",
-    price: asNum(data.price),
+    price,
     original_price,
     fabric: asString(data.fabric).trim() || null,
     fit: asString(data.fit).trim() || null,

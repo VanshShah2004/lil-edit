@@ -581,11 +581,13 @@ export default function Cart() {
                             {item.quantity > 1 ? `${item.quantity} × ₹${item.price}` : `₹${item.price}`}
                           </span>
                         </div>
-                        <div className="flex justify-end -mt-1">
-                          <span className="text-xs line-through text-gray-400">
-                            {item.quantity > 1 ? `${item.quantity} × ₹${item.originalPrice}` : `₹${item.originalPrice}`}
-                          </span>
-                        </div>
+                        {item.originalPrice > item.price && (
+                          <div className="flex justify-end -mt-1">
+                            <span className="text-xs line-through text-gray-400">
+                              {item.quantity > 1 ? `${item.quantity} × ₹${item.originalPrice}` : `₹${item.originalPrice}`}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Delivery */}

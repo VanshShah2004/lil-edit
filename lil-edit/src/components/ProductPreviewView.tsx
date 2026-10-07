@@ -341,7 +341,7 @@ const ProductPreviewView = ({
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <span className={`${compact ? "text-xl" : "text-2xl"} font-bold text-[#0B5B55]`}>₹{product.price}</span>
-              {product.originalPrice > 0 && <span className="line-through text-gray-400">₹{product.originalPrice}</span>}
+              {product.originalPrice > product.price && <span className="line-through text-gray-400">₹{product.originalPrice}</span>}
               {discountPercent > 0 && <span className="text-xs font-semibold text-red-500">{discountPercent}% OFF</span>}
             </div>
             

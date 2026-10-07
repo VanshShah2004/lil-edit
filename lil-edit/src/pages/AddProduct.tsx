@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { invalidateAfterMutation } from "@/lib/catalogCache";
-import { buildPayloadFromForm } from "@/lib/buildProductPayload";
+import { buildPayloadFromForm, resolveFormPrices, resolvePreviewPrices } from "@/lib/buildProductPayload";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -205,8 +205,7 @@ const mapFormDataToProduct = (formData: FormData, imagePreviews: string[], isSto
     sku: formData.sku || "SKU-CAT",
     category: formData.category || "General",
     gender: formData.gender || "Unisex",
-    price: Number(formData.price) || 0,
-    originalPrice: Number(formData.originalPrice) || 0,
+    ...resolvePreviewPrices(formData.price, formData.originalPrice),
     tags: formData.tags,
     badges: formData.customBadges,
     descriptionPoints: formData.descriptionPoints,
@@ -592,6 +591,8 @@ const AddProduct = () => {
           setFormData(prev => ({ ...prev, sku: committedSku }));
         }
         setSkuCommitted(true);
+        // Only one of Selling Price / MRP filled → it was saved as the selling price; show it there.
+        setFormData(prev => ({ ...prev, ...resolveFormPrices(prev.price, prev.originalPrice) }));
         toast.success("Draft saved to Supabase (draft tables).");
         invalidateAfterMutation(finalSku || undefined);
       }
@@ -619,6 +620,8 @@ const AddProduct = () => {
           setFormData(prev => ({ ...prev, sku: committedSku }));
         }
         setSkuCommitted(true);
+        // Only one of Selling Price / MRP filled → it was saved as the selling price; show it there.
+        setFormData(prev => ({ ...prev, ...resolveFormPrices(prev.price, prev.originalPrice) }));
         toast.success(`The Product\nTitle: ${formData.name}\nSKU: ${finalSku}\nhas successfully launched!`);
         // Redirect to home page after successful launch
         setTimeout(() => {

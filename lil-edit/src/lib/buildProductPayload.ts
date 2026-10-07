@@ -60,6 +60,27 @@ interface FormLike {
   trending: boolean;
 }
 
+const isPriceGiven = (v: string) => Number(v.trim()) > 0;
+
+/**
+ * When the admin fills in only one of Selling Price / Original Price (MRP), that
+ * value IS the selling price and there is no MRP. Mirrors resolvePrices in
+ * backend/lib/productMapper.ts, which is what actually gets saved.
+ */
+export function resolveFormPrices(price: string, originalPrice: string): { price: string; originalPrice: string } {
+  if (!isPriceGiven(price) && isPriceGiven(originalPrice)) {
+    return { price: originalPrice.trim(), originalPrice: "" };
+  }
+  return { price, originalPrice };
+}
+
+/** The same rule as numbers, for the in-form preview: no MRP reads as MRP = selling price, as the API serves it. */
+export function resolvePreviewPrices(price: string, originalPrice: string): { price: number; originalPrice: number } {
+  const resolved = resolveFormPrices(price, originalPrice);
+  const selling = Number(resolved.price) || 0;
+  return { price: selling, originalPrice: Number(resolved.originalPrice) || selling };
+}
+
 export function buildPayloadFromForm(
   formData: FormLike,
   imagePreviews: string[],
@@ -73,8 +94,7 @@ export function buildPayloadFromForm(
     categorySlug: formData.categorySlug,
     category: formData.category,
     gender: formData.gender,
-    price: formData.price,
-    originalPrice: formData.originalPrice,
+    ...resolveFormPrices(formData.price, formData.originalPrice),
     fabric: formData.fabric,
     fit: formData.fit,
     occasion: formData.occasion,

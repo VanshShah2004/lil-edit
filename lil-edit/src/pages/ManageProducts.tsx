@@ -274,7 +274,7 @@ const ProductVersionView = ({ version, isUpdate, onEdit, onLaunch, onDelete, onD
               <div className="space-y-1">
                 <p className="text-[11px] sm:text-[9px] font-bold text-gray-600 uppercase tracking-wider">Original Price (MRP)</p>
                 <p className="text-sm sm:text-xs font-bold text-gray-900">
-                  {p.original_price ? `₹${p.original_price.toLocaleString()}` : "—"}
+                  {p.original_price && p.original_price !== p.price ? `₹${p.original_price.toLocaleString()}` : "—"}
                 </p>
               </div>
             </div>
@@ -1254,7 +1254,7 @@ const ManageProducts = () => {
           <div><div class="label">Master SKU</div><div class="value" style="font-family:monospace;">${product.base_sku}</div></div>
           <div><div class="label">Brand</div><div class="value">${product.brand}</div></div>
           <div><div class="label">Selling Price</div><div class="value">₹${product.price.toLocaleString()}</div></div>
-          <div><div class="label">Original Price (MRP)</div><div class="value">${product.original_price ? `₹${product.original_price.toLocaleString()}` : '—'}</div></div>
+          <div><div class="label">Original Price (MRP)</div><div class="value">${product.original_price && product.original_price !== product.price ? `₹${product.original_price.toLocaleString()}` : '—'}</div></div>
           <div><div class="label">Category</div><div class="value">${product.category}</div></div>
           <div><div class="label">Gender Category</div><div class="value">${product.gender ?? 'N/A'}</div></div>
           <div><div class="label">Total Stock</div><div class="value">${isUnlimited ? 'Unlimited' : `${totalStock} units`}</div></div>
